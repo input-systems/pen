@@ -45,7 +45,7 @@
     "@input/pen-types": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "yjs": "^13.6.29"
+    "yjs": "^13.6.32"
   },
   "devDependencies": {
     "@input/pen-assets-memory": "workspace:*",
