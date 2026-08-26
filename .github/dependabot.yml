@@ -18,6 +18,8 @@ updates:
         versions: [">=6"]
       - dependency-name: vitest
         versions: [">=4"]
+      - dependency-name: jsdom
+        versions: [">=29"]
       - dependency-name: vite
         versions: [">=7"]
       - dependency-name: "@changesets/cli"

@@ -144,7 +144,7 @@
     "@input/pen-undo": "workspace:*",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "jsdom": "^30.0.1",
+    "jsdom": "^28.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tsup": "^8.4.0",

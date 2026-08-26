@@ -75,7 +75,7 @@
     "@input/pen-test": "workspace:*",
     "@input/pen-undo": "workspace:*",
     "@vue/test-utils": "^2.4.11",
-    "jsdom": "^30.0.1",
+    "jsdom": "^28.1.0",
     "tsup": "^8.4.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",
