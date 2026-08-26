@@ -30,7 +30,9 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
+          # This job never installs the workspace. setup-node would
+          # otherwise cache the pnpm store and fail when that path is absent.
+          package-manager-cache: false
 
       # Blocking (SEC7). Root `pnpm audit --prod` is the wrong question: pnpm
       # audit has no workspace filter, so a root sweep also flags playground
