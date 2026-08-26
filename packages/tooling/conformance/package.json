@@ -43,9 +43,9 @@
     "@input/pen-schema-default": "workspace:*",
     "@input/pen-test": "workspace:*",
     "@input/pen-types": "workspace:*",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "yjs": "^13.6.29"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "yjs": "^13.6.32"
   },
   "devDependencies": {
     "@input/pen-assets-memory": "workspace:*",
@@ -64,7 +64,7 @@
     "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.62.1",
     "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^4.7.0",
     "axe-core": "^4.13.0",
     "typescript": "^5.9.3",

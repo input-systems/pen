@@ -2,10 +2,8 @@
 <img width="100%" height="auto" alt="logo_black@2x" src="https://github.com/user-attachments/assets/6eb68df5-c70f-4a38-ac6f-f69530f0b355" />
 
 <h3 align="center">
-  Headless, extension-first rich text<br/>editor engine for AI collaboration
+  Rich text editor engine for human/AI<br/> collaboration. Headless. Extendable.
 </h3>
-
-<h5 align="center">Work in progress, not yet ready for use</h5>
 
 <p align="center">
   <a href="https://github.com/input-systems/pen/stargazers"><img src="https://img.shields.io/github/stars/input-systems/pen?style=flat&color=8D30FF" alt="GitHub stars" /></a>

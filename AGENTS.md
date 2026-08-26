@@ -62,7 +62,7 @@ For substantive changes run `pnpm build`, `pnpm typecheck`, and `pnpm test` befo
 
 ## Releases
 
-- Changesets drive versioning (`pnpm changeset`, `pnpm version-packages`, `pnpm release`). Any PR that changes a published package's behavior or API includes a changeset. The train is `0.x`; breaking is `minor`, additive is `patch`, and `major` is rejected until 1.0. The first published train is `0.3.0`.
+- Changesets drive versioning (`pnpm changeset`, `pnpm version-packages`, `pnpm release`). Any PR that changes a published package's behavior or API includes a changeset. The train is `0.x`; breaking is `minor`, additive is `patch`, and `major` is rejected until 1.0. The first published train is `0.1.0`.
 - Published packages ship dual ESM/CJS with `exports` maps, `files`, and `sideEffects: false`; keep manifests consistent (`sync-package-metadata.mjs` exists for shared fields).
 
 ## Agent Skills And Reviewers

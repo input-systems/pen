@@ -3,14 +3,18 @@
  * First-train stamp (API7).
  *
  * Unpublished placeholders stay at 0.0.1. `changeset version` treats the
- * staged first-release `minor` bumps as 0.0.1 → 0.1.0. The first published
- * train is 0.3.0 (`spec/rules/api.md` API7), so this
- * script rewrites that mechanical 0.1.0 to 0.3.0 once, and only when no
- * train tag exists yet.
+ * staged first-release `minor` bumps as 0.0.1 → 0.1.0, which is the first
+ * published train (`spec/rules/api.md` API7). That path is a no-op.
  *
- * After `v0.3.0` lands the script is a no-op: later trains are whatever
+ * `@input/pen-react` lists other train packages as optional
+ * peerDependencies. Changesets treats a minor bump of a peer as major for
+ * the dependent, and the `fixed` group then lifts the whole train to
+ * 1.0.0. This script rewrites that mechanical 1.0.0 to 0.1.0 once, and
+ * only when no train tag exists yet.
+ *
+ * After `v0.1.0` lands the script is a no-op: later trains are whatever
  * changesets computes. A first `changeset version` that is not 0.1.0 or
- * 0.3.0 fails closed rather than publishing a surprise number.
+ * 1.0.0 fails closed rather than publishing a surprise number.
  *
  * Wired from `pnpm version-packages`. Do not run it by hand against a
  * tree that still has unconsumed changesets — `changeset version` has to
@@ -25,8 +29,8 @@ import { fileURLToPath } from "node:url";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = path.resolve(SCRIPT_DIR, "..");
 
-export const FIRST_TRAIN_VERSION = "0.3.0";
-export const MECHANICAL_MINOR_FROM_PLACEHOLDER = "0.1.0";
+export const FIRST_TRAIN_VERSION = "0.1.0";
+export const PEER_PROMOTED_MAJOR = "1.0.0";
 
 const IGNORE_DIR_NAMES = new Set([
 	"node_modules",
@@ -62,7 +66,7 @@ export function decideStamp({ tags, versions }) {
 			reason: "unpublished placeholder; changeset version has not run",
 		};
 	}
-	if (version === MECHANICAL_MINOR_FROM_PLACEHOLDER) {
+	if (version === PEER_PROMOTED_MAJOR) {
 		return {
 			action: "stamp",
 			from: version,
@@ -93,8 +97,8 @@ function assert(condition, message) {
 
 export function runSelfTests() {
 	const noopTagged = decideStamp({
-		tags: ["v0.3.0"],
-		versions: [{ name: "@input/pen-core", version: "0.1.0" }],
+		tags: ["v0.1.0"],
+		versions: [{ name: "@input/pen-core", version: PEER_PROMOTED_MAJOR }],
 	});
 	assert(
 		noopTagged.action === "noop",
@@ -107,7 +111,7 @@ export function runSelfTests() {
 	});
 	assert(
 		already.action === "noop",
-		"self-test: a tree already at 0.3.0 must skip the stamp",
+		"self-test: a tree already at 0.1.0 must skip the stamp",
 	);
 
 	const placeholder = decideStamp({
@@ -122,15 +126,15 @@ export function runSelfTests() {
 	const stamp = decideStamp({
 		tags: [],
 		versions: [
-			{ name: "@input/pen-core", version: MECHANICAL_MINOR_FROM_PLACEHOLDER },
-			{ name: "@input/pen-types", version: MECHANICAL_MINOR_FROM_PLACEHOLDER },
+			{ name: "@input/pen-core", version: PEER_PROMOTED_MAJOR },
+			{ name: "@input/pen-types", version: PEER_PROMOTED_MAJOR },
 		],
 	});
 	assert(
 		stamp.action === "stamp" &&
-			stamp.from === MECHANICAL_MINOR_FROM_PLACEHOLDER &&
+			stamp.from === PEER_PROMOTED_MAJOR &&
 			stamp.to === FIRST_TRAIN_VERSION,
-		"self-test: 0.0.1 + minor (0.1.0) stamps to 0.3.0",
+		"self-test: peer-promoted 1.0.0 stamps to 0.1.0",
 	);
 
 	const mixed = decideStamp({
@@ -144,28 +148,28 @@ export function runSelfTests() {
 
 	const surprise = decideStamp({
 		tags: [],
-		versions: [{ name: "@input/pen-core", version: "1.0.0" }],
+		versions: [{ name: "@input/pen-core", version: "0.0.2" }],
 	});
 	assert(
 		surprise.action === "fail",
-		"self-test: a first bump that is not 0.1.0 or 0.3.0 fails closed",
+		"self-test: a first bump that is not 0.1.0 or 1.0.0 fails closed",
 	);
 
 	const changelog = rewriteChangelogHeading(
-		"# @input/pen-core\n\n## 0.1.0\n\nMentions 0.1.0 in body.\n",
+		"# @input/pen-core\n\n## 1.0.0\n\nMentions 1.0.0 in body.\n",
+		"1.0.0",
 		"0.1.0",
-		"0.3.0",
 	);
 	assert(
-		changelog.includes("## 0.3.0") && changelog.includes("Mentions 0.1.0 in body."),
+		changelog.includes("## 0.1.0") && changelog.includes("Mentions 1.0.0 in body."),
 		"self-test: only the CHANGELOG heading is rewritten",
 	);
 
 	const remote = parseLsRemoteTags(
-		"abc\trefs/tags/v0.3.0\ndef\trefs/tags/v0.3.0^{}\n",
+		"abc\trefs/tags/v0.1.0\ndef\trefs/tags/v0.1.0^{}\n",
 	);
 	assert(
-		remote.join(",") === "v0.3.0",
+		remote.join(",") === "v0.1.0",
 		"self-test: ls-remote peeled tags are dropped",
 	);
 }
@@ -308,7 +312,7 @@ function main() {
 	const args = parseArgs(process.argv.slice(2));
 	runSelfTests();
 	console.log(
-		"stamp-first-train self-test ok (tagged trees and surprise versions fail closed; 0.1.0 stamps to 0.3.0)",
+		"stamp-first-train self-test ok (tagged trees and surprise versions fail closed; 1.0.0 stamps to 0.1.0)",
 	);
 	if (args.selfTestOnly) {
 		return;

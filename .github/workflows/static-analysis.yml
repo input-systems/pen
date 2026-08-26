@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Pen toolchain
         uses: ./.github/actions/setup
@@ -65,14 +65,14 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # changeset-check diffs against the merge base, which a depth-1
           # checkout does not contain.
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           # changeset-check.mjs imports only node: builtins, so this job skips
@@ -96,7 +96,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Require every gate to have succeeded
         uses: ./.github/actions/require-jobs

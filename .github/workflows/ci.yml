@@ -29,11 +29,11 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Detect e2e-relevant changes
         id: filter
-        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           # GA11 population. Walked dependencies + peerDependencies of
           # the Playwright host (@input/pen-playground —
@@ -77,7 +77,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Pen toolchain
         uses: ./.github/actions/setup
@@ -162,7 +162,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Pen toolchain
         uses: ./.github/actions/setup
@@ -185,7 +185,7 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: ${{ failure() || cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-artifacts-${{ matrix.engine }}
           path: |
@@ -206,7 +206,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Require validation and e2e to have succeeded
         uses: ./.github/actions/require-jobs

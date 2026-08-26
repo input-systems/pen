@@ -95,7 +95,7 @@
     "@input/pen-core": "workspace:^",
     "@input/pen-markdown-serialization": "workspace:^",
     "@input/pen-types": "workspace:^",
-    "domhandler": "^5.0.0",
+    "domhandler": "^6.0.1",
     "htmlparser2": "^9.0.0",
     "isomorphic-dompurify": "~2.36.0"
   },

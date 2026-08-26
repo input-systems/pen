@@ -63,7 +63,7 @@
   {
     "id": "stamp-first-train",
     "command": "node scripts/stamp-first-train.mjs --self-test",
-    "description": "The first-train stamp (0.0.1 + minor → 0.3.0) fails closed on mixed or surprise versions."
+    "description": "The first-train stamp (peer-promoted 1.0.0 → 0.1.0) fails closed on mixed or surprise versions."
   },
   {
     "id": "provenance-preconditions",

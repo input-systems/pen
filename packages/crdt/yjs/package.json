@@ -61,7 +61,7 @@
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",
     "y-protocols": "^1.0.7",
-    "yjs": "^13.6.29",
-    "yjs-duplicate": "npm:yjs@13.6.29"
+    "yjs": "^13.6.32",
+    "yjs-duplicate": "npm:yjs@13.6.32"
   }
 }

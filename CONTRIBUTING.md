@@ -148,12 +148,12 @@ enough to bump the whole train — they share one `fixed` group — but still
 name the packages you changed so each CHANGELOG gets a line.
 
 The unpublished placeholder in every manifest is `0.0.1`. The first
-`changeset version` stamps **0.3.0** (`scripts/stamp-first-train.mjs`),
-and that stamp only rewrites the mechanical `0.1.0` that a `minor` bump
-produces. The staged first-release changesets are already `minor`. A
+`changeset version` lands at **0.1.0**. `scripts/stamp-first-train.mjs`
+rewrites a peer-promoted `1.0.0` (workspace peers on the fixed train)
+to `0.1.0` and otherwise no-ops when the tree is already there. A
 patch-only first bump would land at `0.0.2` and the stamp would fail
 rather than publish a surprise number. Later trains are whatever
-changesets computes from 0.3.0.
+changesets computes from 0.1.0.
 
 The `changeset` gate enforces this: it names every published package whose
 `src/` changed and is not covered. If your branch really ships no behavior
