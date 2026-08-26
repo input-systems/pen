@@ -13,8 +13,8 @@
     "lint": "eslint ."
   },
   "devDependencies": {
-    "eslint": "^10.8.1",
+    "eslint": "^10.9.0",
     "typescript-eslint": "^8.67.0",
-    "vitest": "^3.0.7"
+    "vitest": "^4.1.11"
   }
 }
