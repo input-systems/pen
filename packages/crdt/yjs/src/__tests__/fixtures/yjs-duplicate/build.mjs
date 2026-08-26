@@ -1,15 +1,20 @@
 import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Inlines yjs + lib0 into a second ESM file. Node then evaluates a distinct
 // module instance — the case pnpm's content-addressed store will not produce
-// from an npm: alias of the same version. Written to tmpdir so the inlined
-// blob is neither committed nor linted.
+// from an npm: alias of the same version. Written beside the fixture under
+// .generated/ so Vite can load it; tmpdir sits outside the workspace
+// allowlist.
 
 const require = createRequire(import.meta.url);
-const outFile = join(tmpdir(), "pen-crdt-yjs-duplicate", "yjs-copy.mjs");
+const outFile = join(
+  dirname(fileURLToPath(import.meta.url)),
+  ".generated",
+  "yjs-copy.mjs",
+);
 
 mkdirSync(dirname(outFile), { recursive: true });
 

@@ -9,3 +9,4 @@ test-results*/
 .env.local
 .npmrc
 .claude/
+packages/crdt/yjs/src/__tests__/fixtures/yjs-duplicate/.generated/
