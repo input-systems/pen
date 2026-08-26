@@ -62,6 +62,6 @@
     "vitest": "^3.0.7",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.32",
-    "yjs-duplicate": "npm:yjs@13.6.29"
+    "yjs-duplicate": "npm:yjs@13.6.32"
   }
 }

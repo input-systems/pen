@@ -149,8 +149,8 @@ importers:
         specifier: ^3.0.7
         version: 3.2.4(@types/debug@4.1.12)(@types/node@25.4.0)(jsdom@28.1.0)(tsx@4.21.0)(yaml@2.9.0)
       yjs:
-        specifier: ^13.6.29
-        version: 13.6.29
+        specifier: ^13.6.32
+        version: 13.6.32
 
   packages/crdt/yjs:
     dependencies:
@@ -169,13 +169,13 @@ importers:
         version: 3.2.4(@types/debug@4.1.12)(@types/node@25.4.0)(jsdom@28.1.0)(tsx@4.21.0)(yaml@2.9.0)
       y-protocols:
         specifier: ^1.0.7
-        version: 1.0.7(yjs@13.6.29)
+        version: 1.0.7(yjs@13.6.32)
       yjs:
-        specifier: ^13.6.29
-        version: 13.6.29
+        specifier: ^13.6.32
+        version: 13.6.32
       yjs-duplicate:
-        specifier: npm:yjs@13.6.29
-        version: yjs@13.6.29
+        specifier: npm:yjs@13.6.32
+        version: yjs@13.6.32
 
   packages/docs:
     dependencies:
@@ -367,8 +367,8 @@ importers:
         specifier: ^3.0.7
         version: 3.2.4(@types/debug@4.1.12)(@types/node@25.4.0)(jsdom@28.1.0)(tsx@4.21.0)(yaml@2.9.0)
       yjs:
-        specifier: ^13.6.29
-        version: 13.6.29
+        specifier: ^13.6.32
+        version: 13.6.32
 
   packages/extensions/input-rules:
     dependencies:
@@ -529,8 +529,8 @@ importers:
         specifier: ^3.0.7
         version: 3.2.4(@types/debug@4.1.12)(@types/node@25.4.0)(jsdom@28.1.0)(tsx@4.21.0)(yaml@2.9.0)
       yjs:
-        specifier: ^13.6.29
-        version: 13.6.29
+        specifier: ^13.6.32
+        version: 13.6.32
 
   packages/presets/default:
     dependencies:
@@ -837,8 +837,8 @@ importers:
         specifier: ^3.0.7
         version: 3.2.4(@types/debug@4.1.12)(@types/node@25.4.0)(jsdom@28.1.0)(tsx@4.21.0)(yaml@2.9.0)
       yjs:
-        specifier: ^13.6.0
-        version: 13.6.29
+        specifier: ^13.6.32
+        version: 13.6.32
 
   packages/tooling/conformance:
     dependencies:
@@ -882,8 +882,8 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
       yjs:
-        specifier: ^13.6.29
-        version: 13.6.29
+        specifier: ^13.6.32
+        version: 13.6.32
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.13.0
@@ -979,8 +979,8 @@ importers:
         specifier: workspace:^
         version: link:../../types
       yjs:
-        specifier: ^13.6.29
-        version: 13.6.29
+        specifier: ^13.6.32
+        version: 13.6.32
     devDependencies:
       tsup:
         specifier: ^8.4.0
@@ -1091,10 +1091,10 @@ importers:
         version: 8.19.0
       y-websocket:
         specifier: ^3.0.0
-        version: 3.0.0(yjs@13.6.29)
+        version: 3.0.0(yjs@13.6.32)
       yjs:
-        specifier: 13.6.29
-        version: 13.6.29
+        specifier: 13.6.32
+        version: 13.6.32
     devDependencies:
       '@types/node':
         specifier: ^25.4.0
@@ -3542,8 +3542,8 @@ packages:
     engines: {node: '>= 14.6'}
     hasBin: true
 
-  yjs@13.6.29:
-    resolution: {integrity: sha512-kHqDPdltoXH+X4w1lVmMtddE3Oeqq48nM40FD5ojTd8xYhQpzIDcfE2keMSU5bAgRPJBe225WTUdyUgj1DtbiQ==}
+  yjs@13.6.32:
+    resolution: {integrity: sha512-lfiJIIC4Xayt5ItynE407ehlE03pCjeOc4hkR4yxxvvNJ4kuiN25B0g+Qp8XagYz361LLL7DCzR5bvFJ81QKtQ==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   yjs@14.0.0-16:
@@ -6094,22 +6094,22 @@ snapshots:
 
   xmlchars@2.2.0: {}
 
-  y-protocols@1.0.7(yjs@13.6.29):
+  y-protocols@1.0.7(yjs@13.6.32):
     dependencies:
       lib0: 0.2.117
-      yjs: 13.6.29
+      yjs: 13.6.32
 
-  y-websocket@3.0.0(yjs@13.6.29):
+  y-websocket@3.0.0(yjs@13.6.32):
     dependencies:
       lib0: 0.2.117
-      y-protocols: 1.0.7(yjs@13.6.29)
-      yjs: 13.6.29
+      y-protocols: 1.0.7(yjs@13.6.32)
+      yjs: 13.6.32
 
   yallist@3.1.1: {}
 
   yaml@2.9.0: {}
 
-  yjs@13.6.29:
+  yjs@13.6.32:
     dependencies:
       lib0: 0.2.117
 
