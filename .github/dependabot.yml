@@ -23,3 +23,7 @@ updates:
       github-actions:
         patterns:
           - "*"
+    ignore:
+      # Action v2 requires @changesets/cli v3. Stay on v1 until the CLI upgrades.
+      - dependency-name: changesets/action
+        update-types: ["version-update:semver-major"]

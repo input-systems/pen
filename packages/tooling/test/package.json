@@ -55,7 +55,7 @@
     "@input/pen-interop": "workspace:^",
     "@input/pen-schema-default": "workspace:^",
     "@input/pen-types": "workspace:^",
-    "yjs": "^13.6.29"
+    "yjs": "^13.6.32"
   },
   "devDependencies": {
     "tsup": "^8.4.0",

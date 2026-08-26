@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Pen toolchain
         uses: ./.github/actions/setup
@@ -69,7 +69,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Require every host lane to have succeeded
         uses: ./.github/actions/require-jobs

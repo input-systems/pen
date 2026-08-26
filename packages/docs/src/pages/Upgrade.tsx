@@ -3,9 +3,9 @@ export function UpgradePage() {
 		<>
 			<h1>Upgrade guides</h1>
 			<p>
-				Pen <code>0.3.0</code> is the first published release. There is
-				no earlier version on the registry, so there is nothing to
-				upgrade from and this repository carries no migration guide. If
+				Pen <code>0.1.0</code> will be the first published release.
+				There is nothing on the registry to upgrade from, so this
+				repository carries no migration guide. If
 				you are assembling Pen for the first time, start at{" "}
 				<a href="#/getting-started">Getting started</a>.
 			</p>

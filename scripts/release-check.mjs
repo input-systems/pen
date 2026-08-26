@@ -48,6 +48,11 @@ function provenanceWorkflowProblems(workflow, rootReleaseScript) {
 			".github/workflows/release.yml must unset NODE_AUTH_TOKEN around changeset publish so OIDC is not shadowed",
 		);
 	}
+	if (/changesets\/action@\S+ # v2/.test(workflow)) {
+		problems.push(
+			".github/workflows/release.yml must stay on changesets/action v1 while @changesets/cli is 2.x",
+		);
+	}
 	if (!/fetch-tags:\s*true/.test(workflow) || !/fetch-depth:\s*0/.test(workflow)) {
 		problems.push(
 			".github/workflows/release.yml must fetch tags (fetch-depth: 0 and fetch-tags: true) so stamp-first-train can see a v* train tag",
@@ -106,7 +111,7 @@ function versionPackagesScriptProblems(versionPackagesScript) {
 		!versionPackagesScript.includes("stamp-first-train.mjs")
 	) {
 		problems.push(
-			'root package.json "version-packages" must stamp the first train to 0.3.0',
+			'root package.json "version-packages" must stamp the first train to 0.1.0',
 		);
 	}
 	return problems;
@@ -124,7 +129,7 @@ function versionSyncGroups(packages) {
 
 function runSelfTests() {
 	const healthyWorkflow =
-		"permissions:\n  id-token: write\nenv:\n  NPM_CONFIG_PROVENANCE: true\nrun: npm install -g npm@11.5.1\npublish: env -u NODE_AUTH_TOKEN pnpm release\nfetch-depth: 0\nfetch-tags: true\n";
+		"permissions:\n  id-token: write\nenv:\n  NPM_CONFIG_PROVENANCE: true\nrun: npm install -g npm@11.5.1\nversion-script: pnpm version-packages\npublish-script: env -u NODE_AUTH_TOKEN pnpm release\nfetch-depth: 0\nfetch-tags: true\n";
 	const healthy = provenanceWorkflowProblems(
 		healthyWorkflow,
 		"changeset publish --provenance",
@@ -189,6 +194,16 @@ function runSelfTests() {
 		throw new Error("self-test: missing npm 11 install must fail closed");
 	}
 
+	const actionV2 = provenanceWorkflowProblems(
+		"permissions:\n  id-token: write\nenv:\n  NPM_CONFIG_PROVENANCE: true\nrun: npm install -g npm@11.5.1\nuses: changesets/action@deadbeef # v2.1.1\nversion: pnpm version-packages\npublish: env -u NODE_AUTH_TOKEN pnpm release\nfetch-depth: 0\nfetch-tags: true\n",
+		"changeset publish --provenance",
+	);
+	if (!actionV2.some((problem) => problem.includes("changesets/action v1"))) {
+		throw new Error(
+			"self-test: changesets/action v2 while CLI is 2.x must fail closed",
+		);
+	}
+
 	const alignedFixed = fixedGroupProblems(
 		{ fixed: [["@input/pen-core", "@input/pen-types"]] },
 		["@input/pen-types", "@input/pen-core"],
@@ -247,7 +262,7 @@ function runSelfTests() {
 	}
 
 	console.log(
-		"release-check self-test ok (missing id-token, NPM_CONFIG_PROVENANCE, --provenance, NPM_TOKEN, npm 11, and a short fixed group fail closed)",
+		"release-check self-test ok (missing id-token, NPM_CONFIG_PROVENANCE, --provenance, NPM_TOKEN, npm 11, action v2, and a short fixed group fail closed)",
 	);
 }
 

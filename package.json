@@ -60,7 +60,8 @@
     "overrides": {
       "undici": "7.29.0",
       "dompurify": "3.4.14",
-      "jsdom": "28.1.0"
+      "jsdom": "28.1.0",
+      "ws": "8.21.3"
     }
   },
   "devDependencies": {

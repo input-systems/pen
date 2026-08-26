@@ -9,7 +9,7 @@ Pen uses [Changesets](https://github.com/changesets/changesets) for versioning a
 3. Let the release workflow open or update the release PR on `main`.
 4. When the release PR merges, the release workflow publishes the public packages via npm trusted publishing (OIDC). There is no `NPM_TOKEN`.
 
-The first published train is **0.3.0**. Manifests stay at the unpublished placeholder `0.0.1` until `pnpm version-packages` runs; that command runs `changeset version` and then `scripts/stamp-first-train.mjs`, which rewrites the mechanical `0.1.0` from a `minor` bump to `0.3.0`. After `v0.3.0` exists the stamp is a no-op. A patch-only first bump would be `0.0.2` and the stamp would fail rather than publish it.
+The first published train is **0.1.0**. Manifests stay at the unpublished placeholder `0.0.1` until `pnpm version-packages` runs; that command runs `changeset version` and then `scripts/stamp-first-train.mjs`, which rewrites a peer-promoted `1.0.0` to `0.1.0` and no-ops when `changeset version` already landed there. After `v0.1.0` exists the stamp is a no-op. A patch-only first bump would be `0.0.2` and the stamp would fail rather than publish it.
 
 ## Notes
 

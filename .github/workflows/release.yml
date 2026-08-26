@@ -23,11 +23,11 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # stamp-first-train no-ops once a v* tag exists. Depth-1 without
           # tags would look like "no train yet" on every later cut and fail
-          # closed on 0.3.1. fetch-tags still needs enough history for the
+          # closed on 0.1.1. fetch-tags still needs enough history for the
           # version PR; fetch-depth: 0 is the cheaper guarantee.
           fetch-depth: 0
           fetch-tags: true
@@ -86,9 +86,10 @@ jobs:
       - name: Create release pull request or publish
         id: changesets
         # SHA-pinned, not `@v1`: that tag is a mutable branch, and this step
-        # holds the provenance id-token. No NPM_TOKEN: trusted publishing
-        # uses OIDC. Unset NODE_AUTH_TOKEN in case the action exports an
-        # empty one that would shadow the OIDC exchange.
+        # holds the provenance id-token. Stay on action v1 while
+        # @changesets/cli is 2.x — action v2 requires CLI v3.
+        # No NPM_TOKEN: trusted publishing uses OIDC. Unset NODE_AUTH_TOKEN
+        # in case the action exports an empty one that would shadow OIDC.
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           version: pnpm version-packages

@@ -21,17 +21,17 @@
     "@input/pen-react": "workspace:*",
     "@input/pen-types": "workspace:*",
     "@y/websocket-server": "^0.1.5",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "ws": "^8.19.0",
-    "y-websocket": "^3.0.0",
-    "yjs": "13.6.29"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "ws": "^8.21.3",
+    "y-websocket": "^3.1.0",
+    "yjs": "13.6.32"
   },
   "devDependencies": {
     "@types/node": "^25.4.0",
     "@types/ws": "^8.18.1",
     "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.3",
     "vite": "^6.2.0"

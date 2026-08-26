@@ -12,7 +12,7 @@
     "@input/pen-core": "workspace:*",
     "@input/pen-preset-default": "workspace:*",
     "@input/pen-vue": "workspace:*",
-    "vue": "^3.5.30"
+    "vue": "^3.5.41"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",

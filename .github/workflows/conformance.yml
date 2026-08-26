@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Pen toolchain
         uses: ./.github/actions/setup
@@ -66,7 +66,7 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: ${{ failure() || cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: conformance-${{ matrix.engine }}-artifacts
           path: |
@@ -87,7 +87,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Require the blocking engines to have succeeded
         uses: ./.github/actions/require-jobs
