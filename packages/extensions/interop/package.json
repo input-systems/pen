@@ -97,7 +97,7 @@
     "@input/pen-types": "workspace:^",
     "domhandler": "^5.0.0",
     "htmlparser2": "^9.0.0",
-    "isomorphic-dompurify": "~2.36.0"
+    "isomorphic-dompurify": "~3.22.0"
   },
   "devDependencies": {
     "@input/pen-schema-default": "workspace:^",
