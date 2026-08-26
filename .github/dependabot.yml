@@ -13,6 +13,19 @@ updates:
           - dompurify
       npm-development:
         dependency-type: development
+    ignore:
+      - dependency-name: typescript
+        versions: [">=6"]
+      - dependency-name: vitest
+        versions: [">=4"]
+      - dependency-name: vite
+        versions: [">=7"]
+      - dependency-name: "@changesets/cli"
+        versions: [">=3"]
+      - dependency-name: "@vitejs/plugin-react"
+        versions: [">=5"]
+      - dependency-name: "@vitejs/plugin-vue"
+        versions: [">=6"]
 
   - package-ecosystem: github-actions
     directory: /
