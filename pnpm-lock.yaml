@@ -9,6 +9,7 @@ overrides:
   dompurify: 3.4.14
   jsdom: 28.1.0
   vitest: 3.2.4
+  ws: 8.21.3
 
 importers:
 
@@ -1089,7 +1090,7 @@ importers:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
       ws:
-        specifier: ^8.21.3
+        specifier: 8.21.3
         version: 8.21.3
       y-websocket:
         specifier: ^3.1.0
@@ -2371,9 +2372,6 @@ packages:
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
-
-  async-limiter@1.0.1:
-    resolution: {integrity: sha512-csOlWGAcRFJaI6m+F2WKdnMKr4HhdhFVBk0H/QbJFMCr+uO2kwohwXQPxw/9OCxp05r5ghVBFSyioixx3gfkNQ==}
 
   axe-core@4.13.0:
     resolution: {integrity: sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A==}
@@ -3772,17 +3770,6 @@ packages:
     resolution: {integrity: sha512-si7QWI6zUMq56bESFvagtmzMdGOtoxfR+Sez11Mobfc7tm+VkUckk9bW2UeffTGVUbOksxmSw0AA2gs8g71NCQ==}
     engines: {node: '>=12'}
 
-  ws@6.2.3:
-    resolution: {integrity: sha512-jmTjYU0j60B+vHey6TfR3Z7RD61z/hmxBS3VMSGIrroOWXQEneK1zNuotOUrGyBHQj0yrpsLHPWtigEFd13ndA==}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: ^5.0.2
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
   ws@8.21.3:
     resolution: {integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==}
     engines: {node: '>=10.0.0'}
@@ -4912,7 +4899,7 @@ snapshots:
     dependencies:
       '@y/protocols': 1.0.6-rc.1(@y/y@14.0.0-16)
       lib0: 0.2.117
-      ws: 6.2.3
+      ws: 8.21.3
       yjs: 14.0.0-16
     transitivePeerDependencies:
       - '@y/y'
@@ -4963,8 +4950,6 @@ snapshots:
   array-union@2.1.0: {}
 
   assertion-error@2.0.1: {}
-
-  async-limiter@1.0.1: {}
 
   axe-core@4.13.0: {}
 
@@ -6555,10 +6540,6 @@ snapshots:
       ansi-styles: 6.2.3
       string-width: 5.1.2
       strip-ansi: 7.2.0
-
-  ws@6.2.3:
-    dependencies:
-      async-limiter: 1.0.1
 
   ws@8.21.3: {}
 
