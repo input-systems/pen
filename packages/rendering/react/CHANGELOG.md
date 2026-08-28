@@ -1,5 +1,22 @@
 # @input/pen-react
 
+## 0.1.2
+
+### Patch Changes
+
+- 3f82c15: Updated playground hosting & docs
+- Updated dependencies [3f82c15]
+  - @input/pen-ai@0.1.2
+  - @input/pen-core@0.1.2
+  - @input/pen-dom@0.1.2
+  - @input/pen-interop@0.1.2
+  - @input/pen-multiplayer@0.1.2
+  - @input/pen-schema@0.1.2
+  - @input/pen-search@0.1.2
+  - @input/pen-shortcuts@0.1.2
+  - @input/pen-snapshots@0.1.2
+  - @input/pen-types@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@input/pen-react",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "React primitives, hooks, and renderers for Pen",
   "license": "MIT",
   "homepage": "https://github.com/input-systems/pen#readme",

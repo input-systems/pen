@@ -1,5 +1,13 @@
 # @input/pen-yjs
 
+## 0.1.2
+
+### Patch Changes
+
+- 3f82c15: Updated playground hosting & docs
+- Updated dependencies [3f82c15]
+  - @input/pen-types@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes

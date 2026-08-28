@@ -1,6 +1,6 @@
 {
   "name": "@input/pen-tools",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Block CRUD and generation zone extension for Pen",
   "license": "MIT",
   "homepage": "https://github.com/input-systems/pen#readme",

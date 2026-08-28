@@ -1,5 +1,11 @@
 # @input/pen-types
 
+## 0.1.2
+
+### Patch Changes
+
+- 3f82c15: Updated playground hosting & docs
+
 ## 0.1.1
 
 ## 0.1.0

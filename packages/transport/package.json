@@ -1,6 +1,6 @@
 {
   "name": "@input/pen-transport",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Transports for Pen: in-process direct and SSE",
   "license": "MIT",
   "homepage": "https://github.com/input-systems/pen#readme",
