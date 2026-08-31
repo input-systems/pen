@@ -66,7 +66,7 @@ Important rules:
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.1.7`; intended usage is current-state but still evolving. It is already an important architectural layer because it defines how collaboration presence becomes editor-visible state without collapsing transport and rendering into one package.
+Workspace package at version `0.1.8`; intended usage is current-state but still evolving. It is already an important architectural layer because it defines how collaboration presence becomes editor-visible state without collapsing transport and rendering into one package.
 
 ## Non-goals
 

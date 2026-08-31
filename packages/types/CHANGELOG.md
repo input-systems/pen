@@ -1,5 +1,11 @@
 # @input/pen-types
 
+## 0.1.8
+
+### Patch Changes
+
+- cb50239: Declare BlockSchema serialize, normalize, and validateProps as methods with `this: void` so hosts can detach them without an unbound-method lint error, without breaking BlockSchema assignability.
+
 ## 0.1.7
 
 ## 0.1.6

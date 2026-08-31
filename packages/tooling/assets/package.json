@@ -1,6 +1,6 @@
 {
   "name": "@input/pen-assets",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "In-memory asset provider for Pen",
   "license": "MIT",
   "homepage": "https://github.com/input-systems/pen#readme",

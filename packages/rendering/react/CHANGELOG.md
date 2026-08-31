@@ -1,5 +1,30 @@
 # @input/pen-react
 
+## 0.1.8
+
+### Patch Changes
+
+- cb50239: Match suggestion-menu triggers in the logical offset domain (inline atoms count as length 1) and expose `removeInlineAtom` plus renderer `interaction.remove`.
+- Updated dependencies [cb50239]
+- Updated dependencies [d4246d2]
+- Updated dependencies [cb50239]
+- Updated dependencies [15a7820]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [ff491c2]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+  - @input/pen-core@0.1.8
+  - @input/pen-dom@0.1.8
+  - @input/pen-ai@0.1.8
+  - @input/pen-interop@0.1.8
+  - @input/pen-types@0.1.8
+  - @input/pen-multiplayer@0.1.8
+  - @input/pen-search@0.1.8
+  - @input/pen-shortcuts@0.1.8
+  - @input/pen-snapshots@0.1.8
+  - @input/pen-schema@0.1.8
+
 ## 0.1.7
 
 ### Patch Changes

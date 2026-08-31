@@ -1,5 +1,20 @@
 # @input/pen-ai
 
+## 0.1.8
+
+### Patch Changes
+
+- cb50239: Export planEditDocument, executeEditDocument, and editDocumentTool so hosts can reuse the edit_document compiler with a custom apply origin. Applied results follow opaque compiled-op owner tokens through direct and suggestion-mode transforms, not string fingerprints.
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+  - @input/pen-core@0.1.8
+  - @input/pen-tools@0.1.8
+  - @input/pen-types@0.1.8
+  - @input/pen-ingest@0.1.8
+
 ## 0.1.7
 
 ### Patch Changes

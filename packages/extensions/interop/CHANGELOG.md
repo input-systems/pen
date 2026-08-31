@@ -1,5 +1,19 @@
 # @input/pen-interop
 
+## 0.1.8
+
+### Patch Changes
+
+- cb50239: Honor a block schema's `serialize.toHTML` for images (still admitting `src` through SEC1) and keep schema-emitted `<li>` attributes when wrapping list runs.
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+  - @input/pen-core@0.1.8
+  - @input/pen-types@0.1.8
+  - @input/pen-ingest@0.1.8
+  - @input/pen-markdown@0.1.8
+
 ## 0.1.7
 
 ### Patch Changes

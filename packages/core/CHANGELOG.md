@@ -1,5 +1,16 @@
 # @input/pen-core
 
+## 0.1.8
+
+### Patch Changes
+
+- cb50239: Copy enumerable own symbol keys when snapshotting ops for onBeforeApply so opaque owner tokens survive the apply pipeline.
+- cb50239: Regenerate `validateProps` from the merged `propSchema` when `override()` adds props without an explicit validator, so apply no longer strips the new props.
+- cb50239: Match suggestion-menu triggers in the logical offset domain (inline atoms count as length 1) and expose `removeInlineAtom` plus renderer `interaction.remove`.
+- Updated dependencies [cb50239]
+  - @input/pen-types@0.1.8
+  - @input/pen-yjs@0.1.8
+
 ## 0.1.7
 
 ### Patch Changes

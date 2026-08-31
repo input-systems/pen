@@ -1,5 +1,24 @@
 # @input/pen
 
+## 0.1.8
+
+### Patch Changes
+
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+  - @input/pen-core@0.1.8
+  - @input/pen-ai@0.1.8
+  - @input/pen-tools@0.1.8
+  - @input/pen-interop@0.1.8
+  - @input/pen-types@0.1.8
+  - @input/pen-shortcuts@0.1.8
+  - @input/pen-undo@0.1.8
+  - @input/pen-schema@0.1.8
+
 ## 0.1.7
 
 ### Patch Changes
