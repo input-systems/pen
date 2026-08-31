@@ -1,5 +1,21 @@
 # @input/pen-dom
 
+## 0.1.8
+
+### Patch Changes
+
+- d4246d2: Skip selection projection while a native text input outside the editor owns focus so host fields like composer To keep the caret.
+- 15a7820: Target the adjacent line's vertical midpoint for caret up/down so ArrowUp in a full-width RTL field does not stay on the current block.
+- ff491c2: Fix the a11y focus sink drawing a visible focus ring when a block or cell selection is active.
+- cb50239: Match suggestion-menu triggers in the logical offset domain (inline atoms count as length 1) and expose `removeInlineAtom` plus renderer `interaction.remove`.
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+  - @input/pen-core@0.1.8
+  - @input/pen-types@0.1.8
+  - @input/pen-shortcuts@0.1.8
+
 ## 0.1.7
 
 ### Patch Changes

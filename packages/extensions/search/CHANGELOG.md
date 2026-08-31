@@ -1,5 +1,16 @@
 # @input/pen-search
 
+## 0.1.8
+
+### Patch Changes
+
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+- Updated dependencies [cb50239]
+  - @input/pen-core@0.1.8
+  - @input/pen-types@0.1.8
+
 ## 0.1.7
 
 ### Patch Changes

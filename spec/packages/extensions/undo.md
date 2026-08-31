@@ -58,7 +58,7 @@ Important rules:
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.1.7`; intended usage is current-state but still evolving. Even so, it is already a subtle package because grouping and restore behavior shape how editing feels across typing, paste, AI operations, and collaboration-aware origins.
+Workspace package at version `0.1.8`; intended usage is current-state but still evolving. Even so, it is already a subtle package because grouping and restore behavior shape how editing feels across typing, paste, AI operations, and collaboration-aware origins.
 
 ## Non-goals
 
