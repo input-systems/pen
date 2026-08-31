@@ -381,6 +381,7 @@ export type {
 	PenFocusRequest,
 	PenFocusReason,
 } from "@input/pen-dom";
+/** Inline-atom lookup and delete; same logical-offset domain as the caret. */
 export { getInlineAtomAtOffset, removeInlineAtom } from "@input/pen-dom";
 export { isCellInSelection } from "./utils/cellSelection";
 export { resolveRemoteCellPresence } from "./utils/remoteCellSelection";
