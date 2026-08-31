@@ -32,7 +32,6 @@
 - PenEditor
 - registerRenderer
 - resolveRenderer
-- resolveSuggestionMenuTarget
 - SelectionToolbarContent
 - SelectionToolbarRoot
 - SlashMenuContent
@@ -179,6 +178,7 @@
 - fullReconcileDeltasToDOM
 - getAttachedFieldEditor
 - getAttachedFieldEditorStore
+- getInlineAtomAtOffset
 - InlineAtomInteractions
 - InlineAtomRenderInteractionProps
 - InlineDecoration
@@ -208,8 +208,10 @@
 - RemoteCellSelectionState
 - RemoteCursorState
 - RemoteSelectionState
+- removeInlineAtom
 - renderAsChild
 - resolveRemoteCellPresence
+- resolveSuggestionMenuTarget
 - RICH_TEXT_SHORTCUTS_EXTENSION_NAME
 - richTextShortcutsExtension
 - RichTextShortcutsOptions
@@ -235,6 +237,9 @@
 - SelectionState
 - SelectionToolbarContext
 - SnapshotsState
+- SuggestionMenuBoundary
+- SuggestionMenuTarget
+- SuggestionMenuTrigger
 - ToolbarContext
 - useActiveAISession
 - useAI
@@ -312,7 +317,6 @@
 - SlashMenuState
 - SlashMenuTarget
 - SuggestionMenuActions
-- SuggestionMenuBoundary
 - SuggestionMenuContentProps
 - SuggestionMenuContextValue
 - SuggestionMenuController
@@ -325,8 +329,6 @@
 - SuggestionMenuSelectOptions
 - SuggestionMenuState
 - SuggestionMenuStatus
-- SuggestionMenuTarget
-- SuggestionMenuTrigger
 - TableCellContentProps
 - ToolbarButtonProps
 - ToolbarContextValue

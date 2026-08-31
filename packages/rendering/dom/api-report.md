@@ -68,6 +68,7 @@
 - FieldEditorSession
 - FlushCollect
 - GeometryInvalidator
+- getInlineAtomAtOffset
 - PasteImporters
 - PEN_EDITOR_CHROME_STYLESHEET
 - PEN_REVIEW_STYLESHEET
@@ -79,6 +80,7 @@
 - PenFocusPolicy
 - PenFocusReason
 - PenFocusRequest
+- removeInlineAtom
 - resolveSelectAllBehavior
 - UrlContext
 - urlPolicy
@@ -165,6 +167,8 @@
 - PenFocusPolicy
 - PenFocusReason
 - PenFocusRequest
+- removeInlineAtom
+- RemoveInlineAtomOptions
 - replaceInlineAtomWithText
 - ReplaceInlineAtomWithTextOptions
 - resolveInlineAtomDropTarget
@@ -344,6 +348,7 @@ _no exports_
 - buildMoveInlineAtomOps
 - getInlineAtomAtOffset
 - moveInlineAtom
+- removeInlineAtom
 - replaceInlineAtomWithText
 - resolveInlineAtomDropTarget
 - resolveInlineAtomInteractions
@@ -367,6 +372,7 @@ _no exports_
 - InlineAtomSnapshot
 - InlineAtomSource
 - MoveInlineAtomOptions
+- RemoveInlineAtomOptions
 - ReplaceInlineAtomWithTextOptions
 - ResolvedInlineAtomInteractions
 - ResolveInlineAtomDropTargetOptions

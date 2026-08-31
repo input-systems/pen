@@ -76,6 +76,7 @@
 - hasFieldEditorSurface
 - hasIndexedCellSelectionMetadata
 - hookPriorityToPrecedence
+- inlineLogicalText
 - interpolateMessage
 - isBlockSelected
 - isCollapsed
@@ -119,6 +120,7 @@
 - resolveSchema
 - resolveSchemaA11y
 - resolveSelectionTargetBlockIds
+- resolveSuggestionMenuTarget
 - runMigrations
 - selectAdjacentInlineAtom
 - selectionToRange
@@ -267,6 +269,9 @@
 - SchemaRegistryConfig
 - SelectBlockParam
 - StructureBlockParam
+- SuggestionMenuBoundary
+- SuggestionMenuTarget
+- SuggestionMenuTrigger
 - ToggleMarkParam
 - UrlContext
 - UrlPolicy
