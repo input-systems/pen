@@ -36,6 +36,7 @@ function editDocumentTool(request: CapturedRequest) {
 function capturingEditModel(): {
 	adapter: ModelAdapter;
 	captured: () => CapturedRequest | null;
+	passes: () => number;
 } {
 	let captured: CapturedRequest | null = null;
 	let passes = 0;
@@ -74,7 +75,7 @@ function capturingEditModel(): {
 			yield { type: "done" } as ModelStreamEvent;
 		},
 	};
-	return { adapter, captured: () => captured };
+	return { adapter, captured: () => captured, passes: () => passes };
 }
 
 function createChatEditor(
@@ -191,6 +192,8 @@ describe("EC11: direct vs reviewed is a parameter", () => {
 		expect(suggestionGeneration.mutationMode).toBe(
 			"persistent-suggestions",
 		);
+		expect(directModel.passes()).toBe(1);
+		expect(suggestionModel.passes()).toBe(1);
 
 		expect(directEditor.getBlock(directClosing)?.textContent()).toBe(
 			"Revenue grew",

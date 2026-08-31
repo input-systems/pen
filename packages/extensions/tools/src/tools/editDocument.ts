@@ -406,15 +406,19 @@ function applyEditDocumentOps(
 		options?.apply ??
 		((nextOps, nextOptions) => editor.apply(nextOps, nextOptions));
 
-	const observed = new Set<symbol>();
+	const ownedTokens = new Set(owned.map((entry) => entry.token));
+	const transformedCounts = new Map<symbol, number>();
+	const appliedCounts = new Map<symbol, number>();
 	const unsubscribe = editor.internals.onApplyBoundary((event) => {
-		if (event.phase !== "after" || !event.applied) {
+		if (event.phase === "after" && !event.applied) {
 			return;
 		}
+		const counts =
+			event.phase === "before" ? transformedCounts : appliedCounts;
 		for (const op of event.ops) {
 			const token = readOwner(op);
-			if (token !== undefined) {
-				observed.add(token);
+			if (token !== undefined && ownedTokens.has(token)) {
+				counts.set(token, (counts.get(token) ?? 0) + 1);
 			}
 		}
 	});
@@ -425,7 +429,7 @@ function applyEditDocumentOps(
 		unsubscribe();
 	}
 
-	return mapOwnedOutcome(owned, observed);
+	return mapOwnedOutcome(owned, transformedCounts, appliedCounts);
 }
 
 function stampOwner(op: DocumentOp, token: symbol): DocumentOp {
@@ -449,7 +453,8 @@ function readOwner(op: unknown): symbol | undefined {
 
 function mapOwnedOutcome(
 	owned: readonly OwnedCompiledOp[],
-	observed: ReadonlySet<symbol>,
+	transformedCounts: ReadonlyMap<symbol, number>,
+	appliedCounts: ReadonlyMap<symbol, number>,
 ): EditDocumentApplyOutcome {
 	const appliedIndexes: number[] = [];
 	const rejected: EditDocumentRejection[] = [];
@@ -463,7 +468,14 @@ function mapOwnedOutcome(
 		const tokens = owned
 			.filter((candidate) => candidate.index === entry.index)
 			.map((candidate) => candidate.token);
-		if (tokens.every((token) => observed.has(token))) {
+		const didApplyEveryTransform = tokens.every((token) => {
+			const transformedCount = transformedCounts.get(token) ?? 0;
+			return (
+				transformedCount > 0 &&
+				appliedCounts.get(token) === transformedCount
+			);
+		});
+		if (didApplyEveryTransform) {
 			appliedIndexes.push(entry.index);
 			continue;
 		}

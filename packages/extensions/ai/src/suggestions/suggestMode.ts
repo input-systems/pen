@@ -132,6 +132,10 @@ export function transformOpsForSuggestModeWithMetadata(
 			: undefined;
 
 	for (const op of ops) {
+		const pushIntercepted = (nextOp: DocumentOp): void => {
+			intercepted.push(copyOpSymbols(op, nextOp));
+		};
+
 		if (intent === "pen.splitBlock" && op.type === "insert-block") {
 			const suggestionOptions = nextSuggestionOptions();
 			pushBlockSuggestion(
@@ -140,8 +144,8 @@ export function transformOpsForSuggestModeWithMetadata(
 				undefined,
 				suggestionOptions,
 			);
-			intercepted.push(op);
-			intercepted.push({
+			pushIntercepted(op);
+			pushIntercepted({
 				type: "set-meta",
 				blockId: op.blockId,
 				namespace: "suggestion",
@@ -172,7 +176,7 @@ export function transformOpsForSuggestModeWithMetadata(
 						suggestionOptions,
 						op.cell,
 					);
-					intercepted.push({
+					pushIntercepted({
 						type: "format-text",
 						blockId: op.blockId,
 						from: op.from,
@@ -198,7 +202,7 @@ export function transformOpsForSuggestModeWithMetadata(
 						suggestionOptions,
 						op.cell,
 					);
-					intercepted.push({
+					pushIntercepted({
 						...op,
 						from: op.from + deleteLen,
 						to: op.from + deleteLen,
@@ -216,7 +220,7 @@ export function transformOpsForSuggestModeWithMetadata(
 					});
 				}
 				if (deleteLen === 0 && insertLen === 0) {
-					intercepted.push(op);
+					pushIntercepted(op);
 				}
 				break;
 			}
@@ -229,8 +233,8 @@ export function transformOpsForSuggestModeWithMetadata(
 					undefined,
 					suggestionOptions,
 				);
-				intercepted.push(op);
-				intercepted.push({
+				pushIntercepted(op);
+				pushIntercepted({
 					type: "set-meta",
 					blockId: op.blockId,
 					namespace: "suggestion",
@@ -255,7 +259,7 @@ export function transformOpsForSuggestModeWithMetadata(
 					undefined,
 					suggestionOptions,
 				);
-				intercepted.push({
+				pushIntercepted({
 					type: "set-meta",
 					blockId: op.blockId,
 					namespace: "suggestion",
@@ -292,8 +296,8 @@ export function transformOpsForSuggestModeWithMetadata(
 					previousState,
 					suggestionOptions,
 				);
-				intercepted.push(op);
-				intercepted.push({
+				pushIntercepted(op);
+				pushIntercepted({
 					type: "set-meta",
 					blockId: op.blockId,
 					namespace: "suggestion",
@@ -325,7 +329,7 @@ export function transformOpsForSuggestModeWithMetadata(
 					previousState,
 					suggestionOptions,
 				);
-				intercepted.push({
+				pushIntercepted({
 					type: "set-meta",
 					blockId: op.blockId,
 					namespace: "suggestion",
@@ -358,7 +362,7 @@ export function transformOpsForSuggestModeWithMetadata(
 					previousState,
 					suggestionOptions,
 				);
-				intercepted.push({
+				pushIntercepted({
 					type: "set-meta",
 					blockId: op.blockId,
 					namespace: "suggestion",
@@ -379,12 +383,12 @@ export function transformOpsForSuggestModeWithMetadata(
 			case "grid":
 			case "app":
 			case "stream-open":
-				intercepted.push(op);
+				pushIntercepted(op);
 				break;
 			default: {
 				const _exhaustive: never = op;
 				void _exhaustive;
-				intercepted.push(op);
+				pushIntercepted(op);
 			}
 		}
 	}
@@ -394,6 +398,19 @@ export function transformOpsForSuggestModeWithMetadata(
 		suggestionIds: suggestions.map((suggestion) => suggestion.id),
 		suggestions,
 	};
+}
+
+function copyOpSymbols(source: DocumentOp, target: DocumentOp): DocumentOp {
+	if (source === target) {
+		return target;
+	}
+	for (const key of Object.getOwnPropertySymbols(source)) {
+		const descriptor = Object.getOwnPropertyDescriptor(source, key);
+		if (descriptor?.enumerable) {
+			Object.defineProperty(target, key, descriptor);
+		}
+	}
+	return target;
 }
 
 export type SuggestModeSuggestionOptions = {
