@@ -1,5 +1,21 @@
 # @input/pen
 
+## 0.1.9
+
+### Patch Changes
+
+- 7fb7864: Add a smooth-stream extension that paces paint of streamed text while the document stays complete.
+- Updated dependencies [7fb7864]
+- Updated dependencies [7fb7864]
+  - @input/pen-core@0.1.9
+  - @input/pen-ai@0.1.9
+  - @input/pen-interop@0.1.9
+  - @input/pen-shortcuts@0.1.9
+  - @input/pen-tools@0.1.9
+  - @input/pen-undo@0.1.9
+  - @input/pen-schema@0.1.9
+  - @input/pen-types@0.1.9
+
 ## 0.1.8
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@input/pen-snapshots",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Snapshot history and attribution primitives for Pen",
   "license": "MIT",
   "homepage": "https://github.com/input-systems/pen#readme",

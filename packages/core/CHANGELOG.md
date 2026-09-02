@@ -1,5 +1,14 @@
 # @input/pen-core
 
+## 0.1.9
+
+### Patch Changes
+
+- 7fb7864: Replace, delete, format, and move the caret through text in nested container children, not only top-level `blockOrder`.
+- 7fb7864: Add a smooth-stream extension that paces paint of streamed text while the document stays complete.
+- @input/pen-yjs@0.1.9
+  - @input/pen-types@0.1.9
+
 ## 0.1.8
 
 ### Patch Changes

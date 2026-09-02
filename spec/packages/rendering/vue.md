@@ -66,7 +66,7 @@ Important responsibilities:
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.1.8`; intended usage is current-state but still evolving. The package is intentionally lean, but it is now important enough that regressions here should be treated as architectural regressions, not just renderer-specific bugs.
+Workspace package at version `0.1.9`; intended usage is current-state but still evolving. The package is intentionally lean, but it is now important enough that regressions here should be treated as architectural regressions, not just renderer-specific bugs.
 
 ## Non-goals
 

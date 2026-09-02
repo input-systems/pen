@@ -1,6 +1,6 @@
 {
   "name": "@input/pen-test",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Headless testing utilities for Pen",
   "license": "MIT",
   "homepage": "https://github.com/input-systems/pen#readme",
