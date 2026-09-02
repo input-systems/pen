@@ -13,7 +13,7 @@ Describe the document shape and read model that package specs build on.
 
 ## Invariants
 
-- Full-document features must traverse the complete block tree rather than only top-level `blockOrder` entries. Text-range insert, replace, delete, format, and `DocumentRange.blockRange` use that nested walk. `documentState.blockOrder` remains the top-level insert-position sequence.
+- Full-document features must traverse the complete block tree rather than only top-level `blockOrder` entries. Text-range insert, replace, delete, format, and `DocumentRange.blockRange` use that nested walk, including closed-container descendants. Document-edge caret uses the visible nested order (open-container children), not `blockOrder`. `documentState.blockOrder` remains the top-level insert-position sequence.
 - `editor.blocks()` / `editor.blockCount()` and `documentState.blocks` / `documentState.blockCount` are the same nested walk: they follow each top-level id in `blockOrder`, then that block's `children` array (nested blocks and layout containers). They had silently diverged — one walked children, the other stopped at `blockOrder` — and are now aligned. `documentState.blockOrder` remains the top-level sequence only.
 - Profiles and view policies do not define alternate document roots.
 - Structured blocks remain first-class document citizens even when authoring surfaces hide them from default insertion flows.

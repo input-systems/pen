@@ -11,6 +11,7 @@ export {
 	getEditorLocale,
 	getInlineNodeRange,
 	getListIndent,
+	getVisibleBlockIds,
 	HEADING_TYPES,
 	isEditableTextBlock,
 	isInsideParentIdContainer,

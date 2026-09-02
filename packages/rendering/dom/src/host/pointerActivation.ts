@@ -1,6 +1,7 @@
 import { usesInlineTextSelection } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
 import { pointToEditorSelectionPoint } from "../field-editor/selectionBridge";
+import { findInlineContentElement } from "../field-editor/selectionDomQueries";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 
 export interface FieldEditorPointerTarget {
@@ -108,7 +109,7 @@ export function handleFieldEditorPointerActivate(
 
 	const inline =
 		target.closest(`[${DATA_ATTRS.inlineContent}]`) ??
-		blockElement.querySelector(`[${DATA_ATTRS.inlineContent}]`);
+		findInlineContentElement(blockElement);
 	if (inline instanceof HTMLElement) {
 		fieldEditor.attachElement(inline);
 	}

@@ -188,6 +188,10 @@ export class FieldEditorSelectionCoordinator {
 		return this._projection.shouldProjectSelectionAfterReconcile();
 	}
 
+	isFocusHeldByNativeControlOutsideRoot(): boolean {
+		return this._projection.isFocusHeldByNativeControlOutsideRoot();
+	}
+
 	recordUserSelectionIntent(): void {
 		this._projection.recordUserSelectionIntent();
 	}

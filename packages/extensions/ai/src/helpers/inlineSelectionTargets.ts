@@ -4,6 +4,7 @@ import { readAllSuggestions } from "../suggestions/persistent";
 import type {
 	AIRequestedOperation,
 	AISessionTarget,
+	PersistentBlockSuggestion,
 	PersistentTextSuggestion,
 } from "../types";
 import { recreateTextSelection, resolveSessionTarget } from "./session";
@@ -19,11 +20,67 @@ export function resolveLiveInlineSelectionTarget(
 	return target.kind === "selection" ? target : null;
 }
 
+/**
+ * A block-scoped rewrite replaces the blocks it was given instead of splicing
+ * text inside one of them, so the span to re-anchor on is the blocks it staged,
+ * not the blocks the operation names — those are the ones on their way out.
+ */
+function resolveStagedBlockRewriteTarget(
+	editor: Editor,
+	operation: AIRequestedOperation | undefined,
+	suggestionIds: readonly string[],
+): Extract<AISessionTarget, { kind: "selection" }> | null {
+	if (
+		operation?.kind !== "rewrite-selection" ||
+		operation.target.kind !== "scoped-range"
+	) {
+		return null;
+	}
+	const insertedBlockIds = readAllSuggestions(editor)
+		.filter(
+			(suggestion): suggestion is PersistentBlockSuggestion =>
+				suggestion.kind === "block" &&
+				suggestion.action === "insert-block" &&
+				suggestionIds.includes(suggestion.id),
+		)
+		.map((suggestion) => suggestion.blockId);
+	const firstBlockId = insertedBlockIds[0];
+	const lastBlockId = insertedBlockIds[insertedBlockIds.length - 1];
+	if (!firstBlockId || !lastBlockId) {
+		return null;
+	}
+	const lastBlock = editor.getBlock(lastBlockId);
+	if (!lastBlock) {
+		return null;
+	}
+	return {
+		kind: "selection",
+		blockId: firstBlockId,
+		selection: recreateTextSelection(editor, {
+			anchor: { blockId: firstBlockId, offset: 0 },
+			focus: {
+				blockId: lastBlockId,
+				offset: lastBlock.textContent().length,
+			},
+			blockRange: insertedBlockIds,
+			isMultiBlock: insertedBlockIds.length > 1,
+		}),
+	};
+}
+
 export function resolvePendingInlineSelectionTarget(
 	editor: Editor,
 	operation: AIRequestedOperation | undefined,
 	suggestionIds: readonly string[],
 ): Extract<AISessionTarget, { kind: "selection" }> | null {
+	const stagedBlockRewrite = resolveStagedBlockRewriteTarget(
+		editor,
+		operation,
+		suggestionIds,
+	);
+	if (stagedBlockRewrite) {
+		return stagedBlockRewrite;
+	}
 	if (
 		operation?.kind !== "rewrite-selection" ||
 		operation.target.kind !== "selection" ||
@@ -71,6 +128,14 @@ export function resolveAcceptedInlineSelectionTarget(
 	operation: AIRequestedOperation | undefined,
 	suggestionIds: readonly string[],
 ): Extract<AISessionTarget, { kind: "selection" }> | null {
+	const stagedBlockRewrite = resolveStagedBlockRewriteTarget(
+		editor,
+		operation,
+		suggestionIds,
+	);
+	if (stagedBlockRewrite) {
+		return stagedBlockRewrite;
+	}
 	if (
 		operation?.kind !== "rewrite-selection" ||
 		operation.target.kind !== "selection" ||

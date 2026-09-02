@@ -5,6 +5,7 @@ import {
 	createDefaultSessionCommitMetrics,
 	resolveLiveInlineSelectionTarget,
 	resolvePendingInlineSelectionTarget,
+	resolveScopedSelectionRewriteContentFormat,
 	resolveSessionAnchor,
 	resolveSessionSelectionSnapshot,
 } from "../helpers";
@@ -42,12 +43,26 @@ function commitBufferedText(
 			context?.sessionId ?? seedGeneration.id,
 		);
 		if (sink.source === "selection" && target.type === "selection") {
-			state.currentMutationReceipt = controller._commitSelectionRewrite(
-				target.selection,
-				state.currentText,
-				route.mutationMode,
-				context?.sessionId,
-			);
+			// a block-scoped rewrite replaces the selected blocks with the
+			// markdown the model returned; a text splice would fold every
+			// paragraph of the reply into the first block
+			state.currentMutationReceipt =
+				state.requestedOperation &&
+				resolveScopedSelectionRewriteContentFormat(
+					state.requestedOperation,
+				) === "markdown"
+					? controller._commitRequestedOperationResult(
+							state.requestedOperation,
+							state.currentText,
+							context?.sessionId,
+							{ contentFormat },
+						)
+					: controller._commitSelectionRewrite(
+							target.selection,
+							state.currentText,
+							route.mutationMode,
+							context?.sessionId,
+						);
 			return;
 		}
 	}

@@ -128,6 +128,9 @@ export class SessionReconciler {
 				this.pendingBlockIds.add(blockId);
 			}
 			if (snapshot.activeBlockIds.length > 0) {
+				// a cross-block range cannot be preserved per element; rebuild
+				// the blocks and project it back from the editor
+				this.shouldProjectSelection = true;
 				this.scheduleFlush();
 			}
 			return;

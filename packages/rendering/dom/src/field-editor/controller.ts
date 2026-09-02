@@ -38,9 +38,7 @@ export type PenFocusAction =
 export type PenFocusReason = NonNullable<FieldEditorFocusOptions["reason"]>;
 
 export type PenFocusDecision =
-	| { type: "allow" }
-	| { type: "allow-passive" }
-	| { type: "deny" };
+	{ type: "allow" } | { type: "allow-passive" } | { type: "deny" };
 
 export interface FieldEditorFocusRequest {
 	editor: Editor;
@@ -172,6 +170,12 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 	isAdmissibleGestureRead?(): boolean;
 	isProjectionInFlight?(): boolean;
 	requestDivergenceProjection?(): void;
+	/**
+	 * Whether a field rebuild may write the selection back into the DOM.
+	 * False while a native control outside the editor owns focus (HOST9):
+	 * setting a DOM selection inside the field would move focus with it.
+	 */
+	shouldProjectSelectionAfterReconcile?(): boolean;
 	readDomSelection?(proposal: ReaderSelection): DomSelectionReadDecision;
 	applyDocumentTextSelection(
 		anchor: { blockId: string; offset: number },

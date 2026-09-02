@@ -25,9 +25,7 @@ export function queryInlineElement(
 	blockId: string,
 ): HTMLElement | null {
 	const blockEl = queryBlockElement(root, blockId);
-	return blockEl?.querySelector(
-		`[${DATA_ATTRS.inlineContent}]`,
-	) as HTMLElement | null;
+	return blockEl ? findInlineContentElement(blockEl) : null;
 }
 
 /**
@@ -51,10 +49,23 @@ export function findBlockElement(
 }
 
 /**
- * Find the inline content element inside a block.
+ * Find this block's own inline content element.
+ * A descendant `querySelector` would steal a nested child's inline from a
+ * container that has none of its own (opened `emailQuote`), mapping the
+ * container's 0..1 extent (N2) into that child's text.
  */
 export function findInlineContentElement(
 	blockEl: HTMLElement,
 ): HTMLElement | null {
-	return blockEl.querySelector(`[${DATA_ATTRS.inlineContent}]`);
+	for (const candidate of blockEl.querySelectorAll(
+		`[${DATA_ATTRS.inlineContent}]`,
+	)) {
+		if (!(candidate instanceof HTMLElement)) {
+			continue;
+		}
+		if (candidate.closest(`[${DATA_ATTRS.editorBlock}]`) === blockEl) {
+			return candidate;
+		}
+	}
+	return null;
 }

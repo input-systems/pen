@@ -8,6 +8,16 @@ export interface SavedSelection {
 export function saveSelection(element: HTMLElement): SavedSelection | null {
 	const sel = typeof window !== "undefined" ? window.getSelection() : null;
 	if (!sel || sel.rangeCount === 0) return null;
+	// element-local offsets cannot describe an endpoint outside the element;
+	// restoring them would collapse a cross-block range into this block.
+	if (
+		!sel.anchorNode ||
+		!sel.focusNode ||
+		!element.contains(sel.anchorNode) ||
+		!element.contains(sel.focusNode)
+	) {
+		return null;
+	}
 
 	const anchorOffset = computeCharacterOffset(
 		element,

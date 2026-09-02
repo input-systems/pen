@@ -241,13 +241,20 @@ export class FieldEditorImpl implements FieldEditorSession {
 				const alreadyProjected =
 					record.version <=
 					this._selectionCoordinator.lastProjectedVersion;
+				// HOST9: the record stays authoritative but is not
+				// written into the DOM while a native control outside
+				// the editor owns focus. the backend write is held back
+				// too — it projects the DOM selection the same way.
+				const withheld =
+					!alreadyProjected &&
+					this._selectionCoordinator.isFocusHeldByNativeControlOutsideRoot();
 				// surface first so P1 sees the new focus block. skip is
 				// not delivery — the projector has not run yet.
 				this._recomputeSurfaceFromSelection({
 					syncSelectionToBackend: true,
 					skipBackendWrite: true,
 				});
-				if (!alreadyProjected) {
+				if (!alreadyProjected && !withheld) {
 					this._selectionCoordinator.syncDomSelectionOnce();
 					scheduler?.setSelection(record);
 				}
@@ -256,7 +263,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 					this._selectionCoordinator.lastProjectedVersion;
 				this._recomputeSurfaceFromSelection({
 					syncSelectionToBackend: true,
-					skipBackendWrite: delivered,
+					skipBackendWrite: delivered || withheld,
 				});
 			},
 		);
@@ -271,9 +278,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 			getInlineElement: (blockId) => this._resolveInlineElement(blockId),
 			getYText: (blockId) => this._getYText(blockId),
 			shouldPreserveSelection: () =>
-				this._selectionCoordinator.shouldProjectSelectionAfterReconcile(),
+				this.shouldProjectSelectionAfterReconcile(),
 			shouldProjectSelection: () =>
-				this._selectionCoordinator.shouldProjectSelectionAfterReconcile(),
+				this.shouldProjectSelectionAfterReconcile(),
 			projectSelection: () =>
 				this._selectionCoordinator.syncDomSelectionOnce(),
 			notifyDomReconciled: (blockId) => this.notifyDomReconciled(blockId),
@@ -340,6 +347,11 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	protected _projectFromScheduler(record: SelectionRecord): void | "parked" {
 		if (record.version <= this._selectionCoordinator.lastProjectedVersion) {
+			return;
+		}
+		if (
+			this._selectionCoordinator.isFocusHeldByNativeControlOutsideRoot()
+		) {
 			return;
 		}
 		this._selectionCoordinator.syncDomSelectionOnce();
@@ -774,6 +786,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	requestDivergenceProjection(): void {
 		this._selectionCoordinator.requestDivergenceProjection();
+	}
+
+	shouldProjectSelectionAfterReconcile(): boolean {
+		return this._selectionCoordinator.shouldProjectSelectionAfterReconcile();
 	}
 
 	readDomSelection(proposal: ReaderSelection): DomSelectionReadDecision {

@@ -55,7 +55,7 @@ edit and reloads the playground on the new build.
 src/
   App.tsx              three panes over one editor
   editor/              the editor: setup, toolbar, slash menu, images, starter document
-  chat/                the agent: transcript, composer, Smooth/Review toggles, and the hook behind them
+  chat/                the agent: transcript, composer, Review toggle, and the hook behind them
   inspector/           the document-state sheet
   collaboration/       optional live rooms: name, room, Yjs session
   ai/                  model adapter and the browser-saved API key
@@ -118,20 +118,18 @@ streamed into a block or as tool calls that Pen applies. Nothing comes back for
 the sidebar to print, so the sidebar keeps a receipt of what changed and names
 the route Pen chose. `server/scriptedModel.ts` shows both shapes: it calls
 `write_document` when Pen offers tools, and streams clause-sized bursts when it
-does not (so Smooth on vs off is visible; a word-at-a-time script would hide
-it).
+does not (clause-sized bursts make the paced paint visible; a word-at-a-time
+script would hide it).
 
 **Smooth streaming** is a paint, not a write. Streamed text is already in the
 document; an inline decoration withholds what is past a per-block frontier and
-reveals it at reading speed. The **Smooth** toggle sits next to **Review** on
-the agent bar. Off flushes immediately; on paces the next `openTextStream`
-run. While paint is behind the document, the bar says how much is catching up.
+reveals it at reading speed. It is always on. While paint is behind the
+document, the bar says how much is catching up.
 
 That path is **direct writes only** (`source: "stream"`). Review mode stages
-edits instead of streaming them into the block, so Smooth is disabled while
-Review is on — its tooltip says so. Turn Review off, or open
+edits instead of streaming them into the block. Turn Review off, or open
 `/?mutation=direct`, then ask to continue a paragraph. Reduced motion starts
-Smooth off and stays live if the OS preference changes.
+smooth streaming off and stays live if the OS preference changes.
 `window.penPlayground.smoothStream` is the same controller the e2e spec drives.
 
 ## Making it yours

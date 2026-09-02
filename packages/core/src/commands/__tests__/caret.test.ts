@@ -161,6 +161,47 @@ describe("caret commands", () => {
 		editor.destroy();
 	});
 
+	it("T7: a plain arrow on a range collapses to that edge, including a select-all ending at the document end", () => {
+		const editor = createCommandEditor([
+			{ id: "a", type: "paragraph", text: "hello" },
+			{ id: "b", type: "paragraph", text: "world" },
+			{ id: "c", type: "paragraph", text: "" },
+		]);
+		const registry = createCommandHarness(editor);
+
+		editor.selectText("a", 4, 1);
+		expect(registry.dispatch(caretRight, { extend: false })).toBe(true);
+		expect(caretOf(editor)).toEqual({ blockId: "a", offset: 4 });
+
+		editor.selectText("a", 1, 4);
+		expect(registry.dispatch(caretLeft, { extend: false })).toBe(true);
+		expect(caretOf(editor)).toEqual({ blockId: "a", offset: 1 });
+
+		editor.selectTextRange(
+			{ blockId: "a", offset: 0 },
+			{ blockId: "c", offset: 0 },
+		);
+		expect(registry.dispatch(caretRight, { extend: false })).toBe(true);
+		expect(caretOf(editor)).toEqual({ blockId: "c", offset: 0 });
+
+		editor.selectTextRange(
+			{ blockId: "a", offset: 0 },
+			{ blockId: "c", offset: 0 },
+		);
+		expect(registry.dispatch(caretLeft, { extend: false })).toBe(true);
+		expect(caretOf(editor)).toEqual({ blockId: "a", offset: 0 });
+
+		// Shift+Arrow keeps extending instead of collapsing
+		editor.selectText("a", 1, 3);
+		expect(registry.dispatch(caretRight, { extend: true })).toBe(true);
+		expect(editor.selection).toMatchObject({
+			type: "text",
+			anchor: { blockId: "a", offset: 1 },
+			focus: { blockId: "a", offset: 4 },
+		});
+		editor.destroy();
+	});
+
 	it("T1: selectAll escalates from field text to the whole block, then the document", () => {
 		const editor = createCommandEditor([
 			{ id: "a", type: "paragraph", text: "hello" },

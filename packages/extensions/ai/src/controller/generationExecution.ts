@@ -11,6 +11,7 @@ import {
 	createAIStreamEvent,
 	EMPTY_TOOL_RUNTIME,
 	isLocalRequestedOperation,
+	resolveScopedSelectionRewriteContentFormat,
 	resolveSelectionText,
 	shouldReplaceEmptyMarkdownTarget,
 	shouldTrimLeadingBlankBlockGenerationText,
@@ -70,10 +71,11 @@ export async function executeGeneration(
 			operation: requestedOperation,
 		});
 	}
-	const requestedContentFormat = controller._resolveContentFormat(
-		target.type,
-		context?.surface,
-	);
+	const requestedContentFormat =
+		(target.type === "selection"
+			? resolveScopedSelectionRewriteContentFormat(requestedOperation)
+			: null) ??
+		controller._resolveContentFormat(target.type, context?.surface);
 	let route = routeAIRequest({
 		prompt,
 		selection: controller._editor.selection,

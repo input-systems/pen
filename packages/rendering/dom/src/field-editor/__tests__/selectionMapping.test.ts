@@ -289,4 +289,94 @@ describe("editorSelectionToDOM", () => {
 			root.remove();
 		}
 	});
+
+	function mountParagraphThenOpenedContainer(): {
+		root: HTMLElement;
+		paragraphText: Text;
+		container: HTMLElement;
+		nestedBlock: HTMLElement;
+		nestedInline: HTMLElement;
+		nestedText: Text;
+	} {
+		const root = document.createElement("div");
+		root.setAttribute(DATA_ATTRS.editorRoot, "");
+		const { inline } = appendBlock(root, {
+			blockId: "p1",
+			text: "Hello",
+			blockType: "paragraph",
+		});
+		const { block: container } = appendBlock(root, {
+			blockId: "quote",
+			blockType: "emailQuote",
+			includeInline: false,
+			surfaceRole: "structural",
+		});
+		const { block: nestedBlock, inline: nestedInline } = appendBlock(
+			container,
+			{
+				blockId: "q1",
+				text: "Quoted",
+				blockType: "paragraph",
+			},
+		);
+		document.body.append(root);
+		return {
+			root,
+			paragraphText: inline!.firstChild as Text,
+			container,
+			nestedBlock,
+			nestedInline: nestedInline!,
+			nestedText: nestedInline!.firstChild as Text,
+		};
+	}
+
+	it("spans a container whose only inline lives on a nested child (N2, D6, O4)", () => {
+		const { root, paragraphText, container, nestedText } =
+			mountParagraphThenOpenedContainer();
+		try {
+			expect(
+				selectionBridge.findInlineContentElement(container),
+			).toBeNull();
+
+			selectionBridge.editorSelectionToDOM(
+				root,
+				{ blockId: "p1", offset: 0 },
+				{ blockId: "quote", offset: 1 },
+			);
+
+			const range = window.getSelection()!.getRangeAt(0);
+			expect(range.collapsed).toBe(false);
+			expect(range.startContainer).toBe(paragraphText);
+			expect(range.startOffset).toBe(0);
+			expect(range.endContainer).not.toBe(nestedText);
+			expect(range.intersectsNode(container)).toBe(true);
+			expect(range.intersectsNode(nestedText)).toBe(true);
+		} finally {
+			root.remove();
+		}
+	});
+
+	it("still maps a nested child's own block into that child's text", () => {
+		const { root, nestedBlock, nestedInline, nestedText } =
+			mountParagraphThenOpenedContainer();
+		try {
+			expect(selectionBridge.findInlineContentElement(nestedBlock)).toBe(
+				nestedInline,
+			);
+
+			selectionBridge.editorSelectionToDOM(
+				root,
+				{ blockId: "q1", offset: 0 },
+				{ blockId: "q1", offset: 6 },
+			);
+
+			const range = window.getSelection()!.getRangeAt(0);
+			expect(range.startContainer).toBe(nestedText);
+			expect(range.startOffset).toBe(0);
+			expect(range.endContainer).toBe(nestedText);
+			expect(range.endOffset).toBe(6);
+		} finally {
+			root.remove();
+		}
+	});
 });

@@ -53,6 +53,7 @@ export {
 	resolveLocalOperationContentFormat,
 	resolveRequestedOperationConflict,
 	resolveRequestedOperationForSession,
+	resolveScopedSelectionRewriteContentFormat,
 	resolveSelectionForRequestedOperation,
 } from "./operations";
 export { resolveFullBlockTextSelection } from "./operationFactories";

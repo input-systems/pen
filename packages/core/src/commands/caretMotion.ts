@@ -24,10 +24,12 @@ import {
 	buildNormalPositionSnapshot,
 	buildTransitionSnapshot,
 	collapsedAt,
+	documentOrderedTextPoints,
 	fromTransitionSelection,
 	getAdjacentVisibleBlockId,
 	getAtomRangeAtOffset,
 	getEditorLocale,
+	getVisibleBlockIds,
 	isEditableTextBlock,
 	logicalInline,
 	readTextAnchor,
@@ -108,6 +110,11 @@ export function handleGraphemeCaret(
 		return finishNonVertical(editor, fromCell);
 	}
 
+	const collapsed = collapseTextRange(editor, param, direction);
+	if (collapsed !== undefined) {
+		return finishNonVertical(editor, collapsed);
+	}
+
 	const focus = readTextFocus(editor);
 	if (!focus) {
 		return false;
@@ -127,6 +134,37 @@ export function handleGraphemeCaret(
 	return finishNonVertical(editor, {
 		selection: extendSelection(editor, param.extend, next),
 	});
+}
+
+/**
+ * A plain arrow on a range collapses it to the edge in that direction and
+ * moves nothing else (T7). K1 prevents the browser default for every
+ * navigation key, so this collapse has to be Pen's: stepping the focus
+ * instead would strand a select-all at the document end, where there is no
+ * next position, with the range still standing.
+ */
+function collapseTextRange(
+	editor: Editor,
+	param: CaretMotionParam,
+	direction: -1 | 1,
+): CommandResult | undefined {
+	const selection = editor.selection;
+	if (
+		param.extend ||
+		!selection ||
+		selection.type !== "text" ||
+		isCollapsed(selection)
+	) {
+		return undefined;
+	}
+
+	const ordered = documentOrderedTextPoints(editor, selection);
+	if (!ordered) {
+		return undefined;
+	}
+
+	const edge = direction === 1 ? ordered.end : ordered.start;
+	return { selection: collapsedAt(edge.blockId, edge.offset) };
 }
 
 export function handleWordCaret(
@@ -441,7 +479,10 @@ function documentEdgePoint(
 	| { type: "text"; point: Point }
 	| { type: "block"; selection: SelectionState }
 	| null {
-	const order = editor.documentState.blockOrder;
+	// D6: nested children are absent from blockOrder (RI6). Cmd+Down in a
+	// document whose last top-level block is an opened container must land
+	// in that container's last visible child, not on the container itself.
+	const order = getVisibleBlockIds(editor);
 	if (order.length === 0) {
 		return null;
 	}

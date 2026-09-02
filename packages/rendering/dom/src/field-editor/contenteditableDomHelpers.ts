@@ -4,6 +4,7 @@ import { DATA_ATTRS } from "../utils/dataAttributes";
 import type { FieldEditorDelta } from "./crdt";
 import { findLogicalDOMPoint } from "./inlineAtomDom";
 import { domPointToOffset, getSelectionOffsets } from "./selectionBridge";
+import { findInlineContentElement } from "./selectionDomQueries";
 
 export function requiresResolvedInputRange(inputType: string): boolean {
 	return (
@@ -303,8 +304,8 @@ export function measureVisualLineEdge(
 	if (!(root instanceof HTMLElement)) {
 		return null;
 	}
-	const inline = block.querySelector(`[${DATA_ATTRS.inlineContent}]`);
-	const host = inline instanceof HTMLElement ? inline : block;
+	const inline = findInlineContentElement(block);
+	const host = inline ?? block;
 	const rtl =
 		block.getAttribute("dir") === "rtl" ||
 		getComputedStyle(block).direction === "rtl" ||

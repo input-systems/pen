@@ -187,6 +187,21 @@ export function resolveLocalOperationContentFormat(
 	return defaultBlockFormat;
 }
 
+/**
+ * The content format a block-scoped selection rewrite committed to when it
+ * was resolved, or null for any other operation. A live selection over whole
+ * blocks is resolved this way so the reply lands as blocks; the generation
+ * that runs it has to request, preview, and commit in that same format.
+ */
+export function resolveScopedSelectionRewriteContentFormat(
+	operation: AIRequestedOperation | null | undefined,
+): AIContentFormat | null {
+	return operation?.kind === "rewrite-selection" &&
+		operation.target.kind === "scoped-range"
+		? operation.target.contentFormat
+		: null;
+}
+
 export function canReuseBottomChatSessionOperation(
 	previousOperation: AIRequestedOperation,
 	nextOperation: AIRequestedOperation,

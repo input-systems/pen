@@ -1064,16 +1064,22 @@ export class EditContextBackend {
 		) {
 			return;
 		}
+		// a decoration can change while another control owns focus; writing
+		// the caret back into this field would drag focus along with it
+		const projectSelection =
+			this.fieldEditor.shouldProjectSelectionAfterReconcile?.() ?? true;
 		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 			urlPolicy: urlPolicyFromEditor(this.editor),
-			preserveSelection: true,
+			preserveSelection: projectSelection,
 			inlineDecorations: this.getInlineDecorationsForBlock(),
 		});
 		this.inlineDecorationsSignature = nextInlineDecorationsSignature;
 		this.fieldEditor.notifyDomReconciled(
 			this.fieldEditor.focusBlockId ?? undefined,
 		);
-		this.restoreDOMCaret();
+		if (projectSelection) {
+			this.restoreDOMCaret();
+		}
 	};
 
 	protected restoreDOMCaret(): void {

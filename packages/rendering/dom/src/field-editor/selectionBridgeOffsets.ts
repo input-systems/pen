@@ -1,11 +1,13 @@
-import { DATA_ATTRS } from "../utils/dataAttributes";
 import { findEmptyBlockPlaceholder } from "./emptyBlockPlaceholder";
 import {
 	findLogicalDOMPoint,
 	getInlineAtomPointerOffset,
 	getLogicalNodeLength,
 } from "./inlineAtomDom";
-import { queryBlockElement } from "./selectionDomQueries";
+import {
+	findInlineContentElement,
+	queryBlockElement,
+} from "./selectionDomQueries";
 import {
 	domPointToOffset,
 	type DirectionalSelectionOffsets,
@@ -42,9 +44,7 @@ export function getSelectionPointRect(
 	if (!domPoint) return null;
 
 	const blockEl = queryBlockElement(root, point.blockId);
-	const inlineEl = blockEl?.querySelector(
-		`[${DATA_ATTRS.inlineContent}]`,
-	) as HTMLElement | null;
+	const inlineEl = blockEl ? findInlineContentElement(blockEl) : null;
 	if (!inlineEl) return null;
 
 	const doc = root.ownerDocument;
@@ -138,9 +138,7 @@ function findDOMPoint(
 	const blockEl = queryBlockElement(root, blockId);
 	if (!blockEl) return null;
 
-	const inlineEl = blockEl.querySelector(
-		`[${DATA_ATTRS.inlineContent}]`,
-	) as HTMLElement | null;
+	const inlineEl = findInlineContentElement(blockEl);
 	if (!inlineEl) return findBlockUnitDOMPoint(blockEl, charOffset);
 
 	return findLogicalDOMPoint(inlineEl, charOffset);

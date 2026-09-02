@@ -85,7 +85,10 @@ export class SelectionProjectionController {
 	}
 
 	ackBlockMounted(_blockId: string, _element: HTMLElement): void {
-		if (this._parked == null) {
+		if (
+			this._parked == null ||
+			this.isFocusHeldByNativeControlOutsideRoot()
+		) {
 			return;
 		}
 		this.syncDomSelectionOnce();
@@ -126,6 +129,9 @@ export class SelectionProjectionController {
 	}
 
 	requestDivergenceProjection(): void {
+		if (this.isFocusHeldByNativeControlOutsideRoot()) {
+			return;
+		}
 		this.syncDomSelectionOnce();
 	}
 
@@ -332,6 +338,27 @@ export class SelectionProjectionController {
 		}
 
 		return attachedElement.contains(activeElement);
+	}
+
+	/**
+	 * HOST9: a native text control outside this editor keeps its focus.
+	 * Authority-driven projections (P1, P2, parked mount-ack) that land
+	 * while one owns focus are not written, because writing the DOM
+	 * selection into a field moves focus with it. Gesture and
+	 * programmatic projections are not gated: a mousedown on the editor
+	 * runs before the browser moves focus, and `focus()` moves it
+	 * explicitly first.
+	 */
+	isFocusHeldByNativeControlOutsideRoot(): boolean {
+		const root = this._options.getRootElement();
+		const activeElement = root?.ownerDocument.activeElement;
+		if (!root || !(activeElement instanceof Node)) {
+			return false;
+		}
+		return (
+			!root.contains(activeElement) &&
+			isNativeTextEntryTarget(activeElement)
+		);
 	}
 
 	recordUserSelectionIntent(): void {

@@ -6,6 +6,8 @@ import { mergeSchemas, SchemaRegistryImpl } from "../../schema/registry";
 import { createHeadlessEditor } from "../../editor/editor";
 import { selectionToRange, createTextSelection } from "../../selection/helpers";
 import {
+	caretDocEnd,
+	caretDocStart,
 	caretLeft,
 	caretRight,
 	deleteBackward,
@@ -244,6 +246,26 @@ describe("D6 nested container text ranges", () => {
 
 		expect(registry.dispatch(caretRight, { extend: false })).toBe(true);
 		expect(caretOf(editor)).toEqual({ blockId: "q2", offset: 0 });
+		editor.destroy();
+	});
+
+	it("D6: caretDocEnd lands in the last nested child, not the container", () => {
+		const editor = createNestedQuoteEditor();
+		const registry = createCommandHarness(editor);
+		editor.selectText("reply", 0, 0);
+
+		expect(registry.dispatch(caretDocEnd, { extend: false })).toBe(true);
+		expect(caretOf(editor)).toEqual({ blockId: "q3", offset: 5 });
+		editor.destroy();
+	});
+
+	it("D6: caretDocStart lands in the first visible text block", () => {
+		const editor = createNestedQuoteEditor();
+		const registry = createCommandHarness(editor);
+		editor.selectText("q3", 5, 5);
+
+		expect(registry.dispatch(caretDocStart, { extend: false })).toBe(true);
+		expect(caretOf(editor)).toEqual({ blockId: "reply", offset: 0 });
 		editor.destroy();
 	});
 

@@ -64,27 +64,48 @@ describe("SessionReconciler", () => {
 		reconciler.destroy();
 		editor.destroy();
 	});
+
+	it("projects the selection back after a decoration change rebuilds an expanded surface", () => {
+		const editor = createHeadlessEditor({ schema: defaultSchema });
+		const blockId = editor.firstBlock()!.id;
+		const projectSelection = vi.fn();
+		const reconciler = createReconciler(editor, blockId, () => null, {
+			mode: "expanded",
+			projectSelection,
+		});
+
+		editor.requestDecorationUpdate();
+
+		expect(projectSelection).toHaveBeenCalledTimes(1);
+		reconciler.destroy();
+		editor.destroy();
+	});
 });
 
 function createReconciler(
 	editor: ReturnType<typeof createHeadlessEditor>,
 	blockId: string,
 	getYText: () => null,
+	options: {
+		mode?: "single" | "expanded";
+		projectSelection?: () => void;
+	} = {},
 ) {
 	const scheduler = new DomScheduler("session-reconciler-test");
+	const shouldProjectSelection = options.projectSelection !== undefined;
 	return new SessionReconciler(editor, {
 		getSnapshot: () => ({
 			focusBlockId: blockId,
 			activeBlockIds: [blockId],
 			isEditing: true,
-			mode: "single",
+			mode: options.mode ?? "single",
 		}),
 		getAttachedElement: () => null,
 		getInlineElement: () => null,
 		getYText,
 		shouldPreserveSelection: () => false,
-		shouldProjectSelection: () => false,
-		projectSelection: () => {},
+		shouldProjectSelection: () => shouldProjectSelection,
+		projectSelection: options.projectSelection ?? (() => {}),
 		getScheduler: () => scheduler,
 	});
 }

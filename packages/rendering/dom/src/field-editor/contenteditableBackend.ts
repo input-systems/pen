@@ -665,7 +665,7 @@ export class ContentEditableBackend {
 		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
 	}
 
-	protected ensureActiveDOMMatchesYText(): boolean {
+	protected ensureActiveDOMMatchesYText(preserveSelection = true): boolean {
 		if (!this.element || !this.ytext) return false;
 		const nextInlineDecorationsSignature =
 			this.getInlineDecorationsSignature();
@@ -678,7 +678,7 @@ export class ContentEditableBackend {
 
 		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 			urlPolicy: urlPolicyFromEditor(this.editor),
-			preserveSelection: true,
+			preserveSelection,
 			inlineDecorations: this.getInlineDecorationsForBlock(),
 		});
 		this.discardObservedMutations();
@@ -699,7 +699,14 @@ export class ContentEditableBackend {
 		) {
 			return;
 		}
-		if (this.ensureActiveDOMMatchesYText()) {
+		// a decoration can change while another control owns focus; writing
+		// the selection back into this field would drag focus along with it
+		const projectSelection =
+			this.fieldEditor.shouldProjectSelectionAfterReconcile?.() ?? true;
+		if (
+			this.ensureActiveDOMMatchesYText(projectSelection) &&
+			projectSelection
+		) {
 			this.restoreDOMSelectionFromEditor();
 		}
 	};

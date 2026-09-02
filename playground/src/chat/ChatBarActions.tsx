@@ -9,8 +9,8 @@ import { ApiKeyModal } from "./ApiKeyModal";
 import { useSmoothStream } from "./useSmoothStream";
 
 /**
- * The controls on the agent bar: review vs apply directly, paced reveal,
- * a new chat, and the Anthropic key.
+ * The controls on the agent bar: review vs apply directly, a new chat,
+ * and the Anthropic key. Paced reveal is always on (except reduced motion).
  */
 export function ChatBarActions({
 	editor,
@@ -32,7 +32,6 @@ export function ChatBarActions({
 	return (
 		<div className="chat-bar-actions">
 			<ReviewToggle editor={editor} />
-			<SmoothToggle editor={editor} />
 			<RevealStatus editor={editor} />
 			<Button.Tooltip content="New Chat">
 				<Button.Icon label="New Chat" onClick={onNewChat}>
@@ -60,30 +59,6 @@ function ReviewToggle({ editor }: { editor: Editor }) {
 	};
 
 	return <Toggle active={isReview} label="Review" onChange={handleChange} />;
-}
-
-function SmoothToggle({ editor }: { editor: Editor }) {
-	const aiState = useAI(editor);
-	const smooth = useSmoothStream(editor);
-	const isReview = aiState.mutationPreference !== "direct";
-
-	const handleChange = (active: boolean) => {
-		smooth.controller?.setEnabled(active);
-	};
-
-	return (
-		<Button.Tooltip
-			content="Paced reveal applies to direct writes"
-			disabled={!isReview}
-		>
-			<Toggle
-				active={smooth.enabled}
-				label="Smooth"
-				disabled={!smooth.controller || isReview}
-				onChange={handleChange}
-			/>
-		</Button.Tooltip>
-	);
 }
 
 function RevealStatus({ editor }: { editor: Editor }) {

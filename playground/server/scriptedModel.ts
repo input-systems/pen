@@ -5,8 +5,8 @@ const SCRIPTED_PARAGRAPH =
 	"This paragraph came from the playground's scripted model, which answers " +
 	"when ANTHROPIC_API_KEY is not set. Pen streamed it into the document in " +
 	"clause-sized bursts, the way a real model dumps text — not one word per " +
-	"tick. Toggle Smooth off to see the jumps; leave it on to watch the paint " +
-	"catch up at reading speed.";
+	"tick. Smooth streaming paints that text at reading speed after it is " +
+	"already in the document.";
 
 /** Gap between prose bursts. Real models dump a clause, then stall. */
 export const SCRIPTED_PROSE_BURST_GAP_MS = 320;
