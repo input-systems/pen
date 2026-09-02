@@ -1,5 +1,18 @@
 # @input/pen-ai
 
+## 0.2.0
+
+### Patch Changes
+
+- e9a3129: Resolve a live selection covering whole paragraphs to a block-scoped markdown rewrite, so an inline rewrite lands as paragraph blocks instead of a text splice that folds the reply into the first block. This covers a single paragraph as well as several, which is the case a reply most often outgrows. Partial selections keep the text splice path, and so does any selection reaching a block that is not a paragraph, whose type the markdown parse behind the block scope would not reproduce.
+- e9a3129: Re-anchor an inline turn that rewrites blocks on the paragraphs it staged, instead of leaving it on the blocks it replaced. A block-range replacement deletes its own target blocks, so the session, its turn, and the contextual prompt were left pointing at a block that no longer exists once the turn settled, and a host positioning its prompt UI from that anchor fell back to the top of the document.
+- Updated dependencies [e9a3129]
+- Updated dependencies [e9a3129]
+  - @input/pen-core@0.2.0
+  - @input/pen-tools@0.2.0
+  - @input/pen-ingest@0.2.0
+  - @input/pen-types@0.2.0
+
 ## 0.1.9
 
 ### Patch Changes

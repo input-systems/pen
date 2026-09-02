@@ -201,7 +201,7 @@ Streaming protocol and processing pipeline. Optional runtime that turns a `PenSt
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.1.9`; intended usage is current-state but still evolving. This is one of the most ambitious packages in the workspace and should be treated as a large extension surface rather than a minimal helper package.
+Workspace package at version `0.2.0`; intended usage is current-state but still evolving. This is one of the most ambitious packages in the workspace and should be treated as a large extension surface rather than a minimal helper package.
 
 ## Non-goals
 
