@@ -66,7 +66,7 @@ Important rules:
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.1.9`; intended usage is current-state but still evolving. It already has an outsized architectural role because it defines how non-human actors interact with Pen documents without bypassing editor boundaries.
+Workspace package at version `0.2.0`; intended usage is current-state but still evolving. It already has an outsized architectural role because it defines how non-human actors interact with Pen documents without bypassing editor boundaries.
 
 ## Non-goals
 

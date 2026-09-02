@@ -1,5 +1,17 @@
 # @input/pen-core
 
+## 0.2.0
+
+### Minor Changes
+
+- e9a3129: Map a container's selection around the block when nested children supply the only inline content, and walk visible nested blocks for document-edge caret so Cmd+Down in an opened quote lands in the last nested paragraph instead of selecting the container. A decoration change on an expanded multi-block surface no longer collapses the cross-block selection into each rebuilt block: element-local selection preservation declines when an endpoint lies outside the element, and the selection is projected back from the editor after the rebuild.
+
+### Patch Changes
+
+- e9a3129: A plain ArrowLeft/ArrowRight on a non-collapsed text selection now collapses it to the range's start or end (T7) instead of trying to step the focus. A select-all followed by ArrowRight previously left the whole document selected because the focus already sat at the document end, so the next keystroke replaced everything.
+- @input/pen-yjs@0.2.0
+  - @input/pen-types@0.2.0
+
 ## 0.1.9
 
 ### Patch Changes

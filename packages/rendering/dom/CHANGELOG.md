@@ -1,5 +1,20 @@
 # @input/pen-dom
 
+## 0.2.0
+
+### Minor Changes
+
+- e9a3129: Map a container's selection around the block when nested children supply the only inline content, and walk visible nested blocks for document-edge caret so Cmd+Down in an opened quote lands in the last nested paragraph instead of selecting the container. A decoration change on an expanded multi-block surface no longer collapses the cross-block selection into each rebuilt block: element-local selection preservation declines when an endpoint lies outside the element, and the selection is projected back from the editor after the rebuild.
+
+### Patch Changes
+
+- e9a3129: A native text-entry control outside the editor keeps its focus (HOST9). While one owns focus, an authority selection write — including `setSelection(null)` — is recorded but not projected into the DOM, and a decoration change that rebuilds the active field no longer writes the selection back into it; both previously pulled focus out of the host's own input and into the editor. Gesture and programmatic projections still project. `FieldEditorDomController` gains an optional `shouldProjectSelectionAfterReconcile()` that the single-field backends consult before restoring the caret after a decoration rebuild.
+- Updated dependencies [e9a3129]
+- Updated dependencies [e9a3129]
+  - @input/pen-core@0.2.0
+  - @input/pen-shortcuts@0.2.0
+  - @input/pen-types@0.2.0
+
 ## 0.1.9
 
 ### Patch Changes
