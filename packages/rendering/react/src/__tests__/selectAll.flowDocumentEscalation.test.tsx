@@ -343,7 +343,7 @@ describe("@input/pen-react cmd+a: escalation in flow documents", () => {
 
 		const fieldEditor = getFieldEditor(editor);
 		await act(async () => {
-			fieldEditor.activate(firstBlockId);
+			fieldEditor.activateTextSelection(firstBlockId, 0, 0);
 			await flushAnimationFrames(2);
 		});
 

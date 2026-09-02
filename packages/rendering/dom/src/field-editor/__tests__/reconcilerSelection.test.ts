@@ -13,7 +13,7 @@ function mountBlocks(): { first: HTMLElement; second: HTMLElement } {
 }
 
 afterEach(() => {
-	document.body.innerHTML = "";
+	document.body.replaceChildren();
 	window.getSelection()?.removeAllRanges();
 });
 
