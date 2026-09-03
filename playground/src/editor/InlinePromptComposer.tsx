@@ -1,5 +1,5 @@
 import {
-	useEffect,
+	useLayoutEffect,
 	type FormEvent,
 	type KeyboardEvent,
 	type PointerEvent,
@@ -27,24 +27,26 @@ export function InlinePromptComposer({ placeholder }: { placeholder: string }) {
 		state.activeGeneration?.sessionId != null &&
 		state.activeGeneration.sessionId === session?.id &&
 		state.activeGeneration.status === "streaming";
-	const draftPrompt = session?.contextualPrompt?.composer.draftPrompt ?? "";
-	const openReason = session?.contextualPrompt?.composer.openReason;
+	const storedDraft = session?.contextualPrompt?.composer.draftPrompt ?? "";
 	const sessionTurns = session?.turns ?? [];
+	const latestTurnPrompt = sessionTurns[sessionTurns.length - 1]?.prompt ?? "";
 	const pendingCount = session?.pendingSuggestionIds.length ?? 0;
-	const isPromptEmpty = draftPrompt.trim().length === 0;
+	const sessionId = session?.id;
 	const isReviewing = pendingCount > 0 && !isRunning;
+	// undo restages the ask as the draft. Input keeps it in history only.
+	const isRestoredReviewDraft =
+		isReviewing && storedDraft === latestTurnPrompt && latestTurnPrompt !== "";
+	const draftPrompt = isRestoredReviewDraft ? "" : storedDraft;
+	const isPromptEmpty = draftPrompt.trim().length === 0;
 	const showApprove = isReviewing && isPromptEmpty;
 	const canSend = !isPromptEmpty && !isRunning;
-	const sessionId = session?.id;
 
-	// undo restores the turn prompt into the draft; Input clears it so the
-	// row is Discard / Accept again and the ask stays in history.
-	useEffect(() => {
-		if (sessionId == null || openReason !== "history") {
+	useLayoutEffect(() => {
+		if (!isRestoredReviewDraft || sessionId == null) {
 			return;
 		}
 		controller?.updateContextualPromptDraft(sessionId, "");
-	}, [controller, openReason, sessionId]);
+	}, [controller, isRestoredReviewDraft, sessionId]);
 
 	if (!session || sessionId == null) {
 		return null;

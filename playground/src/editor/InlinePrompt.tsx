@@ -82,7 +82,7 @@ function InlinePromptPositioner({ children }: { children: ReactNode }) {
 	}, [blockId, editor, session, session?.id, session?.updatedAt]);
 
 	const sessionId = session?.id;
-	const openReason = session?.contextualPrompt?.composer.openReason;
+	const pendingCount = session?.pendingSuggestionIds.length ?? 0;
 
 	useEffect(() => {
 		if (!portal || sessionId == null) {
@@ -93,9 +93,9 @@ function InlinePromptPositioner({ children }: { children: ReactNode }) {
 				block: "center",
 				behavior: prefersReducedMotion() ? "auto" : "smooth",
 			});
-			// undo-restored review keeps focus in the document so the next
-			// cmd+z / redo still hits the editor, the way Input does.
-			if (openReason === "history") {
+			// review restored by undo keeps focus in the document so redo
+			// still hits the editor. Input does the same.
+			if (pendingCount > 0) {
 				return;
 			}
 			const input = portal.querySelector(
@@ -106,7 +106,7 @@ function InlinePromptPositioner({ children }: { children: ReactNode }) {
 			}
 		});
 		return () => window.cancelAnimationFrame(frameId);
-	}, [openReason, portal, sessionId]);
+	}, [pendingCount, portal, sessionId]);
 
 	useEffect(() => {
 		return () => {
