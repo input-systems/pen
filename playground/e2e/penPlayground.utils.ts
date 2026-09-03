@@ -1,5 +1,9 @@
 import { expect, type Page } from "@playwright/test";
-import type { InlineDelta, SelectionState } from "@input/pen-types";
+import type {
+	InlineDelta,
+	InlineInsert,
+	SelectionState,
+} from "@input/pen-types";
 
 /** The OS modifier, for shortcuts the browser itself handles (copy, paste). */
 export const MODIFIER = process.platform === "darwin" ? "Meta" : "Control";
@@ -26,10 +30,15 @@ export async function openPlayground(page: Page): Promise<void> {
 		.toBe(true);
 }
 
-export async function replaceWithMentionParagraph(
+/**
+ * Collapses the document to its first block, turned into a paragraph that
+ * holds `content`, and returns that block's id.
+ */
+async function resetToSingleParagraph(
 	page: Page,
-): Promise<{ blockId: string }> {
-	const blockId = await page.evaluate(() => {
+	content: InlineInsert | readonly InlineInsert[],
+): Promise<string> {
+	return page.evaluate((insert) => {
 		const editor = window.penPlayground?.editor;
 		if (!editor) {
 			throw new Error("playground editor is not ready");
@@ -57,18 +66,21 @@ export async function replaceWithMentionParagraph(
 			blockId: keepId,
 			from: 0,
 			to: first.length(),
-			insert: [
-				"hello ",
-				{
-					nodeType: "mention",
-					props: { id: "user-1", label: "Ada" },
-				},
-				" world",
-			],
+			insert,
 		});
 		editor.apply(ops, { origin: "system" });
 		return keepId;
-	});
+	}, content);
+}
+
+export async function replaceWithMentionParagraph(
+	page: Page,
+): Promise<{ blockId: string }> {
+	const blockId = await resetToSingleParagraph(page, [
+		"hello ",
+		{ nodeType: "mention", props: { id: "user-1", label: "Ada" } },
+		" world",
+	]);
 	await expect(
 		page.locator(
 			`[data-block-id="${blockId}"] [data-pen-inline-atom-type="mention"]`,
@@ -81,53 +93,35 @@ export async function replaceWithParagraphThenNonText(
 	page: Page,
 	nonText: { blockId: string; blockType: "image" | "table" | "divider" },
 ): Promise<{ paragraphId: string; nonTextId: string }> {
-	const ids = await page.evaluate((next) => {
-		const editor = window.penPlayground?.editor;
-		if (!editor) {
-			throw new Error("playground editor is not ready");
-		}
-		const order = editor.documentState.blockOrder.slice();
-		const keepId = order[0];
-		if (!keepId) {
-			throw new Error("document has no blocks");
-		}
-		const first = editor.getBlock(keepId);
-		if (!first) {
-			throw new Error("missing first block");
-		}
-		const ops = [];
-		for (const id of order.slice(1)) {
-			ops.push({ type: "delete-block" as const, blockId: id });
-		}
-		ops.push({
-			type: "set-props" as const,
-			blockId: keepId,
-			props: { type: "paragraph" },
-		});
-		ops.push({
-			type: "splice-text" as const,
-			blockId: keepId,
-			from: 0,
-			to: first.length(),
-			insert: "Above the line",
-		});
-		ops.push({
-			type: "insert-block" as const,
-			blockId: next.blockId,
-			blockType: next.blockType,
-			props: {},
-			position: { after: keepId },
-		});
-		editor.apply(ops, { origin: "system" });
-		return { paragraphId: keepId, nonTextId: next.blockId };
-	}, nonText);
+	const paragraphId = await resetToSingleParagraph(page, "Above the line");
+	await page.evaluate(
+		([after, next]) => {
+			const editor = window.penPlayground?.editor;
+			if (!editor) {
+				throw new Error("playground editor is not ready");
+			}
+			editor.apply(
+				[
+					{
+						type: "insert-block",
+						blockId: next.blockId,
+						blockType: next.blockType,
+						props: {},
+						position: { after },
+					},
+				],
+				{ origin: "system" },
+			);
+		},
+		[paragraphId, nonText] as const,
+	);
 	await expect(
-		page.locator(`[data-block-id="${ids.paragraphId}"]`),
+		page.locator(`[data-block-id="${paragraphId}"]`),
 	).toBeVisible();
 	await expect(
-		page.locator(`[data-block-id="${ids.nonTextId}"]`),
+		page.locator(`[data-block-id="${nonText.blockId}"]`),
 	).toBeVisible();
-	return ids;
+	return { paragraphId, nonTextId: nonText.blockId };
 }
 
 export async function readSelection(

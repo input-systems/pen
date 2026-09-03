@@ -34,19 +34,49 @@ export function Select({
 	label,
 	disabled,
 }: SelectProps) {
+	const rootRef = useRef<HTMLDivElement>(null);
+	// The document key listener reads the highlight through a ref so it is
+	// bound once per open, not once per hover.
+	const highlightRef = useRef(value);
 	const [isOpen, setIsOpen] = useState(false);
 	const [highlight, setHighlight] = useState(value);
-	const rootRef = useRef<HTMLDivElement>(null);
 	const listId = useId();
 
 	const selected = options.find((option) => option.value === value);
+
+	const open = () => {
+		setHighlight(value);
+		setIsOpen(true);
+	};
+
+	const close = () => setIsOpen(false);
+
+	const choose = (next: string) => {
+		onChange(next);
+		close();
+	};
+
+	useEffect(() => {
+		highlightRef.current = highlight;
+	}, [highlight]);
 
 	useEffect(() => {
 		if (!isOpen) {
 			return;
 		}
 
-		setHighlight(value);
+		const moveHighlight = (offset: number) => {
+			setHighlight((current) => {
+				const index = options.findIndex(
+					(option) => option.value === current,
+				);
+				const nextIndex = Math.min(
+					Math.max(index + offset, 0),
+					options.length - 1,
+				);
+				return options[nextIndex]?.value ?? current;
+			});
+		};
 
 		const closeOnOutside = (event: Event) => {
 			if (
@@ -57,42 +87,25 @@ export function Select({
 			}
 		};
 
-		const handleKeys = (event: globalThis.KeyboardEvent) => {
-			if (event.key === "Escape") {
-				event.preventDefault();
-				setIsOpen(false);
-				return;
+		const handleKeys = (event: KeyboardEvent) => {
+			switch (event.key) {
+				case "Escape":
+					setIsOpen(false);
+					break;
+				case "ArrowDown":
+					moveHighlight(1);
+					break;
+				case "ArrowUp":
+					moveHighlight(-1);
+					break;
+				case "Enter":
+					onChange(highlightRef.current);
+					setIsOpen(false);
+					break;
+				default:
+					return;
 			}
-
-			const offset =
-				event.key === "ArrowDown"
-					? 1
-					: event.key === "ArrowUp"
-						? -1
-						: 0;
-			if (offset !== 0) {
-				event.preventDefault();
-				setHighlight((current) => {
-					const index = options.findIndex(
-						(option) => option.value === current,
-					);
-					const next =
-						options[
-							Math.min(
-								Math.max(index + offset, 0),
-								options.length - 1,
-							)
-						];
-					return next?.value ?? current;
-				});
-				return;
-			}
-
-			if (event.key === "Enter") {
-				event.preventDefault();
-				onChange(highlight);
-				setIsOpen(false);
-			}
+			event.preventDefault();
 		};
 
 		document.addEventListener("mousedown", closeOnOutside);
@@ -101,12 +114,7 @@ export function Select({
 			document.removeEventListener("mousedown", closeOnOutside);
 			document.removeEventListener("keydown", handleKeys);
 		};
-	}, [highlight, isOpen, onChange, options, value]);
-
-	const choose = (next: string) => {
-		onChange(next);
-		setIsOpen(false);
-	};
+	}, [isOpen, onChange, options]);
 
 	const optionItems = options.map((option) => {
 		const isSelected = option.value === value;
@@ -145,7 +153,7 @@ export function Select({
 				aria-expanded={isOpen}
 				aria-controls={listId}
 				onMouseDown={keepCaret}
-				onClick={() => setIsOpen((open) => !open)}
+				onClick={isOpen ? close : open}
 			>
 				<span className="select-label">{selected?.label ?? label}</span>
 				<span className="select-chevron">

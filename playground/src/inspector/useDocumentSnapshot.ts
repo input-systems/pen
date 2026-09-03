@@ -10,7 +10,7 @@ export interface SnapshotBlock {
 	children: SnapshotBlock[];
 }
 
-export interface DocumentSnapshot {
+interface DocumentSnapshot {
 	/** Bumps on every committed change. Useful for spotting stray writes. */
 	generation: number;
 	blockCount: number;

@@ -25,20 +25,11 @@ const NO_TOOLS_PROMPT = [
 	"else — no preamble, no explanation, no quotes around it.",
 ].join("\n");
 
-const MULTI_TOOL_PROMPT = [
-	"When the request offers tools: first call read_document with format",
-	'"markdown" and annotateBlocks true — the `<!-- block:<id> <type> -->`',
-	"comments give you the block ids every other tool expects. Then edit:",
-	"update_block rewrites, converts, or restyles one existing block in place;",
-	"write_document with markdown inserts new content (pass replaceBlockIds to",
-	"swap existing blocks for it); delete_block and move_block do what they say.",
-	"Cover every part of the request before stopping. Do not write any prose in",
-	"your reply — it would be inserted into the document as content.",
-].join("\n");
-
 /**
- * The edit_document channel is one edit, preceded by a read only when the
- * request carries no block annotations. The earlier version of this prompt
+ * `edit_document` is the one write tool this playground grants, so a request
+ * either offers it or offers no tools at all. The channel is one edit,
+ * preceded by a read only when the request carries no block annotations. The
+ * earlier version of this prompt
  * mandated the read unconditionally — but the working set already annotates
  * documents up to the annotation bound, so an obedient model paid a full
  * model round trip to fetch ids it had been handed. Refusals answer
@@ -58,18 +49,13 @@ const EDIT_DOCUMENT_PROMPT = [
 	"document; keep it to one short sentence or none.",
 ].join("\n");
 
-function buildSystemPrompt(request: ChatRequest): string {
-	const offersEditDocument = request.tools.some(
-		(tool) => tool.name === "edit_document",
-	);
-	return [
-		PROMPT_PREAMBLE,
-		"",
-		offersEditDocument ? EDIT_DOCUMENT_PROMPT : MULTI_TOOL_PROMPT,
-		"",
-		NO_TOOLS_PROMPT,
-	].join("\n");
-}
+const SYSTEM_PROMPT = [
+	PROMPT_PREAMBLE,
+	"",
+	EDIT_DOCUMENT_PROMPT,
+	"",
+	NO_TOOLS_PROMPT,
+].join("\n");
 
 /**
  * Talks to Anthropic and translates its stream into `ChatEvent`s.
@@ -95,7 +81,7 @@ export async function* streamAnthropic(
 			model: readEnv("ANTHROPIC_MODEL") ?? DEFAULT_MODEL,
 			max_tokens: 8192,
 			stream: true,
-			system: buildSystemPrompt(request),
+			system: SYSTEM_PROMPT,
 			messages: request.messages.map(toAnthropicMessage),
 			tools: request.tools.map((tool) => ({
 				name: tool.name,

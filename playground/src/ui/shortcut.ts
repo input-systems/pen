@@ -1,5 +1,5 @@
 /** `Mod` is Cmd on Apple keyboards and Ctrl everywhere else. */
-export const IS_APPLE = /Mac|iPhone|iPad/.test(navigator.userAgent);
+const IS_APPLE = /Mac|iPhone|iPad/.test(navigator.userAgent);
 
 const KEY_SYMBOLS: Record<string, string> = {
 	mod: IS_APPLE ? "⌘" : "Ctrl",

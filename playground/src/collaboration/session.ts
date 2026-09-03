@@ -18,7 +18,7 @@ const USER_COLORS = [
 	"#16a34a",
 ] as const;
 
-export interface CollaborationUser {
+interface CollaborationUser {
 	id: string;
 	name: string;
 	color: string;

@@ -9,7 +9,7 @@ const SCRIPTED_PARAGRAPH =
 	"already in the document.";
 
 /** Gap between prose bursts. Real models dump a clause, then stall. */
-export const SCRIPTED_PROSE_BURST_GAP_MS = 320;
+const PROSE_BURST_GAP_MS = 320;
 
 /** Characters per argument-JSON fragment, roughly a word. */
 const TOOL_INPUT_FRAGMENT = 6;
@@ -28,33 +28,24 @@ const SCRIPTED_MARKDOWN = [
 /**
  * The offline stand-in for a model, so the playground works with no API key.
  *
- * It answers in whichever form Pen asked for. When the request carries a write
- * tool, Pen wants structural edits, so it calls that tool and says nothing.
- * When it carries none, Pen wants prose to drop into a block, so it streams
- * text and calls nothing.
+ * It answers in whichever form Pen asked for. When the request offers
+ * `edit_document` — the one write tool this playground grants — Pen wants
+ * structural edits, so it calls that tool and says nothing. When it offers no
+ * tools, Pen wants prose to drop into a block, so it streams text.
  */
 export async function* streamScripted(
 	request: ChatRequest,
 ): AsyncGenerator<ChatEvent> {
-	const offered = new Set(request.tools.map((tool) => tool.name));
+	const offersEditTool = request.tools.some(
+		(tool) => tool.name === "edit_document",
+	);
 
-	if (offered.has("edit_document")) {
+	if (offersEditTool) {
 		yield* streamEditChannel(request);
 		return;
 	}
 
-	// The tool already ran, so this pass has nothing left to do. Without this
-	// the loop would keep calling the tool until it hit its step limit.
-	if (offered.has("write_document") && !hasRunTools(request.messages)) {
-		yield toolCall("write_document", {
-			format: "markdown",
-			content: SCRIPTED_MARKDOWN,
-			position: "last",
-		});
-	} else if (!offered.has("write_document")) {
-		yield* streamText(SCRIPTED_PARAGRAPH);
-	}
-
+	yield* streamText(SCRIPTED_PARAGRAPH);
 	yield { type: "done" };
 }
 
@@ -164,7 +155,7 @@ async function* streamText(text: string): AsyncGenerator<ChatEvent> {
 	const bursts = splitProseBursts(text);
 	for (let index = 0; index < bursts.length; index++) {
 		if (index > 0) {
-			await sleep(SCRIPTED_PROSE_BURST_GAP_MS);
+			await sleep(PROSE_BURST_GAP_MS);
 		}
 		const burst = bursts[index]!;
 		const isLast = index === bursts.length - 1;
