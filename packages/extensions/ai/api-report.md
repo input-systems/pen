@@ -12,6 +12,7 @@
 
 - acceptAllSuggestions
 - acceptSuggestion
+- acceptSuggestions
 - aiExtension
 - applySuggestedAIOperations
 - createSuggestionMark
@@ -24,6 +25,7 @@
 - readSuggestionsFromBlock
 - rejectAllSuggestions
 - rejectSuggestion
+- rejectSuggestions
 - runAgenticLoop
 
 ### value
