@@ -1,9 +1,9 @@
-import { streamChatEvents } from "../server/chatEvents";
-import type { ChatRequest } from "../server/protocol";
+import { resolveAnthropicKey, streamChatLines } from "../server/chatEvents";
+import { CHAT_CONTENT_TYPE, type ChatRequest } from "../server/protocol";
 
 /**
- * `POST /api/chat` for the Cloudflare worker. Same body and ndjson stream
- * as the Vite middleware; Fetch instead of Node's IncomingMessage.
+ * `POST /api/chat` for the Cloudflare worker. Same body and stream as the
+ * Vite middleware, on Fetch instead of Node's request and response.
  */
 export async function handleChatFetch(
 	request: Request,
@@ -16,47 +16,35 @@ export async function handleChatFetch(
 		return new Response("Expected a JSON body", { status: 400 });
 	}
 
-	const header = request.headers.get("x-anthropic-api-key")?.trim() ?? "";
-	const apiKey = header.length > 0 ? header : envKey;
-	const { readable, writable } = new TransformStream<
-		Uint8Array,
-		Uint8Array
-	>();
-	const writer = writable.getWriter();
-	const encoder = new TextEncoder();
+	const apiKey = resolveAnthropicKey(
+		request.headers.get("x-anthropic-api-key") ?? undefined,
+		envKey,
+	);
+	const lines = streamChatLines(body, apiKey, request.signal);
 
-	void writeChat(body, apiKey, request.signal, writer, encoder);
-
-	return new Response(readable, {
+	return new Response(toByteStream(lines), {
 		headers: {
-			"content-type": "application/x-ndjson",
+			"content-type": CHAT_CONTENT_TYPE,
 			"cache-control": "no-cache",
 		},
 	});
 }
 
-async function writeChat(
-	body: ChatRequest,
-	apiKey: string | undefined,
-	signal: AbortSignal,
-	writer: WritableStreamDefaultWriter<Uint8Array>,
-	encoder: TextEncoder,
-): Promise<void> {
-	try {
-		for await (const event of streamChatEvents(body, apiKey, signal)) {
-			await writer.write(encoder.encode(`${JSON.stringify(event)}\n`));
-		}
-	} catch (error) {
-		if (!signal.aborted) {
-			const message =
-				error instanceof Error ? error.message : String(error);
-			await writer.write(
-				encoder.encode(
-					`${JSON.stringify({ type: "error", error: message })}\n`,
-				),
-			);
-		}
-	} finally {
-		await writer.close();
-	}
+function toByteStream(
+	lines: AsyncGenerator<string>,
+): ReadableStream<Uint8Array> {
+	const encoder = new TextEncoder();
+	return new ReadableStream<Uint8Array>({
+		async pull(controller) {
+			const { done, value } = await lines.next();
+			if (done) {
+				controller.close();
+				return;
+			}
+			controller.enqueue(encoder.encode(value));
+		},
+		cancel() {
+			void lines.return(undefined);
+		},
+	});
 }

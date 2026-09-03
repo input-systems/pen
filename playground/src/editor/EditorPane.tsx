@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { getAIController } from "@input/pen-ai";
 import { Pen } from "@input/pen-react";
 import type { Editor } from "@input/pen-types";
@@ -38,8 +37,6 @@ export function EditorPane({
 	onOpenCollaborate,
 	onToggleInspector,
 }: EditorPaneProps) {
-	const scrollRef = useRef<HTMLDivElement>(null);
-
 	const handleOpenInlinePrompt = () => {
 		openInlinePrompt(getAIController(editor));
 	};
@@ -55,7 +52,7 @@ export function EditorPane({
 				onOpenInlinePrompt={handleOpenInlinePrompt}
 			/>
 			<ReviewSurface editor={editor}>
-				<div className="editor-scroll" ref={scrollRef}>
+				<div className="editor-scroll">
 					{/*
 					 * `Pen.Editor.Root` binds a field editor and a rendered DOM tree
 					 * to one editor instance for its whole lifetime. Joining or

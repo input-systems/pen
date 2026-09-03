@@ -1,19 +1,18 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { streamChatEvents } from "./chatEvents";
-import type { ChatEvent, ChatRequest } from "./protocol";
+import { resolveAnthropicKey, streamChatLines } from "./chatEvents";
+import { CHAT_CONTENT_TYPE, type ChatRequest } from "./protocol";
 
 /**
- * `POST /api/chat`: the one endpoint the playground has.
+ * `POST /api/chat` on Node: the one endpoint the playground has.
  *
- * A request header `x-anthropic-api-key` (from the agent menu) or
- * `ANTHROPIC_API_KEY` on the server proxies Anthropic; without either, a
- * scripted model answers so a fresh clone still works. Either way the
- * response is the same newline-delimited event stream.
+ * Reads the body, streams lines, ends. Which model answers and what a line
+ * looks like is decided in `chatEvents.ts`; this file only knows Node's
+ * request and response objects.
  */
 export async function handleChatRequest(
 	incoming: IncomingMessage,
 	response: ServerResponse,
-	apiKey: string | undefined,
+	envKey: string | undefined,
 ): Promise<void> {
 	let request: ChatRequest;
 	try {
@@ -26,7 +25,7 @@ export async function handleChatRequest(
 
 	incoming.socket?.setNoDelay(true);
 	response.writeHead(200, {
-		"content-type": "application/x-ndjson",
+		"content-type": CHAT_CONTENT_TYPE,
 		"cache-control": "no-cache",
 		"x-accel-buffering": "no",
 	});
@@ -36,46 +35,26 @@ export async function handleChatRequest(
 	const controller = new AbortController();
 	incoming.on("close", () => controller.abort());
 
-	const resolvedKey = resolveApiKey(incoming, apiKey);
+	const apiKey = resolveAnthropicKey(
+		headerValue(incoming.headers["x-anthropic-api-key"]),
+		envKey,
+	);
 
-	try {
-		for await (const event of streamChatEvents(
-			request,
-			resolvedKey,
-			controller.signal,
-		)) {
-			if (controller.signal.aborted) {
-				break;
-			}
-			write(response, event);
-		}
-	} catch (error) {
-		if (!controller.signal.aborted) {
-			write(response, { type: "error", error: describe(error) });
-		}
+	for await (const line of streamChatLines(
+		request,
+		apiKey,
+		controller.signal,
+	)) {
+		response.write(line);
 	}
 
 	response.end();
 }
 
-function resolveApiKey(
-	incoming: IncomingMessage,
-	envKey: string | undefined,
+function headerValue(
+	header: string | string[] | undefined,
 ): string | undefined {
-	const header = incoming.headers["x-anthropic-api-key"];
-	const fromHeader = typeof header === "string" ? header.trim() : "";
-	if (fromHeader.length > 0) {
-		return fromHeader;
-	}
-	return envKey;
-}
-
-function write(response: ServerResponse, event: ChatEvent): void {
-	response.write(`${JSON.stringify(event)}\n`);
-}
-
-function describe(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
+	return typeof header === "string" ? header : undefined;
 }
 
 function readBody(incoming: IncomingMessage): Promise<string> {

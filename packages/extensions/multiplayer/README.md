@@ -170,7 +170,7 @@ See `@input/pen-yjs` for the canonical `y-websocket` integration example using:
 - `createYjsProviderSession()`
 
 For a concrete repository reference, see the playground collaboration wiring in
-`playground/src/utils/playgroundCollaboration.ts`.
+`playground/src/collaboration/session.ts`.
 
 ## Options
 

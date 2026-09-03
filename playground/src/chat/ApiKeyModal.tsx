@@ -48,13 +48,13 @@ export function ApiKeyModal({ open, onClose }: ApiKeyModalProps) {
 
 	return (
 		<Modal open={open} title="Anthropic API key" onClose={onClose}>
-			<form className="collaborate-form" onSubmit={handleSubmit}>
-				<p className="collaborate-copy">
+			<form className="modal-form" onSubmit={handleSubmit}>
+				<p className="modal-copy">
 					Saved in this browser and sent with each chat request. Until
 					a key is set here or in playground/.env.local, the scripted
 					model answers.
 				</p>
-				<label className="collaborate-field">
+				<label className="modal-field">
 					<span>API key</span>
 					<input
 						ref={inputRef}
@@ -70,7 +70,7 @@ export function ApiKeyModal({ open, onClose }: ApiKeyModalProps) {
 						onChange={(event) => setKey(event.target.value)}
 					/>
 				</label>
-				<div className="collaborate-actions">
+				<div className="modal-actions">
 					{hasStoredKey ? (
 						<Button kind="faded" onClick={handleClear}>
 							Clear

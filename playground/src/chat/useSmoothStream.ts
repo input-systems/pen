@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import {
 	getSmoothStreamController,
 	type SmoothStreamController,
@@ -6,60 +6,37 @@ import {
 } from "@input/pen-ai/stream";
 import type { Editor } from "@input/pen-types";
 
-export interface SmoothStreamView extends SmoothStreamStatus {
-	readonly controller: SmoothStreamController | null;
-}
-
-const IDLE: SmoothStreamView = {
+const IDLE: SmoothStreamStatus = {
 	isRevealing: false,
 	hiddenCharCount: 0,
 	enabled: false,
-	controller: null,
 };
 
-const snapshots = new WeakMap<SmoothStreamController, SmoothStreamView>();
-
-/**
- * Live paced-reveal status. Same store shape as `useSearch`: subscribe, then
- * read.
- */
-export function useSmoothStream(editor: Editor): SmoothStreamView {
+/** Live paced-reveal status: is text still being painted, and how much. */
+export function useSmoothStream(editor: Editor): SmoothStreamStatus {
 	const controller = getSmoothStreamController(editor);
+	const [status, setStatus] = useState(() => readStatus(controller));
 
-	return useSyncExternalStore(
-		(onStoreChange) => {
-			if (!controller) {
-				return () => {};
-			}
-			return controller.subscribe(() => {
-				onStoreChange();
-			});
-		},
-		() => (controller ? readView(controller) : IDLE),
-		() => IDLE,
-	);
+	useEffect(() => {
+		if (!controller) {
+			return;
+		}
+		setStatus(readStatus(controller));
+		return controller.subscribe(setStatus);
+	}, [controller]);
+
+	return status;
 }
 
-// CRAP here is the missing coverage input, not branching: an untested playground
-// file scores cyclomatic squared. Cognitive is 2.
-// fallow-ignore-next-line complexity
-function readView(controller: SmoothStreamController): SmoothStreamView {
-	const next: SmoothStreamView = {
+function readStatus(
+	controller: SmoothStreamController | null,
+): SmoothStreamStatus {
+	if (!controller) {
+		return IDLE;
+	}
+	return {
 		isRevealing: controller.isRevealing(),
 		hiddenCharCount: controller.hiddenCharCount(),
 		enabled: controller.isEnabled(),
-		controller,
 	};
-	// snapshots is keyed by controller, so previous.controller always matches
-	const previous = snapshots.get(controller);
-	if (
-		previous &&
-		previous.isRevealing === next.isRevealing &&
-		previous.hiddenCharCount === next.hiddenCharCount &&
-		previous.enabled === next.enabled
-	) {
-		return previous;
-	}
-	snapshots.set(controller, next);
-	return next;
 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { formatShortcut } from "./shortcut";
 
 interface TooltipProps {
 	children: ReactNode;
@@ -47,32 +48,4 @@ export function Tooltip({
 			</span>
 		</span>
 	);
-}
-
-/** `Mod` is Cmd on Apple keyboards and Ctrl everywhere else. */
-const IS_APPLE = /Mac|iPhone|iPad/.test(navigator.userAgent);
-
-const KEY_SYMBOLS: Record<string, string> = {
-	mod: IS_APPLE ? "⌘" : "Ctrl",
-	meta: "⌘",
-	ctrl: "⌃",
-	alt: IS_APPLE ? "⌥" : "Alt",
-	shift: "⇧",
-	enter: "↵",
-	backspace: "⌫",
-	escape: "⎋",
-	tab: "⇥",
-};
-
-/**
- * Turns a key binding into the glyphs a keyboard shows: `Shift-Mod-z` → `⇧⌘Z`.
- *
- * Input's formatter is the same substitution table, minus the platform check —
- * it is a Mac-first app and always prints `⌘`.
- */
-function formatShortcut(shortcut: string): string {
-	return shortcut
-		.split(/[+-]/)
-		.map((key) => KEY_SYMBOLS[key.toLowerCase()] ?? key.toUpperCase())
-		.join("");
 }

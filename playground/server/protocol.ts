@@ -42,6 +42,13 @@ export type ChatEvent =
 	| { type: "done" }
 	| { type: "error"; error: string };
 
+export const CHAT_CONTENT_TYPE = "application/x-ndjson";
+
+/** One event per line; `penModel.ts` splits on the newline. */
+export function encodeChatEvent(event: ChatEvent): string {
+	return `${JSON.stringify(event)}\n`;
+}
+
 /** True once the model has run at least one tool this turn. */
 export function hasRunTools(messages: ModelMessage[]): boolean {
 	return messages.some((message) => message.role === "tool");

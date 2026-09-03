@@ -51,36 +51,65 @@ edit and reloads the playground on the new build.
 
 ## What is where
 
+Each folder is one concern. Components render; `use*.ts` hooks own state and
+subscriptions; the remaining `.ts` files are plain functions you can read
+without React in your head.
+
 ```
 src/
+  main.tsx             mounts the app and adopts Pen's review stylesheet
   App.tsx              three panes over one editor
-  editor/              the editor: setup, toolbar, slash menu, inline AI prompt, images, starter document
-  chat/                the agent: transcript, composer, Review toggle, and the hook behind them
-  inspector/           the document-state sheet
-  collaboration/       optional live rooms: name, room, Yjs session
-  ai/                  model adapter and the browser-saved API key
+  editor/              the middle column
+    penEditor.ts         createEditor with this app's extensions
+    usePenEditor.ts      owns the one editor instance; recreates it per room
+    starterDocument.ts   seeds a fresh document with a handful of ops
+    EditorPane.tsx       toolbar over the Pen surface
+    FormatToolbar.tsx    marks, block type, undo, and the top-right buttons
+    SlashMenu.tsx        the / menu, built from the schema
+    ImageBlock.tsx       the image renderer, plus a picker for an empty one
+    assets.ts            where image bytes go, and why blob: URLs are allowed
+    InlinePrompt.tsx     ⌘J: shortcut hook, positioner, composer
+    ReviewSurface.tsx    the bar that accepts or rejects staged suggestions
+    reviewSuggestions.ts names a suggestion: block, action, preview
+  chat/                the left column
+    useChat.ts           sends prompts, keeps a receipt per turn
+    turnOutcome.ts       turns a finished generation into one line
+    useSmoothStream.ts   how much streamed text is still catching up
+    Chat*.tsx            bar, empty state, transcript, composer
+    ApiKeyModal.tsx      the browser-saved Anthropic key
+  inspector/           the right-hand sheet
+    useDocumentSnapshot.ts  reads blocks, revision, selection off the editor
+    InspectorSheet.tsx, BlockTree.tsx
+  collaboration/       optional live rooms
+    session.ts           room in the URL, user in session storage, y-websocket
+    useCollaboration.ts  join, leave, and the invitation modal
+    CollaborateModal.tsx
+  ai/
+    penModel.ts          the ModelAdapter: POST /api/chat, read ndjson back
+    apiKey.ts            the browser-saved key
   ui/                  the interface primitives (see below)
   styles/tokens.css    every colour, size, and radius in the app
-server/
-  aiPlugin.ts          serves /api/chat from the Vite dev server
-  collaborationPlugin.ts  Yjs websocket at /collaboration
-  collaborationRoute.ts   room name in the /collaboration path
-  chatRoute.ts         Node /api/chat
-  chatEvents.ts        pick scripted or Anthropic
+server/                runs inside the Vite dev server
+  aiPlugin.ts          mounts /api/chat
+  chatRoute.ts         Node request in, ndjson lines out
+  chatEvents.ts        pick scripted or Anthropic; encode lines; catch errors
   anthropicModel.ts    real model
   scriptedModel.ts     offline model, used when there is no API key
-  protocol.ts          the four events that cross the wire
-worker/
-  index.ts             Cloudflare fetch: assets, /api/chat, rooms
+  protocol.ts          the events that cross the wire, and how a line is written
+  collaborationPlugin.ts  Yjs websocket at /collaboration
+  collaborationRoute.ts   room name in the /collaboration path
+worker/                the same app on Cloudflare
+  index.ts             fetch: assets, /api/chat, rooms
+  chat.ts              Fetch request in, the same ndjson lines out
   yjsRoom.ts           one Durable Object per y-websocket room
-  chat.ts              Fetch /api/chat
 ```
 
 ## The UI layer
 
 `src/ui/` holds ten primitives — button, tile, select, tooltip, badge, scroll
-area, tabs, sheet, modal, dropdown — plus the icon set, the 3×3 agent loader,
-and one stylesheet. They are simplified ports of
+area, tabs, sheet, modal, toggle — plus the icon set, the 3×3 agent loader,
+three small helpers (`keepCaret`, `useEscapeKey`, `shortcut`), and one
+stylesheet. They are simplified ports of
 [Input](https://www.input.so)'s design system, which is where the look comes from:
 quiet surfaces, hairline borders, pill buttons whose hover fill grows into place,
 tooltips that carry the key binding, cards with a shadow instead of a border, and
@@ -116,15 +145,15 @@ that surprises people. Pen routes each prompt — rewrite the selection, continu
 at the cursor, or run a tool loop — and the answer arrives either as text
 streamed into a block or as tool calls that Pen applies. Nothing comes back for
 the sidebar to print, so the sidebar keeps a receipt of what changed and names
-the route Pen chose. `server/scriptedModel.ts` shows both shapes: it calls
-`write_document` when Pen offers tools, and streams clause-sized bursts when it
+the route Pen chose. `server/scriptedModel.ts` shows both shapes: it calls a
+document tool when Pen offers one, and streams clause-sized bursts when it
 does not (clause-sized bursts make the paced paint visible; a word-at-a-time
 script would hide it).
 
 The same path is available in the document. `⌘J` / `Ctrl+J` (or the wand in
 the toolbar) opens Input's inline prompt on the current block.
-`editor/InlinePrompt.tsx` inserts that box in the document flow before the
-block — so a replacement paints below it, not above — and
+`editor/InlinePromptPositioner.tsx` inserts that box in the document flow
+before the block — so a replacement paints below it, not above — and
 `InlinePromptComposer.tsx` is the chrome: the same send arrow as the agent
 composer, Discard / Accept while a review is pending. Undo after Accept
 reopens that review without taking focus, so Redo still works.

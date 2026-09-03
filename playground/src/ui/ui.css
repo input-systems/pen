@@ -761,19 +761,19 @@
 	font-weight: 500;
 }
 
-.collaborate-form {
+.modal-form {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-md);
 }
 
-.collaborate-copy {
+.modal-copy {
 	color: var(--palette-b60);
 	font-size: var(--font-size-base);
 	line-height: 1.5;
 }
 
-.collaborate-field {
+.modal-field {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-xs);
@@ -782,7 +782,7 @@
 	font-weight: 500;
 }
 
-.collaborate-field input {
+.modal-field input {
 	height: 36px;
 	padding: 0 var(--spacing-md);
 	border: none;
@@ -796,11 +796,11 @@
 	outline: none;
 }
 
-.collaborate-field input:focus {
+.modal-field input:focus {
 	box-shadow: var(--input-shadow-focus);
 }
 
-.collaborate-actions {
+.modal-actions {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing-sm);

@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Button } from "./Button";
 import { Icon } from "./Icon";
 import { ScrollArea } from "./ScrollArea";
+import { useEscapeKey } from "./useEscapeKey";
 
 interface SheetProps {
 	title: string;
@@ -32,20 +33,7 @@ export function Sheet({
 	children,
 	headerActions,
 }: SheetProps) {
-	useEffect(() => {
-		if (!open) {
-			return;
-		}
-
-		const closeOnEscape = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				onClose();
-			}
-		};
-
-		document.addEventListener("keydown", closeOnEscape);
-		return () => document.removeEventListener("keydown", closeOnEscape);
-	}, [open, onClose]);
+	useEscapeKey(open, onClose);
 
 	return (
 		<aside

@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "./Button";
 import { Icon } from "./Icon";
+import { keepCaret } from "./keepCaret";
 
 interface SelectOption {
 	value: string;
@@ -163,8 +164,4 @@ export function Select({
 			) : null}
 		</div>
 	);
-}
-
-function keepCaret(event: MouseEvent) {
-	event.preventDefault();
 }

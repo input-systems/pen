@@ -6,10 +6,11 @@ import { WebSocketServer, type WebSocket } from "ws";
 import { COLLABORATION_ROUTE, roomFromPath } from "./collaborationRoute";
 
 /**
- * Serves the Yjs websocket on the Vite dev server at `/collaboration`.
+ * Serves the Yjs websocket on the Vite dev server at `/collaboration/<room>`.
  *
- * Kitchen-sink runs this on a second process and port. The playground keeps
- * `pnpm dev` as the only command, the same way the chat route does.
+ * y-websocket's reference server runs on its own process and port. The
+ * playground keeps `pnpm dev` as the only command, the same way the chat
+ * route does, by handling the upgrade on Vite's HTTP server.
  */
 export function collaborationPlugin(): Plugin {
 	return {
@@ -20,21 +21,16 @@ export function collaborationPlugin(): Plugin {
 				"connection",
 				(socket: WebSocket, request: IncomingMessage) => {
 					setupWSConnection(socket, request, {
-						docName: roomFromRequest(request),
+						docName: roomFromPath(pathnameOf(request)),
 						gc: true,
 					});
 				},
 			);
 
 			vite.httpServer?.on("upgrade", (request, socket, head) => {
-				const path = new URL(
-					request.url ?? COLLABORATION_ROUTE,
-					"http://localhost",
-				).pathname;
-				if (!path.startsWith(COLLABORATION_ROUTE)) {
+				if (!pathnameOf(request).startsWith(COLLABORATION_ROUTE)) {
 					return;
 				}
-
 				sockets.handleUpgrade(
 					request,
 					socket as Duplex,
@@ -48,8 +44,6 @@ export function collaborationPlugin(): Plugin {
 	};
 }
 
-function roomFromRequest(request: IncomingMessage): string {
-	const path = new URL(request.url ?? COLLABORATION_ROUTE, "http://localhost")
-		.pathname;
-	return roomFromPath(path);
+function pathnameOf(request: IncomingMessage): string {
+	return new URL(request.url ?? "/", "http://localhost").pathname;
 }

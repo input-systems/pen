@@ -1,7 +1,20 @@
 import { expect, type Page } from "@playwright/test";
 import type { InlineDelta, SelectionState } from "@input/pen-types";
 
+/** The OS modifier, for shortcuts the browser itself handles (copy, paste). */
 export const MODIFIER = process.platform === "darwin" ? "Meta" : "Control";
+
+/**
+ * The modifier the app binds `Mod` to. It reads `navigator.userAgent`, and
+ * Playwright's desktop devices may emulate another OS than the host, so the
+ * two can differ.
+ */
+export async function readAppModifier(page: Page): Promise<"Meta" | "Control"> {
+	const isApple = await page.evaluate(() =>
+		/Mac|iPhone|iPad/.test(navigator.userAgent),
+	);
+	return isApple ? "Meta" : "Control";
+}
 
 export async function openPlayground(page: Page): Promise<void> {
 	await page.goto("/");

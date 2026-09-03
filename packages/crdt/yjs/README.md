@@ -179,9 +179,8 @@ const editor = createEditor({
 ```
 
 For a concrete repository reference, see
-`playground/src/utils/playgroundCollaboration.ts`, which includes a reusable
-`createYWebsocketSessionFactory()` helper for the playground&apos;s `y-websocket`
-setup.
+`playground/src/collaboration/session.ts`, whose `createCollaborationExtension()`
+wraps a `y-websocket` provider with `createYjsProviderSession()`.
 
 ## Why `getYjsAwareness()` exists
 

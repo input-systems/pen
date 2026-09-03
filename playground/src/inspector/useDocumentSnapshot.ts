@@ -1,5 +1,5 @@
-import { isCollapsed, isMultiBlock } from "@input/pen-core";
 import { useEffect, useState } from "react";
+import { isCollapsed, isMultiBlock } from "@input/pen-core";
 import type { BlockHandle, Editor } from "@input/pen-types";
 
 export interface SnapshotBlock {

@@ -1,26 +1,22 @@
-import type { PersistentSuggestion } from "@input/pen-ai";
+import type { ReactNode } from "react";
 import { useAIActions, useSuggestions } from "@input/pen-react";
 import type { Editor } from "@input/pen-types";
-import type { MouseEvent, ReactNode } from "react";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
+import { keepCaret } from "../ui/keepCaret";
 import { ScrollArea } from "../ui/ScrollArea";
+import {
+	describeSuggestionChange,
+	describeSuggestionLocation,
+	isDeletion,
+	sortSuggestionsByDocumentOrder,
+	suggestionActionLabel,
+} from "./reviewSuggestions";
 
 interface ReviewSurfaceProps {
 	editor: Editor;
 	children: ReactNode;
 }
-
-const ACTION_LABELS = {
-	insert: "Insert",
-	delete: "Delete",
-	"insert-block": "Insert",
-	"delete-block": "Delete",
-	"move-block": "Move",
-	"convert-block": "Convert",
-	"split-block": "Split",
-	"format-text": "Format",
-} as const satisfies Record<PersistentSuggestion["action"], string>;
 
 /**
  * Hosts the document review bar.
@@ -39,36 +35,19 @@ export function ReviewSurface({ editor, children }: ReviewSurfaceProps) {
 		suggestions,
 	);
 
-	function acceptAll() {
-		aiActions.acceptAllSuggestions();
-	}
-
-	function rejectAll() {
-		aiActions.rejectAllSuggestions();
-	}
-
 	const suggestionRows = orderedSuggestions.map((suggestion) => (
 		<ReviewChangeRow
 			key={suggestion.id}
-			badge={ACTION_LABELS[suggestion.action]}
+			badge={suggestionActionLabel(suggestion)}
 			badgeColor={
-				suggestion.action === "delete" ||
-				suggestion.action === "delete-block"
+				isDeletion(suggestion)
 					? "var(--palette-b40)"
 					: "var(--palette-purple)"
 			}
-			where={blockWhereLabel(
-				editor,
-				suggestion.blockId,
-				suggestion.kind === "text" ? suggestion.cell : undefined,
-			)}
-			summary={suggestionPreview(editor, suggestion)}
-			onAccept={() => {
-				aiActions.acceptSuggestion(suggestion.id);
-			}}
-			onReject={() => {
-				aiActions.rejectSuggestion(suggestion.id);
-			}}
+			where={describeSuggestionLocation(editor, suggestion)}
+			summary={describeSuggestionChange(editor, suggestion)}
+			onAccept={() => aiActions.acceptSuggestion(suggestion.id)}
+			onReject={() => aiActions.rejectSuggestion(suggestion.id)}
 		/>
 	));
 
@@ -81,10 +60,18 @@ export function ReviewSurface({ editor, children }: ReviewSurfaceProps) {
 						: `${pendingCount} proposed changes`}
 				</div>
 				<div className="review-bar-actions">
-					<Button kind="faded" size="sm" onClick={rejectAll}>
+					<Button
+						kind="faded"
+						size="sm"
+						onClick={aiActions.rejectAllSuggestions}
+					>
 						Reject all
 					</Button>
-					<Button kind="primary" size="sm" onClick={acceptAll}>
+					<Button
+						kind="primary"
+						size="sm"
+						onClick={aiActions.acceptAllSuggestions}
+					>
 						Accept all
 					</Button>
 				</div>
@@ -130,7 +117,7 @@ function ReviewChangeRow({
 				<Button
 					kind="faded"
 					size="sm"
-					onMouseDown={preventEditorBlur}
+					onMouseDown={keepCaret}
 					onClick={onReject}
 				>
 					Reject
@@ -138,7 +125,7 @@ function ReviewChangeRow({
 				<Button
 					kind="primary"
 					size="sm"
-					onMouseDown={preventEditorBlur}
+					onMouseDown={keepCaret}
 					onClick={onAccept}
 				>
 					Accept
@@ -146,129 +133,4 @@ function ReviewChangeRow({
 			</div>
 		</div>
 	);
-}
-
-function preventEditorBlur(event: MouseEvent) {
-	event.preventDefault();
-}
-
-function sortSuggestionsByDocumentOrder(
-	editor: Editor,
-	suggestions: readonly PersistentSuggestion[],
-): PersistentSuggestion[] {
-	const order = new Map(
-		editor.documentState.blockOrder.map((blockId, index) => [
-			blockId,
-			index,
-		]),
-	);
-
-	return [...suggestions].sort((left, right) => {
-		const leftIndex = order.get(left.blockId) ?? Number.MAX_SAFE_INTEGER;
-		const rightIndex = order.get(right.blockId) ?? Number.MAX_SAFE_INTEGER;
-		if (leftIndex !== rightIndex) {
-			return leftIndex - rightIndex;
-		}
-		const leftCell = left.kind === "text" ? left.cell : undefined;
-		const rightCell = right.kind === "text" ? right.cell : undefined;
-		if (leftCell && rightCell) {
-			if (leftCell.row !== rightCell.row) {
-				return leftCell.row - rightCell.row;
-			}
-			if (leftCell.col !== rightCell.col) {
-				return leftCell.col - rightCell.col;
-			}
-		} else if (leftCell) {
-			return 1;
-		} else if (rightCell) {
-			return -1;
-		}
-		const leftOffset = left.kind === "text" ? left.offset : 0;
-		const rightOffset = right.kind === "text" ? right.offset : 0;
-		return leftOffset - rightOffset;
-	});
-}
-
-function blockWhereLabel(
-	editor: Editor,
-	blockId: string,
-	cell?: { row: number; col: number },
-): string {
-	const block = editor.getBlock(blockId);
-	if (!block) {
-		return "Unknown block";
-	}
-	if (cell) {
-		const cellText = block
-			.as("table")
-			?.tableCell(cell.row, cell.col)
-			?.textContent()
-			.trim();
-		const coord = `r${cell.row + 1}c${cell.col + 1}`;
-		return cellText
-			? `table · ${coord} · ${truncate(cellText)}`
-			: `table · ${coord}`;
-	}
-	const preview = truncate(block.textContent().trim());
-	return preview ? `${block.type} · ${preview}` : block.type;
-}
-
-function suggestionPreview(
-	editor: Editor,
-	suggestion: PersistentSuggestion,
-): string {
-	const block = editor.getBlock(suggestion.blockId);
-	if (suggestion.kind === "text") {
-		const source = suggestion.cell
-			? (block
-					?.as("table")
-					?.tableCell(suggestion.cell.row, suggestion.cell.col)
-					?.textContent() ?? "")
-			: (block?.textContent() ?? "");
-		const text = source
-			.slice(suggestion.offset, suggestion.offset + suggestion.length)
-			.trim();
-		if (text) {
-			return truncate(text);
-		}
-		return suggestion.action === "delete"
-			? "Deleted text"
-			: "Inserted text";
-	}
-
-	switch (suggestion.action) {
-		case "insert-block":
-			return `Insert ${block?.type ?? "block"}`;
-		case "delete-block":
-			return `Delete ${block?.type ?? "block"}`;
-		case "move-block":
-			return `Move ${block?.type ?? "block"}`;
-		// A pending attribute change leaves the block as it was, so the block
-		// itself only tells you the half that is not changing. The proposal
-		// rides on the suggestion.
-		case "convert-block": {
-			const proposed = suggestion.previousState?.type;
-			const current = block?.type ?? "block";
-			return proposed
-				? `Convert ${current} to ${proposed}`
-				: `Convert ${current}`;
-		}
-		case "split-block":
-			return `Split ${block?.type ?? "block"}`;
-		case "format-text": {
-			const marks = Object.keys(
-				suggestion.previousState?.format?.marks ?? {},
-			);
-			return marks.length > 0
-				? `Format ${marks.join(", ")}`
-				: `Format ${block?.type ?? "block"}`;
-		}
-	}
-}
-
-function truncate(value: string, maxLength = 56): string {
-	if (value.length <= maxLength) {
-		return value;
-	}
-	return `${value.slice(0, maxLength)}…`;
 }

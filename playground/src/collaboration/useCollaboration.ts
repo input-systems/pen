@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import {
 	readRoomFromUrl,
 	readSession,
@@ -8,41 +8,50 @@ import {
 	type CollaborationSession,
 } from "./session";
 
+interface JoinRequest {
+	name: string;
+	room: string;
+}
+
+/**
+ * The room this tab is in, if any, and the modal that gets you into one.
+ *
+ * The URL carries the room and session storage carries the display name, so
+ * a reload rejoins on its own. A session only exists once both are known.
+ */
 export function useCollaboration() {
-	const [session, setSession] = useState<CollaborationSession | null>(() =>
-		readSession(),
+	const [user, setUser] = useState(readStoredUser);
+	const [session, setSession] = useState<CollaborationSession | null>(
+		readSession,
 	);
 	// A shared `?room=` link is an invitation, not a join. Without a stored
 	// name there is no session, so open the card and let them pick one.
 	const [isModalOpen, setIsModalOpen] = useState(
-		() => readRoomFromUrl() !== null && readSession() === null,
+		() => session === null && readRoomFromUrl() !== null,
 	);
 
-	const storedUser = readStoredUser();
-	const defaultName = session?.user.name ?? storedUser.name;
-	const defaultRoom = session?.room ?? readRoomFromUrl() ?? "";
+	const openModal = () => setIsModalOpen(true);
+	const closeModal = () => setIsModalOpen(false);
 
-	const openModal = useCallback(() => setIsModalOpen(true), []);
-	const closeModal = useCallback(() => setIsModalOpen(false), []);
-
-	const join = useCallback((next: { name: string; room: string }) => {
-		const user = saveUserName(next.name);
-		writeRoomToUrl(next.room);
-		setSession({ room: next.room, user });
+	const join = ({ name, room }: JoinRequest) => {
+		const nextUser = saveUserName(name);
+		writeRoomToUrl(room);
+		setUser(nextUser);
+		setSession({ room, user: nextUser });
 		setIsModalOpen(false);
-	}, []);
+	};
 
-	const leave = useCallback(() => {
+	const leave = () => {
 		writeRoomToUrl(null);
 		setSession(null);
 		setIsModalOpen(false);
-	}, []);
+	};
 
 	return {
 		session,
 		isModalOpen,
-		defaultName,
-		defaultRoom,
+		defaultName: user.name,
+		defaultRoom: session?.room ?? readRoomFromUrl() ?? "",
 		openModal,
 		closeModal,
 		join,

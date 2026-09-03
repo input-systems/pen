@@ -1,9 +1,5 @@
-import {
-	useLayoutEffect,
-	type FormEvent,
-	type KeyboardEvent,
-	type PointerEvent,
-} from "react";
+import { useLayoutEffect, type FormEvent, type KeyboardEvent } from "react";
+import type { AISession } from "@input/pen-ai";
 import {
 	useAIContext,
 	useAISessionActions,
@@ -11,6 +7,7 @@ import {
 } from "@input/pen-react";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
+import { keepCaret } from "../ui/keepCaret";
 
 /**
  * Input's inline intelligence chrome: history of what you asked, the textarea,
@@ -19,54 +16,64 @@ import { Icon } from "../ui/Icon";
  * pending and the box is empty, that row is Discard / Accept instead.
  */
 export function InlinePromptComposer({ placeholder }: { placeholder: string }) {
-	const { editor, state, controller } = useAIContext();
+	const { editor } = useAIContext();
 	const session = useContextualPromptSession(editor);
+
+	if (!session) {
+		return null;
+	}
+	return <InlinePromptForm session={session} placeholder={placeholder} />;
+}
+
+interface InlinePromptFormProps {
+	session: AISession;
+	placeholder: string;
+}
+
+function InlinePromptForm({ session, placeholder }: InlinePromptFormProps) {
+	const { editor, state, controller } = useAIContext();
 	const actions = useAISessionActions(editor);
 
+	const sessionId = session.id;
 	const isRunning =
-		state.activeGeneration?.sessionId != null &&
-		state.activeGeneration.sessionId === session?.id &&
+		state.activeGeneration?.sessionId === sessionId &&
 		state.activeGeneration.status === "streaming";
-	const storedDraft = session?.contextualPrompt?.composer.draftPrompt ?? "";
-	const sessionTurns = session?.turns ?? [];
-	const latestTurnPrompt = sessionTurns[sessionTurns.length - 1]?.prompt ?? "";
-	const pendingCount = session?.pendingSuggestionIds.length ?? 0;
-	const sessionId = session?.id;
+	const pendingCount = session.pendingSuggestionIds.length;
 	const isReviewing = pendingCount > 0 && !isRunning;
-	// undo restages the ask as the draft. Input keeps it in history only.
+
+	// Undo restages the last ask as the draft; Input keeps it in history only.
+	const storedDraft = session.contextualPrompt?.composer.draftPrompt ?? "";
+	const latestTurnPrompt = session.turns.at(-1)?.prompt ?? "";
 	const isRestoredReviewDraft =
-		isReviewing && storedDraft === latestTurnPrompt && latestTurnPrompt !== "";
+		isReviewing &&
+		latestTurnPrompt !== "" &&
+		storedDraft === latestTurnPrompt;
 	const draftPrompt = isRestoredReviewDraft ? "" : storedDraft;
+
 	const isPromptEmpty = draftPrompt.trim().length === 0;
 	const showApprove = isReviewing && isPromptEmpty;
 	const canSend = !isPromptEmpty && !isRunning;
 
 	useLayoutEffect(() => {
-		if (!isRestoredReviewDraft || sessionId == null) {
-			return;
+		if (isRestoredReviewDraft) {
+			controller?.updateContextualPromptDraft(sessionId, "");
 		}
-		controller?.updateContextualPromptDraft(sessionId, "");
 	}, [controller, isRestoredReviewDraft, sessionId]);
 
-	if (!session || sessionId == null) {
-		return null;
-	}
-
 	function submit() {
-		const nextPrompt = draftPrompt.trim();
-		if (!nextPrompt || isRunning) {
+		const prompt = draftPrompt.trim();
+		if (!prompt || isRunning) {
 			return;
 		}
-		void actions.runSessionPrompt(sessionId, nextPrompt, {
+		void actions.runSessionPrompt(sessionId, prompt, {
 			target: "selection",
 		});
 	}
 
 	function accept() {
-		if (!actions.acceptSession(sessionId)) {
-			return;
+		if (actions.acceptSession(sessionId)) {
+			editor.undoManager.stopCapturing();
 		}
-		editor.undoManager.stopCapturing();
 	}
 
 	function discard() {
@@ -88,13 +95,19 @@ export function InlinePromptComposer({ placeholder }: { placeholder: string }) {
 		actions.cancelSession(sessionId);
 	}
 
-	function handleSubmit(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
+	// Enter sends (or accepts while reviewing), Shift+Enter breaks a line,
+	// Escape dismisses.
+	function confirm() {
 		if (showApprove) {
 			accept();
-			return;
+		} else {
+			submit();
 		}
-		submit();
+	}
+
+	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		confirm();
 	}
 
 	function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -105,32 +118,21 @@ export function InlinePromptComposer({ placeholder }: { placeholder: string }) {
 		) {
 			event.preventDefault();
 			event.stopPropagation();
-			if (showApprove) {
-				accept();
-				return;
-			}
-			submit();
+			confirm();
 			return;
 		}
-		if (event.key !== "Escape") {
-			return;
+		if (event.key === "Escape") {
+			event.preventDefault();
+			event.stopPropagation();
+			dismiss();
 		}
-		event.preventDefault();
-		event.stopPropagation();
-		dismiss();
 	}
 
-	function handleActionPointerDown(event: PointerEvent) {
-		event.preventDefault();
-	}
-
-	const historyItems = sessionTurns.map((turn) => (
+	const historyItems = session.turns.map((turn) => (
 		<div key={turn.id} data-pen-ai-inline-session-prompt="">
 			{turn.prompt}
 		</div>
 	));
-
-	const statusLabel = statusCopy(isRunning, pendingCount);
 
 	return (
 		<form
@@ -153,14 +155,16 @@ export function InlinePromptComposer({ placeholder }: { placeholder: string }) {
 				}
 			/>
 			<div data-pen-ai-inline-session-controls="">
-				<div data-pen-ai-inline-session-status="">{statusLabel}</div>
+				<div data-pen-ai-inline-session-status="">
+					{describeStatus(isRunning, pendingCount)}
+				</div>
 				<div data-pen-ai-inline-session-actions="">
 					{isRunning ? (
 						<Button.Tooltip content="Stop" side="top">
 							<Button.Icon
 								label="Stop"
 								kind="faded"
-								onPointerDown={handleActionPointerDown}
+								onPointerDown={keepCaret}
 								onClick={() => actions.cancelSession(sessionId)}
 							>
 								<Icon.Stop />
@@ -178,7 +182,7 @@ export function InlinePromptComposer({ placeholder }: { placeholder: string }) {
 								kind="primary"
 								type="submit"
 								disabled={!canSend}
-								onPointerDown={handleActionPointerDown}
+								onPointerDown={keepCaret}
 							>
 								<Icon.ArrowUp />
 							</Button.Icon>
@@ -188,7 +192,7 @@ export function InlinePromptComposer({ placeholder }: { placeholder: string }) {
 						<>
 							<Button
 								size="sm"
-								onPointerDown={handleActionPointerDown}
+								onPointerDown={keepCaret}
 								onClick={discard}
 							>
 								Discard
@@ -196,7 +200,7 @@ export function InlinePromptComposer({ placeholder }: { placeholder: string }) {
 							<Button
 								kind="secondary"
 								size="sm"
-								onPointerDown={handleActionPointerDown}
+								onPointerDown={keepCaret}
 								onClick={accept}
 							>
 								Accept
@@ -209,7 +213,7 @@ export function InlinePromptComposer({ placeholder }: { placeholder: string }) {
 	);
 }
 
-function statusCopy(isRunning: boolean, pendingCount: number): string {
+function describeStatus(isRunning: boolean, pendingCount: number): string {
 	if (isRunning) {
 		return "Writing";
 	}

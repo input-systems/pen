@@ -1,4 +1,4 @@
-import type React from "react";
+import type { ChangeEvent, ReactElement, Ref } from "react";
 import { ImageRenderer, useEditorContext } from "@input/pen-react";
 import { uploadImageFiles } from "@input/pen-dom/field-editor/transferImages";
 import type { BlockHandle, BlockRenderContext } from "@input/pen-types";
@@ -16,7 +16,7 @@ import { playgroundAssets } from "./assets";
 export function ImageBlockRenderer(
 	block: BlockHandle,
 	ctx: BlockRenderContext,
-): React.ReactElement {
+): ReactElement {
 	const src = block.props?.src;
 	if (typeof src === "string" && src.length > 0) {
 		return ImageRenderer(block, ctx);
@@ -33,7 +33,7 @@ function ImagePicker({
 }) {
 	const { editor, readonly } = useEditorContext();
 
-	const handleChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+	const handleChange = async (event: ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		// let the same file be picked again after a failed upload
 		event.target.value = "";
@@ -72,7 +72,7 @@ function ImagePicker({
 
 	return (
 		<figure
-			ref={ctx.ref as React.Ref<HTMLElement>}
+			ref={ctx.ref as Ref<HTMLElement>}
 			data-block-type="image"
 			data-image-empty=""
 			data-selected={ctx.selected ? "" : undefined}

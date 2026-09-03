@@ -1,11 +1,16 @@
-import { expect, test } from "@playwright/test";
-import { MODIFIER, openPlayground } from "./penPlayground.utils";
+import { expect, test, type Page } from "@playwright/test";
+import { openPlayground, readAppModifier } from "./penPlayground.utils";
+
+async function openInlinePromptWithShortcut(page: Page): Promise<void> {
+	const modifier = await readAppModifier(page);
+	await page.locator("[data-pen-editor-content]").click();
+	await page.keyboard.press(`${modifier}+j`);
+}
 
 test("opens the inline AI prompt with Mod+J", async ({ page }) => {
 	await openPlayground(page);
 
-	await page.locator("[data-pen-editor-content]").click();
-	await page.keyboard.press(`${MODIFIER}+j`);
+	await openInlinePromptWithShortcut(page);
 
 	await expect(
 		page.locator("[data-pen-ai-inline-session-input]"),
@@ -30,8 +35,7 @@ test("opens the inline AI prompt from the toolbar", async ({ page }) => {
 test("inserts the inline prompt before the current block", async ({ page }) => {
 	await openPlayground(page);
 
-	await page.locator("[data-pen-editor-content]").click();
-	await page.keyboard.press(`${MODIFIER}+j`);
+	await openInlinePromptWithShortcut(page);
 
 	const session = page.locator("[data-pen-ai-inline-session]");
 	await expect(session).toBeVisible();
@@ -53,8 +57,7 @@ test("inserts the inline prompt before the current block", async ({ page }) => {
 test("keeps focus in the inline prompt while typing", async ({ page }) => {
 	await openPlayground(page);
 
-	await page.locator("[data-pen-editor-content]").click();
-	await page.keyboard.press(`${MODIFIER}+j`);
+	await openInlinePromptWithShortcut(page);
 
 	const input = page.locator("[data-pen-ai-inline-session-input]");
 	await expect(input).toBeVisible();

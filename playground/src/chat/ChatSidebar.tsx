@@ -14,7 +14,8 @@ import { useChat } from "./useChat";
  * sit in the middle of the column; after that the transcript takes the room.
  *
  * Pen ships no chat component. It exposes the AI state and the actions, and the
- * UI is entirely yours — this one is about a hundred lines across four files.
+ * UI is entirely yours: `useChat` is the state, the four components are the
+ * view.
  */
 export function ChatSidebar({ editor }: { editor: Editor }) {
 	const chat = useChat(editor);

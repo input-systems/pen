@@ -1,15 +1,12 @@
-import {
-	useCallback,
-	useSyncExternalStore,
-	type MouseEvent,
-	type ReactNode,
-} from "react";
+import type { ReactNode } from "react";
 import { convertBlock, getCommandRegistry } from "@input/pen-core";
 import { Pen, useToolbarContext } from "@input/pen-react";
 import type { Editor } from "@input/pen-types";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
+import { keepCaret } from "../ui/keepCaret";
 import { Select } from "../ui/Select";
+import { useUndoState } from "./useUndoState";
 
 interface FormatToolbarProps {
 	editor: Editor;
@@ -160,23 +157,25 @@ function BlockTypeSelect() {
 }
 
 function applyBlockType(editor: Editor, newType: string) {
+	const blockId = selectedBlockId(editor);
+	if (blockId) {
+		getCommandRegistry(editor)?.dispatch(convertBlock, {
+			blockId,
+			newType,
+		});
+	}
+}
+
+/** The block a type change applies to: the caret's, or the first selected. */
+function selectedBlockId(editor: Editor): string | null {
 	const selection = editor.selection;
-	if (!selection) {
-		return;
+	if (selection?.type === "text") {
+		return selection.anchor.blockId;
 	}
-
-	const blockId =
-		selection.type === "text"
-			? selection.anchor.blockId
-			: selection.type === "block" && selection.blockIds.length > 0
-				? selection.blockIds[0]
-				: null;
-
-	if (!blockId) {
-		return;
+	if (selection?.type === "block") {
+		return selection.blockIds[0] ?? null;
 	}
-
-	getCommandRegistry(editor)?.dispatch(convertBlock, { blockId, newType });
+	return null;
 }
 
 /**
@@ -209,28 +208,4 @@ function MarkToggle({
 			</Pen.Toolbar.Toggle>
 		</Button.Tooltip>
 	);
-}
-
-/**
- * Pressing a toolbar button must not move DOM focus, or the caret disappears
- * and the mark lands nowhere. Input does the same at its toolbar call sites.
- */
-function keepCaret(event: MouseEvent) {
-	event.preventDefault();
-}
-
-function useUndoState(editor: Editor): { canUndo: boolean; canRedo: boolean } {
-	const subscribe = useCallback(
-		(onChange: () => void) => editor.undoManager.onStackChange(onChange),
-		[editor],
-	);
-
-	const canUndo = useSyncExternalStore(subscribe, () =>
-		editor.undoManager.canUndo(),
-	);
-	const canRedo = useSyncExternalStore(subscribe, () =>
-		editor.undoManager.canRedo(),
-	);
-
-	return { canUndo, canRedo };
 }

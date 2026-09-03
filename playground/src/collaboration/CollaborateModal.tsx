@@ -54,12 +54,12 @@ export function CollaborateModal({
 
 	return (
 		<Modal open={open} title="Live collaboration" onClose={onClose}>
-			<form className="collaborate-form" onSubmit={handleSubmit}>
-				<p className="collaborate-copy">
+			<form className="modal-form" onSubmit={handleSubmit}>
+				<p className="modal-copy">
 					Share this page — the room is in the URL. Your display
 					name is what they see on your caret.
 				</p>
-				<label className="collaborate-field">
+				<label className="modal-field">
 					<span>Your name</span>
 					<input
 						ref={nameRef}
@@ -69,7 +69,7 @@ export function CollaborateModal({
 						onChange={(event) => setName(event.target.value)}
 					/>
 				</label>
-				<label className="collaborate-field">
+				<label className="modal-field">
 					<span>Room</span>
 					<input
 						value={room}
@@ -79,7 +79,7 @@ export function CollaborateModal({
 						onChange={(event) => setRoom(event.target.value)}
 					/>
 				</label>
-				<div className="collaborate-actions">
+				<div className="modal-actions">
 					{live ? (
 						<Button kind="faded" onClick={onLeave}>
 							Leave room

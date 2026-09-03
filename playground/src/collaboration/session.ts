@@ -30,9 +30,6 @@ export interface CollaborationSession {
 }
 
 export function readRoomFromUrl(): string | null {
-	if (typeof window === "undefined") {
-		return null;
-	}
 	const room = new URL(window.location.href).searchParams
 		.get(ROOM_QUERY)
 		?.trim();
@@ -53,25 +50,17 @@ export function writeRoomToUrl(room: string | null): void {
 	window.history.replaceState(null, "", next);
 }
 
+/**
+ * This tab's identity: a stable id and caret colour, minted once per tab, plus
+ * whatever display name was last saved. Session storage keeps two tabs from
+ * sharing one caret.
+ */
 export function readStoredUser(): CollaborationUser {
-	const stored = window.sessionStorage.getItem(USER_STORAGE_KEY);
+	const stored = parseStoredUser(
+		window.sessionStorage.getItem(USER_STORAGE_KEY),
+	);
 	if (stored) {
-		try {
-			const parsed = JSON.parse(stored) as Partial<CollaborationUser>;
-			if (
-				typeof parsed.id === "string" &&
-				typeof parsed.name === "string" &&
-				typeof parsed.color === "string"
-			) {
-				return {
-					id: parsed.id,
-					name: parsed.name,
-					color: parsed.color,
-				};
-			}
-		} catch {
-			// fall through and mint a new one
-		}
+		return stored;
 	}
 
 	const id = generateId();
@@ -80,17 +69,37 @@ export function readStoredUser(): CollaborationUser {
 		name: "",
 		color: USER_COLORS[hashString(id) % USER_COLORS.length],
 	};
-	window.sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+	storeUser(user);
 	return user;
 }
 
 export function saveUserName(name: string): CollaborationUser {
-	const user = {
-		...readStoredUser(),
-		name: name.trim(),
-	};
-	window.sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+	const user = { ...readStoredUser(), name: name.trim() };
+	storeUser(user);
 	return user;
+}
+
+function parseStoredUser(raw: string | null): CollaborationUser | null {
+	if (!raw) {
+		return null;
+	}
+	try {
+		const parsed = JSON.parse(raw) as Partial<CollaborationUser>;
+		if (
+			typeof parsed.id === "string" &&
+			typeof parsed.name === "string" &&
+			typeof parsed.color === "string"
+		) {
+			return { id: parsed.id, name: parsed.name, color: parsed.color };
+		}
+	} catch {
+		// unreadable: mint a new one
+	}
+	return null;
+}
+
+function storeUser(user: CollaborationUser): void {
+	window.sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
 }
 
 export function readSession(): CollaborationSession | null {

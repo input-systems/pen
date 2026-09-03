@@ -171,7 +171,8 @@ interface PendingToolCall {
 
 /**
  * Anthropic sends tool arguments as a stream of JSON fragments, so a tool call
- * is only complete at `content_block_stop`. Everything else maps one to one.
+ * is only complete at `content_block_stop` — or when the stream is cut short
+ * by `max_tokens` or simply ends. Everything else maps one to one.
  */
 async function* readAnthropicStream(
 	body: ReadableStream<Uint8Array>,
@@ -220,12 +221,7 @@ async function* readAnthropicStream(
 
 			case "content_block_stop": {
 				if (pendingToolCall) {
-					yield {
-						type: "tool-call",
-						toolCallId: pendingToolCall.toolCallId,
-						toolName: pendingToolCall.toolName,
-						input: parseToolInput(pendingToolCall.json),
-					};
+					yield completeToolCall(pendingToolCall);
 					pendingToolCall = null;
 				}
 				break;
@@ -236,12 +232,7 @@ async function* readAnthropicStream(
 					event.delta?.stop_reason === "max_tokens" &&
 					pendingToolCall
 				) {
-					yield {
-						type: "tool-call",
-						toolCallId: pendingToolCall.toolCallId,
-						toolName: pendingToolCall.toolName,
-						input: parseToolInput(pendingToolCall.json),
-					};
+					yield completeToolCall(pendingToolCall);
 					pendingToolCall = null;
 				}
 				break;
@@ -261,15 +252,19 @@ async function* readAnthropicStream(
 	}
 
 	if (pendingToolCall) {
-		yield {
-			type: "tool-call",
-			toolCallId: pendingToolCall.toolCallId,
-			toolName: pendingToolCall.toolName,
-			input: parseToolInput(pendingToolCall.json),
-		};
+		yield completeToolCall(pendingToolCall);
 	}
 
 	yield { type: "done" };
+}
+
+function completeToolCall(pending: PendingToolCall): ChatEvent {
+	return {
+		type: "tool-call",
+		toolCallId: pending.toolCallId,
+		toolName: pending.toolName,
+		input: parseToolInput(pending.json),
+	};
 }
 
 function anthropicToolChoice(
@@ -289,21 +284,17 @@ function anthropicToolChoice(
 	return { tool_choice: { type: choice.type } };
 }
 
-function parseToolInput(json: string): unknown {
-	if (json.trim().length === 0) {
-		return {
-			truncated: true,
-			reason: "Tool input was truncated (max_tokens); the argument JSON did not parse.",
-		};
-	}
+/** What the tool receives when the model ran out of tokens mid-argument. */
+const TRUNCATED_TOOL_INPUT = {
+	truncated: true,
+	reason: "Tool input was truncated (max_tokens); the argument JSON did not parse.",
+};
 
+function parseToolInput(json: string): unknown {
 	try {
 		return JSON.parse(json);
 	} catch {
-		return {
-			truncated: true,
-			reason: "Tool input was truncated (max_tokens); the argument JSON did not parse.",
-		};
+		return TRUNCATED_TOOL_INPUT;
 	}
 }
 
