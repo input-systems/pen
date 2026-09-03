@@ -1,8 +1,12 @@
+import { useRef } from "react";
+import { getAIController } from "@input/pen-ai";
 import { Pen } from "@input/pen-react";
 import type { Editor } from "@input/pen-types";
 import { playgroundAssets } from "./assets";
 import { FormatToolbar } from "./FormatToolbar";
 import { ImageBlockRenderer } from "./ImageBlock";
+import { InlinePrompt } from "./InlinePrompt";
+import { openInlinePrompt } from "./openInlinePrompt";
 import { ReviewSurface } from "./ReviewSurface";
 import { SlashMenu } from "./SlashMenu";
 
@@ -34,6 +38,12 @@ export function EditorPane({
 	onOpenCollaborate,
 	onToggleInspector,
 }: EditorPaneProps) {
+	const scrollRef = useRef<HTMLDivElement>(null);
+
+	const handleOpenInlinePrompt = () => {
+		openInlinePrompt(getAIController(editor));
+	};
+
 	return (
 		<main className="editor-pane">
 			<FormatToolbar
@@ -42,28 +52,36 @@ export function EditorPane({
 				collaborationLive={collaborationLive}
 				onOpenCollaborate={onOpenCollaborate}
 				onToggleInspector={onToggleInspector}
+				onOpenInlinePrompt={handleOpenInlinePrompt}
 			/>
 			<ReviewSurface editor={editor}>
-				<div className="editor-scroll">
+				<div className="editor-scroll" ref={scrollRef}>
 					{/*
 					 * `Pen.Editor.Root` binds a field editor and a rendered DOM tree
 					 * to one editor instance for its whole lifetime. Joining or
 					 * leaving a room replaces the instance, so the surface is keyed
 					 * to force a fresh mount instead of leaving the old field editor
 					 * projecting DOM selections into a document it no longer knows.
+					 *
+					 * `Pen.AI.Root` has to wrap the content host: the inline prompt
+					 * looks up `[data-pen-editor-content]` from that ancestor, then
+					 * inserts itself before the current block.
 					 */}
-					<Pen.Editor.Root
-						editor={editor}
-						key={editor.internals.viewId}
-						assets={playgroundAssets}
-						renderers={BLOCK_RENDERERS}
-					>
-						<Pen.Editor.Content emptyPlaceholder="Write something, or ask the agent on the left." />
-						{collaborationLive ? (
-							<Pen.Multiplayer.CaretOverlay />
-						) : null}
-						<SlashMenu editor={editor} />
-					</Pen.Editor.Root>
+					<Pen.AI.Root editor={editor}>
+						<Pen.Editor.Root
+							editor={editor}
+							key={editor.internals.viewId}
+							assets={playgroundAssets}
+							renderers={BLOCK_RENDERERS}
+						>
+							<Pen.Editor.Content emptyPlaceholder="Write something, or ask AI." />
+							{collaborationLive ? (
+								<Pen.Multiplayer.CaretOverlay />
+							) : null}
+							<SlashMenu editor={editor} />
+							<InlinePrompt />
+						</Pen.Editor.Root>
+					</Pen.AI.Root>
 				</div>
 			</ReviewSurface>
 		</main>

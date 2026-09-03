@@ -172,7 +172,7 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 	requestDivergenceProjection?(): void;
 	/**
 	 * Whether a field rebuild may write the selection back into the DOM.
-	 * False while a native control outside the editor owns focus (HOST9):
+	 * False while a native control that is not this field owns focus (HOST9):
 	 * setting a DOM selection inside the field would move focus with it.
 	 */
 	shouldProjectSelectionAfterReconcile?(): boolean;

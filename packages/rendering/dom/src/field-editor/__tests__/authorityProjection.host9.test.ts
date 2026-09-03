@@ -121,4 +121,33 @@ describe("HOST9: authority writes while a native control outside the editor owns
 		);
 		expect(domSelectionIsInside(root)).toBe(true);
 	});
+
+	it("a native textarea nested in the editor root keeps focus", () => {
+		const { editor, blockId, root, focusRequests } = mount();
+		const textarea = document.createElement("textarea");
+		root.append(textarea);
+		textarea.focus();
+		document.getSelection()?.removeAllRanges();
+		focusRequests.length = 0;
+
+		editor.selectText(blockId, 2, 4);
+
+		expect(editor.selection?.type).toBe("text");
+		expect(focusRequests).toEqual([]);
+		expect(document.activeElement).toBe(textarea);
+	});
+
+	it("the field editor itself is not treated as a foreign native control", () => {
+		const { editor, blockId, root, focusRequests } = mount();
+		const surface = root.querySelector("[data-pen-field-editor-surface]");
+		expect(surface).toBeInstanceOf(HTMLElement);
+		(surface as HTMLElement).focus();
+		focusRequests.length = 0;
+
+		editor.selectText(blockId, 2, 4);
+
+		expect(focusRequests.map((request) => request.action)).toContain(
+			"project-selection",
+		);
+	});
 });

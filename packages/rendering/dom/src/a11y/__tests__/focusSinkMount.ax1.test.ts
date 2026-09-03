@@ -79,6 +79,25 @@ describe("FieldEditorImpl focus sink mount (AX1)", () => {
 		input.remove();
 	});
 
+	it("HOST9: a block selection does not steal focus from a nested textarea", () => {
+		const editor = createHeadlessEditor({ schema: defaultSchema });
+		const fieldEditor = new FieldEditorImpl(editor);
+		const root = document.createElement("div");
+		const textarea = document.createElement("textarea");
+		document.body.append(root);
+		root.append(textarea);
+		fixtures.push({ editor, fieldEditor, root });
+		fieldEditor.setRootElement(root);
+		textarea.focus();
+		expect(document.activeElement).toBe(textarea);
+
+		const first = editor.firstBlock();
+		expect(first).not.toBeNull();
+		editor.selectBlocks([first!.id]);
+
+		expect(document.activeElement).toBe(textarea);
+	});
+
 	it("AX1: empty-document text caret leaves the mounted sink hidden", () => {
 		const editor = createHeadlessEditor({ schema: defaultSchema });
 		const fieldEditor = new FieldEditorImpl(editor);

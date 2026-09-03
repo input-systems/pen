@@ -242,9 +242,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 					record.version <=
 					this._selectionCoordinator.lastProjectedVersion;
 				// HOST9: the record stays authoritative but is not
-				// written into the DOM while a native control outside
-				// the editor owns focus. the backend write is held back
-				// too — it projects the DOM selection the same way.
+				// written into the DOM while a native control that is
+				// not this field owns focus. the backend write is held
+				// back too — it projects the DOM selection the same way.
 				const withheld =
 					!alreadyProjected &&
 					this._selectionCoordinator.isFocusHeldByNativeControlOutsideRoot();

@@ -54,7 +54,7 @@ edit and reloads the playground on the new build.
 ```
 src/
   App.tsx              three panes over one editor
-  editor/              the editor: setup, toolbar, slash menu, images, starter document
+  editor/              the editor: setup, toolbar, slash menu, inline AI prompt, images, starter document
   chat/                the agent: transcript, composer, Review toggle, and the hook behind them
   inspector/           the document-state sheet
   collaboration/       optional live rooms: name, room, Yjs session
@@ -120,6 +120,14 @@ the route Pen chose. `server/scriptedModel.ts` shows both shapes: it calls
 `write_document` when Pen offers tools, and streams clause-sized bursts when it
 does not (clause-sized bursts make the paced paint visible; a word-at-a-time
 script would hide it).
+
+The same path is available in the document. `⌘J` / `Ctrl+J` (or the wand in
+the toolbar) opens Input's inline prompt on the current block.
+`editor/InlinePrompt.tsx` inserts that box in the document flow before the
+block — so a replacement paints below it, not above — and
+`InlinePromptComposer.tsx` is the chrome: the same send arrow as the agent
+composer, Discard / Accept while a review is pending. Undo after Accept
+reopens that review without taking focus, so Redo still works.
 
 **Smooth streaming** is a paint, not a write. Streamed text is already in the
 document; an inline decoration withholds what is past a per-block frontier and

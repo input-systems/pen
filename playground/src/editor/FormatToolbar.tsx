@@ -17,6 +17,7 @@ interface FormatToolbarProps {
 	collaborationLive: boolean;
 	onOpenCollaborate: () => void;
 	onToggleInspector: () => void;
+	onOpenInlinePrompt: () => void;
 }
 
 /**
@@ -52,6 +53,7 @@ export function FormatToolbar({
 	collaborationLive,
 	onOpenCollaborate,
 	onToggleInspector,
+	onOpenInlinePrompt,
 }: FormatToolbarProps) {
 	const undoState = useUndoState(editor);
 
@@ -79,6 +81,15 @@ export function FormatToolbar({
 			<Pen.Toolbar.Root editor={editor}>
 				<BlockTypeSelect />
 				<Pen.Toolbar.Group>{markToggles}</Pen.Toolbar.Group>
+				<Button.Tooltip content="Ask AI" shortcut="Mod-j">
+					<Button.Icon
+						label="Ask AI"
+						onMouseDown={keepCaret}
+						onClick={onOpenInlinePrompt}
+					>
+						<Icon.PenMagic />
+					</Button.Icon>
+				</Button.Tooltip>
 			</Pen.Toolbar.Root>
 
 			<div className="top-bar-actions">

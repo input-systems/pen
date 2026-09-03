@@ -1,6 +1,7 @@
 import { resolveEditorMessage } from "@input/pen-core";
 import type { Editor, SelectionState } from "@input/pen-types";
 
+import { isForeignNativeTextEntryTarget } from "../utils/textEntryTarget";
 import type { FocusSink } from "./focusSink";
 
 export function syncFocusSink(
@@ -54,6 +55,9 @@ function claimBlockSelectionFocus(sink: FocusSink): void {
 	}
 	const active = doc.activeElement;
 	if (active === element) {
+		return;
+	}
+	if (isForeignNativeTextEntryTarget(active)) {
 		return;
 	}
 	const editorOwnsFocus = active instanceof Node && root.contains(active);

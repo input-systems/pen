@@ -27,6 +27,8 @@ export type { AIMutationPreference, AITargetKind } from "./runtime/contracts";
 export {
 	acceptSuggestion,
 	rejectSuggestion,
+	acceptSuggestions,
+	rejectSuggestions,
 	acceptAllSuggestions,
 	rejectAllSuggestions,
 } from "./suggestions/acceptReject";

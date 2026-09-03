@@ -740,6 +740,107 @@ th[data-pen-table-cell] {
 	color: var(--palette-b40);
 }
 
+/* ── Inline AI prompt ──────────────────────────────────────── */
+
+/*
+ * Input's composer intelligence box: a popover card inserted in the document
+ * flow before the current block. Font size is isolated from the document
+ * (`--font-size-lg`) so the input matches the agent composer (`--font-size-base`).
+ */
+[data-pen-ai-root] {
+	min-height: 100%;
+}
+
+[data-pen-ai-inline-session] {
+	position: relative;
+	z-index: 4;
+	box-sizing: border-box;
+	display: flex;
+	justify-content: flex-start;
+	width: 100%;
+	max-width: 600px;
+	padding-bottom: 8px;
+	margin: 0 -5px;
+	font-size: var(--font-size-base);
+}
+
+[data-pen-ai-inline-session-form] {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	overflow: hidden;
+	padding: 0 5px 5px;
+	border-radius: var(--radius-xl);
+	background: var(--popover-background);
+	box-shadow: var(--popover-shadow);
+}
+
+/* The primitive labels the target; Input's box does not. */
+[data-pen-ai-inline-session-header] {
+	display: none;
+}
+
+[data-pen-ai-inline-session-history] {
+	display: flex;
+	flex-direction: column;
+}
+
+[data-pen-ai-inline-session-prompt] {
+	display: -webkit-box;
+	min-width: 0;
+	margin: 0;
+	padding: 10px;
+	overflow: hidden;
+	border-bottom: 1px solid var(--line-faded);
+	color: var(--palette-b60);
+	font-size: var(--font-size-md);
+	line-height: 1.5em;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
+
+[data-pen-ai-inline-session-input] {
+	width: 100%;
+	min-width: 0;
+	max-height: 160px;
+	padding: 10px 10px 5px;
+	border: none;
+	background: none;
+	resize: none;
+	color: var(--palette-b100);
+	font: inherit;
+	font-size: var(--font-size-base);
+	line-height: 1.5em;
+	outline: none;
+	field-sizing: content;
+}
+
+[data-pen-ai-inline-session-input]::placeholder {
+	color: var(--input-placeholder);
+}
+
+[data-pen-ai-inline-session-controls] {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 5px;
+}
+
+[data-pen-ai-inline-session-status] {
+	min-width: 0;
+	padding: 0 10px;
+	color: var(--palette-b40);
+	font-size: var(--font-size-md);
+	line-height: 1.5em;
+}
+
+[data-pen-ai-inline-session-actions] {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	flex-shrink: 0;
+}
+
 /* ── AI review surface ─────────────────────────────────────── */
 
 .review-surface {

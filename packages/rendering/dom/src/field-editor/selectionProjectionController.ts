@@ -13,7 +13,10 @@ import {
 	type GestureEventKind,
 	type GestureWindowState,
 } from "./selectionReader";
-import { isNativeTextEntryTarget } from "../utils/textEntryTarget";
+import {
+	isForeignNativeTextEntryTarget,
+	isNativeTextEntryTarget,
+} from "../utils/textEntryTarget";
 
 type ProjectionOptions = {
 	syncBackendImmediately?: boolean;
@@ -341,13 +344,14 @@ export class SelectionProjectionController {
 	}
 
 	/**
-	 * HOST9: a native text control outside this editor keeps its focus.
-	 * Authority-driven projections (P1, P2, parked mount-ack) that land
-	 * while one owns focus are not written, because writing the DOM
-	 * selection into a field moves focus with it. Gesture and
-	 * programmatic projections are not gated: a mousedown on the editor
-	 * runs before the browser moves focus, and `focus()` moves it
-	 * explicitly first.
+	 * HOST9: a native text control that is not this editor's field keeps
+	 * its focus. That includes a host input outside the root and nested
+	 * chrome inside it (a prompt textarea). Authority-driven projections
+	 * (P1, P2, parked mount-ack) that land while one owns focus are not
+	 * written, because writing the DOM selection into a field moves focus
+	 * with it. Gesture and programmatic projections are not gated: a
+	 * mousedown on the editor runs before the browser moves focus, and
+	 * `focus()` moves it explicitly first.
 	 */
 	isFocusHeldByNativeControlOutsideRoot(): boolean {
 		const root = this._options.getRootElement();
@@ -355,10 +359,7 @@ export class SelectionProjectionController {
 		if (!root || !(activeElement instanceof Node)) {
 			return false;
 		}
-		return (
-			!root.contains(activeElement) &&
-			isNativeTextEntryTarget(activeElement)
-		);
+		return isForeignNativeTextEntryTarget(activeElement);
 	}
 
 	recordUserSelectionIntent(): void {

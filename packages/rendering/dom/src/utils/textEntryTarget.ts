@@ -78,6 +78,19 @@ export function isTextEntryTarget(
 	);
 }
 
+/**
+ * Native text entry that is not this editor's field. Host chrome — a prompt
+ * textarea nested in the root, or an input outside it — keeps its own caret.
+ * The field surface is contenteditable, so it is not this case (HOST9).
+ */
+export function isForeignNativeTextEntryTarget(
+	target: EventTarget | null,
+): boolean {
+	return (
+		isNativeTextEntryTarget(target) && !isFieldEditorTextEntryTarget(target)
+	);
+}
+
 export function isFieldEditorTextEditingKey(event: KeyboardEvent): boolean {
 	if (event.metaKey || event.ctrlKey || event.altKey || event.isComposing) {
 		return false;
