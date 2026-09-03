@@ -34,6 +34,13 @@ export function rejectSuggestion(
 	return rejectSuggestions(editor, [suggestionId]);
 }
 
+/**
+ * Accepts the given suggestion ids as one undo group.
+ *
+ * Hosts that staged persistent suggestions headlessly can resolve a chosen
+ * id set under their own origin instead of looping {@link acceptSuggestion}
+ * or calling {@link acceptAllSuggestions}.
+ */
 export function acceptSuggestions(
 	editor: Editor,
 	suggestionIds: readonly string[],
@@ -42,6 +49,12 @@ export function acceptSuggestions(
 	return resolveSuggestions(editor, suggestionIds, "accept", options);
 }
 
+/**
+ * Rejects the given suggestion ids as one undo group.
+ *
+ * Same grouping and origin options as {@link acceptSuggestions}; withdraws
+ * the staged writes rather than applying them.
+ */
 export function rejectSuggestions(
 	editor: Editor,
 	suggestionIds: readonly string[],
