@@ -1,5 +1,24 @@
 # @input/pen-react
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [879773c]
+- Updated dependencies [ab64f16]
+- Updated dependencies [1c57d72]
+- Updated dependencies [879773c]
+  - @input/pen-ai@0.2.1
+  - @input/pen-core@0.2.1
+  - @input/pen-dom@0.2.1
+  - @input/pen-multiplayer@0.2.1
+  - @input/pen-search@0.2.1
+  - @input/pen-interop@0.2.1
+  - @input/pen-shortcuts@0.2.1
+  - @input/pen-snapshots@0.2.1
+  - @input/pen-schema@0.2.1
+  - @input/pen-types@0.2.1
+
 ## 0.2.0
 
 ### Patch Changes

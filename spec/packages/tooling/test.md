@@ -41,7 +41,7 @@ Tooling packages in Pen should stay package-first and explicit about ownership. 
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.2.0`; intended usage is current-state but still evolving.
+Workspace package at version `0.2.1`; intended usage is current-state but still evolving.
 
 ## Non-goals
 

@@ -1,5 +1,16 @@
 # @input/pen-ai
 
+## 0.2.1
+
+### Patch Changes
+
+- 879773c: Export `acceptSuggestions` and `rejectSuggestions` from the package root. Hosts that stage persistent suggestions headlessly (`applySuggestedAIOperations`) can now resolve a chosen id set as one undo group under their own origin, instead of looping `acceptSuggestion` per id or resolving everything with `acceptAllSuggestions`.
+- Updated dependencies [ab64f16]
+  - @input/pen-core@0.2.1
+  - @input/pen-tools@0.2.1
+  - @input/pen-ingest@0.2.1
+  - @input/pen-types@0.2.1
+
 ## 0.2.0
 
 ### Patch Changes

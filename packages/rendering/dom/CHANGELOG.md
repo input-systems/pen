@@ -1,5 +1,16 @@
 # @input/pen-dom
 
+## 0.2.1
+
+### Patch Changes
+
+- 1c57d72: `SessionReconciler` compares the decoration set it last saw against the one a `decorationsChange` carries and only rebuilds the active blocks whose own `forBlock` list changed identity. A paced reveal or a suggestion mark landing on another block no longer rebuilds the editing surface and bumps `domSyncVersion` for every block subscriber. Relies on core's stable decoration identity (SCALE2).
+- 879773c: A native text-entry control nested in the editor root keeps its focus (HOST9). Typing in host chrome such as an inline prompt no longer pulls the caret back into the field.
+- Updated dependencies [ab64f16]
+  - @input/pen-core@0.2.1
+  - @input/pen-shortcuts@0.2.1
+  - @input/pen-types@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
