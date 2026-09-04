@@ -1,6 +1,6 @@
 {
   "name": "@input/pen-search",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Document search and replacement primitives for Pen",
   "license": "MIT",
   "homepage": "https://github.com/input-systems/pen#readme",

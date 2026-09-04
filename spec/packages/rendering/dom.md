@@ -86,7 +86,7 @@ Important rules:
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.2.1`; intended usage is current-state but still evolving. It is now a key architectural package because it proves the shared editing engine can outlive any single framework renderer.
+Workspace package at version `0.2.2`; intended usage is current-state but still evolving. It is now a key architectural package because it proves the shared editing engine can outlive any single framework renderer.
 
 ## Non-goals
 
