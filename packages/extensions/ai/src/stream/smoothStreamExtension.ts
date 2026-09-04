@@ -334,7 +334,6 @@ class SmoothStreamControllerImpl implements SmoothStreamController {
 	// cyclomatic 10 here is the arity of the StructuralChange union, not branching
 	// depth (cognitive 1); the exhaustive switch is what turns a new variant into
 	// a compile error.
-	// fallow-ignore-next-line complexity
 	private hideInsertedBlock(change: StructuralChange): void {
 		switch (change.type) {
 			case "block-inserted":
