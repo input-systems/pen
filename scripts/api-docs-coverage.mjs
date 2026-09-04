@@ -95,7 +95,7 @@ const SKIP_DIR_NAMES = new Set([
  * that is a scope hole, not a documentation gain. Deleting a public symbol
  * or writing TSDoc is the legitimate way down.
  */
-export const MAX_UNDOCUMENTED = 1703;
+export const MAX_UNDOCUMENTED = 1702;
 
 const JSDOC_RE = /\/\*\*[\s\S]*?\*\//g;
 const DECL_RE =
