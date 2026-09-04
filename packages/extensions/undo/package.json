@@ -1,6 +1,6 @@
 {
   "name": "@input/pen-undo",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Undo/redo extension with origin tagging for Pen",
   "license": "MIT",
   "homepage": "https://github.com/input-systems/pen#readme",

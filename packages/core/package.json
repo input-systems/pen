@@ -1,6 +1,6 @@
 {
   "name": "@input/pen-core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Headless, extension-first editor engine for human-AI co-authoring",
   "license": "MIT",
   "homepage": "https://github.com/input-systems/pen#readme",
