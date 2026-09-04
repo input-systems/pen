@@ -66,7 +66,7 @@ import { ExtensionManagerImpl } from "./extensionManager";
 import { EditorAnchorsImpl } from "./anchors";
 import { SelectionAuthorityImpl } from "./selection";
 import { DocumentStateImpl } from "./documentState";
-import { emptyDecorationSet } from "./decorations";
+import { emptyDecorationSet, reconcileDecorationSets } from "./decorations";
 import { DocumentRangeImpl } from "./range";
 import { createDocumentSession } from "./documentSession";
 
@@ -566,7 +566,9 @@ class EditorImpl implements Editor {
 	// ── Decorations ──────────────────────────────────────────
 
 	requestDecorationUpdate(): void {
+		const previousGeneration = this._decorations.generation;
 		const decoSet = this._refreshDecorations();
+		if (decoSet.generation === previousGeneration) return;
 		this._emitter.emit("decorationsChange", decoSet.generation);
 	}
 
@@ -586,9 +588,11 @@ class EditorImpl implements Editor {
 	}
 
 	private _refreshDecorations(): DecorationSet {
-		this._decorations = this._extensions.collectDecorations(
-			this._documentState,
-			this,
+		// providers rebuild every decoration on each pass; keep the previous
+		// per-block lists where nothing changed so only touched blocks re-render
+		this._decorations = reconcileDecorationSets(
+			this._decorations,
+			this._extensions.collectDecorations(this._documentState, this),
 		);
 		return this._decorations;
 	}

@@ -32,6 +32,14 @@ class DecorationSetImpl implements DecorationSet {
 		return this._decorations;
 	}
 
+	get blockIndex(): ReadonlyMap<string, Decoration[]> {
+		return this._blockIndex;
+	}
+
+	get isReleased(): boolean {
+		return this._released;
+	}
+
 	forBlock(blockId: string): readonly Decoration[] {
 		return this._blockIndex.get(blockId) ?? EMPTY_ARRAY;
 	}
@@ -158,6 +166,60 @@ export function recomputeDecorations(
 		affectedBlocks,
 		nextAffected,
 	);
+}
+
+/**
+ * Reconciles a freshly collected set against the one it replaces so blocks whose
+ * decorations did not change keep their list identity. Providers rebuild every
+ * object on each pass; without this, one changed block re-renders every block
+ * subscriber in the document. Returns `previous` itself when nothing changed, so
+ * its generation holds and set-level subscribers bail out too.
+ */
+export function reconcileDecorationSets(
+	previous: DecorationSet,
+	next: DecorationSet,
+): DecorationSet {
+	if (previous === next) return previous;
+	if (
+		!(previous instanceof DecorationSetImpl) ||
+		!(next instanceof DecorationSetImpl) ||
+		previous.isReleased
+	) {
+		return next;
+	}
+
+	const previousIndex = previous.blockIndex;
+	const nextIndex = next.blockIndex;
+	if (previousIndex.size !== nextIndex.size) {
+		return reuseUnchangedBlocks(previousIndex, nextIndex);
+	}
+
+	for (const [blockId, nextList] of nextIndex) {
+		const previousList = previousIndex.get(blockId);
+		if (!previousList || !decorationsListEqual(previousList, nextList)) {
+			return reuseUnchangedBlocks(previousIndex, nextIndex);
+		}
+	}
+	return previous;
+}
+
+function reuseUnchangedBlocks(
+	previousIndex: ReadonlyMap<string, Decoration[]>,
+	nextIndex: ReadonlyMap<string, Decoration[]>,
+): DecorationSet {
+	const index = new Map<string, Decoration[]>();
+	const flat: Decoration[] = [];
+	for (const [blockId, nextList] of nextIndex) {
+		const previousList = previousIndex.get(blockId);
+		const list =
+			previousList && decorationsListEqual(previousList, nextList)
+				? previousList
+				: nextList;
+		index.set(blockId, list);
+		flat.push(...list);
+	}
+	if (flat.length === 0) return EMPTY_SET;
+	return new DecorationSetImpl(flat, undefined, index);
 }
 
 export function releaseDecorationSet(set: DecorationSet): void {

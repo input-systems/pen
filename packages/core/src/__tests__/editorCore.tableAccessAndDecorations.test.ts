@@ -147,7 +147,7 @@ describe("@input/pen-core table operations: cell access and decoration caching",
 		editor.destroy();
 	});
 
-	it("caches decoration snapshots between decoration updates", () => {
+	it("SCALE2: a refresh that changes nothing keeps the decoration set by identity", () => {
 		const editor = createEditor({
 			extensions: [
 				defineExtension({
@@ -171,10 +171,11 @@ describe("@input/pen-core table operations: cell access and decoration caching",
 				}),
 			],
 		});
+		const onDecorationsChange = vi.fn();
+		editor.on("decorationsChange", onDecorationsChange);
 
 		const initialDecorations = editor.getDecorations();
-		const repeatedDecorations = editor.getDecorations();
-		expect(repeatedDecorations).toBe(initialDecorations);
+		expect(editor.getDecorations()).toBe(initialDecorations);
 
 		editor.apply(
 			[
@@ -189,15 +190,88 @@ describe("@input/pen-core table operations: cell access and decoration caching",
 			{ origin: "user" },
 		);
 
-		const autoRefreshedDecorations = editor.getDecorations();
-		expect(autoRefreshedDecorations).not.toBe(initialDecorations);
-		expect(editor.getDecorations()).toBe(autoRefreshedDecorations);
+		// the facet rebuilt an equal decoration, so the set and its generation hold
+		expect(editor.getDecorations()).toBe(initialDecorations);
 
 		editor.requestDecorationUpdate();
 
-		const refreshedDecorations = editor.getDecorations();
-		expect(refreshedDecorations).not.toBe(autoRefreshedDecorations);
-		expect(editor.getDecorations()).toBe(refreshedDecorations);
+		expect(editor.getDecorations()).toBe(initialDecorations);
+		expect(onDecorationsChange).not.toHaveBeenCalled();
+
+		editor.destroy();
+	});
+
+	it("SCALE2: a refresh that changes one block keeps the other blocks' lists by identity", () => {
+		let revealedTo = 1;
+		const editor = createEditor({
+			extensions: [
+				defineExtension({
+					name: "test-decorations",
+					facets: [
+						decorationsFacet.of((_state, currentEditor) => {
+							const [first, second] = currentEditor.documentState.blockOrder;
+							if (!first || !second) {
+								return createDecorationSet([]);
+							}
+
+							return createDecorationSet([
+								{
+									type: "block",
+									blockId: first,
+									attributes: { active: true },
+								},
+								{
+									type: "inline",
+									blockId: second,
+									from: 0,
+									to: revealedTo,
+									attributes: {},
+									omitFromRender: true,
+								},
+							]);
+						}),
+					],
+				}),
+			],
+		});
+		const firstBlockId = editor.firstBlock()!.id;
+		editor.apply(
+			[
+				{
+					type: "insert-block",
+					blockId: "second",
+					blockType: "paragraph",
+					props: {},
+					position: "last",
+				},
+				{
+					type: "splice-text",
+					blockId: "second",
+					from: 0,
+					to: 0,
+					insert: "hidden words",
+				},
+			],
+			{ origin: "user" },
+		);
+		const onDecorationsChange = vi.fn();
+		editor.on("decorationsChange", onDecorationsChange);
+
+		const before = editor.getDecorations();
+		const firstBlockList = before.forBlock(firstBlockId);
+		const secondBlockList = before.forBlock("second");
+
+		revealedTo = 6;
+		editor.requestDecorationUpdate();
+
+		const after = editor.getDecorations();
+		expect(after).not.toBe(before);
+		expect(onDecorationsChange).toHaveBeenCalledTimes(1);
+		expect(after.forBlock(firstBlockId)).toBe(firstBlockList);
+		expect(after.forBlock("second")).not.toBe(secondBlockList);
+		expect(after.forBlock("second")).toEqual([
+			expect.objectContaining({ from: 0, to: 6 }),
+		]);
 
 		editor.destroy();
 	});

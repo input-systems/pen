@@ -1,4 +1,10 @@
-import { createHeadlessEditor } from "@input/pen-core";
+import {
+	createDecorationSet,
+	createHeadlessEditor,
+	decorationsFacet,
+	defineExtension,
+	emptyDecorationSet,
+} from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionReconciler } from "../field-editor/sessionReconciler";
@@ -66,7 +72,32 @@ describe("SessionReconciler", () => {
 	});
 
 	it("projects the selection back after a decoration change rebuilds an expanded surface", () => {
-		const editor = createHeadlessEditor({ schema: defaultSchema });
+		// a refresh that changes nothing keeps the decoration set (SCALE2), so the
+		// facet has to produce a different decoration for the change to fire
+		let isMarked = false;
+		const editor = createHeadlessEditor({
+			schema: defaultSchema,
+			extensions: [
+				defineExtension({
+					name: "test-toggle-decoration",
+					facets: [
+						decorationsFacet.of((_state, currentEditor) => {
+							const firstBlockId = currentEditor.firstBlock()?.id;
+							if (!firstBlockId || !isMarked) {
+								return emptyDecorationSet();
+							}
+							return createDecorationSet([
+								{
+									type: "block",
+									blockId: firstBlockId,
+									attributes: { marked: true },
+								},
+							]);
+						}),
+					],
+				}),
+			],
+		});
 		const blockId = editor.firstBlock()!.id;
 		const projectSelection = vi.fn();
 		const reconciler = createReconciler(editor, blockId, () => null, {
@@ -74,6 +105,7 @@ describe("SessionReconciler", () => {
 			projectSelection,
 		});
 
+		isMarked = true;
 		editor.requestDecorationUpdate();
 
 		expect(projectSelection).toHaveBeenCalledTimes(1);
