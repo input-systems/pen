@@ -28,6 +28,11 @@
     },
     {
       "file": "packages/rendering/dom/src/field-editor/selectionBridge.ts",
+      "symbol": "resolveDocumentEdgeSide",
+      "reason": "G4 past-document clamp compares the first/last block box to clientY in the same pointer hit-test that must return a point now; the selection redesign deletes this module."
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/selectionBridge.ts",
       "symbol": "pointToEditorSelectionPoint",
       "reason": "caretPositionFromPoint types and fallbacks feed a synchronous pointer-to-point API; the selection redesign deletes this module."
     },
