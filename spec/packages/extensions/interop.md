@@ -193,7 +193,7 @@ flowchart TD
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.2.1`; intended usage is current-state but still evolving. HTML ingest is security-sensitive. JSON already defines Pen's explicit structured document contract.
+Workspace package at version `0.2.2`; intended usage is current-state but still evolving. HTML ingest is security-sensitive. JSON already defines Pen's explicit structured document contract.
 
 ## Non-goals
 

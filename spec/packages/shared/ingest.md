@@ -58,7 +58,7 @@ Important rules:
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.2.1`; intended usage is current-state but still evolving. It is already a high-leverage package because many higher-level features depend on its normalization and write-op rules staying stable.
+Workspace package at version `0.2.2`; intended usage is current-state but still evolving. It is already a high-leverage package because many higher-level features depend on its normalization and write-op rules staying stable.
 
 ## Non-goals
 

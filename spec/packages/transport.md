@@ -40,7 +40,7 @@ In both variants each `toolCalls` entry is authorized with `openAIToolCall()` be
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.2.1`; intended usage is current-state but still evolving.
+Workspace package at version `0.2.2`; intended usage is current-state but still evolving.
 
 ## Non-goals
 

@@ -1,5 +1,13 @@
 # @input/pen-core
 
+## 0.2.2
+
+### Patch Changes
+
+- b359f9a: Fix ArrowUp being a no-op (or skipping a line) when the caret sits at the start of a visual line, right after a `\n` soft break or a soft wrap. `pen.caretUp` / `pen.caretDown` now hand the selection's affinity to the geometry measure, and `verticalCaretTarget` measures the current caret on the side it is drawn instead of deriving the side from the motion direction (G5).
+- @input/pen-yjs@0.2.2
+  - @input/pen-types@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes
