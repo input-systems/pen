@@ -198,12 +198,44 @@ export function pointToEditorSelectionPoint(
 		clientY,
 	);
 	if (!hoveredBlockEl) return null;
+	// G4: past the top or bottom of the document the point is the edge of
+	// the outer block, not the x-nearest offset in it. This is also where
+	// the browser's native drag clamps its extent (the editing host's first
+	// or last position), so a Pen-owned drag leaving the root writes the
+	// same range as the browser and the two stop overwriting each other.
+	const documentEdge = resolveDocumentEdgeSide(
+		root,
+		hoveredBlockEl,
+		clientY,
+	);
+	if (documentEdge) {
+		return getBoundaryPointForBlockElement(hoveredBlockEl, documentEdge);
+	}
 	return getSelectionPointForBlockAtPointer(
 		hoveredBlockEl,
 		clientX,
 		clientY,
 		options,
 	);
+}
+
+function resolveDocumentEdgeSide(
+	root: HTMLElement,
+	blockEl: HTMLElement,
+	clientY: number,
+): SelectionBoundary | null {
+	const blockElements = root.querySelectorAll(`[${DATA_ATTRS.editorBlock}]`);
+	const rect = blockEl.getBoundingClientRect();
+	if (clientY < rect.top && blockElements[0] === blockEl) {
+		return "start";
+	}
+	if (
+		clientY > rect.bottom &&
+		blockElements[blockElements.length - 1] === blockEl
+	) {
+		return "end";
+	}
+	return null;
 }
 
 function resolveInlineAtomPoint(

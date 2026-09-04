@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
 import * as selectionBridge from "../selectionBridge";
+import { pointToEditorSelectionPoint } from "../selectionBridge";
 import {
 	domPointToOffset,
 	domSelectionToEditor,
@@ -219,6 +220,73 @@ describe("getBlockBoundaryPoint", () => {
 				blockId: "p1",
 				offset: 1,
 			});
+		} finally {
+			root.remove();
+		}
+	});
+});
+
+describe("pointToEditorSelectionPoint", () => {
+	function stubRect(element: HTMLElement, top: number, bottom: number): void {
+		element.getBoundingClientRect = () =>
+			({
+				top,
+				bottom,
+				left: 0,
+				right: 200,
+				width: 200,
+				height: bottom - top,
+				x: 0,
+				y: top,
+			}) as DOMRect;
+	}
+
+	function mountTwoBlocks(): { root: HTMLElement } {
+		const { root, block: first } = mountBlock({
+			blockId: "p1",
+			text: "Hello",
+			blockType: "paragraph",
+		});
+		const { block: last } = appendBlock(root, {
+			blockId: "p2",
+			text: "World",
+			blockType: "paragraph",
+		});
+		stubRect(first, 100, 120);
+		stubRect(last, 130, 150);
+		return { root };
+	}
+
+	it("snaps a point above the document to the first block start (G4)", () => {
+		const { root } = mountTwoBlocks();
+		try {
+			expect(pointToEditorSelectionPoint(root, 150, 40)).toEqual({
+				blockId: "p1",
+				offset: 0,
+			});
+		} finally {
+			root.remove();
+		}
+	});
+
+	it("snaps a point below the document to the last block end (G4)", () => {
+		const { root } = mountTwoBlocks();
+		try {
+			expect(pointToEditorSelectionPoint(root, 150, 400)).toEqual({
+				blockId: "p2",
+				offset: 5,
+			});
+		} finally {
+			root.remove();
+		}
+	});
+
+	it("keeps x-based resolution for a point between two blocks", () => {
+		const { root } = mountTwoBlocks();
+		try {
+			const point = pointToEditorSelectionPoint(root, 0, 125);
+			expect(point?.blockId).toBe("p1");
+			expect(point?.offset).not.toBe(5);
 		} finally {
 			root.remove();
 		}
