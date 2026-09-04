@@ -5,6 +5,7 @@ import {
 	emitCommandDiagnostic,
 	getBlockInputMode,
 	isEditableTextBlock,
+	readTextAffinity,
 	readTextFocus,
 } from "./helpers";
 import {
@@ -23,6 +24,7 @@ import {
 	getVerticalCaretMeasure,
 	setVerticalCaretGoalX,
 	type VerticalCaretDirection,
+	type VerticalCaretPoint,
 } from "./verticalCaret";
 
 export function handleVerticalCaret(
@@ -50,7 +52,11 @@ export function handleVerticalCaret(
 		return false;
 	}
 
-	const measured = measureVerticalStep(editor, focus, direction);
+	const measured = measureVerticalStep(
+		editor,
+		{ ...focus, affinity: readTextAffinity(editor) },
+		direction,
+	);
 	if (measured) {
 		const measuredBlockId = measured.point.blockId;
 		if (
@@ -143,7 +149,7 @@ function isVerticalBlockEdge(
 
 function measureVerticalStep(
 	editor: Editor,
-	focus: { blockId: string; offset: number },
+	focus: VerticalCaretPoint,
 	direction: VerticalCaretDirection,
 ): { point: { blockId: string; offset: number }; goalX: number } | null {
 	const measure = getVerticalCaretMeasure(editor);

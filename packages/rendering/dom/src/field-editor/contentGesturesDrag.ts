@@ -168,6 +168,7 @@ export function createDragGestures<
 		if (!resolvedSelection) {
 			return;
 		}
+		event.preventDefault();
 		if (resolvedSelection.mode !== "block") {
 			pointerGesture.anchorPoint = resolvedSelection.anchorPoint;
 		}

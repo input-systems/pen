@@ -25,6 +25,7 @@ export {
 	blockSelectionResult,
 	collapsedAt,
 	documentOrderedTextPoints,
+	readTextAffinity,
 	readTextAnchor,
 	readTextFocus,
 	textSelectionResult,

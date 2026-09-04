@@ -391,14 +391,19 @@ describe("GeometryReader G5", () => {
 	}): GeometryReader & { blockIds(): readonly string[] } {
 		return {
 			generation: 1,
-			caretRect(point) {
+			caretRect(point, affinity) {
 				const boxes = config.lines[point.blockId] ?? [];
+				// a boundary offset belongs to both lines; affinity picks the
+				// side, as the real reader does at wraps and `\n`.
+				const containing = boxes.filter(
+					(lineBox) =>
+						point.offset >= lineBox.startOffset &&
+						point.offset <= lineBox.endOffset,
+				);
 				const box =
-					boxes.find(
-						(lineBox) =>
-							point.offset >= lineBox.startOffset &&
-							point.offset <= lineBox.endOffset,
-					) ?? boxes[0];
+					(affinity === "upstream"
+						? containing[0]
+						: containing[containing.length - 1]) ?? boxes[0];
 				if (!box) return null;
 				return collapsedRect(50, box.top, box.bottom - box.top);
 			},
@@ -586,5 +591,67 @@ describe("GeometryReader G5", () => {
 		expect(
 			verticalCaretTarget(reader, { blockId: "b", offset: 0 }, "up", 64),
 		).toEqual({ point: { blockId: "a", offset: 0 }, goalX: 64 });
+	});
+
+	it("G5: ArrowUp from the start of a line after `\\n` reaches the line above", () => {
+		// "first line\nsecond": offset 11 is the end of line one and the start
+		// of line two. The caret is drawn downstream, so up must leave line two.
+		const reader = mockReader({
+			lines: {
+				p: [line(0, 16, 0, 11), line(16, 32, 11, 17)],
+			},
+			rects: { p: rect(0, 0, 200, 32) },
+			hits: [
+				{
+					x: 50,
+					y: lineMid(0, 16),
+					point: { blockId: "p", offset: 9 },
+				},
+			],
+		});
+		expect(
+			verticalCaretTarget(
+				reader,
+				{ blockId: "p", offset: 11 },
+				"up",
+				null,
+				"downstream",
+			),
+		).toEqual({ point: { blockId: "p", offset: 9 }, goalX: 50 });
+		// the default is the drawn side too, so callers without a selection
+		// affinity get the same landing.
+		expect(
+			verticalCaretTarget(reader, { blockId: "p", offset: 11 }, "up"),
+		).toEqual({ point: { blockId: "p", offset: 9 }, goalX: 50 });
+		// upstream is the end of line one; there is no line above it.
+		expect(
+			verticalCaretTarget(
+				reader,
+				{ blockId: "p", offset: 11 },
+				"up",
+				null,
+				"upstream",
+			),
+		).toEqual({ point: { blockId: "p", offset: 11 }, goalX: 50 });
+	});
+
+	it("G5: ArrowUp from an empty trailing line after `\\n` reaches the line above", () => {
+		// "first line\n": the trailing break owns an empty line box (RI5).
+		const reader = mockReader({
+			lines: {
+				p: [line(0, 16, 0, 11), line(16, 32, 11, 11)],
+			},
+			rects: { p: rect(0, 0, 200, 32) },
+			hits: [
+				{
+					x: 50,
+					y: lineMid(0, 16),
+					point: { blockId: "p", offset: 9 },
+				},
+			],
+		});
+		expect(
+			verticalCaretTarget(reader, { blockId: "p", offset: 11 }, "up"),
+		).toEqual({ point: { blockId: "p", offset: 9 }, goalX: 50 });
 	});
 });

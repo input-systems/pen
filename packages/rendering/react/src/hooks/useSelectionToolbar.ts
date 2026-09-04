@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { aiControllerFacet, isCollapsed } from "@input/pen-core";
-import type { Editor } from "@input/pen-types";
+import { aiControllerFacet, isCollapsed, isMultiBlock } from "@input/pen-core";
+import type { Editor, TextSelection } from "@input/pen-types";
 import type { AIController } from "@input/pen-ai";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import { queryBlockElement } from "@input/pen-dom/field-editor/selectionBridge";
@@ -22,9 +22,11 @@ const CLOSED_STATE: SelectionToolbarState = {
  * provides the native DOM rect of that selection for positioning a
  * floating toolbar.
  *
- * The rect prefers the native DOM range, but falls back to canonical
- * editor selection geometry so multi-block interactions stay anchored
- * even if the browser selection is transient.
+ * A selection inside one block reads the native DOM range and falls back
+ * to canonical editor selection geometry when the browser selection is
+ * transient. A selection that spans blocks reads the canonical geometry
+ * first: it is measured per block, so the rect covers the selected text
+ * rather than the border boxes of the blocks in between.
  */
 export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 	const [state, setState] = useState<SelectionToolbarState>(CLOSED_STATE);
@@ -69,25 +71,10 @@ export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 				return;
 			}
 
-			const nativeRect = resolveNativeSelectionRect();
-			if (nativeRect) {
-				setState({ isOpen: true, selectionRect: nativeRect });
-				return;
-			}
-
-			const root = resolveEditorRoot(editor, selection);
-			if (!root) {
-				setState(CLOSED_STATE);
-				return;
-			}
-
-			const rect = resolveSelectionRect(root, selection);
-			if (!rect || (rect.width === 0 && rect.height === 0)) {
-				setState(CLOSED_STATE);
-				return;
-			}
-
-			setState({ isOpen: true, selectionRect: rect });
+			const rect = resolveToolbarRect(editor, selection);
+			setState(
+				rect ? { isOpen: true, selectionRect: rect } : CLOSED_STATE,
+			);
 		};
 
 		const unsubs = [
@@ -107,6 +94,29 @@ export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 	}, [editor, isInlinePromptOpen]);
 
 	return state;
+}
+
+function resolveToolbarRect(
+	editor: Editor,
+	selection: TextSelection,
+): DOMRect | null {
+	// the native range rect of a spanning selection is the column width, so
+	// measure per block first and keep the native rect as the fallback
+	if (isMultiBlock(selection)) {
+		const root = resolveEditorRoot(editor, selection);
+		const rect = root ? resolveSelectionRect(root, selection) : null;
+		if (rect) {
+			return rect;
+		}
+	}
+
+	const nativeRect = resolveNativeSelectionRect();
+	if (nativeRect) {
+		return nativeRect;
+	}
+
+	const root = resolveEditorRoot(editor, selection);
+	return root ? resolveSelectionRect(root, selection) : null;
 }
 
 function resolveNativeSelectionRect(): DOMRect | null {

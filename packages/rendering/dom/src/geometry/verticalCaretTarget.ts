@@ -1,4 +1,4 @@
-import type { GeometryReader, LineBox, Point, Rect } from "./types";
+import type { Affinity, GeometryReader, LineBox, Point, Rect } from "./types";
 import { rectCenterX, rectCenterY } from "./types";
 
 export type VerticalDirection = "up" | "down";
@@ -15,14 +15,19 @@ type GeometryReaderWithBlocks = GeometryReader & {
 /**
  * G5: vertical caret motion. `pen.caretUp/Down` call this via
  * `measureNow`. `goalX` persists on the resulting selection.
+ *
+ * `affinity` is the side the caret is drawn on, read from the selection.
+ * At a wrap or `\n` boundary the same offset is upstream the end of the
+ * line above and downstream the start of the line below, so deriving it
+ * from `direction` would measure the caret on the wrong line and skip one.
  */
 export function verticalCaretTarget(
 	reader: GeometryReader,
 	current: Point,
 	direction: VerticalDirection,
 	goalX?: number | null,
+	affinity: Affinity = "downstream",
 ): VerticalCaretTarget | null {
-	const affinity = direction === "up" ? "upstream" : "downstream";
 	const currentRect = reader.caretRect(current, affinity);
 	const x = goalX ?? (currentRect ? rectCenterX(currentRect) : 0);
 

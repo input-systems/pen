@@ -50,6 +50,14 @@ export function readTextFocus(editor: Editor): Point | null {
 	return selection.focus;
 }
 
+export function readTextAffinity(editor: Editor): Affinity {
+	const selection = editor.selection;
+	if (!selection || selection.type !== "text") {
+		return "downstream";
+	}
+	return selection.affinity ?? "downstream";
+}
+
 export function readTextAnchor(editor: Editor): Point | null {
 	const selection = editor.selection;
 	if (!selection || selection.type !== "text") {

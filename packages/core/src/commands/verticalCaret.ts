@@ -1,4 +1,4 @@
-import type { Editor } from "@input/pen-types";
+import type { Affinity, Editor } from "@input/pen-types";
 
 /**
  * Geometry seam for `pen.caretUp` / `pen.caretDown` (G5).
@@ -20,6 +20,13 @@ export type VerticalCaretDirection = "up" | "down";
 export type VerticalCaretPoint = {
 	readonly blockId: string;
 	readonly offset: number;
+	/**
+	 * Side the caret is drawn on at a line boundary. The measure must read
+	 * the current line from this, not from the motion direction: an offset
+	 * right after a wrap or `\n` is upstream the end of the line above and
+	 * downstream the start of the line below. Absent means `"downstream"`.
+	 */
+	readonly affinity?: Affinity;
 };
 
 export type VerticalCaretMeasureResult = {

@@ -17,7 +17,13 @@ export function registerVerticalCaretMeasure(
 ): () => void {
 	const measure: VerticalCaretMeasure = (_ed, current, direction, goalX) =>
 		measureWithRoot(root, (host) =>
-			verticalCaretTarget(host.reader, current, direction, goalX),
+			verticalCaretTarget(
+				host.reader,
+				current,
+				direction,
+				goalX,
+				current.affinity,
+			),
 		);
 	setVerticalCaretMeasure(editor, measure);
 	return () => {

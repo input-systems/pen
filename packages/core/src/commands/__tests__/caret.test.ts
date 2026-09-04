@@ -391,6 +391,32 @@ describe("caret commands", () => {
 		editor.destroy();
 	});
 
+	it("G5: pen.caretUp/Down hand the selection affinity to the geometry measure", () => {
+		const editor = createCommandEditor([
+			{ id: "a", type: "paragraph", text: "hello\nworld" },
+		]);
+		const registry = createCommandHarness(editor);
+		const seen: Array<string | undefined> = [];
+		setVerticalCaretMeasure(editor, (_ed, current) => {
+			seen.push(current.affinity);
+			return { point: { blockId: "a", offset: 2 }, goalX: 10 };
+		});
+
+		editor.selectText("a", 6, 6);
+		expect(registry.dispatch(caretUp, { extend: false })).toBe(true);
+
+		editor.setSelection({
+			type: "text",
+			anchor: { blockId: "a", offset: 6 },
+			focus: { blockId: "a", offset: 6 },
+			affinity: "upstream",
+		});
+		expect(registry.dispatch(caretUp, { extend: false })).toBe(true);
+
+		expect(seen).toEqual(["downstream", "upstream"]);
+		editor.destroy();
+	});
+
 	it("G5: successful caretLeft clears a persisted vertical goalX", () => {
 		const editor = createCommandEditor([
 			{ id: "a", type: "paragraph", text: "hello" },

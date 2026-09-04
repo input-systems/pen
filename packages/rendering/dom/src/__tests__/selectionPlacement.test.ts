@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SelectionState } from "@input/pen-types";
 import { getRootGeometry } from "../geometry/rootGeometry";
-import { collapsedRect } from "../geometry/types";
+import { collapsedRect, singleRunLineBox } from "../geometry/types";
 import { resolveSelectionRect } from "../utils/selectionPlacement";
 
 let frameQueue: FrameRequestCallback[] = [];
@@ -90,6 +90,79 @@ describe("resolveSelectionRect", () => {
 
 		expect(seen.rect?.left).toBe(8);
 		expect(host.scheduler.diagnostics.measureNowCount).toBe(0);
+	});
+
+	it("measures a spanning selection per block instead of the block border boxes", () => {
+		const root = document.createElement("div");
+		const lineHeight = 16;
+		const inkLeft = 100;
+		// full-width column box the browser reports for a fully covered block
+		const columnBox = {
+			...collapsedRect(0, 0, lineHeight),
+			width: 800,
+			right: 800,
+		};
+		const measuredRanges: Array<{
+			blockId: string;
+			from: number;
+			to: number;
+		}> = [];
+		getRootGeometry(root, {
+			observeResize: false,
+			observeFonts: false,
+			measure: {
+				blockIds: () => ["p1", "p2", "p3", "p4"],
+				lineBoxes: (blockId) => [
+					singleRunLineBox(
+						{
+							...collapsedRect(inkLeft, 0, lineHeight),
+							width: 200,
+							right: inkLeft + 200,
+						},
+						0,
+						blockId === "p3" ? 0 : 10,
+					),
+				],
+				rangeRects: ({ anchor, focus }) => {
+					if (anchor.blockId !== focus.blockId) {
+						return [columnBox];
+					}
+					measuredRanges.push({
+						blockId: anchor.blockId,
+						from: anchor.offset,
+						to: focus.offset,
+					});
+					const top = Number(anchor.blockId.slice(1)) * lineHeight;
+					return [
+						{
+							...collapsedRect(
+								inkLeft + anchor.offset * 8,
+								top,
+								lineHeight,
+							),
+							width: (focus.offset - anchor.offset) * 8,
+							right: inkLeft + focus.offset * 8,
+						},
+					];
+				},
+			},
+		});
+
+		const rect = resolveSelectionRect(root, {
+			type: "text",
+			anchor: { blockId: "p4", offset: 6 },
+			focus: { blockId: "p1", offset: 4 },
+		});
+
+		expect(measuredRanges).toEqual([
+			{ blockId: "p1", from: 4, to: 10 },
+			{ blockId: "p2", from: 0, to: 10 },
+			{ blockId: "p4", from: 0, to: 6 },
+		]);
+		expect(rect?.left).toBe(inkLeft);
+		expect(rect?.right).toBe(inkLeft + 80);
+		expect(rect?.top).toBe(lineHeight);
+		expect(rect?.bottom).toBe(5 * lineHeight);
 	});
 
 	it("returns null for collapsed text selections without measuring", () => {
