@@ -112,6 +112,72 @@ describe("SessionReconciler", () => {
 		reconciler.destroy();
 		editor.destroy();
 	});
+
+	it("SCALE2: rebuilds the focus block only when its own decorations changed", () => {
+		let markedBlockId: string | null = null;
+		const editor = createHeadlessEditor({
+			schema: defaultSchema,
+			extensions: [
+				defineExtension({
+					name: "test-marked-block",
+					facets: [
+						decorationsFacet.of(() =>
+							markedBlockId === null
+								? emptyDecorationSet()
+								: createDecorationSet([
+										{
+											type: "inline",
+											blockId: markedBlockId,
+											from: 0,
+											to: 1,
+											attributes: { marked: true },
+										},
+									]),
+						),
+					],
+				}),
+			],
+		});
+		const focusBlockId = editor.firstBlock()!.id;
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: "other",
+				blockType: "paragraph",
+				props: {},
+				position: "last",
+			},
+			{
+				type: "splice-text",
+				blockId: focusBlockId,
+				from: 0,
+				to: 0,
+				insert: "focus",
+			},
+			{
+				type: "splice-text",
+				blockId: "other",
+				from: 0,
+				to: 0,
+				insert: "other",
+			},
+		]);
+		const getYText = vi.fn(() => null);
+		const reconciler = createReconciler(editor, focusBlockId, getYText);
+
+		// a paced reveal or a suggestion mark landing on another block must not
+		// rebuild the editing surface, which would bump domSyncVersion for every block
+		markedBlockId = "other";
+		editor.requestDecorationUpdate();
+		expect(getYText).not.toHaveBeenCalled();
+
+		markedBlockId = focusBlockId;
+		editor.requestDecorationUpdate();
+		expect(getYText).toHaveBeenCalledWith(focusBlockId);
+
+		reconciler.destroy();
+		editor.destroy();
+	});
 });
 
 function createReconciler(

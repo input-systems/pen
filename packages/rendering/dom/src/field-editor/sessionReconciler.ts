@@ -1,5 +1,14 @@
-import { affectedBlockIdsFromSummary, getOpOriginType } from "@input/pen-core";
-import type { Editor, InlineDecoration, OpOrigin } from "@input/pen-types";
+import {
+	affectedBlockIdsFromSummary,
+	emptyDecorationSet,
+	getOpOriginType,
+} from "@input/pen-core";
+import type {
+	DecorationSet,
+	Editor,
+	InlineDecoration,
+	OpOrigin,
+} from "@input/pen-types";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
 import type { DomScheduler } from "../scheduler";
 import { fullReconcileToDOM } from "./reconciler";
@@ -28,6 +37,7 @@ export class SessionReconciler {
 	private readonly editor: Editor;
 	private readonly options: SessionReconcilerOptions;
 	private readonly pendingBlockIds = new Set<string>();
+	private seenDecorations: DecorationSet;
 	private scheduledWrite = false;
 	private destroyed = false;
 	private shouldProjectSelection = false;
@@ -37,6 +47,7 @@ export class SessionReconciler {
 	constructor(editor: Editor, options: SessionReconcilerOptions) {
 		this.editor = editor;
 		this.options = options;
+		this.seenDecorations = editor.getDecorations();
 		this.unsubscribeCommit = this.editor.on("commit", (event) => {
 			this.handleCommit(
 				event.origin,
@@ -57,6 +68,7 @@ export class SessionReconciler {
 		this.unsubscribeDecorationsChange();
 		this.scheduledWrite = false;
 		this.pendingBlockIds.clear();
+		this.seenDecorations = emptyDecorationSet();
 		this.shouldProjectSelection = false;
 	}
 
@@ -119,15 +131,26 @@ export class SessionReconciler {
 	}
 
 	private handleDecorationsChange(): void {
+		// core keeps a block's list by identity while it is structurally
+		// unchanged (SCALE2), so a change elsewhere in the document does not
+		// rebuild the editing surface — nor bump domSyncVersion, which
+		// re-renders every block subscriber
+		const previous = this.seenDecorations;
+		const next = this.editor.getDecorations();
+		this.seenDecorations = next;
+		const hasBlockChanged = (blockId: string): boolean =>
+			previous.forBlock(blockId) !== next.forBlock(blockId);
+
 		const snapshot = this.options.getSnapshot();
 		if (!snapshot.isEditing) {
 			return;
 		}
 		if (snapshot.mode === "expanded") {
-			for (const blockId of snapshot.activeBlockIds) {
+			const changedBlockIds = snapshot.activeBlockIds.filter(hasBlockChanged);
+			for (const blockId of changedBlockIds) {
 				this.pendingBlockIds.add(blockId);
 			}
-			if (snapshot.activeBlockIds.length > 0) {
+			if (changedBlockIds.length > 0) {
 				// a cross-block range cannot be preserved per element; rebuild
 				// the blocks and project it back from the editor
 				this.shouldProjectSelection = true;
@@ -135,7 +158,11 @@ export class SessionReconciler {
 			}
 			return;
 		}
-		if (snapshot.mode === "single" && snapshot.focusBlockId) {
+		if (
+			snapshot.mode === "single" &&
+			snapshot.focusBlockId &&
+			hasBlockChanged(snapshot.focusBlockId)
+		) {
 			this.pendingBlockIds.add(snapshot.focusBlockId);
 			this.scheduleFlush();
 		}
