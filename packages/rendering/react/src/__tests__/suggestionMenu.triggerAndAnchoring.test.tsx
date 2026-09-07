@@ -409,4 +409,109 @@ describe("@input/pen-react suggestion menu: trigger and anchoring", () => {
 			editor.destroy();
 		}
 	});
+
+	it("keeps top-placed content anchored when its height changes", async () => {
+		const editor = createSuggestionMenuEditor();
+		const blockId = editor.firstBlock()!.id;
+		const originalGetBoundingClientRect =
+			HTMLElement.prototype.getBoundingClientRect;
+		let menuHeight = 200;
+		let notifyResize: (() => void) | undefined;
+
+		class TestResizeObserver {
+			constructor(callback: ResizeObserverCallback) {
+				notifyResize = () => callback([], this);
+			}
+
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+		}
+
+		vi.stubGlobal("ResizeObserver", TestResizeObserver);
+		HTMLElement.prototype.getBoundingClientRect = function () {
+			if (this.hasAttribute("data-pen-inline-content")) {
+				return createRect(144, 700, 220, 20);
+			}
+			if (this.hasAttribute("data-pen-suggestion-menu-content")) {
+				return createRect(0, 0, 200, menuHeight);
+			}
+			return originalGetBoundingClientRect.call(this);
+		};
+
+		function Harness() {
+			const menu = useSuggestionMenu<string>({
+				editor,
+				trigger: {
+					char: "@",
+					boundary: "whitespace",
+					minQueryLength: 1,
+				},
+				getItems: () => ["Alex"],
+				onSelect: vi.fn(),
+			});
+
+			return (
+				<Pen.Editor.Root editor={editor}>
+					<Pen.Editor.Content />
+					<Pen.SuggestionMenu.Root controller={menu}>
+						<Pen.SuggestionMenu.Content>
+							<Pen.SuggestionMenu.List>
+								<Pen.SuggestionMenu.Item index={0}>
+									Alex
+								</Pen.SuggestionMenu.Item>
+							</Pen.SuggestionMenu.List>
+						</Pen.SuggestionMenu.Content>
+					</Pen.SuggestionMenu.Root>
+				</Pen.Editor.Root>
+			);
+		}
+
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		try {
+			await act(async () => {
+				editor.apply([
+					{
+						type: "splice-text",
+						blockId,
+						from: 0,
+						to: 0,
+						insert: "Hi @al",
+					},
+				]);
+				editor.selectText(blockId, 6, 6);
+				root.render(<Harness />);
+				await waitForCondition(
+					() =>
+						container.querySelector(
+							"[data-pen-suggestion-menu-content]",
+						) !== null,
+				);
+			});
+
+			const suggestionContent = container.querySelector<HTMLElement>(
+				"[data-pen-suggestion-menu-content]",
+			);
+			expect(suggestionContent?.style.top).toBe("490px");
+
+			menuHeight = 100;
+			await act(async () => {
+				notifyResize?.();
+			});
+
+			expect(suggestionContent?.style.top).toBe("590px");
+		} finally {
+			vi.unstubAllGlobals();
+			HTMLElement.prototype.getBoundingClientRect =
+				originalGetBoundingClientRect;
+			await act(async () => {
+				root.unmount();
+			});
+			container.remove();
+			editor.destroy();
+		}
+	});
 });

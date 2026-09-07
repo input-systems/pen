@@ -79,11 +79,19 @@ export function SuggestionMenuContent(props: SuggestionMenuContentProps) {
 		};
 
 		updatePosition();
+		const resizeObserver =
+			typeof ResizeObserver === "undefined"
+				? null
+				: new ResizeObserver(updatePosition);
+		if (contentRef.current) {
+			resizeObserver?.observe(contentRef.current);
+		}
 		window.addEventListener("resize", schedulePosition);
 		window.addEventListener("scroll", schedulePosition, true);
 		document.addEventListener("selectionchange", schedulePosition);
 
 		return () => {
+			resizeObserver?.disconnect();
 			window.cancelAnimationFrame(frame);
 			window.removeEventListener("resize", schedulePosition);
 			window.removeEventListener("scroll", schedulePosition, true);
