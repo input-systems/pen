@@ -65,7 +65,7 @@ Important rules:
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.2.2`; intended usage is current-state but still evolving. The package is small in surface area relative to `@input/pen-ai`, but it is important because it establishes the correct pattern for headless feature packages with renderer-agnostic UI.
+Workspace package at version `0.2.3`; intended usage is current-state but still evolving. The package is small in surface area relative to `@input/pen-ai`, but it is important because it establishes the correct pattern for headless feature packages with renderer-agnostic UI.
 
 ## Non-goals
 

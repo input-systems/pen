@@ -83,7 +83,7 @@ Important responsibilities:
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.2.2`; intended usage is current-state but still evolving. This is still the main renderer the repo documents and validates most thoroughly.
+Workspace package at version `0.2.3`; intended usage is current-state but still evolving. This is still the main renderer the repo documents and validates most thoroughly.
 
 ## Non-goals
 
