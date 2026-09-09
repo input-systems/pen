@@ -12,6 +12,7 @@ const G5_TAIL_TEXT =
 
 const SCROLL_DISTANCE = 250;
 const SCROLL_FILLER_BLOCKS = 30;
+const ROOT_SHIFT_PX = 50;
 
 type CommitStep = {
 	name: string;
@@ -388,6 +389,48 @@ scenario(
 		expect(
 			caretCacheHolds(result),
 			formatCacheFailure(result, "scroll"),
+		).toBe(true);
+	},
+);
+
+scenario(
+	"G2: after a layout shift that moves the root without resizing it caretRect equals a from-scratch measurement",
+	async (s, page) => {
+		await s.load("g5-geometry");
+
+		const points = sampleCaretPoints(await s.geometry.blocks());
+		expect(points.length).toBeGreaterThan(0);
+		await s.geometry.warm(points);
+
+		// a window resize re-centring a max-width column moves the root but
+		// keeps its size, so neither the ResizeObserver nor the scroll listener
+		// sees it; the shift below is that case without the window
+		const shift = await page.evaluate(async (distance) => {
+			const root = document.querySelector<HTMLElement>(
+				"[data-pen-editor-root]",
+			);
+			if (!root) {
+				return null;
+			}
+			const before = root.getBoundingClientRect();
+			root.style.position = "relative";
+			root.style.left = `${distance}px`;
+			await new Promise((resolve) => {
+				requestAnimationFrame(() => requestAnimationFrame(resolve));
+			});
+			const after = root.getBoundingClientRect();
+			return {
+				dx: after.left - before.left,
+				dw: after.width - before.width,
+				dh: after.height - before.height,
+			};
+		}, ROOT_SHIFT_PX);
+		expect(shift).toEqual({ dx: ROOT_SHIFT_PX, dw: 0, dh: 0 });
+
+		const result = await s.geometry.compare(points);
+		expect(
+			caretCacheHolds(result),
+			formatCacheFailure(result, "root moved without resize"),
 		).toBe(true);
 	},
 );

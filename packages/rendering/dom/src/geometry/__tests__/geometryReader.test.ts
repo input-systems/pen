@@ -291,16 +291,21 @@ describe("GeometryReader G2", () => {
 		expect(caretRect).toHaveBeenCalledTimes(10);
 	});
 
-	it("G2: a miss caches null so a same-generation retry does not remasure", () => {
+	it("G2: a miss caches null so a same-generation retry does not remeasure", () => {
 		const root = mountEditorRoot();
 		const blockRect = vi.fn(() => null);
+		const caretRect = vi.fn(() => null);
 		const reader = createReader(root, {
-			measure: { blockRect },
+			measure: { blockRect, caretRect },
 		});
+		const point: Point = { blockId: "missing", offset: 0 };
 
+		expect(reader.caretRect(point, "downstream")).toBeNull();
+		expect(reader.caretRect(point, "downstream")).toBeNull();
 		expect(reader.blockRect("missing")).toBeNull();
-		expect(reader.blockRect("missing")).toBeNull();
-		expect(blockRect).toHaveBeenCalledTimes(1);
+		expect(caretRect).toHaveBeenCalledTimes(1);
+		// the block box is the per-read validity probe, not a cached value
+		expect(blockRect).toHaveBeenCalledTimes(3);
 	});
 
 	it("G2: a height-unchanged edit drops only the named block", () => {
@@ -361,6 +366,37 @@ describe("GeometryReader G2", () => {
 		reader.caretRect(a, "downstream");
 		reader.caretRect(b, "downstream");
 		expect(caretRect).toHaveBeenCalledTimes(4);
+	});
+
+	it("G2: a block that moved without any generation bump is re-measured on the next read", () => {
+		const root = mountEditorRoot();
+		const boxes: Record<string, Rect> = {
+			a: rect(530, 0, 100, 16),
+		};
+		const caretRect = vi.fn(() =>
+			rect((boxes.a?.left ?? 0) + 40, 0, 0, 16),
+		);
+		const reader = createReader(root, {
+			measure: {
+				caretRect,
+				blockRect: (blockId) => boxes[blockId] ?? null,
+			},
+		});
+		const a: Point = { blockId: "a", offset: 4 };
+
+		expect(reader.caretRect(a, "downstream")).toEqual(rect(570, 0, 0, 16));
+		expect(reader.caretRect(a, "downstream")).toEqual(rect(570, 0, 0, 16));
+		expect(caretRect).toHaveBeenCalledTimes(1);
+
+		// a window resize re-centres the max-width column: same size, new left,
+		// and no resize, font, scroll, or commit generation changes
+		boxes.a = rect(480, 0, 100, 16);
+		const generationBeforeMove = reader.generation;
+
+		expect(reader.caretRect(a, "downstream")).toEqual(rect(520, 0, 0, 16));
+		expect(reader.blockRect("a")).toEqual(rect(480, 0, 100, 16));
+		expect(caretRect).toHaveBeenCalledTimes(2);
+		expect(reader.generation).toBeGreaterThan(generationBeforeMove);
 	});
 
 	it("G2: getBlockCommitId participates in the cache key when commitId is passed in", () => {

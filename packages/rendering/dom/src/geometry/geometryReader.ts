@@ -13,13 +13,7 @@ import { listDomBlockIds, measurePointAt } from "./geometryHitTest";
 import { measureLineBoxes } from "./lineBoxMeasure";
 import type { Affinity, GeometryReader, LineBox, Point, Rect } from "./types";
 
-export type {
-	Affinity,
-	GeometryReader,
-	LineBox,
-	Point,
-	Rect,
-} from "./types";
+export type { Affinity, GeometryReader, LineBox, Point, Rect } from "./types";
 export { verticalCaretTarget } from "./verticalCaretTarget";
 export type {
 	VerticalCaretTarget,
@@ -69,7 +63,8 @@ type BlockCacheKey = {
 type BlockCacheEntry = {
 	key: BlockCacheKey;
 	lineBoxes?: readonly LineBox[];
-	blockRect?: Rect | null;
+	/** live box at measure time; the per-read validity probe, not a cached value */
+	blockRect: Rect | null;
 	caretRects: Map<string, Rect | null>;
 	rangeRects: Map<string, readonly Rect[]>;
 };
@@ -203,15 +198,7 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	}
 
 	blockRect(blockId: string): Rect | null {
-		const entry = this.entryFor(blockId);
-		if (entry.blockRect !== undefined) {
-			return entry.blockRect;
-		}
-		const rect = this.measure?.blockRect
-			? this.measure.blockRect(blockId)
-			: measureBlockRect(this.root, blockId);
-		entry.blockRect = rect;
-		return rect;
+		return this.entryFor(blockId).blockRect;
 	}
 
 	blockIds(): readonly string[] {
@@ -240,7 +227,7 @@ class GeometryReaderImpl implements GeometryReaderHost {
 
 	invalidateBlocks(blockIds: readonly string[], commitId?: number): void {
 		// Drop named blocks always, and any other cached block whose live
-		// top/height no longer matches the box recorded at last measure.
+		// box no longer matches the one recorded at last measure.
 		const named = new Set(blockIds);
 		for (const blockId of named) {
 			if (commitId !== undefined) {
@@ -296,11 +283,7 @@ class GeometryReaderImpl implements GeometryReaderHost {
 		const ownerDocument = this.root.ownerDocument;
 		const handleScroll = (event: Event): void => {
 			if (this.disposed || !this.root.isConnected) {
-				ownerDocument.removeEventListener(
-					"scroll",
-					handleScroll,
-					true,
-				);
+				ownerDocument.removeEventListener("scroll", handleScroll, true);
 				return;
 			}
 			if (!this.movesRoot(event.target)) {
@@ -321,10 +304,24 @@ class GeometryReaderImpl implements GeometryReaderHost {
 		return target.contains(this.root) || this.root.contains(target);
 	}
 
+	/**
+	 * Cached rects are viewport-relative, and the generations only see what
+	 * resizes the root, loads a font, or scrolls (G2). A layout change outside
+	 * the root that moves it without resizing it — a re-centred max-width
+	 * column on window resize, a sidebar collapsing, a banner above — bumps
+	 * nothing, so a hit is checked against the block's live box before it is
+	 * trusted. Every read costs one block `getBoundingClientRect`; the text
+	 * range measurements the cache exists for stay cached.
+	 */
 	private entryFor(blockId: string): BlockCacheEntry {
 		const key = this.keyFor(blockId);
 		const existing = this.cache.get(blockId);
-		if (existing && cacheKeysEqual(existing.key, key)) {
+		const liveBlockRect = this.liveBlockRect(blockId);
+		if (
+			existing &&
+			cacheKeysEqual(existing.key, key) &&
+			boxStillValid(existing.blockRect, liveBlockRect)
+		) {
 			return existing;
 		}
 		if (existing) {
@@ -334,17 +331,16 @@ class GeometryReaderImpl implements GeometryReaderHost {
 			key,
 			caretRects: new Map(),
 			rangeRects: new Map(),
-			blockRect: this.liveBlockRect(blockId),
+			blockRect: liveBlockRect,
 		};
 		this.cache.set(blockId, next);
 		return next;
 	}
 
 	private liveBlockRect(blockId: string): Rect | null {
-		return (
-			this.measure?.blockRect?.(blockId) ??
-			measureBlockRect(this.root, blockId)
-		);
+		return this.measure?.blockRect
+			? this.measure.blockRect(blockId)
+			: measureBlockRect(this.root, blockId);
 	}
 
 	private keyFor(blockId: string): BlockCacheKey {
@@ -374,15 +370,14 @@ function cacheKeysEqual(left: BlockCacheKey, right: BlockCacheKey): boolean {
 	);
 }
 
-function boxStillValid(
-	cached: Rect | null | undefined,
-	live: Rect | null,
-): boolean {
-	if (cached === undefined) {
-		return false;
-	}
+function boxStillValid(cached: Rect | null, live: Rect | null): boolean {
 	if (cached == null || live == null) {
 		return cached == null && live == null;
 	}
-	return cached.top === live.top && cached.height === live.height;
+	return (
+		cached.left === live.left &&
+		cached.top === live.top &&
+		cached.width === live.width &&
+		cached.height === live.height
+	);
 }
