@@ -1,5 +1,12 @@
 # @input/pen-markdown
 
+## 0.2.3
+
+### Patch Changes
+
+- @input/pen-core@0.2.3
+  - @input/pen-types@0.2.3
+
 ## 0.2.2
 
 ### Patch Changes
