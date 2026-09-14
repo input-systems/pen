@@ -62,7 +62,7 @@ Important rules:
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.2.2`; intended usage is current-state but still evolving. It is an important architectural package because it defines how Pen treats durable history across single-editor and multi-editor document scopes.
+Workspace package at version `0.2.3`; intended usage is current-state but still evolving. It is an important architectural package because it defines how Pen treats durable history across single-editor and multi-editor document scopes.
 
 ## Non-goals
 

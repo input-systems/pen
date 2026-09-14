@@ -1,6 +1,6 @@
 {
   "name": "@input/pen-ai",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "AI extension, suggestions, autocomplete, skills, tools, and streaming for Pen",
   "license": "MIT",
   "homepage": "https://github.com/input-systems/pen#readme",

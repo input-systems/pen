@@ -135,7 +135,7 @@ The Yjs adapter implements `createRelativePosition` and `resolveRelativePosition
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.2.2`; intended usage is current-state but still evolving. In practice it is one of the most sensitive packages in the repo because seemingly small contract changes can cascade through most of the workspace.
+Workspace package at version `0.2.3`; intended usage is current-state but still evolving. In practice it is one of the most sensitive packages in the repo because seemingly small contract changes can cascade through most of the workspace.
 
 ## Non-goals
 

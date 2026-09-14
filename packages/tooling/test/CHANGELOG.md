@@ -1,5 +1,15 @@
 # @input/pen-test
 
+## 0.2.3
+
+### Patch Changes
+
+- @input/pen-core@0.2.3
+  - @input/pen-yjs@0.2.3
+  - @input/pen-interop@0.2.3
+  - @input/pen-schema@0.2.3
+  - @input/pen-types@0.2.3
+
 ## 0.2.2
 
 ### Patch Changes
