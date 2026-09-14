@@ -43,8 +43,8 @@
     "@input/pen-schema": "workspace:*",
     "@input/pen-test": "workspace:*",
     "@input/pen-types": "workspace:*",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "yjs": "^13.6.32"
   },
   "devDependencies": {
@@ -62,8 +62,8 @@
     "@input/pen-undo": "workspace:*",
     "@input/pen-vue": "workspace:*",
     "@playwright/test": "^1.62.1",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.3.4",
     "axe-core": "^4.13.0",
     "typescript": "^5.7.3",
