@@ -256,6 +256,122 @@ describe("ExpandedContentEditableBackend handleBeforeInput enter", () => {
 });
 
 describe("ExpandedContentEditableBackend keymap", () => {
+	it("leaves multi-block Enter to beforeinput", () => {
+		const editor = createEditor({ schema: defaultSchema });
+		const firstBlockId = editor.firstBlock()!.id;
+		const secondBlockId = crypto.randomUUID();
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId: firstBlockId,
+				from: 0,
+				to: 0,
+				insert: "Hello",
+			},
+			{
+				type: "insert-block",
+				blockId: secondBlockId,
+				blockType: "paragraph",
+				props: {},
+				position: { after: firstBlockId },
+			},
+			{
+				type: "splice-text",
+				blockId: secondBlockId,
+				from: 0,
+				to: 0,
+				insert: "World",
+			},
+		]);
+		editor.selectTextRange(
+			{ blockId: firstBlockId, offset: 1 },
+			{ blockId: secondBlockId, offset: 2 },
+		);
+
+		const registry = getCommandRegistry(editor);
+		if (!registry) {
+			throw new Error("expected command registry");
+		}
+		const dispatched: string[] = [];
+		const originalDispatch = registry.dispatch.bind(registry);
+		registry.dispatch = ((command, param, context) => {
+			dispatched.push(command.name);
+			return originalDispatch(command, param, context);
+		}) as typeof registry.dispatch;
+
+		const fieldEditor = createFieldEditor(firstBlockId);
+		const backend = new ExpandedContentEditableBackend(
+			editor,
+			fieldEditor.controller as unknown as FieldEditorInputController,
+		);
+		const host = document.createElement("div");
+		backend.activate(host);
+
+		try {
+			const event = dispatchKeyDown(host, "Enter");
+
+			expect(event.defaultPrevented).toBe(false);
+			expect(dispatched).toEqual([]);
+			expect(editor.getBlock(firstBlockId)?.textContent()).toBe("Hello");
+			expect(editor.getBlock(secondBlockId)?.textContent()).toBe("World");
+			expect(editor.selection).toMatchObject({
+				type: "text",
+				anchor: { blockId: firstBlockId, offset: 1 },
+				focus: { blockId: secondBlockId, offset: 2 },
+			});
+		} finally {
+			backend.deactivate();
+			editor.destroy();
+		}
+	});
+
+	it("installs the visual line-edge measure before dispatching Home", () => {
+		const editor = createEditor({ schema: defaultSchema });
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hello" },
+		]);
+		editor.selectText(blockId, 3, 3);
+
+		const registry = getCommandRegistry(editor);
+		if (!registry) {
+			throw new Error("expected command registry");
+		}
+		const lineEdgeSeam = Symbol.for("pen.lineEdgeSeam");
+		const originalDispatch = registry.dispatch.bind(registry);
+		registry.dispatch = ((command, param, context) => {
+			if (command.name === "pen.caretLineStart") {
+				expect(
+					(editor as unknown as Record<symbol, unknown>)[
+						lineEdgeSeam
+					],
+				).toEqual(expect.any(Function));
+			}
+			return originalDispatch(command, param, context);
+		}) as typeof registry.dispatch;
+
+		const fieldEditor = createFieldEditor(blockId);
+		const backend = new ExpandedContentEditableBackend(
+			editor,
+			fieldEditor.controller as unknown as FieldEditorInputController,
+		);
+		const host = document.createElement("div");
+		backend.activate(host);
+
+		try {
+			const event = dispatchKeyDown(host, "Home");
+
+			expect(event.defaultPrevented).toBe(true);
+			expect(editor.selection).toMatchObject({
+				type: "text",
+				focus: { blockId, offset: 0 },
+			});
+		} finally {
+			backend.deactivate();
+			editor.destroy();
+		}
+	});
+
 	it("extends a backward word selection across another block", () => {
 		const editor = createEditor({ schema: defaultSchema });
 		const firstBlockId = editor.firstBlock()!.id;

@@ -23,6 +23,7 @@ import {
 	keymapContextFromSelection,
 } from "./commandDispatch";
 import {
+	ensureLineEdgeMeasure,
 	handleEditorKeyBindings,
 	handleSelectAllShortcut,
 } from "./keyHandling";
@@ -405,8 +406,11 @@ export class ExpandedContentEditableBackend {
 			return;
 		}
 
+		ensureLineEdgeMeasure(this.editor);
+
 		if (
 			!event.defaultPrevented &&
+			!(event.key === "Enter" && isMultiBlock(this.editor.selection)) &&
 			dispatchKeymapEvent(this.editor, event, {
 				composing: event.isComposing === true,
 				context: keymapContextFromSelection(

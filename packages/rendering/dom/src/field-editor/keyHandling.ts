@@ -44,7 +44,7 @@ type LineEdgeMeasure = (
 	edge: "start" | "end",
 ) => { blockId: string; offset: number } | null;
 
-function ensureLineEdgeMeasure(editor: Editor): void {
+export function ensureLineEdgeMeasure(editor: Editor): void {
 	const host = editor as unknown as Record<
 		symbol,
 		LineEdgeMeasure | undefined
