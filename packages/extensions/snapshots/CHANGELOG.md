@@ -1,5 +1,13 @@
 # @input/pen-snapshots
 
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [4ea7542]
+  - @input/pen-types@0.2.4
+  - @input/pen-core@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes
