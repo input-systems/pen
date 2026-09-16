@@ -1,5 +1,14 @@
 # @input/pen-dom
 
+## 0.2.5
+
+### Patch Changes
+
+- f792d89: Preserve backward keyboard selection direction across repeated word-selection commands and allow word selections to continue extending across multiple blocks.
+- @input/pen-core@0.2.5
+  - @input/pen-shortcuts@0.2.5
+  - @input/pen-types@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes
