@@ -6,8 +6,7 @@ import {
 
 const baseOptions = {
 	blockTextEmpty: true,
-	isDocumentEmpty: false,
-	isFirstBlock: false,
+	isDocumentPlaceholderTarget: false,
 	isFocusedBlock: true,
 	hasEmptyPlaceholder: true,
 	hasExplicitPlaceholder: false,
@@ -20,8 +19,7 @@ describe("resolveInlinePlaceholderVisibility", () => {
 		expect(
 			resolveInlinePlaceholderVisibility({
 				...baseOptions,
-				isDocumentEmpty: true,
-				isFirstBlock: true,
+				isDocumentPlaceholderTarget: true,
 				hasExplicitPlaceholder: true,
 				suppressPlaceholders: true,
 			}),
@@ -32,12 +30,11 @@ describe("resolveInlinePlaceholderVisibility", () => {
 		});
 	});
 
-	it("prefers the document placeholder for the first empty document block", () => {
+	it("prefers the document placeholder on the document placeholder target", () => {
 		expect(
 			resolveInlinePlaceholderVisibility({
 				...baseOptions,
-				isDocumentEmpty: true,
-				isFirstBlock: true,
+				isDocumentPlaceholderTarget: true,
 				hasExplicitPlaceholder: true,
 			}),
 		).toEqual({

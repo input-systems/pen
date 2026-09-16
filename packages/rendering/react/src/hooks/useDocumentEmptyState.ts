@@ -2,7 +2,7 @@ import { useRef, useSyncExternalStore } from "react";
 import type { Editor } from "@input/pen-types";
 import {
 	computeDocumentEmpty,
-	computeDocumentPlaceholderVisible,
+	getDocumentPlaceholderTargetBlockId,
 } from "../utils/editorEmptyState";
 
 export function useDocumentEmptyState(editor: Editor): boolean {
@@ -22,19 +22,19 @@ export function useDocumentEmptyState(editor: Editor): boolean {
 	);
 }
 
-export function useDocumentPlaceholderState(editor: Editor): boolean {
-	const snapshotRef = useRef(computeDocumentPlaceholderVisible(editor));
+export function useDocumentPlaceholderTarget(editor: Editor): string | null {
+	const snapshotRef = useRef(getDocumentPlaceholderTargetBlockId(editor));
 
 	return useSyncExternalStore(
 		(callback) => editor.on("commit", () => callback()),
 		() => {
-			const nextSnapshot = computeDocumentPlaceholderVisible(editor);
+			const nextSnapshot = getDocumentPlaceholderTargetBlockId(editor);
 			if (snapshotRef.current === nextSnapshot) {
 				return snapshotRef.current;
 			}
 			snapshotRef.current = nextSnapshot;
 			return nextSnapshot;
 		},
-		() => false,
+		() => null,
 	);
 }

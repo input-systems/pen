@@ -8,7 +8,7 @@ import type {
   FieldEditorStore,
   FieldEditorStoreSnapshot,
 } from "@input/pen-dom/field-editor/store";
-import { computeDocumentPlaceholderVisible } from "@input/pen-dom/utils/editorEmptyState";
+import { getDocumentPlaceholderTargetBlockId } from "@input/pen-dom/utils/editorEmptyState";
 import { getChildBlockIds } from "@input/pen-dom/utils/parentIdTree";
 import type {
   Decoration,
@@ -68,10 +68,10 @@ export function useDocumentEmptyState(editor: Editor) {
   );
 }
 
-export function useDocumentPlaceholderState(editor: Editor) {
+export function useDocumentPlaceholderTarget(editor: Editor) {
   return useExternalStore(
     (callback) => editor.on("commit", () => callback()),
-    () => computeDocumentPlaceholderVisible(editor),
+    () => getDocumentPlaceholderTargetBlockId(editor),
   );
 }
 

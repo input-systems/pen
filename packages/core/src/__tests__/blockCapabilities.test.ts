@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BlockSchema, ContentType, PropSchema } from "@input/pen-types";
 import {
+	getBlockContentRole,
 	getBlockSelectionRoleFromSchema,
 	getBlockSelectionRoleFromType,
 	getFlowCapabilityFromSchema,
@@ -46,6 +47,24 @@ describe("block capability helpers", () => {
 
 		expect(getFlowCapabilityFromSchema(schema)).toBe("flow-delegated");
 		expect(getBlockSelectionRoleFromSchema(schema)).toBe("delegated");
+		expect(getBlockContentRole(schema)).toBe("content");
+	});
+
+	it("defaults contentRole to content and honors explicit chrome", () => {
+		expect(getBlockContentRole(block("paragraph"))).toBe("content");
+		expect(
+			getBlockContentRole(
+				block("signature", {
+					content: "none",
+					fieldEditor: "none",
+					authoring: {
+						contentRole: "chrome",
+					},
+				}),
+			),
+		).toBe("chrome");
+		expect(getBlockContentRole(null)).toBe(null);
+		expect(getBlockContentRole(undefined)).toBe(null);
 	});
 
 	it("keeps code editors inline-editable by default", () => {
