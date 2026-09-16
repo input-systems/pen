@@ -654,7 +654,7 @@ _no exports_
 ### function
 
 - computeDocumentEmpty
-- computeDocumentPlaceholderVisible
+- getDocumentPlaceholderTargetBlockId
 - isInlineContentEmpty
 
 ## ./utils/environment

@@ -59,6 +59,7 @@
 - filterPendingBlocksForDocumentProfile
 - foldAndNormalize
 - getApplyOptionsGroupId
+- getBlockContentRole
 - getBlockSelectionRoleFromSchema
 - getBlockSelectionRoleFromType
 - getCellCaretFocus

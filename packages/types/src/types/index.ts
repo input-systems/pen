@@ -121,6 +121,7 @@ export {
 	type ContentType,
 	type BlockDisplay,
 	type BlockAuthoring,
+	type BlockContentRole,
 	type BlockSelectionRole,
 	type FlowBlockCapability,
 	type ImportInlineMark,

@@ -1,7 +1,6 @@
 export interface InlinePlaceholderVisibilityOptions {
 	blockTextEmpty: boolean;
-	isDocumentEmpty: boolean;
-	isFirstBlock: boolean;
+	isDocumentPlaceholderTarget: boolean;
 	isFocusedBlock: boolean;
 	hasEmptyPlaceholder: boolean;
 	hasExplicitPlaceholder: boolean;
@@ -28,8 +27,7 @@ export function resolveInlinePlaceholderVisibility(
 
 	const showDocumentPlaceholder =
 		options.blockTextEmpty &&
-		options.isFirstBlock &&
-		options.isDocumentEmpty &&
+		options.isDocumentPlaceholderTarget &&
 		options.hasEmptyPlaceholder;
 	const showExplicitPlaceholder =
 		options.blockTextEmpty &&

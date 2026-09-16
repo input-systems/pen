@@ -5,7 +5,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createRoot } from "react-dom/client";
 import {
 	createEditor,
+	defineBlock,
 	ensureInlineCompletionController,
+	mergeSchemas,
+	SchemaRegistryImpl,
 } from "@input/pen-core";
 import { type BlockHandle, type BlockRenderContext } from "@input/pen-types";
 import { defaultPreset } from "@input/pen";
@@ -32,6 +35,39 @@ function PlaceholderParagraphRenderer(
 				blockId={block.id}
 				placeholder="Type ⌘I for AI Agent, or / for commands"
 			/>
+		</div>
+	);
+}
+
+/**
+ * An email signature: chrome the host puts in the document, which the user did
+ * not write and is not asked to write (RI8).
+ */
+const signature = defineBlock("signature", {
+	content: "none",
+	fieldEditor: "none",
+	authoring: {
+		contentRole: "chrome",
+		flowCapability: "flow-structural",
+		selectionRole: "structural",
+	},
+});
+
+const composerSchema = mergeSchemas(
+	defaultSchema,
+	new SchemaRegistryImpl({ blocks: [signature], inlines: [] }),
+);
+
+function SignatureRenderer(
+	block: BlockHandle,
+	ctx: BlockRenderContext,
+): React.ReactElement {
+	return (
+		<div
+			ref={ctx.ref as React.Ref<HTMLDivElement>}
+			data-block-type="signature"
+		>
+			— Ada
 		</div>
 	);
 }
@@ -77,6 +113,63 @@ describe("@input/pen-react placeholder behavior: the document placeholder", () =
 		expect(
 			placeholders[0]?.hasAttribute("data-pen-field-editor-surface"),
 		).toBe(true);
+
+		await act(async () => {
+			root.unmount();
+		});
+		container.remove();
+		editor.destroy();
+	});
+
+	it("paints the document placeholder on the body of a chrome-first document", async () => {
+		registerRenderer("paragraph", PlaceholderParagraphRenderer);
+
+		const editor = createEditor({
+			schema: composerSchema,
+			preset: defaultPreset({
+				tools: false,
+				deltaStream: false,
+				undo: false,
+			}),
+		});
+		const bodyId = editor.firstBlock()!.id;
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: "signature-1",
+				blockType: "signature",
+				props: {},
+				position: "first",
+			},
+		]);
+
+		await act(async () => {
+			root.render(
+				<Pen.Editor.Root
+					editor={editor}
+					renderers={{ signature: SignatureRenderer }}
+				>
+					<Pen.Editor.Content emptyPlaceholder="Start writing..." />
+				</Pen.Editor.Root>,
+			);
+		});
+
+		const placeholders = container.querySelectorAll(
+			"[data-placeholder-visible]",
+		);
+		expect(placeholders).toHaveLength(1);
+		expect(placeholders[0]?.getAttribute("data-placeholder")).toBe(
+			"Start writing...",
+		);
+		const bodyElement = container.querySelector(
+			`[data-block-id="${bodyId}"]`,
+		);
+		expect(bodyElement).not.toBeNull();
+		expect(placeholders[0]?.closest("[data-block-id]")).toBe(bodyElement);
 
 		await act(async () => {
 			root.unmount();

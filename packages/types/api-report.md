@@ -100,6 +100,7 @@
 - BlockAuthoring
 - BlockCapabilityKey
 - BlockCapabilityMap
+- BlockContentRole
 - BlockDecoration
 - BlockDeletePart
 - BlockDisplay
