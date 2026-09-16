@@ -22,8 +22,8 @@ import {
 	dispatchEditorCommand,
 	keymapContextFromSelection,
 } from "./commandDispatch";
+import { ensureLineEdgeMeasure } from "./contenteditableDomHelpers";
 import {
-	ensureLineEdgeMeasure,
 	handleEditorKeyBindings,
 	handleSelectAllShortcut,
 } from "./keyHandling";
