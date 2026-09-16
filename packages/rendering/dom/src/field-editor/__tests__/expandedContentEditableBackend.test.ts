@@ -56,6 +56,21 @@ function dispatchBeforeInput(host: HTMLElement, inputType: string): void {
 	);
 }
 
+function dispatchKeyDown(
+	host: HTMLElement,
+	key: string,
+	options: KeyboardEventInit = {},
+): KeyboardEvent {
+	const event = new KeyboardEvent("keydown", {
+		key,
+		bubbles: true,
+		cancelable: true,
+		...options,
+	});
+	host.dispatchEvent(event);
+	return event;
+}
+
 describe("ExpandedContentEditableBackend handleBeforeInput enter", () => {
 	it("activates the collapsed caret in-turn after a multi-block insertParagraph", () => {
 		const editor = createEditor({ schema: defaultSchema });
@@ -234,6 +249,90 @@ describe("ExpandedContentEditableBackend handleBeforeInput enter", () => {
 				},
 			]);
 		} finally {
+			backend.deactivate();
+			editor.destroy();
+		}
+	});
+});
+
+describe("ExpandedContentEditableBackend keymap", () => {
+	it("extends a backward word selection across another block", () => {
+		const editor = createEditor({ schema: defaultSchema });
+		const firstBlockId = editor.firstBlock()!.id;
+		const secondBlockId = crypto.randomUUID();
+		const thirdBlockId = crypto.randomUUID();
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId: firstBlockId,
+				from: 0,
+				to: 0,
+				insert: "one",
+			},
+			{
+				type: "insert-block",
+				blockId: secondBlockId,
+				blockType: "paragraph",
+				props: {},
+				position: { after: firstBlockId },
+			},
+			{
+				type: "splice-text",
+				blockId: secondBlockId,
+				from: 0,
+				to: 0,
+				insert: "two",
+			},
+			{
+				type: "insert-block",
+				blockId: thirdBlockId,
+				blockType: "paragraph",
+				props: {},
+				position: { after: secondBlockId },
+			},
+			{
+				type: "splice-text",
+				blockId: thirdBlockId,
+				from: 0,
+				to: 0,
+				insert: "three",
+			},
+		]);
+		editor.selectTextRange(
+			{ blockId: thirdBlockId, offset: 0 },
+			{ blockId: secondBlockId, offset: 0 },
+		);
+
+		const fieldEditor = createFieldEditor(secondBlockId);
+		const backend = new ExpandedContentEditableBackend(
+			editor,
+			fieldEditor.controller as unknown as FieldEditorInputController,
+		);
+		const host = document.createElement("div");
+		backend.activate(host);
+
+		const previousPlatform = navigator.platform;
+		Object.defineProperty(navigator, "platform", {
+			configurable: true,
+			value: "MacIntel",
+		});
+		try {
+			const event = dispatchKeyDown(host, "ArrowLeft", {
+				altKey: true,
+				shiftKey: true,
+			});
+
+			expect(event.defaultPrevented).toBe(true);
+			expect(editor.selection).toMatchObject({
+				type: "text",
+				anchor: { blockId: thirdBlockId, offset: 0 },
+				focus: { blockId: firstBlockId, offset: 3 },
+			});
+		} finally {
+			Object.defineProperty(navigator, "platform", {
+				configurable: true,
+				value: previousPlatform,
+			});
 			backend.deactivate();
 			editor.destroy();
 		}

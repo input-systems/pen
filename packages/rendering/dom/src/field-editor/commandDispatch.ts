@@ -53,8 +53,9 @@ export function syncEditorTextSelection(
 		selection?.type === "text" &&
 		selection.anchor.blockId === blockId &&
 		selection.focus.blockId === blockId &&
-		selection.anchor.offset === range.start &&
-		selection.focus.offset === range.end
+		Math.min(selection.anchor.offset, selection.focus.offset) ===
+			range.start &&
+		Math.max(selection.anchor.offset, selection.focus.offset) === range.end
 	) {
 		return;
 	}
