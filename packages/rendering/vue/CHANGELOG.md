@@ -1,5 +1,16 @@
 # @input/pen-vue
 
+## 0.2.5
+
+### Patch Changes
+
+- Updated dependencies [f792d89]
+  - @input/pen-dom@0.2.5
+  - @input/pen-core@0.2.5
+  - @input/pen-interop@0.2.5
+  - @input/pen-schema@0.2.5
+  - @input/pen-types@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes
