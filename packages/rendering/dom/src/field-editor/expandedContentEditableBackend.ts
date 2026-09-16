@@ -1,9 +1,6 @@
 import type { Editor } from "@input/pen-types";
 import { editorSelectionToDOM } from "./selectionBridge";
-import {
-	getPasteImporters,
-	handlePaste,
-} from "./clipboard";
+import { getPasteImporters, handlePaste } from "./clipboard";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
 import type { FieldEditorInputController } from "./controller";
@@ -20,17 +17,23 @@ import {
 	toggleMark,
 } from "@input/pen-core";
 import { applyEnterBehavior, toggleInlineMark } from "./commands";
-import { dispatchEditorCommand } from "./commandDispatch";
+import {
+	activateFieldEditorFromSelection,
+	dispatchEditorCommand,
+	keymapContextFromSelection,
+} from "./commandDispatch";
+import { ensureLineEdgeMeasure } from "./contenteditableDomHelpers";
+import {
+	handleEditorKeyBindings,
+	handleSelectAllShortcut,
+} from "./keyHandling";
+import { dispatchKeymapEvent } from "./keymap";
+import { mapBeforeInput } from "./beforeinputMap";
 import {
 	forwardDomSelectionToReader,
 	readNormalizedDomProposal,
 	shouldStopEquivalentDomRead,
 } from "./selectionReader";
-import {
-	handleEditorKeyBindings,
-	handleSelectAllShortcut,
-} from "./keyHandling";
-import { mapBeforeInput } from "./beforeinputMap";
 
 /**
  * Expanded mode owns the shared cross-block selected state on the real block
@@ -403,6 +406,24 @@ export class ExpandedContentEditableBackend {
 			return;
 		}
 
+		ensureLineEdgeMeasure(this.editor);
+
+		if (
+			!event.defaultPrevented &&
+			!(event.key === "Enter" && isMultiBlock(this.editor.selection)) &&
+			dispatchKeymapEvent(this.editor, event, {
+				composing: event.isComposing === true,
+				context: keymapContextFromSelection(
+					this.editor.selection,
+					false,
+				),
+			})
+		) {
+			event.preventDefault();
+			activateFieldEditorFromSelection(this.editor, this.fieldEditor);
+			return;
+		}
+
 		if (
 			handleEditorKeyBindings(this.editor, event, {
 				includeSelectAll: false,
@@ -411,7 +432,6 @@ export class ExpandedContentEditableBackend {
 			event.preventDefault();
 		}
 	};
-
 }
 
 function getBlockText(
