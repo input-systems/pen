@@ -1,5 +1,16 @@
 # @input/pen-tools
 
+## 0.2.6
+
+### Patch Changes
+
+- dcd1573: Republish the 0.2.4 train. Those tarballs shipped leftover 0.2.3 `dist/` (no rebuild before `pnpm release`), so `contentRole`, `getBlockContentRole`, and `getDocumentPlaceholderTargetBlockId` were in source and the changelog but not in the packages.
+- Updated dependencies [dcd1573]
+  - @input/pen-core@0.2.6
+  - @input/pen-ingest@0.2.6
+  - @input/pen-markdown@0.2.6
+  - @input/pen-types@0.2.6
+
 ## 0.2.5
 
 ### Patch Changes

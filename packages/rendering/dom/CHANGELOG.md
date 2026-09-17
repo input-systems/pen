@@ -1,5 +1,17 @@
 # @input/pen-dom
 
+## 0.2.6
+
+### Patch Changes
+
+- ba82d14: Fix list input rules eating text when a marker is inserted before existing content on a line. Typing `* ` at the start of a line that already has text (for example `hello`) now converts to a bullet list while preserving the rest of the line.
+- a2e17a8: Paste a plain-text URL as an inline link. A collapsed caret inserts the URL as linked text; a text selection keeps the selected text and wraps it in a `link` mark. URLs rejected by `urlPolicy` (for example `javascript:`) fall through to ordinary paste.
+- dcd1573: Republish the 0.2.4 train. Those tarballs shipped leftover 0.2.3 `dist/` (no rebuild before `pnpm release`), so `contentRole`, `getBlockContentRole`, and `getDocumentPlaceholderTargetBlockId` were in source and the changelog but not in the packages.
+- Updated dependencies [dcd1573]
+  - @input/pen-core@0.2.6
+  - @input/pen-shortcuts@0.2.6
+  - @input/pen-types@0.2.6
+
 ## 0.2.5
 
 ### Patch Changes
