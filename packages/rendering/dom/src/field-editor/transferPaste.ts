@@ -25,6 +25,7 @@ import {
 	type PenBlock,
 } from "../utils/clipboardPayload";
 import { pasteBlocks, pasteInlineText } from "./transferBlocks";
+import { tryPasteClipboardUrlAsLink } from "./transferPasteUrl";
 import {
 	deleteSelectionForTransfer,
 	getTransferCursorContext,
@@ -88,6 +89,9 @@ export async function executePasteTransfer(
 
 	const plainText = dataTransfer.getData("text/plain");
 	const html = dataTransfer.getData("text/html");
+	if (tryPasteClipboardUrlAsLink(editor, plainText, fieldEditor)) {
+		return true;
+	}
 	if (html) {
 		const penMatch = html.match(/data-pen-blocks="([^"]*)"/);
 		if (penMatch) {
