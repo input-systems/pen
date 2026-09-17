@@ -20,6 +20,7 @@ export type {
 	TransferKind,
 	TransferSource,
 } from "./transferTypes";
+export { tryPasteClipboardUrlAsLink } from "./transferPasteUrl";
 
 export function resolveTransferKind(
 	_editor: Editor,

@@ -475,6 +475,7 @@ _no exports_
 
 - executeTransfer
 - resolveTransferKind
+- tryPasteClipboardUrlAsLink
 
 ### value
 
