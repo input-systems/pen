@@ -249,6 +249,114 @@ function testStreamingToolExtension() {
 }
 
 describe("@input/pen-react AI primitives: toolbar reposition and root mount", () => {
+	it("keeps the selection toolbar fixed across document commits", async () => {
+		const selectionRect = mockMutableSelectionToolbarRect({
+			top: 180,
+			left: 160,
+			width: 120,
+			height: 24,
+		});
+		const editor = createEditor({ schema: defaultSchema });
+		const blockId = editor.firstBlock()!.id;
+		editor.apply(
+			[
+				{
+					type: "splice-text",
+					blockId,
+					from: 0,
+					to: 0,
+					insert: "Summary",
+				},
+			],
+			{ origin: "system" },
+		);
+		editor.selectTextRange(
+			{ blockId, offset: 0 },
+			{ blockId, offset: 7 },
+		);
+
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		try {
+			await act(async () => {
+				root.render(
+					<Pen.Editor.Root editor={editor}>
+						<Pen.SelectionToolbar.Root>
+							<Pen.SelectionToolbar.Content>
+								<button type="button">Bold</button>
+							</Pen.SelectionToolbar.Content>
+						</Pen.SelectionToolbar.Root>
+					</Pen.Editor.Root>,
+				);
+				await Promise.resolve();
+			});
+
+			const toolbar = container.querySelector<HTMLElement>(
+				"[data-pen-selection-toolbar-content]",
+			);
+			expect(toolbar).not.toBeNull();
+			if (!toolbar) {
+				throw new Error("Expected selection toolbar content");
+			}
+
+			const initialTransform = toolbar.style.transform;
+			selectionRect.rect.width = 160;
+
+			await act(async () => {
+				editor.apply(
+					[
+						{
+							type: "format-text",
+							blockId,
+							from: 0,
+							to: 7,
+							marks: { bold: true },
+						},
+					],
+					{ origin: "user" },
+				);
+				await Promise.resolve();
+			});
+
+			expect(toolbar.style.transform).toBe(initialTransform);
+
+			selectionRect.rect.top = 120;
+			selectionRect.rect.left = 300;
+			await act(async () => {
+				editor.apply(
+					[
+						{
+							type: "set-props",
+							blockId,
+							props: { direction: "rtl" },
+						},
+					],
+					{ origin: "user" },
+				);
+				await Promise.resolve();
+			});
+
+			expect(toolbar.style.transform).toBe(initialTransform);
+
+			await act(async () => {
+				window.dispatchEvent(new Event("scroll"));
+				await Promise.resolve();
+			});
+
+			expect(toolbar.style.transform).not.toBe(initialTransform);
+			expect(toolbar.style.transform).toContain("112px");
+		} finally {
+			await act(async () => {
+				root.unmount();
+			});
+			container.remove();
+			editor.destroy();
+			selectionRect.restore();
+		}
+	});
+
 	it("repositions the selection toolbar when the editor viewport scrolls", async () => {
 		const selectionRect = mockMutableSelectionToolbarRect({
 			top: 180,
