@@ -59,6 +59,6 @@
     "@input/pen-schema": "workspace:*",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.11"
   }
 }
