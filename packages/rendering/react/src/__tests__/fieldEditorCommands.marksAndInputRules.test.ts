@@ -364,6 +364,54 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 		editor.destroy();
 	});
 
+	it("preserves text after a leading input-rule marker", () => {
+		const editor = createEditor(editorOpts());
+		const blockId = editor.firstBlock()!.id;
+
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "hello" },
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "*" },
+		]);
+		editor.internals.assignSlot(INPUT_RULES_ENGINE_SLOT_KEY, {
+			tryMatch(
+				_nextEditor: typeof editor,
+				nextBlockId: string,
+				insertedText: string,
+				options?: { offset?: number },
+			) {
+				if (insertedText !== " " || options?.offset !== 1) return null;
+				return [
+					{
+						type: "splice-text" as const,
+						blockId: nextBlockId,
+						from: 0,
+						to: 2,
+						insert: "",
+					},
+					{
+						type: "set-props" as const,
+						blockId: nextBlockId,
+						props: { type: "bulletListItem" },
+					},
+				];
+			},
+		});
+
+		const target = applyListInputRule(editor, {
+			blockId,
+			range: { start: 1, end: 1 },
+			text: " ",
+		});
+
+		expect(target).toEqual({ blockId, anchorOffset: 0, focusOffset: 0 });
+		expect(editor.getBlock(blockId)?.type).toBe("bulletListItem");
+		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe(
+			"hello",
+		);
+
+		editor.destroy();
+	});
+
 	it("does not convert non-paragraph blocks with list triggers", () => {
 		const editor = createEditor(editorOpts());
 		const blockId = editor.firstBlock()!.id;
