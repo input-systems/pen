@@ -89,6 +89,14 @@ function canInsertLinkAtCaret(editor: Editor, blockId: string): boolean {
 	);
 }
 
+/**
+ * Paste a clipboard plain-text URL as an inline link at the current selection.
+ *
+ * When the selection is collapsed, inserts the URL as linked text at the caret.
+ * When text is selected, wraps the selection in a link mark. Returns false when
+ * `plainText` is not a URL, the URL is denied by `urlPolicy`, or the caret is
+ * not in an inline richtext block.
+ */
 export function tryPasteClipboardUrlAsLink(
 	editor: Editor,
 	plainText: string,
