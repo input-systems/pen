@@ -1,5 +1,15 @@
 # @input/pen-vue
 
+## 0.2.9
+
+### Patch Changes
+
+- @input/pen-core@0.2.9
+  - @input/pen-interop@0.2.9
+  - @input/pen-dom@0.2.9
+  - @input/pen-schema@0.2.9
+  - @input/pen-types@0.2.9
+
 ## 0.2.8
 
 ### Patch Changes

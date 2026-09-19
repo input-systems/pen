@@ -1,5 +1,14 @@
 # @input/pen-tools
 
+## 0.2.9
+
+### Patch Changes
+
+- @input/pen-core@0.2.9
+  - @input/pen-ingest@0.2.9
+  - @input/pen-markdown@0.2.9
+  - @input/pen-types@0.2.9
+
 ## 0.2.8
 
 ### Patch Changes
