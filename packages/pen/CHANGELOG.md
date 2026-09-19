@@ -1,5 +1,19 @@
 # @input/pen
 
+## 0.2.7
+
+### Patch Changes
+
+- Updated dependencies [d12e779]
+  - @input/pen-ai@0.2.7
+  - @input/pen-core@0.2.7
+  - @input/pen-interop@0.2.7
+  - @input/pen-shortcuts@0.2.7
+  - @input/pen-tools@0.2.7
+  - @input/pen-undo@0.2.7
+  - @input/pen-schema@0.2.7
+  - @input/pen-types@0.2.7
+
 ## 0.2.6
 
 ### Patch Changes
