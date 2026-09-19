@@ -77,10 +77,7 @@ export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 			);
 		};
 
-		const unsubs = [
-			editor.on("selectionChange", update),
-			editor.on("commit", () => update()),
-		];
+		const unsubscribeSelectionChange = editor.on("selectionChange", update);
 		window.addEventListener("resize", update);
 		window.addEventListener("scroll", update, true);
 
@@ -89,7 +86,7 @@ export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 		return () => {
 			window.removeEventListener("resize", update);
 			window.removeEventListener("scroll", update, true);
-			unsubs.forEach((u) => u());
+			unsubscribeSelectionChange();
 		};
 	}, [editor, isInlinePromptOpen]);
 
