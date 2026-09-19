@@ -147,6 +147,7 @@
 - AISuggestionsBlockPolicy
 - AISuggestionsController
 - AISuggestionScope
+- AISuggestionScopeSegment
 - AISuggestionsExtensionConfig
 - AISuggestionsMetrics
 - AISuggestionsMode
