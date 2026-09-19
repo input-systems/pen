@@ -28,6 +28,7 @@ import { materializeSuggestionsFromCandidates } from "./matcher";
 import { analyzeSuggestionScope } from "./analyzer";
 import { AISuggestionScheduler, type ReadyDirtyBlock } from "./scheduler";
 import {
+	buildDocumentSuggestionScope,
 	buildSuggestionScope,
 	type BuiltSuggestionScope,
 } from "./scopeBuilder";
@@ -231,11 +232,13 @@ export class AISuggestionsControllerImpl implements AISuggestionsController {
 			return false;
 		}
 
-		const builtScope = buildSuggestionScope(
-			this.editor,
-			ready.state,
-			this.config,
-		);
+		const isDocumentScope = this.config.scopeUnit === "document";
+		if (isDocumentScope) {
+			this.scheduler.clearDirtyBlocks();
+		}
+		const builtScope = isDocumentScope
+			? buildDocumentSuggestionScope(this.editor, this.config)
+			: buildSuggestionScope(this.editor, ready.state, this.config);
 		if (!builtScope) {
 			this.setState({
 				status: this.scheduler.hasDirtyBlocks() ? "scheduled" : "idle",
@@ -258,6 +261,7 @@ export class AISuggestionsControllerImpl implements AISuggestionsController {
 				scopeText: builtScope.scope.text,
 				scopeFrom: builtScope.scope.from,
 				candidates: cachedCandidates,
+				segments: builtScope.scope.segments,
 			});
 
 			this.replaceSuggestionsForScope(builtScope.scope, suggestions, {
@@ -542,6 +546,7 @@ export class AISuggestionsControllerImpl implements AISuggestionsController {
 				scopeText: builtScope.scope.text,
 				scopeFrom: builtScope.scope.from,
 				candidates: filteredCandidates,
+				segments: builtScope.scope.segments,
 			});
 
 			this.replaceSuggestionsForScope(builtScope.scope, suggestions, {
@@ -641,22 +646,30 @@ export class AISuggestionsControllerImpl implements AISuggestionsController {
 
 	// an analysis answers for one scope, so only suggestions that scope covers are stale;
 	// earlier sentences in the same block keep their suggestions until an edit kills the range.
+	// a document scope covers every segment block whole.
 	private replaceSuggestionsForScope(
 		scope: AISuggestionScope,
 		nextSuggestions: readonly AISuggestion[],
 		patch?: StatePatch,
 	): void {
+		const segmentBlockIds = scope.segments
+			? new Set(scope.segments.map((segment) => segment.blockId))
+			: null;
+		const isCoveredByScope = (suggestion: AISuggestion): boolean =>
+			segmentBlockIds
+				? segmentBlockIds.has(suggestion.blockId)
+				: suggestion.blockId === scope.blockId &&
+					rangesOverlap(
+						suggestion.from,
+						suggestion.to,
+						scope.from,
+						scope.to,
+					);
+
 		this.replaceAllSuggestions(
 			[
 				...this.state.suggestions.filter(
-					(suggestion) =>
-						suggestion.blockId !== scope.blockId ||
-						!rangesOverlap(
-							suggestion.from,
-							suggestion.to,
-							scope.from,
-							scope.to,
-						),
+					(suggestion) => !isCoveredByScope(suggestion),
 				),
 				...nextSuggestions,
 			],

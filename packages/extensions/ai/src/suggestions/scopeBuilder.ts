@@ -1,7 +1,11 @@
 import type { Editor } from "@input/pen-types";
 import { DEFAULT_MAX_SCOPE_CHARS } from "./constants";
-import type { AISuggestionScope, AISuggestionsExtensionConfig } from "./types";
-import type { DirtyBlockState } from "./scheduler";
+import type {
+	AISuggestionScope,
+	AISuggestionScopeSegment,
+	AISuggestionsExtensionConfig,
+} from "./types";
+import { isEligibleSuggestionBlock, type DirtyBlockState } from "./scheduler";
 import { generateId } from "@input/pen-types";
 
 export interface BuiltSuggestionScope {
@@ -11,6 +15,59 @@ export interface BuiltSuggestionScope {
 }
 
 const SENTENCE_BOUNDARY_REGEX = /(?<=[.!?])\s+/g;
+export const DOCUMENT_SCOPE_BLOCK_SEPARATOR = "\n\n";
+
+// every eligible block with text, in document order, joined so one analysis covers the draft.
+// blocks past maxScopeChars are left out whole rather than cut mid-sentence.
+export function buildDocumentSuggestionScope(
+	editor: Editor,
+	config: AISuggestionsExtensionConfig = {},
+): BuiltSuggestionScope | null {
+	const maxScopeChars = config.maxScopeChars ?? DEFAULT_MAX_SCOPE_CHARS;
+	const segments: AISuggestionScopeSegment[] = [];
+	let text = "";
+
+	for (const block of editor.documentState.blocks) {
+		if (!isEligibleSuggestionBlock(block, config)) {
+			continue;
+		}
+		const blockText = block.textContent({ resolved: true });
+		if (!blockText.trim()) {
+			continue;
+		}
+		const separator = text.length > 0 ? DOCUMENT_SCOPE_BLOCK_SEPARATOR : "";
+		if (
+			segments.length > 0 &&
+			text.length + separator.length + blockText.length > maxScopeChars
+		) {
+			break;
+		}
+		const from = text.length + separator.length;
+		text += separator + blockText;
+		segments.push({ blockId: block.id, from, to: text.length });
+	}
+
+	const firstSegment = segments[0];
+	if (!firstSegment) {
+		return null;
+	}
+
+	return {
+		scope: {
+			id: generateId(),
+			blockId: firstSegment.blockId,
+			blockType: editor.getBlock(firstSegment.blockId)?.type ?? null,
+			text,
+			from: 0,
+			to: text.length,
+			hash: `document:${normalizeScopeText(text)}`,
+			documentGeneration: editor.documentState.generation,
+			segments,
+		},
+		contextBefore: "",
+		contextAfter: "",
+	};
+}
 
 export function buildSuggestionScope(
 	editor: Editor,
@@ -28,11 +85,16 @@ export function buildSuggestionScope(
 	}
 
 	const maxScopeChars = config.maxScopeChars ?? DEFAULT_MAX_SCOPE_CHARS;
-	const anchorOffset = clampOffset(
-		dirtyBlock.lastChangedOffset ?? text.length,
-		text.length,
-	);
-	const sentenceRange = findSentenceRange(text, anchorOffset);
+	const sentenceRange =
+		config.scopeUnit === "block"
+			? { from: 0, to: text.length }
+			: findSentenceRange(
+					text,
+					clampOffset(
+						dirtyBlock.lastChangedOffset ?? text.length,
+						text.length,
+					),
+				);
 	const boundedRange = clampRangeToMaxChars(
 		text,
 		sentenceRange,

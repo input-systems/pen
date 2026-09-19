@@ -150,9 +150,11 @@ Proactive Grammarly-style writing suggestions. Headless: detects eligible local 
 - Suggestions remain advisory until explicitly applied. Scope building stays bounded; this is not a document-wide unrestricted rewrite surface.
 - `@input/pen-react` exposes UI through `Pen.AISuggestions.Root`, `Pen.AISuggestions.Popover`, and related hooks.
 
-Lifecycle: user-originated commits mark blocks dirty; the scheduler waits for debounce, stability, minimum changed characters, and per-block cooldown; scope building extracts a sentence-level or bounded local scope; the host analyzer returns structured candidates; candidates are filtered by confidence, dismissal memory, cache reuse, and overlap; materialized suggestions become inline decorations plus grouped popover state; apply and dismiss go through the controller.
+Lifecycle: user-originated commits mark blocks dirty; the scheduler waits for debounce, stability, minimum changed characters, and per-block cooldown; scope building extracts a sentence-level or bounded local scope (`scopeUnit: "block"` analyzes the whole dirty block, clamped to `maxScopeChars`; `scopeUnit: "document"` joins every eligible block with text into one scope, whole blocks only up to `maxScopeChars`, and records a segment per block); the host analyzer returns structured candidates; candidates are filtered by confidence, dismissal memory, cache reuse, and overlap; materialized suggestions become inline decorations plus grouped popover state; apply and dismiss go through the controller.
 
-An analysis result replaces only the suggestions whose range overlaps the analyzed scope. Suggestions elsewhere in the same block survive until their anchored range dies, so a block accumulates suggestions sentence by sentence.
+An analysis result replaces only the suggestions whose range overlaps the analyzed scope. Suggestions elsewhere in the same block survive until their anchored range dies, so a block accumulates suggestions sentence by sentence. A document scope replaces every suggestion in its segment blocks; a candidate whose match crosses a block boundary has no single block to anchor in and is dropped. A document-scope request also clears the remaining dirty blocks, so a second paragraph edited mid-request restarts one analysis instead of aborting the first paragraph's and losing it.
+
+`blockPolicy.isBlockAllowed(block)` is a host veto on top of the type allow/deny lists (e.g. a paragraph nested inside a quoted region). It applies to dirty-marking and to document-scope membership alike.
 
 ## Autocomplete (`@input/pen-ai/autocomplete`)
 

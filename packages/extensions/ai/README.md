@@ -104,6 +104,9 @@ import {
 | `cacheTtlMs`             | `300000`             | Analyzer cache TTL                  |
 | `dismissMemoryMs`        | `600000`             | Remember dismissed suggestions      |
 | `groupGapChars`          | `3`                  | Grouping gap                        |
+| `scopeUnit`              | `"sentence"`         | `sentence` / `block` / `document`   |
+
+`blockPolicy` takes `allowedBlockTypes`, `deniedBlockTypes`, and an optional `isBlockAllowed(block)` veto. With `scopeUnit: "document"` one request covers every eligible block; the analyzer receives the blocks joined by blank lines and each candidate is anchored in the block its `originalText` matches.
 
 ### Autocomplete (`./autocomplete`)
 
