@@ -1,5 +1,15 @@
 # @input/pen-ai
 
+## 0.2.7
+
+### Patch Changes
+
+- d12e779: Proactive suggestions now replace only the suggestions inside the analyzed scope. Earlier sentences in the same block keep their underlines until an edit kills their range, so a paragraph can show more than one fix at a time.
+- @input/pen-core@0.2.7
+  - @input/pen-tools@0.2.7
+  - @input/pen-ingest@0.2.7
+  - @input/pen-types@0.2.7
+
 ## 0.2.6
 
 ### Patch Changes
