@@ -1,5 +1,14 @@
 # @input/pen-transport
 
+## 0.2.8
+
+### Patch Changes
+
+- Updated dependencies [9b0dcd2]
+  - @input/pen-ai@0.2.8
+  - @input/pen-core@0.2.8
+  - @input/pen-types@0.2.8
+
 ## 0.2.7
 
 ### Patch Changes

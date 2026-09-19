@@ -1,5 +1,15 @@
 # @input/pen-ai
 
+## 0.2.8
+
+### Patch Changes
+
+- 9b0dcd2: Add `scopeUnit` to proactive suggestions: `block` analyzes the whole dirty block, `document` analyzes every eligible block in one request and anchors each candidate in its own block, so edits in a second paragraph no longer drop the first paragraph's analysis. `blockPolicy.isBlockAllowed` lets hosts veto blocks beyond their type.
+- @input/pen-core@0.2.8
+  - @input/pen-tools@0.2.8
+  - @input/pen-ingest@0.2.8
+  - @input/pen-types@0.2.8
+
 ## 0.2.7
 
 ### Patch Changes
