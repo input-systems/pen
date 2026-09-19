@@ -42,6 +42,7 @@ import type {
 	AISuggestion,
 	AISuggestionCandidate,
 	AISuggestionGroup,
+	AISuggestionScope,
 	AISuggestionsController,
 	AISuggestionsExtensionConfig,
 	AISuggestionsMetrics,
@@ -259,22 +260,16 @@ export class AISuggestionsControllerImpl implements AISuggestionsController {
 				candidates: cachedCandidates,
 			});
 
-			this.replaceSuggestionsForBlock(
-				builtScope.scope.blockId,
-				suggestions,
-				{
-					status: this.scheduler.hasDirtyBlocks()
-						? "scheduled"
-						: "idle",
-					activeSuggestionId: suggestions[0]?.id ?? null,
-					metrics: {
-						cacheHitCount: this.state.metrics.cacheHitCount + 1,
-						suggestionShownCount:
-							this.state.metrics.suggestionShownCount +
-							suggestions.length,
-					},
+			this.replaceSuggestionsForScope(builtScope.scope, suggestions, {
+				status: this.scheduler.hasDirtyBlocks() ? "scheduled" : "idle",
+				activeSuggestionId: suggestions[0]?.id ?? null,
+				metrics: {
+					cacheHitCount: this.state.metrics.cacheHitCount + 1,
+					suggestionShownCount:
+						this.state.metrics.suggestionShownCount +
+						suggestions.length,
 				},
-			);
+			});
 			return true;
 		}
 
@@ -549,30 +544,24 @@ export class AISuggestionsControllerImpl implements AISuggestionsController {
 				candidates: filteredCandidates,
 			});
 
-			this.replaceSuggestionsForBlock(
-				builtScope.scope.blockId,
-				suggestions,
-				{
-					status: this.scheduler.hasDirtyBlocks()
-						? "scheduled"
-						: "idle",
-					activeRequestId: null,
-					activeSuggestionId: suggestions[0]?.id ?? null,
-					activeSuggestionGroupId: null,
-					metrics: {
-						successCount: this.state.metrics.successCount + 1,
-						suggestionShownCount:
-							this.state.metrics.suggestionShownCount +
-							suggestions.length,
-						promptTokens:
-							this.state.metrics.promptTokens +
-							result.usage.promptTokens,
-						completionTokens:
-							this.state.metrics.completionTokens +
-							result.usage.completionTokens,
-					},
+			this.replaceSuggestionsForScope(builtScope.scope, suggestions, {
+				status: this.scheduler.hasDirtyBlocks() ? "scheduled" : "idle",
+				activeRequestId: null,
+				activeSuggestionId: suggestions[0]?.id ?? null,
+				activeSuggestionGroupId: null,
+				metrics: {
+					successCount: this.state.metrics.successCount + 1,
+					suggestionShownCount:
+						this.state.metrics.suggestionShownCount +
+						suggestions.length,
+					promptTokens:
+						this.state.metrics.promptTokens +
+						result.usage.promptTokens,
+					completionTokens:
+						this.state.metrics.completionTokens +
+						result.usage.completionTokens,
 				},
-			);
+			});
 		} catch (error) {
 			if (!signal.aborted) {
 				this.setState({
@@ -650,15 +639,24 @@ export class AISuggestionsControllerImpl implements AISuggestionsController {
 		return limitedCandidates;
 	}
 
-	private replaceSuggestionsForBlock(
-		blockId: string,
+	// an analysis answers for one scope, so only suggestions that scope covers are stale;
+	// earlier sentences in the same block keep their suggestions until an edit kills the range.
+	private replaceSuggestionsForScope(
+		scope: AISuggestionScope,
 		nextSuggestions: readonly AISuggestion[],
 		patch?: StatePatch,
 	): void {
 		this.replaceAllSuggestions(
 			[
 				...this.state.suggestions.filter(
-					(suggestion) => suggestion.blockId !== blockId,
+					(suggestion) =>
+						suggestion.blockId !== scope.blockId ||
+						!rangesOverlap(
+							suggestion.from,
+							suggestion.to,
+							scope.from,
+							scope.to,
+						),
 				),
 				...nextSuggestions,
 			],

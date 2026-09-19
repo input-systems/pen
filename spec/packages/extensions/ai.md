@@ -152,6 +152,8 @@ Proactive Grammarly-style writing suggestions. Headless: detects eligible local 
 
 Lifecycle: user-originated commits mark blocks dirty; the scheduler waits for debounce, stability, minimum changed characters, and per-block cooldown; scope building extracts a sentence-level or bounded local scope; the host analyzer returns structured candidates; candidates are filtered by confidence, dismissal memory, cache reuse, and overlap; materialized suggestions become inline decorations plus grouped popover state; apply and dismiss go through the controller.
 
+An analysis result replaces only the suggestions whose range overlaps the analyzed scope. Suggestions elsewhere in the same block survive until their anchored range dies, so a block accumulates suggestions sentence by sentence.
+
 ## Autocomplete (`@input/pen-ai/autocomplete`)
 
 Low-latency inline ghost-text completion. The subpath owns request scheduling and controller state; it does not own the model filter chain.
