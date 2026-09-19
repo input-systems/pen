@@ -154,6 +154,12 @@ Lifecycle: user-originated commits mark blocks dirty; the scheduler waits for de
 
 An analysis result replaces only the suggestions whose range overlaps the analyzed scope. Suggestions elsewhere in the same block survive until their anchored range dies, so a block accumulates suggestions sentence by sentence. A document scope replaces every suggestion in its segment blocks; a candidate whose match crosses a block boundary has no single block to anchor in and is dropped. A document-scope request also clears the remaining dirty blocks, so a second paragraph edited mid-request restarts one analysis instead of aborting the first paragraph's and losing it.
 
+A suggestion the new analysis repeats (same block, kind, original, and replacement) keeps its id and `createdAt`, so its underline, anchor, and active state survive the refresh instead of being re-minted; if its text moved, the anchor is re-minted at the new offsets. The active suggestion stays active when it survives and otherwise moves to the first new one.
+
+A document-scope response is anchored against the live document: the scope is rebuilt on arrival and, when its text hash differs from the one the request was built from, the rebuilt scope is used for matching. Candidates whose text has since changed fail to match and are dropped rather than landing at stale offsets. `documentGeneration` is not a text-change counter (it moves on structural rebuilds only) and is not used for this.
+
+Dismissal memory for document scopes is keyed on the constant `document` instead of the scope hash, so a dismissed fix stays dismissed across edits elsewhere in the body for `dismissMemoryMs`.
+
 `blockPolicy.isBlockAllowed(block)` is a host veto on top of the type allow/deny lists (e.g. a paragraph nested inside a quoted region). It applies to dirty-marking and to document-scope membership alike.
 
 ## Autocomplete (`@input/pen-ai/autocomplete`)

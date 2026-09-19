@@ -229,4 +229,153 @@ describe("document scope", () => {
 
 		editor.destroy();
 	});
+
+	it("keeps the id, anchor, and open state of a suggestion the re-analysis repeats", async () => {
+		const editor = createDocumentEditor();
+		const firstBlockId = editor.firstBlock()!.id;
+		editor.apply(
+			[
+				{
+					type: "splice-text",
+					blockId: firstBlockId,
+					from: 0,
+					to: 0,
+					insert: "Ths sentence works.",
+				},
+			],
+			{ origin: "user" },
+		);
+		await flushTimers();
+
+		const controller = getAISuggestionsController(editor)!;
+		const before = controller.getState().suggestions[0]!;
+		controller.setActiveSuggestion(before.id);
+
+		// a second paragraph triggers a full re-analysis that still reports "Ths"
+		const secondBlockId = insertParagraphAfter(
+			editor,
+			firstBlockId,
+			"We recieve mail.",
+		);
+		await flushTimers();
+
+		const after = controller.getState();
+		const kept = after.suggestions.find(
+			(suggestion) => suggestion.blockId === firstBlockId,
+		)!;
+		expect(kept.id).toBe(before.id);
+		expect(kept.createdAt).toBe(before.createdAt);
+		expect(after.activeSuggestionId).toBe(before.id);
+		expect(
+			after.suggestions.some(
+				(suggestion) => suggestion.blockId === secondBlockId,
+			),
+		).toBe(true);
+
+		editor.destroy();
+	});
+
+	it("anchors a late response against the live document instead of the text it was asked about", async () => {
+		const pendingAnalyses: Array<() => void> = [];
+		const editor = createEditor({
+			schema: defaultSchema,
+			extensions: [
+				aiSuggestionsExtension({
+					debounceMs: 0,
+					minStableMs: 0,
+					minChangedChars: 1,
+					cooldownMs: 0,
+					scopeUnit: "document",
+					analyzer: {
+						async analyze({ scope }) {
+							await new Promise<void>((resolve) => {
+								pendingAnalyses.push(resolve);
+							});
+							return {
+								candidates: CANDIDATES.filter((candidate) =>
+									scope.text.includes(candidate.originalText),
+								),
+							};
+						},
+					},
+				}),
+			],
+		});
+		const blockId = editor.firstBlock()!.id;
+		editor.apply(
+			[
+				{
+					type: "splice-text",
+					blockId,
+					from: 0,
+					to: 0,
+					insert: "Ths sentence works.",
+				},
+			],
+			{ origin: "user" },
+		);
+		await flushTimers();
+		expect(pendingAnalyses).toHaveLength(1);
+
+		// text lands in front of the misspelling while the request is in flight; the origin is
+		// not user so no second analysis is scheduled and the first response must cope
+		editor.apply(
+			[
+				{
+					type: "splice-text",
+					blockId,
+					from: 0,
+					to: 0,
+					insert: "Well, ",
+				},
+			],
+			{ origin: { type: "collaborator" } },
+		);
+		pendingAnalyses.shift()?.();
+		await flushTimers();
+
+		const suggestion =
+			getAISuggestionsController(editor)!.getState().suggestions[0]!;
+		const blockText = editor
+			.getBlock(blockId)!
+			.textContent({ resolved: true });
+		expect(blockText.slice(suggestion.from, suggestion.to)).toBe("Ths");
+		expect(suggestion.from).toBe("Well, ".length);
+
+		editor.destroy();
+	});
+
+	it("remembers a dismissed fix across edits elsewhere in the document", async () => {
+		const editor = createDocumentEditor();
+		const firstBlockId = editor.firstBlock()!.id;
+		editor.apply(
+			[
+				{
+					type: "splice-text",
+					blockId: firstBlockId,
+					from: 0,
+					to: 0,
+					insert: "Ths sentence works.",
+				},
+			],
+			{ origin: "user" },
+		);
+		await flushTimers();
+
+		const controller = getAISuggestionsController(editor)!;
+		controller.dismissSuggestion(controller.getState().suggestions[0]!.id);
+		expect(controller.getState().suggestions).toHaveLength(0);
+
+		// editing another paragraph changes the whole-document hash; the dismissal must survive it
+		insertParagraphAfter(editor, firstBlockId, "We recieve mail.");
+		await flushTimers();
+
+		expect(
+			controller
+				.getState()
+				.suggestions.map((suggestion) => suggestion.originalText),
+		).toEqual(["recieve"]);
+
+		editor.destroy();
+	});
 });

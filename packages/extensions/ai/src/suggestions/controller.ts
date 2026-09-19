@@ -35,8 +35,10 @@ import {
 import {
 	compareCandidatesForDisplay,
 	rangesOverlap,
+	resolveFingerprintScopeHash,
 	resolvePreferredOffset,
 	resolveSelectedBlockId,
+	resolveSuggestionIdentityKey,
 } from "./controllerUtils";
 import { mapSuggestionsThroughSummary } from "./controllerRangeMap";
 import type {
@@ -250,28 +252,10 @@ export class AISuggestionsControllerImpl implements AISuggestionsController {
 		const cacheTtlMs = this.config.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
 		const cached = this.analysisCache.get(builtScope.scope.hash);
 		if (cached && isCacheEntryFresh(cached, cacheTtlMs)) {
-			const cachedCandidates = this.filterCandidatesForDisplay(
-				builtScope.scope.hash,
-				cached.candidates,
-			);
-			const suggestions = materializeSuggestionsFromCandidates({
-				blockId: builtScope.scope.blockId,
-				scopeId: builtScope.scope.id,
-				scopeHash: builtScope.scope.hash,
-				scopeText: builtScope.scope.text,
-				scopeFrom: builtScope.scope.from,
-				candidates: cachedCandidates,
-				segments: builtScope.scope.segments,
-			});
-
-			this.replaceSuggestionsForScope(builtScope.scope, suggestions, {
+			this.showCandidatesForScope(builtScope, cached.candidates, {
 				status: this.scheduler.hasDirtyBlocks() ? "scheduled" : "idle",
-				activeSuggestionId: suggestions[0]?.id ?? null,
 				metrics: {
 					cacheHitCount: this.state.metrics.cacheHitCount + 1,
-					suggestionShownCount:
-						this.state.metrics.suggestionShownCount +
-						suggestions.length,
 				},
 			});
 			return true;
@@ -535,30 +519,11 @@ export class AISuggestionsControllerImpl implements AISuggestionsController {
 				createdAt: Date.now(),
 			});
 
-			const filteredCandidates = this.filterCandidatesForDisplay(
-				builtScope.scope.hash,
-				result.candidates,
-			);
-			const suggestions = materializeSuggestionsFromCandidates({
-				blockId: builtScope.scope.blockId,
-				scopeId: builtScope.scope.id,
-				scopeHash: builtScope.scope.hash,
-				scopeText: builtScope.scope.text,
-				scopeFrom: builtScope.scope.from,
-				candidates: filteredCandidates,
-				segments: builtScope.scope.segments,
-			});
-
-			this.replaceSuggestionsForScope(builtScope.scope, suggestions, {
+			this.showCandidatesForScope(builtScope, result.candidates, {
 				status: this.scheduler.hasDirtyBlocks() ? "scheduled" : "idle",
 				activeRequestId: null,
-				activeSuggestionId: suggestions[0]?.id ?? null,
-				activeSuggestionGroupId: null,
 				metrics: {
 					successCount: this.state.metrics.successCount + 1,
-					suggestionShownCount:
-						this.state.metrics.suggestionShownCount +
-						suggestions.length,
 					promptTokens:
 						this.state.metrics.promptTokens +
 						result.usage.promptTokens,
@@ -644,9 +609,69 @@ export class AISuggestionsControllerImpl implements AISuggestionsController {
 		return limitedCandidates;
 	}
 
+	// filter, anchor, and paint the candidates an analysis (or the cache) produced for a scope.
+	// a document scope built before the request may have outlived an edit; the live document is
+	// rebuilt and, when its text differs, used for anchoring so offsets are current and
+	// candidates whose text is gone simply fail to match.
+	private showCandidatesForScope(
+		builtScope: BuiltSuggestionScope,
+		candidates: readonly AISuggestionCandidate[],
+		patch: StatePatch,
+	): void {
+		const liveScope = builtScope.scope.segments
+			? this.resolveLiveDocumentScope(builtScope)
+			: builtScope;
+		if (!liveScope) {
+			this.setState(patch);
+			return;
+		}
+
+		const fingerprintScopeHash = resolveFingerprintScopeHash(
+			liveScope.scope,
+		);
+		const suggestions = materializeSuggestionsFromCandidates({
+			blockId: liveScope.scope.blockId,
+			scopeId: liveScope.scope.id,
+			scopeHash: fingerprintScopeHash,
+			scopeText: liveScope.scope.text,
+			scopeFrom: liveScope.scope.from,
+			candidates: this.filterCandidatesForDisplay(
+				fingerprintScopeHash,
+				candidates,
+			),
+			segments: liveScope.scope.segments,
+		});
+
+		this.replaceSuggestionsForScope(liveScope.scope, suggestions, {
+			...patch,
+			metrics: {
+				...patch.metrics,
+				suggestionShownCount:
+					this.state.metrics.suggestionShownCount +
+					suggestions.length,
+			},
+		});
+	}
+
+	private resolveLiveDocumentScope(
+		builtScope: BuiltSuggestionScope,
+	): BuiltSuggestionScope | null {
+		const liveScope = buildDocumentSuggestionScope(
+			this.editor,
+			this.config,
+		);
+		if (!liveScope) {
+			return null;
+		}
+		return liveScope.scope.hash === builtScope.scope.hash
+			? builtScope
+			: liveScope;
+	}
+
 	// an analysis answers for one scope, so only suggestions that scope covers are stale;
 	// earlier sentences in the same block keep their suggestions until an edit kills the range.
-	// a document scope covers every segment block whole.
+	// a document scope covers every segment block whole. a suggestion the new analysis repeats
+	// keeps its id, so its underline, anchor, and open popover survive the refresh.
 	private replaceSuggestionsForScope(
 		scope: AISuggestionScope,
 		nextSuggestions: readonly AISuggestion[],
@@ -666,15 +691,58 @@ export class AISuggestionsControllerImpl implements AISuggestionsController {
 						scope.to,
 					);
 
-		this.replaceAllSuggestions(
-			[
-				...this.state.suggestions.filter(
-					(suggestion) => !isCoveredByScope(suggestion),
-				),
-				...nextSuggestions,
-			],
-			patch,
-		);
+		const previousByKey = new Map<string, AISuggestion>();
+		const untouched: AISuggestion[] = [];
+		for (const suggestion of this.state.suggestions) {
+			if (!isCoveredByScope(suggestion)) {
+				untouched.push(suggestion);
+				continue;
+			}
+			if (!suggestion.invalidated) {
+				previousByKey.set(
+					resolveSuggestionIdentityKey(suggestion),
+					suggestion,
+				);
+			}
+		}
+
+		const merged = nextSuggestions.map((suggestion) => {
+			const key = resolveSuggestionIdentityKey(suggestion);
+			const previous = previousByKey.get(key);
+			if (!previous) {
+				return suggestion;
+			}
+			previousByKey.delete(key);
+			if (
+				previous.from !== suggestion.from ||
+				previous.to !== suggestion.to
+			) {
+				// same fix, moved text: mint a fresh anchor at the new offsets
+				this.ranges.delete(previous.id);
+			}
+			return {
+				...suggestion,
+				id: previous.id,
+				createdAt: previous.createdAt,
+			};
+		});
+
+		const all = [...untouched, ...merged];
+		const activeStillPresent =
+			this.state.activeSuggestionId != null &&
+			all.some(
+				(suggestion) => suggestion.id === this.state.activeSuggestionId,
+			);
+
+		this.replaceAllSuggestions(all, {
+			...patch,
+			activeSuggestionId: activeStillPresent
+				? this.state.activeSuggestionId
+				: (merged[0]?.id ?? null),
+			activeSuggestionGroupId: activeStillPresent
+				? this.state.activeSuggestionGroupId
+				: null,
+		});
 	}
 
 	private replaceAllSuggestions(
