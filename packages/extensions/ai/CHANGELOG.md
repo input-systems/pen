@@ -1,5 +1,15 @@
 # @input/pen-ai
 
+## 0.2.9
+
+### Patch Changes
+
+- 8c4116f: Document-scope suggestions no longer churn on every re-analysis: a repeated fix keeps its id and anchor, a late response is anchored against the live document instead of the text it was asked about, and a dismissed fix stays dismissed across edits elsewhere in the body.
+- @input/pen-core@0.2.9
+  - @input/pen-tools@0.2.9
+  - @input/pen-ingest@0.2.9
+  - @input/pen-types@0.2.9
+
 ## 0.2.8
 
 ### Patch Changes
