@@ -1,5 +1,15 @@
 # @input/pen-ai
 
+## 0.2.10
+
+### Patch Changes
+
+- cbe4112: Autocomplete keeps the shape of multi-paragraph completions: a single leading newline after a closed line (`Best,`, a finished sentence) starts a new block instead of splicing onto the punctuation, and the new `paragraphGap: "empty-block"` option lands a blank line between prose paragraphs as an empty block for documents whose paragraphs carry no margin.
+- @input/pen-core@0.2.10
+  - @input/pen-tools@0.2.10
+  - @input/pen-ingest@0.2.10
+  - @input/pen-types@0.2.10
+
 ## 0.2.9
 
 ### Patch Changes
