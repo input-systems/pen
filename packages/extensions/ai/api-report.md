@@ -186,6 +186,7 @@
 - AutocompleteDismissReason
 - AutocompleteExtensionConfig
 - AutocompleteMetrics
+- AutocompleteParagraphGap
 - AutocompletePolicyInvalidationStage
 - AutocompleteRuntimeSettings
 

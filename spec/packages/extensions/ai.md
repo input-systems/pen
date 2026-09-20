@@ -169,6 +169,7 @@ Low-latency inline ghost-text completion. The subpath owns request scheduling an
 - `autocompleteExtension()`, `getAutocompleteController()`, `createAutocompleteProvider()`, `builtinAutocompleteProviders()`, `AUTOCOMPLETE_SYSTEM_PROMPT`
 - Completion requests stream through core `streamThroughEgress()` / `pen.aiEgress`
 - The continuation target is one `editor.anchors` mint at request time, repaired on content-move commits, and resolved when the completion arrives
+- Prose completions split on newlines into appended paragraph blocks. `paragraphGap` (`"separator"`, the default, or `"empty-block"`) decides whether a blank line between two paragraphs is dropped or lands as an empty block; a margin-less document (email) needs the block. A single leading newline is dropped as a model artifact except in prose right after a closed line (sign-off phrase, finished sentence, no suffix), where it starts a new block — otherwise `Best,` + `\nKrijn` would splice to `Best,Krijn`.
 
 ## Skills (`@input/pen-ai/skills`)
 

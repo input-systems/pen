@@ -155,6 +155,7 @@ async function runPrefetchRequest(
 		{
 			activeBlockType: context.blockType,
 			continuationDepth,
+			paragraphGap: controller._paragraphGap,
 		},
 	);
 	logAutocompleteEvent("prefetch produced suggestion", {

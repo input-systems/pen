@@ -12,6 +12,8 @@ import {
 	parseMarkdownToBlocks,
 	splitPlainTextLineBlocks,
 } from "@input/pen-ingest";
+import { DEFAULT_PARAGRAPH_GAP } from "./constants";
+import type { AutocompleteParagraphGap } from "./types";
 
 export interface AutocompleteStructuredCandidate {
 	rawText: string;
@@ -20,13 +22,16 @@ export interface AutocompleteStructuredCandidate {
 	previewBlocks: readonly InlineCompletionPreviewBlock[];
 }
 
+export interface AutocompleteStructuredCandidateOptions {
+	activeBlockType?: string | null;
+	continuationDepth?: number;
+	paragraphGap?: AutocompleteParagraphGap;
+}
+
 export function createAutocompleteStructuredCandidate(
 	editor: Editor,
 	text: string,
-	options?: {
-		activeBlockType?: string | null;
-		continuationDepth?: number;
-	},
+	options?: AutocompleteStructuredCandidateOptions,
 ): AutocompleteStructuredCandidate {
 	const structuredSuggestion = parseStructuredSuggestion(
 		editor,
@@ -107,22 +112,22 @@ export function materializeStructuredCandidateAcceptance(options: {
 function parseStructuredSuggestion(
 	editor: Editor,
 	text: string,
-	options?: {
-		activeBlockType?: string | null;
-		continuationDepth?: number;
-	},
+	options?: AutocompleteStructuredCandidateOptions,
 ): {
 	inlineText: string;
 	blocks: PendingBlock[];
 } | null {
 	const normalizedText = text.replace(/\r/g, "");
+	const paragraphGap = options?.paragraphGap ?? DEFAULT_PARAGRAPH_GAP;
 	if (
 		isProseBlockType(options?.activeBlockType) &&
 		normalizedText.includes("\n") &&
 		!containsStructuredBlockContinuation(normalizedText)
 	) {
-		const proseStructuredSuggestion =
-			parseProseLineStructuredSuggestion(normalizedText);
+		const proseStructuredSuggestion = parseProseLineStructuredSuggestion(
+			normalizedText,
+			paragraphGap,
+		);
 		if (proseStructuredSuggestion) {
 			return proseStructuredSuggestion;
 		}
@@ -164,8 +169,10 @@ function parseStructuredSuggestion(
 		isProseBlockType(options?.activeBlockType) &&
 		normalizedText.includes("\n")
 	) {
-		const proseStructuredSuggestion =
-			parseProseLineStructuredSuggestion(normalizedText);
+		const proseStructuredSuggestion = parseProseLineStructuredSuggestion(
+			normalizedText,
+			paragraphGap,
+		);
 		if (proseStructuredSuggestion) {
 			return proseStructuredSuggestion;
 		}
@@ -176,6 +183,7 @@ function parseStructuredSuggestion(
 			parseImplicitMultiParagraphSuggestion(
 				normalizedText,
 				options?.continuationDepth ?? 0,
+				paragraphGap,
 			);
 		if (implicitMultiParagraphSuggestion) {
 			return implicitMultiParagraphSuggestion;
@@ -257,11 +265,14 @@ function getPendingBlockPreviewText(block: PendingBlock): string {
 		.join(" ");
 }
 
-function parseProseLineStructuredSuggestion(text: string): {
+function parseProseLineStructuredSuggestion(
+	text: string,
+	paragraphGap: AutocompleteParagraphGap,
+): {
 	inlineText: string;
 	blocks: PendingBlock[];
 } | null {
-	const suggestion = splitAutocompleteProseBlocks(text);
+	const suggestion = splitAutocompleteProseBlocks(text, paragraphGap);
 	if (!suggestion) {
 		return null;
 	}
@@ -276,16 +287,25 @@ function parseProseLineStructuredSuggestion(text: string): {
 	};
 }
 
-// A blank line between paragraphs separates them; it is not a paragraph of its own. Leading and
-// trailing newline runs are handled separately, where an empty block is deliberate — that is the
-// block the caret lands in after acceptance.
-function splitProseParagraphs(text: string): string[] {
-	return splitPlainTextLineBlocks(text).filter(
-		(paragraph) => paragraph.length > 0,
-	);
+// With the "separator" gap a blank line between paragraphs separates them and is not a paragraph
+// of its own; with "empty-block" it lands as the empty block a margin-less document needs to show
+// the gap. Leading and trailing newline runs are handled separately, where an empty block is
+// deliberate — that is the block the caret lands in after acceptance.
+function splitProseParagraphs(
+	text: string,
+	paragraphGap: AutocompleteParagraphGap,
+): string[] {
+	const paragraphs = splitPlainTextLineBlocks(text);
+	if (paragraphGap === "empty-block") {
+		return paragraphs;
+	}
+	return paragraphs.filter((paragraph) => paragraph.length > 0);
 }
 
-function splitAutocompleteProseBlocks(text: string): {
+function splitAutocompleteProseBlocks(
+	text: string,
+	paragraphGap: AutocompleteParagraphGap,
+): {
 	inlineText: string;
 	blocks: string[];
 } | null {
@@ -294,6 +314,7 @@ function splitAutocompleteProseBlocks(text: string): {
 	if (leadingNewlineMatch) {
 		const tailBlocks = splitProseParagraphs(
 			normalizedText.slice(leadingNewlineMatch[0].length),
+			paragraphGap,
 		);
 		const leadingEmptyBlocks = createEmptyBlocks(
 			tailBlocks.length > 0
@@ -304,7 +325,7 @@ function splitAutocompleteProseBlocks(text: string): {
 		return blocks.length > 0 ? { inlineText: "", blocks } : null;
 	}
 
-	const paragraphs = splitProseParagraphs(normalizedText);
+	const paragraphs = splitProseParagraphs(normalizedText, paragraphGap);
 	const trailingEmptyBlocks = createTrailingEmptyBlocks(normalizedText);
 	if (paragraphs.length <= 1 && trailingEmptyBlocks.length === 0) {
 		return null;
@@ -356,6 +377,7 @@ function isProseBlockType(blockType: string | null | undefined): boolean {
 function parseImplicitMultiParagraphSuggestion(
 	text: string,
 	continuationDepth: number,
+	paragraphGap: AutocompleteParagraphGap,
 ): {
 	inlineText: string;
 	blocks: PendingBlock[];
@@ -394,9 +416,14 @@ function parseImplicitMultiParagraphSuggestion(
 	if (paragraphContents.length === 0) {
 		return null;
 	}
+	// an implicit split is a paragraph boundary like any other, so it takes the same gap
+	const blockContents =
+		paragraphGap === "empty-block"
+			? paragraphContents.flatMap((content) => ["", content])
+			: paragraphContents;
 	return {
 		inlineText,
-		blocks: paragraphContents.map((content) => ({
+		blocks: blockContents.map((content) => ({
 			type: "paragraph",
 			props: {},
 			content,

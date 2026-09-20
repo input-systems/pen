@@ -110,12 +110,15 @@ import {
 
 ### Autocomplete (`./autocomplete`)
 
-| Option                | Default                                  | Effect                              |
-| --------------------- | ---------------------------------------- | ----------------------------------- |
-| `debounceMs`          | `DEFAULT_DEBOUNCE_MS` (`100`)            | Delay before requesting a hint      |
-| `prefetchAfterAccept` | `DEFAULT_PREFETCH_AFTER_ACCEPT` (`true`) | Prefetch the next hint after accept |
+| Option                | Default                                  | Effect                                                      |
+| --------------------- | ---------------------------------------- | ----------------------------------------------------------- |
+| `debounceMs`          | `DEFAULT_DEBOUNCE_MS` (`100`)            | Delay before requesting a hint                              |
+| `prefetchAfterAccept` | `DEFAULT_PREFETCH_AFTER_ACCEPT` (`true`) | Prefetch the next hint after accept                         |
+| `paragraphGap`        | `"separator"`                            | How a blank line between prose paragraphs lands (see below) |
 
 `autocompleteExtension()` accepts an empty config.
+
+`paragraphGap` decides what a blank line between two prose paragraphs in a completion becomes. `"separator"` drops it: the paragraphs land as adjacent blocks and the host's paragraph margin is the gap. `"empty-block"` keeps it as an empty paragraph block, for documents whose paragraphs carry no margin and express the gap as a block of their own (email). An implicit paragraph split during a continuation takes the same gap. Independent of the setting, a single leading newline in a prose completion right after a closed line (`Best,`, `Thanks for your time.`) starts a new block instead of being dropped as a model artifact; mid-sentence it is still dropped.
 
 ### Skills (`./skills`)
 

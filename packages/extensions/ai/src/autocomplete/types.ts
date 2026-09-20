@@ -6,6 +6,14 @@ import type {
 	AutocompleteProviderTiming,
 } from "./providers/types";
 
+/**
+ * How a blank line between two prose paragraphs in a completion lands in the document.
+ * `"separator"` drops it: the paragraphs become adjacent blocks and the host's paragraph margin
+ * is the gap. `"empty-block"` keeps it as an empty paragraph block, for documents whose paragraphs
+ * carry no margin and express the gap as a block of their own (email).
+ */
+export type AutocompleteParagraphGap = "separator" | "empty-block";
+
 export interface AutocompleteExtensionConfig {
 	model?: ModelAdapter;
 	enabled?: boolean;
@@ -13,6 +21,7 @@ export interface AutocompleteExtensionConfig {
 	acceptanceStrategy?: AutocompleteAcceptanceStrategy;
 	staleAfterMs?: number;
 	blockPolicy?: AutocompleteBlockPolicy;
+	paragraphGap?: AutocompleteParagraphGap;
 	maxPrefixChars?: number;
 	maxSuffixChars?: number;
 	maxNeighborChars?: number;
@@ -102,9 +111,7 @@ export type AutocompleteBlockedReason =
 	| "block-missing";
 
 export type AutocompletePolicyInvalidationStage =
-	| "scheduled"
-	| "requesting"
-	| "showing";
+	"scheduled" | "requesting" | "showing";
 
 export interface AutocompleteController {
 	getSnapshot(): AutocompleteControllerSnapshot;

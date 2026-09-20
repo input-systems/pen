@@ -11,6 +11,7 @@ import type {
 	AutocompleteAcceptanceStrategy,
 	AutocompleteControllerSnapshot,
 	AutocompleteControllerState,
+	AutocompleteParagraphGap,
 } from "./types";
 
 export type AutocompleteControllerHost = {
@@ -19,6 +20,7 @@ export type AutocompleteControllerHost = {
 	_debounceMs: number;
 	_acceptanceStrategy: AutocompleteAcceptanceStrategy;
 	_staleAfterMs: number;
+	readonly _paragraphGap: AutocompleteParagraphGap;
 	readonly _maxPrefixChars: number;
 	readonly _maxSuffixChars: number;
 	readonly _maxNeighborChars: number;
@@ -30,8 +32,7 @@ export type AutocompleteControllerHost = {
 	readonly _listeners: Set<() => void>;
 	_snapshot: AutocompleteControllerSnapshot | null;
 	_providerDescriptorsSnapshot:
-		| readonly AutocompleteProviderDescriptor[]
-		| null;
+		readonly AutocompleteProviderDescriptor[] | null;
 	_state: AutocompleteControllerState;
 	_debounceTimer: ReturnType<typeof setTimeout> | null;
 	_abortController: AbortController | null;

@@ -34,6 +34,7 @@ import {
 	DEFAULT_MAX_PROVIDER_CHARS,
 	DEFAULT_MAX_PROVIDER_TIME_MS,
 	DEFAULT_MAX_SUFFIX_CHARS,
+	DEFAULT_PARAGRAPH_GAP,
 	DEFAULT_PREFETCH_AFTER_ACCEPT,
 	DEFAULT_STALE_AFTER_MS,
 } from "./constants";
@@ -52,6 +53,7 @@ import type {
 	AutocompleteControllerState,
 	AutocompleteDismissReason,
 	AutocompleteExtensionConfig,
+	AutocompleteParagraphGap,
 } from "./types";
 
 export class AutocompleteControllerImpl
@@ -62,6 +64,7 @@ export class AutocompleteControllerImpl
 	_debounceMs: number;
 	_acceptanceStrategy: AutocompleteAcceptanceStrategy;
 	_staleAfterMs: number;
+	readonly _paragraphGap: AutocompleteParagraphGap;
 	readonly _maxPrefixChars: number;
 	readonly _maxSuffixChars: number;
 	readonly _maxNeighborChars: number;
@@ -73,8 +76,7 @@ export class AutocompleteControllerImpl
 	readonly _listeners = new Set<() => void>();
 	_snapshot: AutocompleteControllerSnapshot | null = null;
 	_providerDescriptorsSnapshot:
-		| readonly AutocompleteProviderDescriptor[]
-		| null = null;
+		readonly AutocompleteProviderDescriptor[] | null = null;
 	_state: AutocompleteControllerState = {
 		enabled: true,
 		status: "idle",
@@ -129,6 +131,7 @@ export class AutocompleteControllerImpl
 		this._debounceMs = config.debounceMs ?? DEFAULT_DEBOUNCE_MS;
 		this._acceptanceStrategy = config.acceptanceStrategy ?? "full";
 		this._staleAfterMs = config.staleAfterMs ?? DEFAULT_STALE_AFTER_MS;
+		this._paragraphGap = config.paragraphGap ?? DEFAULT_PARAGRAPH_GAP;
 		this._state.blockPolicy = {
 			allowInCodeBlocks: true,
 			allowInTables: false,
