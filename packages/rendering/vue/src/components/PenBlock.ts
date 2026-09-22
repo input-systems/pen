@@ -35,6 +35,8 @@ import type { PenBlockRenderContext } from "../types";
 import { PenInlineContent } from "./PenInlineContent";
 import { PenTableCellContent } from "./PenTableCellContent";
 
+const TOGGLE_TRIGGER_MIN_SIZE_PX = 24;
+
 /**
  * Renders one block by id, dispatching to the matching entry in the
  * `renderers` override map and falling back to the built-in rendering
@@ -326,6 +328,10 @@ function renderBlockBody(args: {
 							type: "button",
 							"data-pen-toggle-trigger": "",
 							"data-pen-ignore-pointer-gesture": "",
+							style: {
+								minWidth: `${TOGGLE_TRIGGER_MIN_SIZE_PX}px`,
+								minHeight: `${TOGGLE_TRIGGER_MIN_SIZE_PX}px`,
+							},
 							"aria-expanded": open,
 							onMousedown: (event: MouseEvent) => {
 								event.preventDefault();

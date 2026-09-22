@@ -9,6 +9,8 @@ import { appendParentIdChildBlock } from "../utils/parentIdTree";
 import { useChildBlockIds } from "../hooks/useChildBlockIds";
 import { BlockChildren } from "../primitives/editor/blockChildren";
 
+const TOGGLE_TRIGGER_MIN_SIZE_PX = 24;
+
 export function ToggleRenderer(
 	block: BlockHandle,
 	ctx: BlockRenderContext,
@@ -93,6 +95,10 @@ function ToggleTrigger({ blockId, open }: { blockId: string; open: boolean }) {
 			type="button"
 			data-pen-toggle-trigger=""
 			data-pen-ignore-pointer-gesture=""
+			style={{
+				minWidth: TOGGLE_TRIGGER_MIN_SIZE_PX,
+				minHeight: TOGGLE_TRIGGER_MIN_SIZE_PX,
+			}}
 			aria-expanded={open}
 			aria-label={
 				open

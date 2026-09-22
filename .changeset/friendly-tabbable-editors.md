@@ -4,4 +4,4 @@
 "@input/pen-vue": patch
 ---
 
-Make editor roots a single tab stop that transfers keyboard focus into the active text field.
+Make editor roots a single tab stop that transfers keyboard focus into the active text field, and keep nested toggle controls at an accessible target size.

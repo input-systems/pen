@@ -4,6 +4,7 @@ import { queryBlockElement } from "../field-editor/selectionDomQueries";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import { collectHostTextBlocks } from "./pointerActivation";
 
+/** Options for transferring editor-root focus into a text field surface. */
 export interface FieldEditorRootFocusOptions {
 	event: FocusEvent;
 	editor: Editor;
@@ -12,6 +13,7 @@ export interface FieldEditorRootFocusOptions {
 	readonly?: boolean;
 }
 
+/** Transfers direct editor-root focus into the active text field surface. */
 export function handleFieldEditorRootFocus(
 	options: FieldEditorRootFocusOptions,
 ): void {
