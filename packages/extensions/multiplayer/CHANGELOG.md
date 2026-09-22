@@ -1,5 +1,12 @@
 # @input/pen-multiplayer
 
+## 0.2.11
+
+### Patch Changes
+
+- @input/pen-core@0.2.11
+  - @input/pen-types@0.2.11
+
 ## 0.2.10
 
 ### Patch Changes

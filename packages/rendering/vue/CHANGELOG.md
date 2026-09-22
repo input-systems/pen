@@ -1,5 +1,17 @@
 # @input/pen-vue
 
+## 0.2.11
+
+### Patch Changes
+
+- 22f354e: Make editor roots a single tab stop that transfers keyboard focus into the active text or selection surface, and keep nested toggle controls at an accessible target size.
+- Updated dependencies [22f354e]
+  - @input/pen-dom@0.2.11
+  - @input/pen-core@0.2.11
+  - @input/pen-interop@0.2.11
+  - @input/pen-schema@0.2.11
+  - @input/pen-types@0.2.11
+
 ## 0.2.10
 
 ### Patch Changes
