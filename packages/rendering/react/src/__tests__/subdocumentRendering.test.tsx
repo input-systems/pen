@@ -27,7 +27,7 @@ describe("@input/pen-react subdocument rendering", () => {
 		expect(typeof SubdocumentRenderer).toBe("function");
 	});
 
-	it("mounts nested editors without leaking parent selection handlers", async () => {
+	it("keeps parent selection handling scoped around nested editors", async () => {
 		const editor = createEditor({
 			schema: defaultSchema,
 			preset: defaultPreset({
@@ -59,6 +59,8 @@ describe("@input/pen-react subdocument rendering", () => {
 			const editorRoots = container.querySelectorAll(
 				"[data-pen-editor-root]",
 			);
+			const parentRoot = editorRoots[0] as HTMLElement;
+			const nestedRoot = editorRoots[1] as HTMLElement;
 			const nestedContent = container.querySelectorAll(
 				"[data-pen-editor-content]",
 			)[1] as HTMLElement | undefined;
@@ -98,6 +100,26 @@ describe("@input/pen-react subdocument rendering", () => {
 			});
 
 			expect(editor.selection).toBeNull();
+
+			const parentSink = parentRoot.querySelector<HTMLElement>(
+				":scope > [data-pen-focus-sink]",
+			);
+			const nestedSink = nestedRoot.querySelector<HTMLElement>(
+				":scope > [data-pen-focus-sink]",
+			);
+			expect(parentSink).toBeInstanceOf(HTMLElement);
+			expect(nestedSink).toBeInstanceOf(HTMLElement);
+
+			await act(async () => {
+				editor.selectBlocks(["subdoc-block"]);
+				const outside = document.createElement("button");
+				container.prepend(outside);
+				outside.focus();
+				parentRoot.focus();
+			});
+
+			expect(document.activeElement).toBe(parentSink);
+			expect(document.activeElement).not.toBe(nestedSink);
 		} finally {
 			await act(async () => {
 				root.unmount();

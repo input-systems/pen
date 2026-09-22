@@ -1,10 +1,11 @@
 import type { Editor } from "@input/pen-types";
+import { FOCUS_SINK_ATTR } from "../a11y/focusSink";
 import type { FieldEditorSession } from "../field-editor/controller";
 import { queryBlockElement } from "../field-editor/selectionDomQueries";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import { collectHostTextBlocks } from "./pointerActivation";
 
-/** Options for transferring editor-root focus into a text field surface. */
+/** Options for transferring editor-root focus into the active editor surface. */
 export interface FieldEditorRootFocusOptions {
 	event: FocusEvent;
 	editor: Editor;
@@ -13,16 +14,30 @@ export interface FieldEditorRootFocusOptions {
 	readonly?: boolean;
 }
 
-/** Transfers direct editor-root focus into the active text field surface. */
+/** Transfers direct editor-root focus into the active editor surface. */
 export function handleFieldEditorRootFocus(
 	options: FieldEditorRootFocusOptions,
 ): void {
 	const { event, editor, fieldEditor, root, readonly } = options;
-	if (event.target !== root || readonly === true) {
+	if (event.target !== root) {
 		return;
 	}
 
 	const selection = editor.selection;
+	if (selection?.type === "block" || selection?.type === "cell") {
+		const focusSink = root.querySelector(
+			`:scope > [${FOCUS_SINK_ATTR}]`,
+		);
+		if (focusSink instanceof HTMLElement) {
+			focusSink.focus({ preventScroll: true });
+		}
+		return;
+	}
+
+	if (readonly === true) {
+		return;
+	}
+
 	if (selection) {
 		if (
 			selection.type === "text" &&
