@@ -128,6 +128,7 @@ function mockMutableSelectionToolbarRect(initialRect: {
 	height: number;
 }) {
 	const rect = { ...initialRect };
+	let nextRect: typeof rect | null = null;
 	const originalGetSelection = window.getSelection.bind(window);
 	const originalRequestAnimationFrame =
 		window.requestAnimationFrame.bind(window);
@@ -139,20 +140,23 @@ function mockMutableSelectionToolbarRect(initialRect: {
 		value: () => ({
 			rangeCount: 1,
 			getRangeAt: () => ({
-				getBoundingClientRect: () =>
-					({
-						top: rect.top,
-						left: rect.left,
-						width: rect.width,
-						height: rect.height,
-						right: rect.left + rect.width,
-						bottom: rect.top + rect.height,
-						x: rect.left,
-						y: rect.top,
+				getBoundingClientRect: () => {
+					const measuredRect = nextRect ?? rect;
+					nextRect = null;
+					return {
+						top: measuredRect.top,
+						left: measuredRect.left,
+						width: measuredRect.width,
+						height: measuredRect.height,
+						right: measuredRect.left + measuredRect.width,
+						bottom: measuredRect.top + measuredRect.height,
+						x: measuredRect.left,
+						y: measuredRect.top,
 						toJSON() {
 							return this;
 						},
-					}) as DOMRect,
+					} as DOMRect;
+				},
 			}),
 		}),
 	});
@@ -170,6 +174,9 @@ function mockMutableSelectionToolbarRect(initialRect: {
 
 	return {
 		rect,
+		returnRectOnce: (value: typeof rect) => {
+			nextRect = { ...value };
+		},
 		restore: () => {
 			Object.defineProperty(window, "getSelection", {
 				configurable: true,
@@ -221,9 +228,7 @@ function testStreamingToolExtension() {
 		dependencies: ["tools"],
 		activateClient: async ({ editor }) => {
 			toolRuntime =
-				(editor.facet(
-					toolRuntimeFacet,
-				) as ToolRuntime | null) ?? null;
+				(editor.facet(toolRuntimeFacet) as ToolRuntime | null) ?? null;
 			toolRuntime?.registerTool({
 				name: "test_search",
 				description: "Test streaming search tool",
@@ -249,7 +254,98 @@ function testStreamingToolExtension() {
 }
 
 describe("@input/pen-react AI primitives: toolbar reposition and root mount", () => {
-	it("repositions the selection toolbar when the editor viewport scrolls", async () => {
+	it("positions from live geometry when the commit measurement is stale", async () => {
+		const initialRect = {
+			top: 180,
+			left: 160,
+			width: 120,
+			height: 24,
+		};
+		const selectionRect = mockMutableSelectionToolbarRect(initialRect);
+		const editor = createEditor({
+			schema: defaultSchema,
+			extensions: [
+				undoExtension(),
+				deltaStreamExtension(),
+				toolsExtension(),
+				aiExtension({ author: "tester" }),
+			],
+		});
+		const blockId = editor.firstBlock()!.id;
+		editor.apply(
+			[
+				{
+					type: "splice-text",
+					blockId,
+					from: 0,
+					to: 0,
+					insert: "Hello world",
+				},
+			],
+			{ origin: "system" },
+		);
+		editor.selectTextRange({ blockId, offset: 0 }, { blockId, offset: 5 });
+
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+		const renderToolbar = (horizontalAlign: "left" | "right") => (
+			<Pen.Editor.Root editor={editor}>
+				<Pen.AI.Root editor={editor}>
+					<Pen.Editor.Content />
+					<Pen.SelectionToolbar.Root>
+						<Pen.SelectionToolbar.Content
+							horizontalAlign={horizontalAlign}
+						>
+							<button type="button">AI</button>
+						</Pen.SelectionToolbar.Content>
+					</Pen.SelectionToolbar.Root>
+				</Pen.AI.Root>
+			</Pen.Editor.Root>
+		);
+
+		await act(async () => {
+			root.render(renderToolbar("left"));
+			await Promise.resolve();
+		});
+
+		const toolbar = container.querySelector(
+			"[data-pen-selection-toolbar-content]",
+		) as HTMLElement | null;
+		expect(toolbar).not.toBeNull();
+		if (!toolbar) {
+			throw new Error("Expected selection toolbar content");
+		}
+		expect(toolbar.style.transform).toContain("160px");
+
+		selectionRect.rect.left = 420;
+		selectionRect.returnRectOnce(initialRect);
+		await act(async () => {
+			editor.apply(
+				[
+					{
+						type: "set-props",
+						blockId,
+						props: { direction: "rtl" },
+					},
+				],
+				{ origin: "user" },
+			);
+			root.render(renderToolbar("right"));
+			await Promise.resolve();
+		});
+
+		expect(toolbar.style.transform).toContain("540px");
+
+		await act(async () => {
+			root.unmount();
+		});
+		container.remove();
+		editor.destroy();
+		selectionRect.restore();
+	});
+
+	it("keeps the left anchor stable across width changes and follows layout changes", async () => {
 		const selectionRect = mockMutableSelectionToolbarRect({
 			top: 180,
 			left: 160,
@@ -290,7 +386,7 @@ describe("@input/pen-react AI primitives: toolbar reposition and root mount", ()
 					<Pen.AI.Root editor={editor}>
 						<Pen.Editor.Content />
 						<Pen.SelectionToolbar.Root>
-							<Pen.SelectionToolbar.Content>
+							<Pen.SelectionToolbar.Content horizontalAlign="left">
 								<button type="button">AI</button>
 							</Pen.SelectionToolbar.Content>
 						</Pen.SelectionToolbar.Root>
@@ -309,15 +405,54 @@ describe("@input/pen-react AI primitives: toolbar reposition and root mount", ()
 		}
 
 		const initialTransform = toolbar.style.transform;
+		expect(initialTransform).toContain("160px");
 		expect(initialTransform).toContain("172px");
 
+		await act(async () => {
+			selectionRect.rect.width = 160;
+			editor.apply(
+				[
+					{
+						type: "format-text",
+						blockId,
+						from: 0,
+						to: 5,
+						marks: { bold: true },
+					},
+				],
+				{ origin: "user" },
+			);
+			await Promise.resolve();
+		});
+
+		expect(toolbar.style.transform).toBe(initialTransform);
+
+		await act(async () => {
+			selectionRect.rect.left = 220;
+			editor.apply(
+				[
+					{
+						type: "set-props",
+						blockId,
+						props: { direction: "rtl" },
+					},
+				],
+				{ origin: "user" },
+			);
+			await Promise.resolve();
+		});
+
+		expect(toolbar.style.transform).not.toBe(initialTransform);
+		expect(toolbar.style.transform).toContain("220px");
+
+		const transformAfterLayoutChange = toolbar.style.transform;
 		await act(async () => {
 			selectionRect.rect.top = 120;
 			window.dispatchEvent(new Event("scroll"));
 			await Promise.resolve();
 		});
 
-		expect(toolbar.style.transform).not.toBe(initialTransform);
+		expect(toolbar.style.transform).not.toBe(transformAfterLayoutChange);
 		expect(toolbar.style.transform).toContain("112px");
 
 		await act(async () => {

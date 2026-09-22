@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { aiControllerFacet, isCollapsed, isMultiBlock } from "@input/pen-core";
-import type { Editor, TextSelection } from "@input/pen-types";
+import type { Editor } from "@input/pen-types";
 import type { AIController } from "@input/pen-ai";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import { queryBlockElement } from "@input/pen-dom/field-editor/selectionBridge";
 import { resolveSelectionRect } from "../selection/placement";
+import { useIsomorphicLayoutEffect } from "./useIsomorphicLayoutEffect";
 import { useSyncExternalStoreWithSelector } from "../utils/useSyncExternalStoreWithSelector";
 
 export interface SelectionToolbarState {
@@ -30,6 +31,7 @@ const CLOSED_STATE: SelectionToolbarState = {
  */
 export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 	const [state, setState] = useState<SelectionToolbarState>(CLOSED_STATE);
+	const [revision, setRevision] = useState(0);
 	const controller =
 		(editor.facet(aiControllerFacet) as AIController | null) ?? null;
 	const isInlinePromptOpen = useSyncExternalStoreWithSelector(
@@ -54,52 +56,44 @@ export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 		},
 	);
 
+	useIsomorphicLayoutEffect(() => {
+		if (isInlinePromptOpen) {
+			setState(CLOSED_STATE);
+			return;
+		}
+
+		const rect = resolveSelectionToolbarRect(editor);
+		setState(rect ? { isOpen: true, selectionRect: rect } : CLOSED_STATE);
+	}, [editor, isInlinePromptOpen, revision]);
+
 	useEffect(() => {
 		const update = () => {
-			if (isInlinePromptOpen) {
-				setState(CLOSED_STATE);
-				return;
-			}
-
-			const selection = editor.selection;
-			if (
-				!selection ||
-				selection.type !== "text" ||
-				isCollapsed(selection)
-			) {
-				setState(CLOSED_STATE);
-				return;
-			}
-
-			const rect = resolveToolbarRect(editor, selection);
-			setState(
-				rect ? { isOpen: true, selectionRect: rect } : CLOSED_STATE,
-			);
+			setRevision((currentRevision) => currentRevision + 1);
 		};
 
 		const unsubs = [
 			editor.on("selectionChange", update),
-			editor.on("commit", () => update()),
+			editor.on("commit", update),
 		];
 		window.addEventListener("resize", update);
 		window.addEventListener("scroll", update, true);
-
-		update();
 
 		return () => {
 			window.removeEventListener("resize", update);
 			window.removeEventListener("scroll", update, true);
 			unsubs.forEach((u) => u());
 		};
-	}, [editor, isInlinePromptOpen]);
+	}, [editor]);
 
 	return state;
 }
 
-function resolveToolbarRect(
-	editor: Editor,
-	selection: TextSelection,
-): DOMRect | null {
+export function resolveSelectionToolbarRect(editor: Editor): DOMRect | null {
+	const selection = editor.selection;
+	if (!selection || selection.type !== "text" || isCollapsed(selection)) {
+		return null;
+	}
+
 	// the native range rect of a spanning selection is the column width, so
 	// measure per block first and keep the native rect as the fallback
 	if (isMultiBlock(selection)) {
