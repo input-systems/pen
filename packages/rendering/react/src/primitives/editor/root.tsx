@@ -30,6 +30,7 @@ import {
 	adoptEditorChrome,
 	bindEditorDocumentKeyDown,
 	FieldEditorImpl,
+	handleFieldEditorRootFocus,
 	RegionSelectionStore,
 	registerInlineAtomInteractionRoot,
 	registerVerticalCaretMeasure,
@@ -161,9 +162,16 @@ export function EditorRoot(props: EditorRootProps) {
 			return;
 		}
 
-		const handleFocusIn = () => {
+		const handleFocusIn = (event: FocusEvent) => {
 			setFocused(true);
 			fieldEditor.setFocused(true);
+			handleFieldEditorRootFocus({
+				event,
+				editor,
+				fieldEditor,
+				root,
+				readonly,
+			});
 		};
 
 		const handleFocusOut = () => {
@@ -182,7 +190,7 @@ export function EditorRoot(props: EditorRootProps) {
 			root.removeEventListener("focusin", handleFocusIn);
 			root.removeEventListener("focusout", handleFocusOut);
 		};
-	}, [editor, rootElement]);
+	}, [editor, readonly, rootElement]);
 
 	useEffect(() => {
 		let previousImporters: unknown;
@@ -303,7 +311,7 @@ export function EditorRoot(props: EditorRootProps) {
 			[DATA_ATTRS.readonly]: readonly,
 			[DATA_ATTRS.empty]: isEmpty,
 		}),
-		tabIndex: -1,
+		tabIndex: focused ? -1 : 0,
 		role: "textbox",
 		"aria-multiline": true,
 		...resolveEditorA11yLabel(editor),

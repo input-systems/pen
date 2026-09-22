@@ -27,6 +27,7 @@
 - handleEditorDocumentKeyDown
 - handleEscapeSelectionTransition
 - handleFieldEditorPointerActivate
+- handleFieldEditorRootFocus
 - handleTableCellSelectionKeyDown
 - intersectRegionSelectionRect
 - isFieldEditorTextEditingKey
@@ -97,6 +98,7 @@
 - ContentGestureState
 - FieldEditorPointerActivateOptions
 - FieldEditorPointerTarget
+- FieldEditorRootFocusOptions
 - GeometryMeasureAdapter
 - GeometryReader
 - GeometryReaderHost

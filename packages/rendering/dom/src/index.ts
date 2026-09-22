@@ -9,6 +9,10 @@ export {
 	type FieldEditorPointerActivateOptions,
 	type FieldEditorPointerTarget,
 } from "./host/pointerActivation";
+export {
+	handleFieldEditorRootFocus,
+	type FieldEditorRootFocusOptions,
+} from "./host/rootFocus";
 export type {
 	FieldEditorFocusReason,
 	FieldEditorFocusRequest,

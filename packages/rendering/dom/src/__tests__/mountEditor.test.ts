@@ -89,6 +89,46 @@ describe("mountEditor", () => {
 		).toBe("");
 	});
 
+	it("AX1: enters the text field when the root receives keyboard focus", async () => {
+		const editor = createBareEditor();
+		const root = document.createElement("div");
+		document.body.append(root);
+		const mounted = mountEditor(editor, root);
+		cleanups.push(() => {
+			mounted.destroy();
+			editor.destroy();
+		});
+
+		expect(root.tabIndex).toBe(0);
+		root.focus();
+		await mounted.fieldEditor.waitForAttachment();
+
+		expect(root.tabIndex).toBe(-1);
+		expect(mounted.fieldEditor.focusBlockId).toBe(editor.firstBlock()?.id);
+		expect(mounted.fieldEditor.isEditing).toBe(true);
+		expect(document.activeElement).not.toBe(root);
+		expect((document.activeElement as HTMLElement).tabIndex).toBe(-1);
+		expect(
+			document.activeElement?.closest(`[${DATA_ATTRS.inlineContent}]`),
+		).not.toBeNull();
+	});
+
+	it("AX1: keeps keyboard focus on a readonly root", () => {
+		const editor = createBareEditor();
+		const root = document.createElement("div");
+		document.body.append(root);
+		const mounted = mountEditor(editor, root, { readonly: true });
+		cleanups.push(() => {
+			mounted.destroy();
+			editor.destroy();
+		});
+
+		root.focus();
+
+		expect(document.activeElement).toBe(root);
+		expect(mounted.fieldEditor.isEditing).toBe(false);
+	});
+
 	it("activates FieldEditorImpl when the pointer hits the block, not the inline", () => {
 		const editor = createBareEditor();
 		const firstBlock = editor.firstBlock();
