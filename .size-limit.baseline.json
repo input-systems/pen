@@ -82,9 +82,9 @@
     {
       "name": "@input/pen-dom",
       "path": "packages/rendering/dom/dist/index.mjs",
-      "baselineBytes": 89969,
-      "limitBytes": 89969,
-      "note": "Re-recorded baseline 2026-08-25 (CS8). The content gesture controller, the inline-atom wrapper/destructure controllers and the region-selection store descended from @input/pen-react and are reachable from this barrel. 42817 \u2192 89969. Paired with react's 264324 \u2192 220087 in the same change: this is transferred weight, not new code."
+      "baselineBytes": 99033,
+      "limitBytes": 99033,
+      "note": "Re-recorded baseline 2026-09-22. AX1 keyboard focus and tab navigation support. 89969 \u2192 99033."
     },
     {
       "name": "@input/pen-interop",
