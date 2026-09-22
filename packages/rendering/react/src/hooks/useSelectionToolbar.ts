@@ -119,7 +119,12 @@ function resolveNativeSelectionRect(): DOMRect | null {
 		return null;
 	}
 
-	const rect = selection.getRangeAt(0).getBoundingClientRect();
+	const range = selection.getRangeAt(0);
+	if (range.collapsed) {
+		return null;
+	}
+
+	const rect = range.getBoundingClientRect();
 	if (rect.width === 0 && rect.height === 0) {
 		return null;
 	}

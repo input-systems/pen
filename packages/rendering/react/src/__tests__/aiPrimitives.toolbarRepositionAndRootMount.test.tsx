@@ -12,6 +12,8 @@ import { deltaStreamExtension } from "@input/pen-ai/stream";
 import { toolsExtension } from "@input/pen-tools";
 import { defaultPreset } from "@input/pen";
 import { defaultSchema } from "@input/pen-schema";
+import { collapsedRect, getRootGeometry } from "@input/pen-dom";
+import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import {
 	Pen,
 	useAIActions,
@@ -19,6 +21,7 @@ import {
 	useActiveAISession,
 	useAIDebugLog,
 } from "../index";
+import { resolveSelectionToolbarRect } from "../hooks/useSelectionToolbar";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -254,6 +257,66 @@ function testStreamingToolExtension() {
 }
 
 describe("@input/pen-react AI primitives: toolbar reposition and root mount", () => {
+	it("uses editor selection geometry while the native selection is collapsed", () => {
+		const editor = createEditor({ schema: defaultSchema });
+		const blockId = editor.firstBlock()!.id;
+		editor.apply(
+			[
+				{
+					type: "splice-text",
+					blockId,
+					from: 0,
+					to: 0,
+					insert: "Hello there",
+				},
+			],
+			{ origin: "system" },
+		);
+		editor.selectTextRange({ blockId, offset: 0 }, { blockId, offset: 11 });
+
+		const root = document.createElement("div");
+		root.setAttribute(DATA_ATTRS.editorRoot, "");
+		const block = document.createElement("div");
+		block.setAttribute(DATA_ATTRS.blockId, blockId);
+		root.appendChild(block);
+		document.body.appendChild(root);
+
+		const rangeRect = {
+			...collapsedRect(160, 180, 24),
+			width: 120,
+			right: 280,
+		};
+		getRootGeometry(root, {
+			observeFonts: false,
+			observeResize: false,
+			observeScroll: false,
+			measure: { rangeRects: () => [rangeRect] },
+		});
+
+		const originalGetSelection = window.getSelection.bind(window);
+		Object.defineProperty(window, "getSelection", {
+			configurable: true,
+			value: () => ({
+				rangeCount: 1,
+				getRangeAt: () => ({
+					collapsed: true,
+					getBoundingClientRect: () => new DOMRect(280, 180, 0, 24),
+				}),
+			}),
+		});
+
+		try {
+			expect(resolveSelectionToolbarRect(editor)?.left).toBe(160);
+		} finally {
+			Object.defineProperty(window, "getSelection", {
+				configurable: true,
+				value: originalGetSelection,
+			});
+			root.remove();
+			editor.destroy();
+		}
+	});
+
 	it("positions from live geometry when the commit measurement is stale", async () => {
 		const initialRect = {
 			top: 180,
