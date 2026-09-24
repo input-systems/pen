@@ -68,10 +68,13 @@ export function EditorCaretOverlay(props: EditorCaretOverlayProps) {
 		]);
 
 	const caretSelection = resolveCaretSelection(selection, fieldEditorState);
-	const rect =
-		rootElement && caretSelection
-			? readCaretRect(rootElement, caretSelection.focus)
+	const overlayElement = elementRef.current;
+	const placement =
+		rootElement && overlayElement && caretSelection
+			? readCaretRect(rootElement, overlayElement, caretSelection.focus)
 			: null;
+	const rect = placement?.caret ?? null;
+	const overlayOrigin = placement?.origin ?? null;
 	const isCaretVisible = caretSelection != null && rect != null;
 	const blinkPaused = useCaretBlinkPauseState({
 		rootElement,
@@ -117,10 +120,11 @@ export function EditorCaretOverlay(props: EditorCaretOverlayProps) {
 	]);
 
 	let caretNode: React.ReactNode = null;
-	if (caretSelection && rect) {
+	if (caretSelection && rect && overlayOrigin) {
 		const renderProps = createCaretRenderProps(
 			caretSelection,
 			rect,
+			overlayOrigin,
 			blinkPaused || reducedMotion,
 			variant,
 		);
@@ -144,6 +148,7 @@ export function EditorCaretOverlay(props: EditorCaretOverlayProps) {
 			// AX7 overlay — library caret is presentation
 			"aria-hidden": "true",
 			style: {
+				position: "relative",
 				pointerEvents: "none",
 			},
 		},
@@ -188,11 +193,16 @@ function useReducedMotion(rootElement: HTMLElement | null): boolean {
 
 function readCaretRect(
 	root: HTMLElement,
+	overlay: HTMLElement,
 	point: { blockId: string; offset: number },
-): Rect | null {
-	return measureWithRoot(root, ({ reader }) =>
-		reader.caretRect(point, "downstream"),
-	);
+): { caret: Rect; origin: DOMRect } | null {
+	return measureWithRoot(root, ({ reader }) => {
+		const caret = reader.caretRect(point, "downstream");
+		if (!caret) {
+			return null;
+		}
+		return { caret, origin: overlay.getBoundingClientRect() };
+	});
 }
 
 // AX6: `solidCaret` covers both the type-pause and reduced motion. A host that
@@ -201,6 +211,7 @@ function readCaretRect(
 function createCaretRenderProps(
 	selection: TextSelection,
 	rect: Rect,
+	overlayOrigin: DOMRectReadOnly,
 	solidCaret: boolean,
 	variant: EditorCaretVariant,
 ): EditorCaretRenderProps {
@@ -213,9 +224,9 @@ function createCaretRenderProps(
 	const defaultCaretWidth = isMacOS ? "2px" : "1px";
 	const defaultCaretRadius = isMacOS ? "999px" : "0px";
 	const caretStyle: CaretStyle = {
-		position: "fixed",
-		left: `${rect.left}px`,
-		top: `${rect.top}px`,
+		position: "absolute",
+		left: `${rect.left - overlayOrigin.left}px`,
+		top: `${rect.top - overlayOrigin.top}px`,
 		height: `${height}px`,
 		width: `var(--pen-editor-caret-width, var(--pen-caret-width, ${defaultCaretWidth}))`,
 		borderRadius: `var(--pen-editor-caret-radius, var(--pen-caret-radius, ${defaultCaretRadius}))`,
