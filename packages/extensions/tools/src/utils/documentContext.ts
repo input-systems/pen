@@ -154,12 +154,35 @@ export function stripBlockAnnotations(markdown: string): string {
 	if (!markdown.includes("<!-- block:")) {
 		return markdown;
 	}
-	return markdown
+	const withoutAnnotations = markdown
 		.split("\n")
 		.filter((line) => !BLOCK_ANNOTATION_PATTERN.test(line.trim()))
 		.join("\n")
-		.replace(/\n{3,}/g, "\n\n")
-		.replace(/^[\t\n\r ]+|[\t\n\r ]+$/g, "");
+		.replace(/\n{3,}/g, "\n\n");
+	return trimMarkdownEnvelope(withoutAnnotations);
+}
+
+function trimMarkdownEnvelope(value: string): string {
+	let start = 0;
+	let end = value.length;
+	while (
+		start < end &&
+		isMarkdownEnvelopeWhitespace(value.charCodeAt(start))
+	) {
+		start += 1;
+	}
+	while (
+		end > start &&
+		isMarkdownEnvelopeWhitespace(value.charCodeAt(end - 1))
+	) {
+		end -= 1;
+	}
+	return value.slice(start, end);
+}
+
+// NBSP is intentionally excluded because Pen uses it for empty paragraphs.
+function isMarkdownEnvelopeWhitespace(code: number): boolean {
+	return code === 9 || code === 10 || code === 13 || code === 32;
 }
 
 export function exportDocumentRangeAsMarkdown(

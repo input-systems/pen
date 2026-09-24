@@ -67,7 +67,26 @@ export function normalizeFlowMarkdownOutput(value: string): string {
 }
 
 function trimMarkdownEnvelope(value: string): string {
-	return value.replace(/^[\t\n\r ]+|[\t\n\r ]+$/g, "");
+	let start = 0;
+	let end = value.length;
+	while (
+		start < end &&
+		isMarkdownEnvelopeWhitespace(value.charCodeAt(start))
+	) {
+		start += 1;
+	}
+	while (
+		end > start &&
+		isMarkdownEnvelopeWhitespace(value.charCodeAt(end - 1))
+	) {
+		end -= 1;
+	}
+	return value.slice(start, end);
+}
+
+// NBSP is intentionally excluded because Pen uses it for empty paragraphs.
+function isMarkdownEnvelopeWhitespace(code: number): boolean {
+	return code === 9 || code === 10 || code === 13 || code === 32;
 }
 
 /**
