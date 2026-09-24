@@ -1,11 +1,20 @@
 import { stripBlockAnnotations } from "@input/pen-tools";
 import type { AIWorkingSetEnvelope, AIWorkingSetRetrievedSpan } from "../types";
+import type { AISelectionWorkingSetContext } from "../types/controller";
 
 const FLOW_MARKDOWN_ALLOWED_FEATURES = [
 	"paragraphs",
 	"headings",
+	"bold",
+	"italic",
+	"underline (`<u>text</u>`)",
+	"links",
+	"images",
 	"bullet lists",
 	"ordered lists",
+	"task lists",
+	"strikethrough",
+	"inline code",
 	"block quotes",
 	"fenced code blocks",
 	"GFM tables",
@@ -30,7 +39,8 @@ export function buildFlowMarkdownRequestPrompt(
 		"Return only markdown content. Do not add commentary, JSON, or conversational lead-ins.",
 		`Allowed markdown subset: ${FLOW_MARKDOWN_ALLOWED_FEATURES.join(", ")}.`,
 		"Use a GFM table when the user asks for a table.",
-		"Do not emit raw HTML in this lane.",
+		"Preserve existing formatting, list structure, images, and whitespace-only blocks unless the user asks to change them.",
+		"Do not emit raw HTML in this lane except `<u>text</u>` for underline.",
 		"",
 		"Context summary:",
 		contextSummary,
@@ -42,7 +52,7 @@ export function buildFlowMarkdownRequestPrompt(
 
 export function normalizeFlowMarkdownOutput(value: string): string {
 	const normalized = stripBlockAnnotations(
-		value.replace(/\r\n?/g, "\n").trim(),
+		trimMarkdownEnvelope(value.replace(/\r\n?/g, "\n")),
 	);
 	if (!normalized.startsWith("```")) {
 		return normalized;
@@ -53,7 +63,11 @@ export function normalizeFlowMarkdownOutput(value: string): string {
 	if (!fencedMatch) {
 		return normalized;
 	}
-	return fencedMatch[1]?.trim() ?? "";
+	return trimMarkdownEnvelope(fencedMatch[1] ?? "");
+}
+
+function trimMarkdownEnvelope(value: string): string {
+	return value.replace(/^[\t\n\r ]+|[\t\n\r ]+$/g, "");
 }
 
 /**
@@ -94,16 +108,22 @@ function serializeWorkingSetContext(
 	}
 
 	if (workingSet.source === "selection") {
-		const context = workingSet.context as {
-			selectedText?: string | null;
-		} | null;
-		return [
+		const context =
+			workingSet.context as AISelectionWorkingSetContext | null;
+		const sections = [
 			"Source: selection",
 			"Selected text:",
 			context?.selectedText?.trim().length
 				? context.selectedText
 				: "(empty selection)",
-		].join("\n");
+		];
+		if (
+			context?.selectionScope === "whole-blocks" &&
+			context.markdown.trim().length
+		) {
+			sections.push("Selected blocks as markdown:", context.markdown);
+		}
+		return sections.join("\n");
 	}
 
 	if (workingSet.context && typeof workingSet.context === "object") {

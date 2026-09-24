@@ -63,6 +63,7 @@ export function transformOpsForSuggestModeWithMetadata(
 ): SuggestModeTransformResult {
 	const intercepted: DocumentOp[] = [];
 	const suggestions: PersistentSuggestion[] = [];
+	const insertedBlockIds = new Set<string>();
 	let suggestionIdIndex = 0;
 	const nextSuggestionOptions = (): RequiredSuggestionCreationOptions => {
 		const suggestionId =
@@ -226,6 +227,7 @@ export function transformOpsForSuggestModeWithMetadata(
 			}
 
 			case "insert-block": {
+				insertedBlockIds.add(op.blockId);
 				const suggestionOptions = nextSuggestionOptions();
 				pushBlockSuggestion(
 					"insert-block",
@@ -347,6 +349,10 @@ export function transformOpsForSuggestModeWithMetadata(
 			}
 
 			case "format-text": {
+				if (insertedBlockIds.has(op.blockId)) {
+					pushIntercepted(op);
+					break;
+				}
 				const previousState: BlockSuggestionMeta["previousState"] = {
 					format: {
 						from: op.from,

@@ -170,6 +170,8 @@ export interface SuggestionSpliceHead {
 	deleteFrom: Anchor | null;
 	/** Where the next delta inserts. Suggest mode inserts at the range end. */
 	writeHead: Anchor;
+	/** User marks shared by the text being rewritten. */
+	marks?: Record<string, unknown>;
 	/** Stop repairing. The generation is over. */
 	release(): void;
 }
@@ -177,6 +179,7 @@ export interface SuggestionSpliceHead {
 export function createSuggestionSpliceHead(
 	editor: Editor,
 	sink: GenerationStreamingSink,
+	marks?: Record<string, unknown>,
 ): SuggestionSpliceHead | null {
 	if (sink.kind !== "suggestion-splice") {
 		return null;
@@ -202,6 +205,7 @@ export function createSuggestionSpliceHead(
 	const head: SuggestionSpliceHead = {
 		deleteFrom,
 		writeHead,
+		...(marks ? { marks } : {}),
 		release: editor.on("commit", (event: CommitEvent) => {
 			if (event.summary.commitId === lastCommitId) {
 				return;
@@ -286,6 +290,7 @@ function applySuggestionSplice(
 				from,
 				to: to.offset,
 				insert: nextDelta,
+				...(head.marks ? { marks: head.marks } : {}),
 			},
 		],
 		state.context?.sessionId,

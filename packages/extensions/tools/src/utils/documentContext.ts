@@ -159,7 +159,7 @@ export function stripBlockAnnotations(markdown: string): string {
 		.filter((line) => !BLOCK_ANNOTATION_PATTERN.test(line.trim()))
 		.join("\n")
 		.replace(/\n{3,}/g, "\n\n")
-		.trim();
+		.replace(/^[\t\n\r ]+|[\t\n\r ]+$/g, "");
 }
 
 export function exportDocumentRangeAsMarkdown(
@@ -221,8 +221,7 @@ export function resolveSelectionText(
 			}
 
 			const suggestion = delta.attributes?.suggestion as
-				| { action?: string }
-				| undefined;
+				{ action?: string } | undefined;
 			if (viewMode === "resolved" && suggestion?.action === "delete") {
 				continue;
 			}

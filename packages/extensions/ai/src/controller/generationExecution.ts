@@ -11,6 +11,7 @@ import {
 	createAIStreamEvent,
 	EMPTY_TOOL_RUNTIME,
 	isLocalRequestedOperation,
+	resolveCommonSelectionMarks,
 	resolveScopedSelectionRewriteContentFormat,
 	resolveSelectionText,
 	shouldReplaceEmptyMarkdownTarget,
@@ -56,6 +57,11 @@ export async function executeGeneration(
 					target.selection,
 				).start.blockId;
 	const requestedOperation = context?.operation ?? null;
+	const selectionScope =
+		requestedOperation?.kind === "rewrite-selection" &&
+		requestedOperation.target.kind === "scoped-range"
+			? "whole-blocks"
+			: "partial";
 	if (
 		context?.surface === "bottom-chat" &&
 		isLocalRequestedOperation(requestedOperation)
@@ -94,6 +100,7 @@ export async function executeGeneration(
 		blockId,
 		prompt,
 		context?.scope,
+		selectionScope,
 	);
 	const refinedRoute = controller._refineRouteWithWorkingSet(
 		route,
@@ -108,6 +115,7 @@ export async function executeGeneration(
 			blockId,
 			prompt,
 			context?.scope,
+			selectionScope,
 		);
 	} else {
 		route = refinedRoute;
@@ -251,6 +259,7 @@ export async function executeGeneration(
 		baselineSuggestionIds,
 		blockId,
 		requestedOperation,
+		selectionScope,
 		route,
 		workingSet,
 		contentFormat,
@@ -264,6 +273,13 @@ export async function executeGeneration(
 		suggestionSpliceHead: createSuggestionSpliceHead(
 			controller._editor,
 			streamingSink,
+			streamingSink.kind === "suggestion-splice" &&
+				target.type === "selection"
+				? resolveCommonSelectionMarks(
+						controller._editor,
+						target.selection,
+					)
+				: undefined,
 		),
 		sessionTurnId,
 		existingSession,

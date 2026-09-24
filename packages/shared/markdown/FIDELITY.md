@@ -35,7 +35,7 @@ A non-Pen GFM reader sees these as ordinary GFM.
 | toggle | raw `<details><summary>…</summary></details>` | raw HTML, if the reader keeps it | `fromMarkdown` reconstructs a toggle; nested children are not exported |
 | subdocument | `<!-- pen-subdocument:<guid> -->` | HTML comment ignored | no `fromMarkdown`; the comment is dropped. Nested document is never exported |
 | callout | `> **Note:**` / `**Warning:**` / `**Error:**` | a blockquote with a bold label | `fromMarkdown` reconstructs a callout |
-| underline | `<u>text</u>` | raw HTML, or stripped tags | GFM import strips the tags; the mark does not return |
+| underline | `<u>text</u>` | raw HTML, or stripped tags | reconstructs the underline mark |
 | highlight | `==text==` | literal `==` in CommonMark and GFM | not a GFM mark; returns as plain text. Color is not encoded |
 
 Do not treat subdocument or toggle markup as portable Markdown. A host that wants CommonMark from those blocks needs the table above, not a support ticket.
@@ -63,4 +63,3 @@ URL admission (hostile `href` / `src` omitted) is SEC1 in `@input/pen-interop/ma
 - toggle children
 - header-less table HTML fallback on GFM import
 - highlight as a mark (`==` is not GFM)
-- underline as a mark (`<u>` is stripped on GFM import)

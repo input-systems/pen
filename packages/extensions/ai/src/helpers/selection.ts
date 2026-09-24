@@ -1,10 +1,11 @@
-import { isCollapsed, selectionToRange } from "@input/pen-core";
+import { deepEqual, isCollapsed, selectionToRange } from "@input/pen-core";
 import type { DocumentOp, Editor, TextSelection } from "@input/pen-types";
 
 export function buildSelectionReplacementOps(
 	editor: Editor,
 	selection: TextSelection,
 	insertedText: string,
+	commonMarks: Record<string, unknown> | undefined,
 ): DocumentOp[] {
 	const range = selectionToRange(editor.internals.doc, selection);
 	if (range.start.blockId === range.end.blockId) {
@@ -15,6 +16,7 @@ export function buildSelectionReplacementOps(
 				from: range.start.offset,
 				to: range.start.offset + range.end.offset - range.start.offset,
 				insert: insertedText,
+				...(commonMarks ? { marks: commonMarks } : {}),
 			},
 		];
 	}
@@ -63,6 +65,7 @@ export function buildSelectionReplacementOps(
 			from: insertionOffset,
 			to: insertionOffset,
 			insert: insertedText,
+			...(commonMarks ? { marks: commonMarks } : {}),
 		});
 		insertionOffset += insertedText.length;
 	}
@@ -84,6 +87,65 @@ export function buildSelectionReplacementOps(
 		blockId: endId,
 	});
 	return ops;
+}
+
+export function resolveCommonSelectionMarks(
+	editor: Editor,
+	selection: TextSelection,
+): Record<string, unknown> | undefined {
+	const range = selectionToRange(editor.internals.doc, selection);
+	let commonMarks: Record<string, unknown> | null = null;
+
+	for (const [blockIndex, blockId] of range.blockRange.entries()) {
+		const block = editor.getBlock(blockId);
+		if (!block) continue;
+
+		const startOffset = blockIndex === 0 ? range.start.offset : 0;
+		const endOffset =
+			blockIndex === range.blockRange.length - 1
+				? range.end.offset
+				: Number.POSITIVE_INFINITY;
+		let offset = 0;
+
+		for (const delta of block.textDeltas()) {
+			const deltaStart = offset;
+			const deltaEnd = offset + delta.insert.length;
+			offset = deltaEnd;
+			if (endOffset <= deltaStart || startOffset >= deltaEnd) continue;
+
+			const suggestion = delta.attributes?.suggestion as
+				{ action?: string } | undefined;
+			if (suggestion?.action === "delete") continue;
+
+			const marks = resolveUserMarks(editor, delta.attributes);
+			if (commonMarks === null) {
+				commonMarks = marks;
+				continue;
+			}
+			for (const [type, value] of Object.entries(commonMarks)) {
+				if (!deepEqual(value, marks[type])) {
+					delete commonMarks[type];
+				}
+			}
+		}
+	}
+
+	return commonMarks && Object.keys(commonMarks).length > 0
+		? commonMarks
+		: undefined;
+}
+
+function resolveUserMarks(
+	editor: Editor,
+	attributes: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+	const marks: Record<string, unknown> = {};
+	for (const [type, value] of Object.entries(attributes ?? {})) {
+		const schema = editor.schema.resolveInline(type);
+		if (schema?.kind !== "mark" || schema.system || value == null) continue;
+		marks[type] = value;
+	}
+	return marks;
 }
 
 function sliceInlineDeltasFromOffset(
@@ -150,8 +212,7 @@ export function resolveSelectionText(
 			}
 
 			const suggestion = delta.attributes?.suggestion as
-				| { action?: string }
-				| undefined;
+				{ action?: string } | undefined;
 			if (suggestion?.action === "delete") {
 				continue;
 			}
