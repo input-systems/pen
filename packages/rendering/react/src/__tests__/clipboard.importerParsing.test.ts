@@ -140,11 +140,27 @@ describe("@input/pen-react clipboard: importer parsing", () => {
 				text: "normal, bold, italic, underline",
 				textAlignment: "center",
 			},
-			{ type: "numberedListItem", text: "numbered", textAlignment: undefined },
-			{ type: "numberedListItem", text: "bullets", textAlignment: undefined },
-			{ type: "paragraph", text: "\n", textAlignment: undefined },
-			{ type: "bulletListItem", text: "dotted", textAlignment: undefined },
-			{ type: "bulletListItem", text: "Bullets", textAlignment: undefined },
+			{
+				type: "numberedListItem",
+				text: "numbered",
+				textAlignment: undefined,
+			},
+			{
+				type: "numberedListItem",
+				text: "bullets",
+				textAlignment: undefined,
+			},
+			{ type: "paragraph", text: "", textAlignment: undefined },
+			{
+				type: "bulletListItem",
+				text: "dotted",
+				textAlignment: undefined,
+			},
+			{
+				type: "bulletListItem",
+				text: "Bullets",
+				textAlignment: undefined,
+			},
 		]);
 		expect(blocks[0]?.textDeltas()).toEqual([
 			{ insert: "normal, " },
