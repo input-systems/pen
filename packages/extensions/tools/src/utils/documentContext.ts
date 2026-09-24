@@ -157,8 +157,7 @@ export function stripBlockAnnotations(markdown: string): string {
 	const withoutAnnotations = markdown
 		.split("\n")
 		.filter((line) => !BLOCK_ANNOTATION_PATTERN.test(line.trim()))
-		.join("\n")
-		.replace(/\n{3,}/g, "\n\n");
+		.join("\n");
 	return trimMarkdownEnvelope(withoutAnnotations);
 }
 

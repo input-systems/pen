@@ -25,6 +25,16 @@ describe("normalizeFlowMarkdownOutput", () => {
 		expect(normalizeFlowMarkdownOutput(content)).toBe(content);
 	});
 
+	it("keeps consecutive blank lines when stripping echoed annotations", () => {
+		const content = "Before\n\n\n\n\n\nAfter";
+
+		expect(
+			normalizeFlowMarkdownOutput(
+				`<!-- block:b1 paragraph -->\n${content}`,
+			),
+		).toBe(content);
+	});
+
 	it("keeps whitespace-only blocks at the edges of model output", () => {
 		const content = "\u00a0\n\nBody\n\n\u00a0";
 
