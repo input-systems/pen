@@ -355,72 +355,33 @@ function inlineSafeStylesheetDeclarations(html: string): string {
 	if (!/<style(?:\s|>)/i.test(html)) {
 		return html;
 	}
+	if (
+		typeof Object.hasOwn !== "function" &&
+		typeof globalThis.DOMParser !== "undefined"
+	) {
+		return inlineBrowserStylesheetDeclarations(html);
+	}
+
 	const document = parseDocument(html);
-	const rules = collectSafeStylesheetRules(document).map((rule, order) => ({
-		...rule,
-		order,
-	}));
+	const rules = collectSafeStylesheetRules(document);
 	if (rules.length === 0) {
 		return html;
 	}
-	const rulesByClass = new Map<string, SafeStylesheetClassRules>();
-	for (const rule of rules) {
-		const classRules = rulesByClass.get(rule.className) ?? {
-			classDeclarations: new Map(),
-			tagDeclarations: new Map(),
-		};
-		const declarations = rule.tagName
-			? (classRules.tagDeclarations.get(rule.tagName) ?? new Map())
-			: classRules.classDeclarations;
-		for (const declaration of rule.declarations) {
-			declarations.set(declaration.property, {
-				...declaration,
-				specificity: rule.specificity,
-				order: rule.order,
-			});
-		}
-		if (rule.tagName) {
-			classRules.tagDeclarations.set(rule.tagName, declarations);
-		}
-		rulesByClass.set(rule.className, classRules);
-	}
+	const rulesByClass = indexSafeStylesheetRules(rules);
 
 	function visit(node: Document | ChildNode): void {
 		if (node.type === "tag") {
 			const element = node as Element;
-			const classNames = new Set(
-				(element.attribs.class ?? "").split(/\s+/).filter(Boolean),
-			);
-			const declarations = new Map<string, CascadedStyleDeclaration>();
-			for (const className of classNames) {
-				const classRules = rulesByClass.get(className);
-				if (!classRules) {
-					continue;
-				}
-				for (const candidates of [
-					classRules.classDeclarations,
-					classRules.tagDeclarations.get(element.name),
-				]) {
-					if (!candidates) {
-						continue;
-					}
-					mergeCascadedDeclarations(declarations, candidates);
-				}
-			}
-
-			if (declarations.size > 0) {
-				for (const declaration of parseSafeStyleDeclarations(
+			if (element.attribs.class) {
+				const style = resolveStylesheetDeclarations(
+					element.name,
+					element.attribs.class,
 					element.attribs.style ?? "",
-				)) {
-					declarations.set(declaration.property, {
-						...declaration,
-						specificity: Number.POSITIVE_INFINITY,
-						order: Number.POSITIVE_INFINITY,
-					});
+					rulesByClass,
+				);
+				if (style !== undefined) {
+					element.attribs.style = style;
 				}
-				element.attribs.style = [...declarations.values()]
-					.map(({ property, value }) => `${property}: ${value}`)
-					.join("; ");
 			}
 		}
 		if ("children" in node) {
@@ -432,6 +393,95 @@ function inlineSafeStylesheetDeclarations(html: string): string {
 
 	visit(document);
 	return DomUtils.getOuterHTML(document);
+}
+
+function inlineBrowserStylesheetDeclarations(html: string): string {
+	const document = new globalThis.DOMParser().parseFromString(
+		html,
+		"text/html",
+	);
+	const rules = [...document.querySelectorAll("style")].flatMap((element) =>
+		parseSafeStylesheetRules(element.textContent ?? ""),
+	);
+	if (rules.length === 0) {
+		return html;
+	}
+	const rulesByClass = indexSafeStylesheetRules(rules);
+	for (const element of document.body.querySelectorAll("[class]")) {
+		const style = resolveStylesheetDeclarations(
+			element.localName,
+			element.getAttribute("class") ?? "",
+			element.getAttribute("style") ?? "",
+			rulesByClass,
+		);
+		if (style !== undefined) {
+			element.setAttribute("style", style);
+		}
+	}
+	return document.body.innerHTML;
+}
+
+function indexSafeStylesheetRules(
+	rules: SafeStylesheetRule[],
+): Map<string, SafeStylesheetClassRules> {
+	const rulesByClass = new Map<string, SafeStylesheetClassRules>();
+	for (const [order, rule] of rules.entries()) {
+		const classRules = rulesByClass.get(rule.className) ?? {
+			classDeclarations: new Map(),
+			tagDeclarations: new Map(),
+		};
+		const declarations = rule.tagName
+			? (classRules.tagDeclarations.get(rule.tagName) ?? new Map())
+			: classRules.classDeclarations;
+		for (const declaration of rule.declarations) {
+			declarations.set(declaration.property, {
+				...declaration,
+				specificity: rule.specificity,
+				order,
+			});
+		}
+		if (rule.tagName) {
+			classRules.tagDeclarations.set(rule.tagName, declarations);
+		}
+		rulesByClass.set(rule.className, classRules);
+	}
+	return rulesByClass;
+}
+
+function resolveStylesheetDeclarations(
+	tagName: string,
+	classValue: string,
+	inlineStyle: string,
+	rulesByClass: Map<string, SafeStylesheetClassRules>,
+): string | undefined {
+	const declarations = new Map<string, CascadedStyleDeclaration>();
+	for (const className of new Set(classValue.split(/\s+/).filter(Boolean))) {
+		const classRules = rulesByClass.get(className);
+		if (!classRules) {
+			continue;
+		}
+		for (const candidates of [
+			classRules.classDeclarations,
+			classRules.tagDeclarations.get(tagName),
+		]) {
+			if (candidates) {
+				mergeCascadedDeclarations(declarations, candidates);
+			}
+		}
+	}
+	if (declarations.size === 0) {
+		return undefined;
+	}
+	for (const declaration of parseSafeStyleDeclarations(inlineStyle)) {
+		declarations.set(declaration.property, {
+			...declaration,
+			specificity: Number.POSITIVE_INFINITY,
+			order: Number.POSITIVE_INFINITY,
+		});
+	}
+	return [...declarations.values()]
+		.map(({ property, value }) => `${property}: ${value}`)
+		.join("; ");
 }
 
 function mergeCascadedDeclarations(
