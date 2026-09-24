@@ -278,6 +278,14 @@ function parseSafeStylesheetRules(css: string): SafeStylesheetRule[] {
 
 	for (let index = 0; index < css.length; index += 1) {
 		const character = css[index];
+		if (
+			character === ";" &&
+			depth === 0 &&
+			css.slice(selectorStart, index).trimStart().startsWith("@")
+		) {
+			selectorStart = index + 1;
+			continue;
+		}
 		if (character === "{") {
 			if (depth === 0) {
 				bodyStart = index + 1;

@@ -34,6 +34,15 @@ describe("sanitizeHTML", () => {
 		);
 	});
 
+	it("SEC3: keeps the first rule after braceless at-rules", () => {
+		const result = sanitizeHTML(
+			'<style>@charset "UTF-8"; @import "theme.css"; .underlined {text-decoration: underline}</style><p><span class="underlined">underlined</span></p>',
+		);
+		expect(result).toContain(
+			'class="underlined" style="text-decoration: underline"',
+		);
+	});
+
 	it("SEC3: drops commented stylesheet values", () => {
 		const result = sanitizeHTML(
 			'<style>.bold {font-weight: b/**/old}</style><p><span class="bold">plain</span></p>',

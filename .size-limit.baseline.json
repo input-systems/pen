@@ -89,9 +89,9 @@
     {
       "name": "@input/pen-interop",
       "path": "packages/extensions/interop/dist/*.mjs",
-      "baselineBytes": 118831,
-      "limitBytes": 118831,
-      "note": "First baseline 2026-08-24 (SF2). Budgeted as the whole shipped ESM closure, not dist/index.mjs: the four format subpaths code-split into content-hashed chunks, so the root entry is 1722 B of re-exports while the chunks carry 100335 B \u2014 an index.mjs budget would guard 1.6% of the package. Replaces seven budgets totalling 100361 B (30302 import-html + 16369 export-xml + 15551 export-json + 14228 import-json + 10107 export-html + 9197 import-markdown + 4607 export-markdown). 100361 \u2192 104761, +4.4% for per-format barrel wiring. Re-recorded 2026-09-24 for WEB-4052: 104761 \u2192 118831, +14070 B (+13.4%) for preserving safe stylesheet class declarations, inline marks, lists, and text alignment on HTML paste. Byte total reproduced from a clean @input/pen-interop build."
+      "baselineBytes": 118975,
+      "limitBytes": 118975,
+      "note": "First baseline 2026-08-24 (SF2). Budgeted as the whole shipped ESM closure, not dist/index.mjs: the four format subpaths code-split into content-hashed chunks, so the root entry is 1722 B of re-exports while the chunks carry 100335 B \u2014 an index.mjs budget would guard 1.6% of the package. Replaces seven budgets totalling 100361 B (30302 import-html + 16369 export-xml + 15551 export-json + 14228 import-json + 10107 export-html + 9197 import-markdown + 4607 export-markdown). 100361 \u2192 104761, +4.4% for per-format barrel wiring. Re-recorded 2026-09-24 for WEB-4052: 104761 \u2192 118831, +14070 B (+13.4%) for preserving safe stylesheet class declarations, inline marks, lists, and text alignment on HTML paste; 118831 \u2192 118975, +144 B to preserve the first safe rule after braceless at-rules. Byte total reproduced from a clean @input/pen-interop build."
     },
     {
       "name": "@input/pen-snapshots",
