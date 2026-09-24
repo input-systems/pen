@@ -1,37 +1,46 @@
 {
   "id": "apple-notes",
   "source": "Apple Notes",
-  "provenance": "synthetic-until-capture",
-  "approximates": "Apple Notes clipboard fragment: StartFragment, heading plus div-wrapped paragraphs, semantic lists. Notes typically uses <div> rather than <p>.",
-  "markers": ["StartFragment", "div-wrapped body"],
+  "provenance": {
+    "kind": "captured",
+    "application": "Apple Notes",
+    "version": "4.13",
+    "capturedAt": "2026-09-23",
+    "host": "Arc (Chromium paste event)"
+  },
+  "approximates": "n/a — hand-captured browser paste payload",
+  "markers": ["Cocoa HTML Writer", "span.s1", "ol.ol1", "ul.ul1"],
   "imageCount": 0,
   "outcomes": {
-    "headings": "h1",
-    "lists": "flat bullets",
+    "headings": "none",
+    "lists": "flat numbered and bullets",
     "tables": "none",
     "code": "none",
-    "links": "kept",
+    "links": "none in capture",
     "images": "none",
-    "marks": "bold kept after the mixed-inline split",
+    "marks": "bold, italic, and class-based underline kept",
     "colors": "none"
   },
   "intentionalLosses": [
-    "A Notes <div> with mixed text and <b> fragments into adjacent paragraphs; leading text is trimmed"
+    "font family, size, margins, minimum heights, and list marker CSS are discarded"
   ],
   "blocks": [
-    { "type": "heading", "level": 1, "text": "Meeting notes" },
-    { "type": "paragraph", "text": "Hello" },
+    { "type": "paragraph", "text": "\n" },
+    { "type": "paragraph", "text": "\n" },
     {
       "type": "paragraph",
-      "text": "world",
-      "marks": [{ "type": "bold", "text": "world" }]
+      "text": "normal, bold, italic, underline",
+      "marks": [
+        { "type": "bold", "text": "bold" },
+        { "type": "italic", "text": "italic" },
+        { "type": "underline", "text": "underline" }
+      ]
     },
-    { "type": "bulletListItem", "indent": 0, "text": "First item" },
-    { "type": "bulletListItem", "indent": 0, "text": "Second item" },
-    {
-      "type": "paragraph",
-      "text": "Notes link",
-      "marks": [{ "type": "link", "text": "Notes link" }]
-    }
+    { "type": "paragraph", "text": "\n" },
+    { "type": "numberedListItem", "indent": 0, "text": "numbered" },
+    { "type": "numberedListItem", "indent": 0, "text": "bullets" },
+    { "type": "paragraph", "text": "\n" },
+    { "type": "bulletListItem", "indent": 0, "text": "dotted" },
+    { "type": "bulletListItem", "indent": 0, "text": "Bullets" }
   ]
 }

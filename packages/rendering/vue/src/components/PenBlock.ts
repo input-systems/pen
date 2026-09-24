@@ -3,7 +3,10 @@ import {
 	resolveEditorMessage,
 	resolveSchemaA11y,
 } from "@input/pen-core";
-import { resolveEditorUrl } from "@input/pen-dom";
+import {
+	resolveBlockTextAlignment,
+	resolveEditorUrl,
+} from "@input/pen-dom";
 import {
 	buildDataAttributes,
 	DATA_ATTRS,
@@ -145,7 +148,10 @@ export const PenBlock = defineComponent({
 					}),
 					[DATA_ATTRS.surfaceRole]: surfaceRole ?? undefined,
 					dir: resolvedContentDir(editor, block),
-					style: { unicodeBidi: "isolate" },
+					style: {
+						unicodeBidi: "isolate",
+						textAlign: resolveBlockTextAlignment(block),
+					},
 					tabIndex: -1,
 					contentEditable:
 						surfaceRole != null && surfaceRole !== "editable-inline"

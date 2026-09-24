@@ -452,6 +452,31 @@ describe("@input/pen-vue", () => {
     editor.destroy();
   });
 
+  it("renders validated block text alignment", () => {
+    const editor = createTestEditor({
+      blocks: [
+        {
+          id: "paragraph-centered",
+          type: "paragraph",
+          props: { textAlignment: "center" },
+          content: "Centered",
+        },
+      ],
+    });
+
+    const wrapper = mount(PenEditor, {
+      attachTo: document.body,
+      props: { editor },
+    });
+
+    expect(
+      wrapper.get('[data-block-id="paragraph-centered"]').attributes("style"),
+    ).toContain("text-align: center");
+
+    wrapper.unmount();
+    editor.destroy();
+  });
+
   it("DIR2: sets dir on the block content host from props.direction ltr or rtl", () => {
     const editor = createTestEditor({
       blocks: [

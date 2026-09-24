@@ -36,6 +36,7 @@
 - mountEditor
 - registerInlineAtomInteractionRoot
 - registerVerticalCaretMeasure
+- resolveBlockTextAlignment
 - resolveEditorUrl
 - resolveRegionRect
 - resolveShiftClickInlineAtomSelection
@@ -94,6 +95,7 @@
 - BidiRun
 - BidiRunGeometry
 - BindEditorDocumentKeyDownOptions
+- BlockTextAlignment
 - ContentGestureRegionGesture
 - ContentGestureState
 - FieldEditorPointerActivateOptions

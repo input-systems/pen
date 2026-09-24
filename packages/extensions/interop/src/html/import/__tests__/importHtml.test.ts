@@ -16,6 +16,43 @@ describe("sanitizeHTML", () => {
 		expect(result).toContain("text");
 	});
 
+	it("SEC3: resolves safe simple class rules before stripping stylesheets", () => {
+		const result = sanitizeHTML(
+			'<style>.s1 {text-decoration: none} span.s1 {text-decoration: underline}</style><p><span class="s1">underlined</span></p>',
+		);
+		expect(result).not.toContain("style>");
+		expect(result).toContain('style="text-decoration: underline"');
+	});
+
+	it("SEC3: keeps simple rules separated by CSS comments", () => {
+		const result = sanitizeHTML(
+			'<style>.bold {font-weight: bold} /* source note */ .underlined {text-decoration: underline}</style><p><span class="bold">bold</span><span class="underlined">underlined</span></p>',
+		);
+		expect(result).toContain('class="bold" style="font-weight: bold"');
+		expect(result).toContain(
+			'class="underlined" style="text-decoration: underline"',
+		);
+	});
+
+	it("SEC3: drops commented stylesheet values", () => {
+		const result = sanitizeHTML(
+			'<style>.bold {font-weight: b/**/old}</style><p><span class="bold">plain</span></p>',
+		);
+		expect(result).not.toContain("font-weight");
+	});
+
+	it("SEC3: ignores complex stylesheet selectors and unsafe declarations", () => {
+		const result = sanitizeHTML(
+			'<style>span.s1 em {font-weight: bold} @media all {span.s1 {font-style: italic}} span.s1 {position: fixed; background-image: url(https://evil.example); text-decoration: underline}</style><p><span class="s1" style="text-decoration: none">plain</span></p>',
+		);
+		expect(result).not.toContain("font-weight");
+		expect(result).not.toContain("font-style");
+		expect(result).not.toContain("position");
+		expect(result).not.toContain("background-image");
+		expect(result).not.toContain("evil.example");
+		expect(result).toContain('style="text-decoration: none"');
+	});
+
 	it("strips <iframe> tags (AC 42)", () => {
 		const result = sanitizeHTML('<iframe src="evil.com"></iframe><p>ok</p>');
 		expect(result).not.toContain("iframe");
@@ -54,6 +91,25 @@ describe("sanitizeHTML", () => {
 		);
 		expect(result).not.toContain("position:");
 		expect(result).not.toContain("z-index:");
+	});
+
+	it("SEC3: keeps enumerated mark-bearing inline styles", () => {
+		const result = sanitizeHTML(
+			'<span style="font-weight: 700; font-style: italic; text-decoration: underline line-through">styled</span>',
+		);
+		expect(result).toContain(
+			"font-weight: 700; font-style: italic; text-decoration: underline line-through",
+		);
+	});
+
+	it("SEC3: drops unsupported mark-bearing inline style values", () => {
+		const result = sanitizeHTML(
+			'<span style="font-weight: calc(700); font-style: inherit; text-decoration: underline overline">plain</span>',
+		);
+		expect(result).toContain("plain");
+		expect(result).not.toContain("font-weight");
+		expect(result).not.toContain("font-style");
+		expect(result).not.toContain("text-decoration");
 	});
 
 	it("SEC3: admits each enumerated text-align keyword and drops inherit", () => {
@@ -200,5 +256,73 @@ describe("parseInlineContent", () => {
 		expect(result.marks).toHaveLength(2);
 		expect(result.marks.some((m) => m.type === "bold")).toBe(true);
 		expect(result.marks.some((m) => m.type === "italic")).toBe(true);
+	});
+
+	it("uses the last declaration for the same property", () => {
+		const node: DOMNode = {
+			type: "element",
+			tagName: "span",
+			attributes: {
+				style: "font-weight: normal; font-weight: 700",
+			},
+			children: [{ type: "text", textContent: "bold" }],
+		};
+		expect(parseInlineContent(node).marks).toContainEqual({
+			type: "bold",
+			start: 0,
+			end: 4,
+		});
+	});
+
+	it("resolves text-decoration shorthand and longhand in source order", () => {
+		const node = (style: string): DOMNode => ({
+			type: "element",
+			tagName: "span",
+			attributes: { style },
+			children: [{ type: "text", textContent: "text" }],
+		});
+		expect(
+			parseInlineContent(
+				node(
+					"text-decoration-line: underline; text-decoration: none",
+				),
+			).marks,
+		).toEqual([]);
+		expect(
+			parseInlineContent(
+				node(
+					"text-decoration: none; text-decoration-line: underline",
+				),
+			).marks,
+		).toEqual([{ type: "underline", start: 0, end: 4 }]);
+	});
+
+	it("lets explicit styles reset semantic and inherited marks", () => {
+		const node: DOMNode = {
+			type: "element",
+			tagName: "p",
+			attributes: { style: "font-weight: bold" },
+			children: [
+				{
+					type: "element",
+					tagName: "span",
+					attributes: { style: "font-weight: normal" },
+					children: [{ type: "text", textContent: "normal" }],
+				},
+				{ type: "text", textContent: " bold" },
+				{
+					type: "element",
+					tagName: "u",
+					attributes: { style: "text-decoration: none" },
+					children: [{ type: "text", textContent: " plain" }],
+				},
+			],
+		};
+		const result = parseInlineContent(node);
+		expect(result.text).toBe("normal bold plain");
+		expect(result.marks).toEqual([{ type: "bold", start: 6, end: 17 }]);
+		expect(result.marks).not.toContainEqual(
+			expect.objectContaining({ type: "underline" }),
+		);
 	});
 });

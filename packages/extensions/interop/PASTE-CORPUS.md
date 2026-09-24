@@ -2,7 +2,7 @@
 
 Clipboard `text/html` + `text/plain` pairs measured through the generic HTML import path (`parseHtmlToBlocks`). Pen does not sniff `mso` classes or `docs-internal-guid`. A documented flattening is the paste contract; an undocumented one is a regression.
 
-These fixtures are **synthetic-until-capture**: documented approximations of what each application emits, not hand-captured clipboard dumps. A real Word clipboard payload is hundreds of kilobytes of `<style>` and `mso-` attributes; these fixtures are a few hundred bytes. Do not invent markup and label it captured. The replacement procedure is `src/html/import/__tests__/pasteCorpus/CAPTURE.md`.
+1 of 9 sources are hand-captured. Still synthetic-until-capture: `word-desktop`, `word-web`, `google-docs`, `notion`, `vscode`, `article`, `excel-sheets`, `pen`. The replacement procedure is `src/html/import/__tests__/pasteCorpus/CAPTURE.md`.
 
 Generated from `src/html/import/__tests__/pasteCorpus/` by `src/html/import/__tests__/pasteCorpus.test.ts`. Do not edit by hand.
 
@@ -12,8 +12,8 @@ Generated from `src/html/import/__tests__/pasteCorpus/` by `src/html/import/__te
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Microsoft Word (desktop) | synthetic-until-capture | h1 | flattened to paragraphs | 2×2, no header row | none | kept | dropped (img inside MsoNormal paragraph is not lifted) | bold, italic, link | none | Word numbering metadata (mso-list on paragraphs) becomes plain paragraphs with the visible bullet glyph; the generic path does not sniff MsoListParagraph; Office <style> blocks and html/head/meta wrappers are stripped by the sanitizer; An <img> nested in <p class=MsoNormal> does not become an image block; an empty paragraph remains |
 | Microsoft Word (web) | synthetic-until-capture | h1 | nested bullets (indent 0/1) | 2×2, no header row | none | kept | none | bold, italic, strike, link | none | Office xmlns / Mso* class names are ignored; conversion uses tags only; No Word numbering metadata is preserved beyond the emitted <ul>/<li> tree |
-| Google Docs | synthetic-until-capture | flattened into one paragraph | flattened into one paragraph | flattened (cell text concatenated) | none | kept | none | wrapper <b> bolds the entire paste; span font-weight / font-style / text-decoration lost | span color kept as textColor | The docs-internal-guid <b> wrapper is treated as inline bold, so headings, lists, and tables collapse into one paragraph; Google Docs bold/italic/strike expressed as span font-weight / font-style / text-decoration do not become marks; Adjacent block text is concatenated with no separator |
-| Apple Notes | synthetic-until-capture | h1 | flat bullets | none | none | kept | none | bold kept after the mixed-inline split | none | A Notes <div> with mixed text and <b> fragments into adjacent paragraphs; leading text is trimmed |
+| Google Docs | synthetic-until-capture | flattened into one paragraph | flattened into one paragraph | flattened (cell text concatenated) | none | kept | none | span bold and italic kept; font-weight normal wrapper ignored | span color kept as textColor | The docs-internal-guid <b> wrapper still collapses headings, lists, and tables into one paragraph; Adjacent block text is concatenated with no separator |
+| Apple Notes | captured: Apple Notes 4.13 (2026-09-23) | none | flat numbered and bullets | none | none | none in capture | none | bold, italic, and class-based underline kept | none | font family, size, margins, minimum heights, and list marker CSS are discarded |
 | Notion | synthetic-until-capture | h1 | nested bullets (indent 0/1) plus checklist | none | codeBlock language ts | kept | 1 remote src kept | bold, italic, strike, link | none | Notion-specific block identity (if a real capture adds data-block-id) is ignored; conversion uses tags only |
 | VS Code | synthetic-until-capture | none | none | none | flattened to one paragraph per token span | none | none | none | token colors kept as textColor | Styled VS Code copy has no pre/code wrapper, so it does not become a codeBlock; Each colored span becomes its own paragraph |
 | Browser article | synthetic-until-capture | h1 | none | none | codeBlock | kept | 1 remote src kept; title becomes caption; figcaption becomes a paragraph | italic, bold, link | none | figure/figcaption wrappers unwrap; caption text is a sibling paragraph, not image.caption (title attribute is) |
@@ -50,18 +50,17 @@ Generated from `src/html/import/__tests__/pasteCorpus/` by `src/html/import/__te
 - **Approximates:** Google Docs clipboard HTML: <b id=docs-internal-guid-…> wrapper, span-styled marks, semantic headings/lists/tables inside the wrapper. Typical Docs copies also append Apple-interchange-newline.
 - **Markers:** `docs-internal-guid`, `font-weight:700`, `Apple-interchange-newline`
 
-- The docs-internal-guid <b> wrapper is treated as inline bold, so headings, lists, and tables collapse into one paragraph
-- Google Docs bold/italic/strike expressed as span font-weight / font-style / text-decoration do not become marks
+- The docs-internal-guid <b> wrapper still collapses headings, lists, and tables into one paragraph
 - Adjacent block text is concatenated with no separator
 
 ### Apple Notes
 
 - **id:** `apple-notes`
-- **Provenance:** `synthetic-until-capture`
-- **Approximates:** Apple Notes clipboard fragment: StartFragment, heading plus div-wrapped paragraphs, semantic lists. Notes typically uses <div> rather than <p>.
-- **Markers:** `StartFragment`, `div-wrapped body`
+- **Provenance:** `captured: Apple Notes 4.13 (2026-09-23)`
+- **Approximates:** n/a — hand-captured browser paste payload
+- **Markers:** `Cocoa HTML Writer`, `span.s1`, `ol.ol1`, `ul.ul1`
 
-- A Notes <div> with mixed text and <b> fragments into adjacent paragraphs; leading text is trimmed
+- font family, size, margins, minimum heights, and list marker CSS are discarded
 
 ### Notion
 

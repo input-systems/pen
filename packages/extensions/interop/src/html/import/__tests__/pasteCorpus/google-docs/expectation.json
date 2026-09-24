@@ -12,12 +12,11 @@
     "code": "none",
     "links": "kept",
     "images": "none",
-    "marks": "wrapper <b> bolds the entire paste; span font-weight / font-style / text-decoration lost",
+    "marks": "span bold and italic kept; font-weight normal wrapper ignored",
     "colors": "span color kept as textColor"
   },
   "intentionalLosses": [
-    "The docs-internal-guid <b> wrapper is treated as inline bold, so headings, lists, and tables collapse into one paragraph",
-    "Google Docs bold/italic/strike expressed as span font-weight / font-style / text-decoration do not become marks",
+    "The docs-internal-guid <b> wrapper still collapses headings, lists, and tables into one paragraph",
     "Adjacent block text is concatenated with no separator"
   ],
   "blocks": [
@@ -25,7 +24,8 @@
       "type": "paragraph",
       "text": "Quarterly notesBold and italic redFirst itemABDocs link",
       "marks": [
-        { "type": "bold", "text": "Quarterly notesBold and italic redFirst itemABDocs link" },
+        { "type": "bold", "text": "Bold" },
+        { "type": "italic", "text": "italic" },
         { "type": "textColor", "text": " red" },
         { "type": "link", "text": "Docs link" }
       ]

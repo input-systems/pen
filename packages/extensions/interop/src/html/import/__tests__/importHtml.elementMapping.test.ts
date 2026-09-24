@@ -72,6 +72,56 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		expect(blocks[0].marks?.some((m) => m.type === "italic")).toBe(true);
 	});
 
+	it("IOP2 preserves marks expressed as inline styles", () => {
+		const blocks = convert(
+			'<p><span style="font-weight: 700">Bold</span> <span style="font-style: italic">italic</span> <span style="text-decoration: underline line-through">both</span></p>',
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0]).toMatchObject({
+			type: "paragraph",
+			content: "Bold italic both",
+		});
+		expect(blocks[0].marks).toEqual(
+			expect.arrayContaining([
+				{ type: "bold", start: 0, end: 4 },
+				{ type: "italic", start: 5, end: 11 },
+				{ type: "underline", start: 12, end: 16 },
+				{ type: "strikethrough", start: 12, end: 16 },
+			]),
+		);
+	});
+
+	it("IOP2 preserves marks expressed by pasted stylesheet classes", () => {
+		const blocks = convert(
+			'<style>span.s1 {text-decoration: underline}</style><p>normal, <span class="s1">underline</span></p>',
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0]).toMatchObject({
+			type: "paragraph",
+			content: "normal, underline",
+		});
+		expect(blocks[0].marks).toContainEqual({
+			type: "underline",
+			start: 8,
+			end: 17,
+		});
+	});
+
+	it("IOP2 preserves text alignment on default text blocks", () => {
+		const blocks = convert(
+			'<p style="text-align: center">Centered</p><h2 align="right">Right</h2><blockquote style="text-align: justify">Quoted</blockquote><ul style="text-align: end"><li>Listed</li></ul>',
+		);
+
+		expect(blocks).toMatchObject([
+			{ type: "paragraph", props: { textAlignment: "center" } },
+			{ type: "heading", props: { level: 2, textAlignment: "right" } },
+			{ type: "blockquote", props: { textAlignment: "justify" } },
+			{ type: "bulletListItem", props: { textAlignment: "end" } },
+		]);
+	});
+
 	it("link mark with href (AC 34)", () => {
 		const blocks = convert('<p><a href="https://example.com">text</a></p>');
 

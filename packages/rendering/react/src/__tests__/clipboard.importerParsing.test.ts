@@ -5,6 +5,7 @@ import { createEditor as createCoreEditor } from "@input/pen-core";
 import type { AssetProvider } from "@input/pen-types";
 import { defaultPreset } from "@input/pen";
 import {
+	getPasteImporters,
 	handleClipboardPaste,
 	handleCopy,
 } from "@input/pen-dom/field-editor/clipboard";
@@ -105,6 +106,58 @@ function seedTable(
 }
 
 describe("@input/pen-react clipboard: importer parsing", () => {
+	it("preserves Apple Notes numbered and bullet lists through the paste pipeline", async () => {
+		const editor = createEditor();
+		const emptyBlockId = editor.firstBlock()!.id;
+		const clipboardData = createClipboardData();
+		const fieldEditor = createFieldEditorStub();
+
+		const html =
+			'<style>span.s1 {text-decoration: underline} ol.ol1 {list-style-type: decimal} ul.ul1 {list-style-type: disc}</style><p style="text-align: center">normal, <b>bold</b>, <i>italic</i>, <span class="s1">underline</span></p><ol class="ol1"><li>numbered</li><li>bullets</li></ol><p><br></p><ul class="ul1"><li>dotted</li><li>Bullets</li></ul>';
+		clipboardData.setData("text/html", html);
+		editor.selectText(emptyBlockId, 0, 0);
+
+		handleClipboardPaste(
+			{ clipboardData } as ClipboardEvent,
+			editor,
+			fieldEditor,
+			getPasteImporters(editor),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		const blocks = editor.documentState.blockOrder.map((blockId) =>
+			editor.getBlock(blockId),
+		);
+		expect(
+			blocks.map((block) => ({
+				type: block?.type,
+				text: block?.textContent(),
+				textAlignment: block?.props.textAlignment,
+			})),
+		).toEqual([
+			{
+				type: "paragraph",
+				text: "normal, bold, italic, underline",
+				textAlignment: "center",
+			},
+			{ type: "numberedListItem", text: "numbered", textAlignment: undefined },
+			{ type: "numberedListItem", text: "bullets", textAlignment: undefined },
+			{ type: "paragraph", text: "\n", textAlignment: undefined },
+			{ type: "bulletListItem", text: "dotted", textAlignment: undefined },
+			{ type: "bulletListItem", text: "Bullets", textAlignment: undefined },
+		]);
+		expect(blocks[0]?.textDeltas()).toEqual([
+			{ insert: "normal, " },
+			{ insert: "bold", attributes: { bold: true } },
+			{ insert: ", " },
+			{ insert: "italic", attributes: { italic: true } },
+			{ insert: ", " },
+			{ insert: "underline", attributes: { underline: true } },
+		]);
+
+		editor.destroy();
+	});
+
 	it("keeps HTML paragraph parsing when inline marks are preserved", async () => {
 		const editor = createEditor();
 		const emptyBlockId = editor.firstBlock()!.id;
