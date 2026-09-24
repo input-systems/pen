@@ -147,14 +147,19 @@
       "reason": "Inserted-mode spacing needs the mounted surface height in the same layout effect that writes marginTop."
     },
     {
-			"file": "packages/rendering/dom/src/field-editor/inlineAtomWrapperInteractions.ts",
-			"symbol": "resolveTargetFromPoint",
+      "file": "packages/rendering/dom/src/field-editor/inlineAtomWrapperInteractions.ts",
+      "symbol": "resolveTargetFromPoint",
       "reason": "elementFromPoint finds which editor root is under the pointer before any GeometryReader exists for that root."
     },
     {
       "file": "packages/rendering/react/src/primitives/editor/useTransferSession.ts",
       "symbol": "useTransferSession",
       "reason": "Dragenter/over hit-tests the editor root and content boxes; GeometryReader has no element-rect API. Already inside measureWithRoot."
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/editor/caretOverlay.tsx",
+      "symbol": "readCaretRect",
+      "reason": "The overlay origin is the caret's containing block, not a document box GeometryReader owns. Already inside measureWithRoot with the caret rect, so a filtered ancestor's offset is subtracted in the same read."
     },
     {
       "file": "packages/rendering/react/src/primitives/selection-toolbar/content.tsx",
