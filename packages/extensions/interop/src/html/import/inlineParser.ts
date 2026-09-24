@@ -32,7 +32,17 @@ const INLINE_MARK_MAP: Record<string, string> = {
 export function parseInlineContent(node: DOMNode): InlineResult {
 	const result: InlineResult = { text: "", marks: [] };
 	walkInline(node, result, new Map());
+	if (result.text === "\n" && containsBreak(node)) {
+		return { text: "", marks: [] };
+	}
 	return result;
+}
+
+function containsBreak(node: DOMNode): boolean {
+	return (
+		node.tagName === "br" ||
+		(node.children ?? []).some((child) => containsBreak(child))
+	);
 }
 
 function walkInline(

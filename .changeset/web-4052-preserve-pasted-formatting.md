@@ -6,4 +6,4 @@
 "@input/pen-vue": patch
 ---
 
-Preserve HTML block structure, inline marks, lists, and text alignment when pasting formatted HTML.
+Preserve HTML block structure, blank-line spacing, inline marks, lists, and text alignment when pasting formatted HTML.
