@@ -33,15 +33,15 @@
     "yjs": "13.6.32"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260827.1",
-    "@types/node": "^25.4.0",
+    "@cloudflare/workers-types": "^5.20260918.1",
+    "@types/node": "^26.6.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/ws": "^8.18.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "^5.7.3",
-    "vite": "^6.4.3",
-    "vitest": "^3.2.7",
-    "wrangler": "^4.127.0"
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1",
+    "wrangler": "^4.134.0"
   }
 }
