@@ -65,9 +65,10 @@ const blockMappings: Record<
 export function astToBlocks(
   root: MdastRoot,
   registry: SchemaRegistry,
+  source = "",
 ): PendingBlock[] {
   const blocks: PendingBlock[] = [];
-  walkNodes(root.children, blocks, registry, 0);
+  walkNodes(root.children, blocks, registry, 0, source, true);
   return blocks;
 }
 
@@ -76,9 +77,14 @@ function walkNodes(
   blocks: PendingBlock[],
   registry: SchemaRegistry,
   listIndent: number,
+  source: string,
+  restoreSiblingGaps = false,
 ): void {
   for (let index = 0; index < nodes.length; index += 1) {
     const node = nodes[index]!;
+    if (restoreSiblingGaps && index > 0) {
+      appendEmptyParagraphsBetween(source, nodes[index - 1]!, node, blocks);
+    }
     if (
       node.type === "paragraph" &&
       node.children?.length === 1 &&
@@ -119,11 +125,11 @@ function walkNodes(
       }
       const deferred = deferredMarkdownChildren(schemaBlock);
       if (deferred.length > 0) {
-        walkNodes(deferred, nested, registry, listIndent);
+        walkNodes(deferred, nested, registry, listIndent, source);
       } else if (!leftoverHtml) {
         const remaining = remainingUnconsumedChildren(schemaBlock, node);
         if (remaining.length > 0) {
-          walkNodes(remaining, nested, registry, listIndent);
+          walkNodes(remaining, nested, registry, listIndent, source);
         }
       }
 
@@ -143,7 +149,7 @@ function walkNodes(
         ) {
           index += 1;
         }
-        walkNodes(inner, nested, registry, listIndent);
+        walkNodes(inner, nested, registry, listIndent, source);
       }
 
       if (nested.length > 0) {
@@ -176,7 +182,7 @@ function walkNodes(
     }
 
     if (node.type === "list") {
-      walkListItems(node as MdastList, blocks, registry, listIndent);
+      walkListItems(node as MdastList, blocks, registry, listIndent, source);
       continue;
     }
 
@@ -192,6 +198,7 @@ function walkNodes(
               blocks,
               registry,
               listIndent + 1,
+              source,
             );
           }
         }
@@ -200,7 +207,7 @@ function walkNodes(
     }
 
     if (node.children && Array.isArray(node.children)) {
-      walkNodes(node.children, blocks, registry, listIndent);
+      walkNodes(node.children, blocks, registry, listIndent, source);
     }
   }
 }
@@ -210,18 +217,64 @@ function walkListItems(
   blocks: PendingBlock[],
   registry: SchemaRegistry,
   indent: number,
+  source: string,
 ): void {
   for (let index = 0; index < listNode.children.length; index += 1) {
     const item = listNode.children[index]!;
+    const emptyParagraphCount =
+      index > 0
+        ? appendEmptyParagraphsBetween(
+            source,
+            listNode.children[index - 1]!,
+            item,
+            blocks,
+          )
+        : 0;
     const block = listItemToBlock(item, indent, listNode, index);
+    if (emptyParagraphCount > 0 && listNode.ordered) {
+      block.props = {
+        ...block.props,
+        start: (listNode.start ?? 1) + index,
+      };
+    }
     blocks.push(block);
 
     for (const child of item.children ?? []) {
       if (child.type === "list") {
-        walkListItems(child as MdastList, blocks, registry, indent + 1);
+        walkListItems(child as MdastList, blocks, registry, indent + 1, source);
       }
     }
   }
+}
+
+type PositionedNode = MdastNode & {
+  position?: {
+    start?: { offset?: number };
+    end?: { offset?: number };
+  };
+};
+
+function appendEmptyParagraphsBetween(
+  source: string,
+  previousNode: MdastNode,
+  nextNode: MdastNode,
+  blocks: PendingBlock[],
+): number {
+  const previousEnd = (previousNode as PositionedNode).position?.end?.offset;
+  const nextStart = (nextNode as PositionedNode).position?.start?.offset;
+  if (previousEnd === undefined || nextStart === undefined) {
+    return 0;
+  }
+  const gap = source.slice(previousEnd, nextStart);
+  if (/[^\t\n\r ]/.test(gap)) {
+    return 0;
+  }
+  const lineBreakCount = gap.match(/\r\n?|\n/g)?.length ?? 0;
+  const count = Math.max(0, Math.floor(lineBreakCount / 2) - 1);
+  for (let index = 0; index < count; index += 1) {
+    blocks.push({ type: "paragraph", props: {}, content: "", marks: [] });
+  }
+  return count;
 }
 
 function listItemToBlock(

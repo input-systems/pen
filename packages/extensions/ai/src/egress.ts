@@ -17,6 +17,7 @@ import {
 	type ToolJournalEntry,
 } from "./runtime/stepJournal";
 import type { AIWorkingSetEnvelope } from "./types";
+import type { AISelectionWorkingSetContext } from "./types/controller";
 
 export {
 	aiEgressExtension,
@@ -112,8 +113,15 @@ export function excerptsFromAgenticStep(input: {
 	toolJournal: readonly ToolJournalEntry[];
 }): AIDocumentExcerpt[] {
 	const excerpts: AIDocumentExcerpt[] = [];
+	const workingSet = input.workingSet;
+	const selectionContext =
+		workingSet?.source === "selection" &&
+		workingSet.context &&
+		typeof workingSet.context === "object"
+			? (workingSet.context as AISelectionWorkingSetContext)
+			: null;
 	const targetBlock = input.editor.getBlock(input.blockId);
-	if (targetBlock) {
+	if (targetBlock && !selectionContext) {
 		excerpts.push({
 			blockId: input.blockId,
 			kind: "target",
@@ -121,37 +129,35 @@ export function excerptsFromAgenticStep(input: {
 		});
 	}
 
-	const workingSet = input.workingSet;
 	if (workingSet) {
-		if (
-			workingSet.source === "selection" &&
-			workingSet.context &&
-			typeof workingSet.context === "object"
-		) {
-			const selectedText = (
-				workingSet.context as { selectedText?: unknown }
-			).selectedText;
-			if (typeof selectedText === "string" && selectedText.length > 0) {
+		if (selectionContext) {
+			const selectedContent =
+				selectionContext.selectionScope === "whole-blocks"
+					? selectionContext.markdown
+					: selectionContext.selectedText;
+			if (selectedContent.length > 0) {
 				excerpts.push({
 					blockId: workingSet.trackedBlockIds[0] ?? input.blockId,
 					kind: "selection",
-					text: selectedText,
+					text: selectedContent,
 				});
 			}
 		}
-		for (const blockId of workingSet.trackedBlockIds) {
-			if (blockId === input.blockId) {
-				continue;
+		if (!selectionContext) {
+			for (const blockId of workingSet.trackedBlockIds) {
+				if (blockId === input.blockId) {
+					continue;
+				}
+				const block = input.editor.getBlock(blockId);
+				if (!block) {
+					continue;
+				}
+				excerpts.push({
+					blockId,
+					kind: "context",
+					text: block.textContent(),
+				});
 			}
-			const block = input.editor.getBlock(blockId);
-			if (!block) {
-				continue;
-			}
-			excerpts.push({
-				blockId,
-				kind: "context",
-				text: block.textContent(),
-			});
 		}
 	}
 
