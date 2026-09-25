@@ -38,6 +38,26 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		});
 	});
 
+	it("IOP2 imports a placeholder break as one empty paragraph", () => {
+		const blocks = convert(
+			"<p>hello there</p><p><br></p><p>this is a test</p>",
+		);
+
+		expect(blocks).toMatchObject([
+			{ type: "paragraph", content: "hello there" },
+			{ type: "paragraph", content: "" },
+			{ type: "paragraph", content: "this is a test" },
+		]);
+	});
+
+	it("IOP2 preserves a break between inline text", () => {
+		const blocks = convert("<p>hello<br>there</p>");
+
+		expect(blocks).toMatchObject([
+			{ type: "paragraph", content: "hello\nthere" },
+		]);
+	});
+
 	it("script tag is stripped (AC 29)", () => {
 		const blocks = convert('<script>alert("xss")</script><p>safe</p>');
 
@@ -50,9 +70,7 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		const blocks = convert('<div onclick="alert(1)">text</div>');
 
 		expect(blocks.length).toBeGreaterThanOrEqual(1);
-		const hasText = blocks.some(
-			(b) => b.content?.includes("text"),
-		);
+		const hasText = blocks.some((b) => b.content?.includes("text"));
 		expect(hasText).toBe(true);
 	});
 
@@ -70,6 +88,56 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].content).toBe("italic");
 		expect(blocks[0].marks?.some((m) => m.type === "italic")).toBe(true);
+	});
+
+	it("IOP2 preserves marks expressed as inline styles", () => {
+		const blocks = convert(
+			'<p><span style="font-weight: 700">Bold</span> <span style="font-style: italic">italic</span> <span style="text-decoration: underline line-through">both</span></p>',
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0]).toMatchObject({
+			type: "paragraph",
+			content: "Bold italic both",
+		});
+		expect(blocks[0].marks).toEqual(
+			expect.arrayContaining([
+				{ type: "bold", start: 0, end: 4 },
+				{ type: "italic", start: 5, end: 11 },
+				{ type: "underline", start: 12, end: 16 },
+				{ type: "strikethrough", start: 12, end: 16 },
+			]),
+		);
+	});
+
+	it("IOP2 preserves marks expressed by pasted stylesheet classes", () => {
+		const blocks = convert(
+			'<style>span.s1 {text-decoration: underline}</style><p>normal, <span class="s1">underline</span></p>',
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0]).toMatchObject({
+			type: "paragraph",
+			content: "normal, underline",
+		});
+		expect(blocks[0].marks).toContainEqual({
+			type: "underline",
+			start: 8,
+			end: 17,
+		});
+	});
+
+	it("IOP2 preserves text alignment on default text blocks", () => {
+		const blocks = convert(
+			'<p style="text-align: center">Centered</p><h2 align="right">Right</h2><blockquote style="text-align: justify">Quoted</blockquote><ul style="text-align: end"><li>Listed</li></ul>',
+		);
+
+		expect(blocks).toMatchObject([
+			{ type: "paragraph", props: { textAlignment: "center" } },
+			{ type: "heading", props: { level: 2, textAlignment: "right" } },
+			{ type: "blockquote", props: { textAlignment: "justify" } },
+			{ type: "bulletListItem", props: { textAlignment: "end" } },
+		]);
 	});
 
 	it("link mark with href (AC 34)", () => {
@@ -111,9 +179,7 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 	});
 
 	it("nested list with indent (AC 37)", () => {
-		const blocks = convert(
-			"<ul><li>a<ul><li>b</li></ul></li></ul>",
-		);
+		const blocks = convert("<ul><li>a<ul><li>b</li></ul></li></ul>");
 
 		expect(blocks).toHaveLength(2);
 		expect(blocks[0]).toMatchObject({
@@ -207,7 +273,12 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		const dom = parseHTML("<strong>bold at root</strong>");
 		const blocks = domToBlocks(dom, stubRegistry);
 
-		expect(blocks.some((b) => b.type === "paragraph" && b.content?.includes("bold at root"))).toBe(true);
+		expect(
+			blocks.some(
+				(b) =>
+					b.type === "paragraph" &&
+					b.content?.includes("bold at root"),
+			),
+		).toBe(true);
 	});
-
 });

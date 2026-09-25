@@ -10,9 +10,15 @@ export interface DOMNode {
 }
 
 export function parseHTML(html: string): DOMNode {
-  if (typeof globalThis.DOMParser !== "undefined") {
+  if (
+    typeof Object.hasOwn !== "function" &&
+    typeof globalThis.DOMParser !== "undefined"
+  ) {
     const doc = new globalThis.DOMParser().parseFromString(html, "text/html");
-    return domNodeToDOMNode(doc.body);
+    return {
+      type: "root",
+      children: Array.from(doc.body.childNodes).map(domNodeToDOMNode),
+    };
   }
 
   const doc = parseDocument(html);

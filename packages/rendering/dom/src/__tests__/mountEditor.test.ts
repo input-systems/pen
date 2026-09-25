@@ -62,6 +62,30 @@ describe("mountEditor", () => {
 		expect(editor.facet(fieldEditorHostFacet)).toBe(mounted.fieldEditor);
 	});
 
+	it("renders validated block text alignment", () => {
+		const editor = createBareEditor();
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			{
+				type: "set-props",
+				blockId,
+				props: { textAlignment: "center" },
+			},
+		]);
+		const root = document.createElement("div");
+		document.body.append(root);
+		const mounted = mountEditor(editor, root);
+		cleanups.push(() => {
+			mounted.destroy();
+			editor.destroy();
+		});
+
+		const block = root.querySelector<HTMLElement>(
+			`[${DATA_ATTRS.blockId}="${blockId}"]`,
+		);
+		expect(block?.style.textAlign).toBe("center");
+	});
+
 	it("activates FieldEditorImpl on inline pointer down", () => {
 		const editor = createBareEditor();
 		const firstBlock = editor.firstBlock();

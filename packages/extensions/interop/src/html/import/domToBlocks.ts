@@ -1,5 +1,6 @@
 import type { DOMNode } from "./domAdapter";
 import { parseInlineContent } from "./inlineParser";
+import { parseSafeStyleDeclarations } from "./sanitize";
 import type {
   BlockImportMatch,
   HTMLImportElement,
@@ -9,14 +10,21 @@ import type {
 import type { PendingBlock } from "@input/pen-core";
 
 const BLOCK_ELEMENT_MAP: Record<string, (node: DOMNode) => PendingBlock> = {
-  h1: (node) => blockWithInline("heading", { level: 1 }, node),
-  h2: (node) => blockWithInline("heading", { level: 2 }, node),
-  h3: (node) => blockWithInline("heading", { level: 3 }, node),
-  h4: (node) => blockWithInline("heading", { level: 4 }, node),
-  h5: (node) => blockWithInline("heading", { level: 5 }, node),
-  h6: (node) => blockWithInline("heading", { level: 6 }, node),
-  p: (node) => blockWithInline("paragraph", {}, node),
-  blockquote: (node) => blockWithInline("blockquote", {}, node),
+  h1: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 1 }), node),
+  h2: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 2 }), node),
+  h3: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 3 }), node),
+  h4: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 4 }), node),
+  h5: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 5 }), node),
+  h6: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 6 }), node),
+  p: (node) => blockWithInline("paragraph", propsWithTextAlignment(node), node),
+  blockquote: (node) =>
+    blockWithInline("blockquote", propsWithTextAlignment(node), node),
   hr: () => ({ type: "divider", props: {} }),
   pre: (node) => {
     const codeNode = node.children?.find((c) => c.tagName === "code");
@@ -140,6 +148,7 @@ function walkList(
 ): void {
   const items = (node.children ?? []).filter((c) => c.tagName === "li");
   const olStart = ordered ? parseOlStart(node) : undefined;
+  const listAlignment = textAlignment(node);
 
   for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
     const li = items[itemIdx];
@@ -166,6 +175,7 @@ function walkList(
         props: {
           indent,
           checked: checkbox.attributes?.checked !== undefined,
+          ...textAlignmentProps(li, listAlignment),
         },
         content: inline.text,
         marks: inline.marks,
@@ -176,6 +186,7 @@ function walkList(
         props: {
           indent,
           start: itemIdx === 0 ? olStart : undefined,
+          ...textAlignmentProps(li, listAlignment),
         },
         content: inline.text,
         marks: inline.marks,
@@ -183,7 +194,7 @@ function walkList(
     } else {
       blocks.push({
         type: "bulletListItem",
-        props: { indent },
+        props: { indent, ...textAlignmentProps(li, listAlignment) },
         content: inline.text,
         marks: inline.marks,
       });
@@ -265,6 +276,42 @@ function blockWithInline(
 ): PendingBlock {
   const inline = parseInlineContent(node);
   return { type, props, content: inline.text, marks: inline.marks };
+}
+
+const TEXT_ALIGNMENTS = new Set([
+  "left",
+  "right",
+  "center",
+  "justify",
+  "start",
+  "end",
+]);
+
+function propsWithTextAlignment(
+  node: DOMNode,
+  props: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return { ...props, ...textAlignmentProps(node) };
+}
+
+function textAlignmentProps(
+  node: DOMNode,
+  inherited?: string,
+): Record<string, unknown> {
+  const alignment = textAlignment(node) ?? inherited;
+  return alignment ? { textAlignment: alignment } : {};
+}
+
+function textAlignment(node: DOMNode): string | undefined {
+  let alignment = node.attributes?.align?.toLowerCase();
+  for (const declaration of parseSafeStyleDeclarations(
+    node.attributes?.style ?? "",
+  )) {
+    if (declaration.property === "text-align") {
+      alignment = declaration.value;
+    }
+  }
+  return alignment && TEXT_ALIGNMENTS.has(alignment) ? alignment : undefined;
 }
 
 function extractText(node: DOMNode): string {

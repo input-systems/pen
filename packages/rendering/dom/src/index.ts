@@ -89,6 +89,10 @@ export {
 } from "./constants/selectAll";
 export type { PasteImporters } from "./types/paste";
 export {
+	resolveBlockTextAlignment,
+	type BlockTextAlignment,
+} from "./utils/blockTextAlignment";
+export {
 	urlPolicy,
 	type UrlContext,
 	type UrlPolicy,

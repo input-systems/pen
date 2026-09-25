@@ -9,6 +9,7 @@ import type { FieldEditorImpl } from "../field-editor/fieldEditorImpl";
 import { fullReconcileDeltasToDOM } from "../field-editor/reconciler";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
 import { buildDataAttributes, DATA_ATTRS } from "../utils/dataAttributes";
+import { resolveBlockTextAlignment } from "../utils/blockTextAlignment";
 import { getChildBlockIds, getRootBlockIds } from "../utils/parentIdTree";
 
 export interface DocumentTree {
@@ -157,6 +158,7 @@ function updateBlockNodes(
 		nodes.element.removeAttribute("dir");
 	}
 	nodes.element.style.unicodeBidi = "isolate";
+	nodes.element.style.textAlign = resolveBlockTextAlignment(block) ?? "";
 	if (nodes.inline) {
 		nodes.inline.style.unicodeBidi = "isolate";
 		// RI5: stored newlines and repeated spaces are document characters; under
