@@ -1,5 +1,24 @@
 # @input/pen-react
 
+## 0.2.12
+
+### Patch Changes
+
+- 6197b8c: Position the editor caret overlay against its overlay root instead of the viewport so filtered or transformed ancestors do not trap the caret.
+- 859910e: Preserve HTML block structure, blank-line spacing, inline marks, lists, and text alignment when pasting formatted HTML.
+- Updated dependencies [eeb5eb2]
+- Updated dependencies [859910e]
+  - @input/pen-ai@0.2.12
+  - @input/pen-interop@0.2.12
+  - @input/pen-schema@0.2.12
+  - @input/pen-dom@0.2.12
+  - @input/pen-multiplayer@0.2.12
+  - @input/pen-search@0.2.12
+  - @input/pen-shortcuts@0.2.12
+  - @input/pen-snapshots@0.2.12
+  - @input/pen-core@0.2.12
+  - @input/pen-types@0.2.12
+
 ## 0.2.11
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @input/pen-schema
 
+## 0.2.12
+
+### Patch Changes
+
+- 859910e: Preserve HTML block structure, blank-line spacing, inline marks, lists, and text alignment when pasting formatted HTML.
+- @input/pen-core@0.2.12
+  - @input/pen-types@0.2.12
+
 ## 0.2.11
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @input/pen-tools
 
+## 0.2.12
+
+### Patch Changes
+
+- eeb5eb2: Preserve rich formatting and block structure when AI rewrites selections.
+- Updated dependencies [eeb5eb2]
+  - @input/pen-ingest@0.2.12
+  - @input/pen-core@0.2.12
+  - @input/pen-markdown@0.2.12
+  - @input/pen-types@0.2.12
+
 ## 0.2.11
 
 ### Patch Changes
