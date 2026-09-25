@@ -1,5 +1,12 @@
 # @input/pen-shortcuts
 
+## 0.2.12
+
+### Patch Changes
+
+- @input/pen-core@0.2.12
+  - @input/pen-types@0.2.12
+
 ## 0.2.11
 
 ### Patch Changes

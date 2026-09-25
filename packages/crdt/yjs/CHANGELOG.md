@@ -1,5 +1,11 @@
 # @input/pen-yjs
 
+## 0.2.12
+
+### Patch Changes
+
+- @input/pen-types@0.2.12
+
 ## 0.2.11
 
 ### Patch Changes
