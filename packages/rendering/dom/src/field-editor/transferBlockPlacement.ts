@@ -98,7 +98,7 @@ function buildBlockPlacement(
 	if (!cursor.isInline) {
 		return insertBlocks(editor, siblings, afterLine);
 	}
-	if (cursor.isEmpty && replacesEmptyLine(blocks[0], line.type)) {
+	if (cursor.isEmpty && !fillsEmptyLine(editor, blocks[0], line.type)) {
 		const replaced = insertBlocks(editor, siblings, { before: line.id });
 		replaced.ops.push({ type: "delete-block", blockId: line.id });
 		return replaced;
@@ -203,11 +203,17 @@ function withParentId(
 	}));
 }
 
-// an empty line keeps its id and props unless the first pasted block brings its own type or props
-function replacesEmptyLine(block: PendingBlock, lineType: string): boolean {
+// an empty line keeps its id and props when the first pasted block brings no
+// type or props of its own and its content can be written into the line
+function fillsEmptyLine(
+	editor: Editor,
+	block: PendingBlock,
+	lineType: string,
+): boolean {
 	return (
-		block.type !== lineType ||
-		Object.values(block.props).some((value) => value !== undefined)
+		block.type === lineType &&
+		Object.values(block.props).every((value) => value === undefined) &&
+		canMergeInline(editor, block)
 	);
 }
 
