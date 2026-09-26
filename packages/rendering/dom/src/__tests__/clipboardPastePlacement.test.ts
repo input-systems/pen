@@ -346,6 +346,48 @@ describe("IOP9: parsed paste lands at the caret", () => {
 		});
 	});
 
+	it("keeps a text-empty container and its children when pasting into it", async () => {
+		const { editor, ids } = createDocument([""]);
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: "quote",
+				blockType: "blockquote",
+				props: {},
+				position: { before: ids[0] },
+			},
+			{
+				type: "insert-block",
+				blockId: "inside",
+				blockType: "paragraph",
+				props: { parentId: "quote" },
+				position: { after: "quote" },
+			},
+			{
+				type: "splice-text",
+				blockId: "inside",
+				from: 0,
+				to: 0,
+				insert: "child",
+			},
+		]);
+		editor.selectText("quote", 0, 0);
+
+		await pasteParsed(editor, [
+			{ type: "heading", props: { level: 1 }, content: "Title" },
+			{ type: "divider", props: {} },
+		]);
+
+		expect(editor.getBlock("quote")?.textContent()).toBe("Title");
+		expect(editor.documentState.parentOf("inside")).toBe("quote");
+		expect(readBlocks(editor).map((block) => block.type)).toEqual([
+			"blockquote",
+			"paragraph",
+			"divider",
+			"paragraph",
+		]);
+	});
+
 	it("still replaces an empty caret line with the pasted blocks", async () => {
 		const { editor, ids } = createDocument(["", "next"]);
 		editor.selectText(ids[0], 0, 0);

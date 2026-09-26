@@ -71,7 +71,8 @@ export function pasteBlocksAtCaret(
 /**
  * The first pasted block joins the text before the caret, the last one joins
  * the text after it, and anything in between splits the caret line. An empty
- * caret line is replaced unless the first pasted block can fill it in place.
+ * caret line without children is replaced unless the first pasted block can
+ * fill it in place.
  * Returns null when the caret block no longer exists.
  */
 function buildBlockPlacement(
@@ -98,7 +99,12 @@ function buildBlockPlacement(
 	if (!cursor.isInline) {
 		return insertBlocks(editor, siblings, afterLine);
 	}
-	if (cursor.isEmpty && !fillsEmptyLine(editor, blocks[0], line.type)) {
+	// a line with children is never replaced; deleting it would drop them
+	if (
+		cursor.isEmpty &&
+		editor.documentState.childrenOf(line.id).length === 0 &&
+		!fillsEmptyLine(editor, blocks[0], line.type)
+	) {
 		const replaced = insertBlocks(editor, siblings, { before: line.id });
 		replaced.ops.push({ type: "delete-block", blockId: line.id });
 		return replaced;
