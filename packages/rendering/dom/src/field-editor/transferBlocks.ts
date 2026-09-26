@@ -1,12 +1,12 @@
-import type {
-	DocumentOp,
-	Editor,
-	InlineInsert,
-	Position,
-} from "@input/pen-types";
+import type { DocumentOp, Editor, InlineInsert } from "@input/pen-types";
+import type { PendingBlock } from "@input/pen-core";
 import type { FieldEditorTransferController } from "./controller";
 import type { Delta, PenBlock } from "../utils/clipboardPayload";
 import type { TransferCursorContext } from "./transferSelection";
+import {
+	buildBlockPlacementOps,
+	placeCaretAfterPaste,
+} from "./transferBlockPlacement";
 import { getInsertSiblingBlockOp } from "../utils/parentIdTree";
 import { generateId } from "@input/pen-types";
 
@@ -54,85 +54,18 @@ export function pasteBlocks(
 		return;
 	}
 
-	const ops: DocumentOp[] = [];
-	let previousBlockId: string | null = null;
-	let lastBlockId: string | null = null;
-	let lastContentLength = 0;
-	let lastIsInline = false;
-	const shouldReplaceEmpty = cursor?.isEmpty;
-
-	for (const block of valid) {
-		const schema = editor.schema.resolve(block.type!)!;
-		const blockId = generateId();
-		const insertBlockOp = previousBlockId
-			? ({
-					type: "insert-block",
-					blockId,
-					blockType: block.type!,
-					props: block.props ?? {},
-					position: { after: previousBlockId } as Position,
-				} as DocumentOp)
-			: cursor
-				? shouldReplaceEmpty
-					? ({
-							type: "insert-block",
-							blockId,
-							blockType: block.type!,
-							props: block.props ?? {},
-							position: { before: cursor.blockId } as Position,
-						} as DocumentOp)
-					: getInsertSiblingBlockOp(editor, {
-							siblingBlockId: cursor.blockId,
-							blockId,
-							blockType: block.type!,
-							props: block.props ?? {},
-						})
-				: ({
-						type: "insert-block",
-						blockId,
-						blockType: block.type!,
-						props: block.props ?? {},
-						position: "last" as Position,
-					} as DocumentOp);
-
-		ops.push(insertBlockOp);
-
-		if (schema.content === "inline") {
-			const deltas = getPenBlockInlineDeltas(block);
-			lastContentLength =
-				deltas.length > 0
-					? appendInlineContentOps(ops, blockId, deltas)
-					: 0;
-		} else if (schema.content === "table" && block.children) {
-			appendTableChildrenOps(ops, blockId, block.children);
-			lastContentLength = 0;
-		} else {
-			lastContentLength = 0;
-		}
-
-		lastBlockId = blockId;
-		lastIsInline = schema.content === "inline";
-		previousBlockId = blockId;
-	}
-
-	if (shouldReplaceEmpty && cursor) {
-		ops.push({ type: "delete-block", blockId: cursor.blockId });
-	}
-
+	const { ops, caret } = buildBlockPlacementOps(
+		editor,
+		valid.map(toPendingBlock),
+		cursor,
+	);
 	if (ops.length > 0) {
 		editor.apply(ops, {
 			origin: "user",
 			...(options?.undoGroup === false ? {} : { undoGroup: true }),
 		});
 	}
-
-	if (lastBlockId && lastIsInline) {
-		fieldEditor.activateTextSelection(
-			lastBlockId,
-			lastContentLength,
-			lastContentLength,
-		);
-	}
+	placeCaretAfterPaste(editor, fieldEditor, caret);
 }
 
 export function pasteInlineText(
@@ -307,30 +240,6 @@ function getPenBlockInlineDeltas(block: PenBlock): Delta[] {
 	return [];
 }
 
-function appendInlineContentOps(
-	ops: DocumentOp[],
-	blockId: string,
-	deltas: Delta[],
-): number {
-	let offset = 0;
-
-	for (const delta of deltas) {
-		const fragment = spliceFragmentFromDelta(delta);
-		if (!fragment) continue;
-		ops.push({
-			type: "splice-text",
-			blockId,
-			from: offset,
-			to: offset,
-			insert: fragment.insert,
-			...(fragment.marks ? { marks: fragment.marks } : {}),
-		});
-		offset += fragment.length;
-	}
-
-	return offset;
-}
-
 function deltasToPlainText(deltas: Delta[]): string {
 	return deltas
 		.map((delta) => (typeof delta.insert === "string" ? delta.insert : ""))
@@ -394,46 +303,28 @@ function spliceFragmentFromDelta(delta: Delta): {
 	};
 }
 
-function appendTableChildrenOps(
-	ops: DocumentOp[],
-	blockId: string,
-	children: readonly PenBlock[],
-): void {
-	const tableRows = children.filter((child) => child.type === "__table_row");
-	for (let rowIdx = 0; rowIdx < tableRows.length; rowIdx++) {
-		const row = tableRows[rowIdx];
-		const cells = (row.children ?? []).filter(
-			(cell) => cell.type === "__table_cell",
-		);
+function toPendingBlock(block: PenBlock): PendingBlock {
+	return {
+		type: block.type,
+		props: block.props ?? {},
+		segments: getPenBlockInlineDeltas(block).map(deltaToSegment),
+		children: block.children?.map(toPendingBlock),
+	};
+}
 
-		if (rowIdx > 0) {
-			ops.push({
-				type: "grid",
-				blockId,
-				change: { kind: "insert-row", index: rowIdx },
-			});
-		}
-
-		for (let colIdx = 0; colIdx < cells.length; colIdx++) {
-			if (rowIdx === 0 && colIdx > 0) {
-				ops.push({
-					type: "grid",
-					blockId,
-					change: { kind: "insert-column", index: colIdx },
-				});
-			}
-
-			const cellContent = cells[colIdx].content;
-			if (cellContent) {
-				ops.push({
-					type: "splice-text",
-					blockId,
-					cell: { row: rowIdx, col: colIdx },
-					from: 0,
-					to: 0,
-					insert: cellContent,
-				});
-			}
-		}
+function deltaToSegment(
+	delta: Delta,
+): NonNullable<PendingBlock["segments"]>[number] {
+	if (typeof delta.insert === "string") {
+		return {
+			type: "text",
+			text: delta.insert,
+			attributes: delta.attributes,
+		};
 	}
+	return {
+		type: "node",
+		nodeType: delta.insert.type,
+		props: delta.insert.props,
+	};
 }

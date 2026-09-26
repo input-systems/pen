@@ -320,7 +320,7 @@ describe("@input/pen-react clipboard: paste round-trips", () => {
 		editor.destroy();
 	});
 
-	it("does not replace a non-empty block when pasting blocks", () => {
+	it("IOP9: joins a pasted block into a non-empty caret line", () => {
 		const editor = createEditor();
 		const blockId = editor.firstBlock()!.id;
 		const clipboardData = createClipboardData();
@@ -354,9 +354,9 @@ describe("@input/pen-react clipboard: paste round-trips", () => {
 		);
 
 		const blockOrder = editor.documentState.blockOrder;
-		expect(blockOrder).toHaveLength(2);
-		expect(editor.getBlock(blockOrder[0])!.textContent()).toBe("existing");
-		expect(editor.getBlock(blockOrder[1])!.type).toBe("heading");
+		expect(blockOrder).toEqual([blockId]);
+		expect(editor.getBlock(blockId)!.type).toBe("paragraph");
+		expect(editor.getBlock(blockId)!.textContent()).toBe("existingTitle");
 
 		editor.destroy();
 	});
