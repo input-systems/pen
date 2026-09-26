@@ -52,7 +52,7 @@ export function blocksToOps(
 		if (block.type === "table" && block.children) {
 			materializeTableChildren(ops, blockId, block.children);
 		} else {
-			materializeInlineContent(ops, blockId, block);
+			ops.push(...inlineContentToOps(block, blockId));
 
 			if (block.children) {
 				for (let i = 0; i < block.children.length; i += 1) {
@@ -136,13 +136,18 @@ function materializeTableChildren(
 	}
 }
 
-function materializeInlineContent(
-	ops: DocumentOp[],
-	blockId: string,
+/**
+ * Writes a pending block's inline content (text, marks, inline nodes) into an
+ * existing block, starting at `offset`.
+ */
+export function inlineContentToOps(
 	block: PendingBlock,
-): void {
+	blockId: string,
+	offset = 0,
+): DocumentOp[] {
+	const ops: DocumentOp[] = [];
 	if (block.segments && block.segments.length > 0) {
-		let offset = 0;
+		let at = offset;
 		for (const segment of block.segments) {
 			if (segment.type === "text") {
 				if (segment.text.length === 0) {
@@ -151,47 +156,47 @@ function materializeInlineContent(
 				ops.push({
 					type: "splice-text",
 					blockId,
-					from: offset,
-					to: offset,
+					from: at,
+					to: at,
 					insert: segment.text,
 				});
 				if (segment.attributes) {
 					ops.push({
 						type: "format-text",
 						blockId,
-						from: offset,
-						to: offset + segment.text.length,
+						from: at,
+						to: at + segment.text.length,
 						marks: segment.attributes,
 					});
 				}
-				offset += segment.text.length;
+				at += segment.text.length;
 				continue;
 			}
 
 			ops.push({
 				type: "splice-text",
 				blockId,
-				from: offset,
-				to: offset,
+				from: at,
+				to: at,
 				insert: {
 					nodeType: segment.nodeType,
 					props: segment.props ?? {},
 				},
 			});
-			offset += 1;
+			at += 1;
 		}
-		return;
+		return ops;
 	}
 
 	if (!block.content) {
-		return;
+		return ops;
 	}
 
 	ops.push({
 		type: "splice-text",
 		blockId,
-		from: 0,
-		to: 0,
+		from: offset,
+		to: offset,
 		insert: block.content,
 	});
 
@@ -200,11 +205,12 @@ function materializeInlineContent(
 		ops.push({
 			type: "format-text",
 			blockId,
-			from: mark.start,
-			to: mark.end,
+			from: offset + mark.start,
+			to: offset + mark.end,
 			marks: { [mark.type]: mark.props ?? true },
 		});
 	}
+	return ops;
 }
 
 function materializeTableCellContent(

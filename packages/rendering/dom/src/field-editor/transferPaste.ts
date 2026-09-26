@@ -1,15 +1,9 @@
 import {
-	blocksToOps,
 	normalizePendingBlocksForImport,
 	reportPendingBlockImportViolations,
 	resolveBlockFlowCapability,
 } from "@input/pen-core";
-import type {
-	DiagnosticEvent,
-	DocumentOp,
-	Editor,
-	Position,
-} from "@input/pen-types";
+import type { DiagnosticEvent, Editor } from "@input/pen-types";
 import type { PendingBlock } from "@input/pen-core";
 import type { FieldEditorTransferController } from "./controller";
 import {
@@ -25,6 +19,7 @@ import {
 	type PenBlock,
 } from "../utils/clipboardPayload";
 import { pasteBlocks, pasteInlineText } from "./transferBlocks";
+import { pasteBlocksAtCaret } from "./transferBlockPlacement";
 import { tryPasteClipboardUrlAsLink } from "./transferPasteUrl";
 import {
 	deleteSelectionForTransfer,
@@ -370,28 +365,10 @@ function applyParsedBlocksPaste(options: {
 		return true;
 	}
 
-	const { position, emptyBlockToRemove } = deleteSelectionForTransfer(
-		editor,
-		cursorBefore,
-	);
-	const ops = blocksToOps(normalized.blocks, { position });
-	if (emptyBlockToRemove) {
-		ops.push({ type: "delete-block", blockId: emptyBlockToRemove });
-	}
-
-	const lastInsertedBlockId = getLastTopLevelInsertedBlockId(ops);
-	const lastBlock = normalized.blocks[normalized.blocks.length - 1];
-
-	editor.apply(ops, {
-		origin: "user",
-		...(undoGroup ? { undoGroup: true } : {}),
+	const { cursorAfter } = deleteSelectionForTransfer(editor, cursorBefore);
+	pasteBlocksAtCaret(editor, fieldEditor, normalized.blocks, cursorAfter, {
+		undoGroup,
 	});
-	restoreCursorAfterParsedPaste(
-		editor,
-		fieldEditor,
-		lastInsertedBlockId,
-		lastBlock,
-	);
 	return true;
 }
 
@@ -417,33 +394,6 @@ function shouldPreferMarkdownParagraphPaste(
 
 function normalizePastedText(text: string | undefined): string {
 	return (text ?? "").replace(/\r\n?/g, "\n").trim();
-}
-
-function getLastTopLevelInsertedBlockId(ops: DocumentOp[]): string | null {
-	for (let i = ops.length - 1; i >= 0; i--) {
-		const op = ops[i];
-		if (op.type !== "insert-block") continue;
-		if (typeof op.position === "object" && "parent" in op.position)
-			continue;
-		return op.blockId;
-	}
-	return null;
-}
-
-function restoreCursorAfterParsedPaste(
-	editor: Editor,
-	fieldEditor: FieldEditorTransferController,
-	blockId: string | null,
-	block: PendingBlock | undefined,
-): void {
-	if (!blockId || !block) return;
-	const schema = editor.schema.resolve(block.type);
-	if (schema?.content === "inline") {
-		const offset = block.content?.length ?? 0;
-		fieldEditor.activateTextSelection(blockId, offset, offset);
-		return;
-	}
-	editor.selectBlock(blockId);
 }
 
 function removeLegacyEmptyPlaceholderIfNeeded(options: {
