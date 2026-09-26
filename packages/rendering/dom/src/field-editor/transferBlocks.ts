@@ -3,10 +3,7 @@ import type { PendingBlock } from "@input/pen-core";
 import type { FieldEditorTransferController } from "./controller";
 import type { Delta, PenBlock } from "../utils/clipboardPayload";
 import type { TransferCursorContext } from "./transferSelection";
-import {
-	buildBlockPlacementOps,
-	placeCaretAfterPaste,
-} from "./transferBlockPlacement";
+import { pasteBlocksAtCaret } from "./transferBlockPlacement";
 import { getInsertSiblingBlockOp } from "../utils/parentIdTree";
 import { generateId } from "@input/pen-types";
 
@@ -54,18 +51,9 @@ export function pasteBlocks(
 		return;
 	}
 
-	const { ops, caret } = buildBlockPlacementOps(
-		editor,
-		valid.map(toPendingBlock),
-		cursor,
-	);
-	if (ops.length > 0) {
-		editor.apply(ops, {
-			origin: "user",
-			...(options?.undoGroup === false ? {} : { undoGroup: true }),
-		});
-	}
-	placeCaretAfterPaste(editor, fieldEditor, caret);
+	pasteBlocksAtCaret(editor, fieldEditor, valid.map(toPendingBlock), cursor, {
+		undoGroup: options?.undoGroup !== false,
+	});
 }
 
 export function pasteInlineText(

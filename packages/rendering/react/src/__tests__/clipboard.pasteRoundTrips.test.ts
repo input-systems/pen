@@ -5,6 +5,7 @@ import { createEditor as createCoreEditor } from "@input/pen-core";
 import type { AssetProvider } from "@input/pen-types";
 import { defaultPreset } from "@input/pen";
 import {
+	getPasteImporters,
 	handleClipboardPaste,
 	handleCopy,
 } from "@input/pen-dom/field-editor/clipboard";
@@ -202,6 +203,42 @@ describe("@input/pen-react clipboard: paste round-trips", () => {
 		expect(editor.getBlock(blockId)?.textContent()).toBe("HXo");
 		expect(editor.undoManager.undo()).toBe(true);
 		expect(editor.getBlock(blockId)?.textContent()).toBe("Hello");
+
+		editor.destroy();
+	});
+
+	it("IOP9: undoes a paste that splits the caret line as a single history entry", async () => {
+		const editor = createEditor({}, { undo: true });
+		const blockId = editor.firstBlock()!.id;
+		const clipboardData = createClipboardData();
+		const fieldEditor = createFieldEditorStub();
+
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "abcdef" },
+		]);
+		editor.undoManager.stopCapturing();
+		clipboardData.setData("text/html", "<p>one</p><p>two</p>");
+
+		editor.selectText(blockId, 3, 3);
+		handleClipboardPaste(
+			{ clipboardData } as ClipboardEvent,
+			editor,
+			fieldEditor,
+			getPasteImporters(editor),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(
+			editor.documentState.blockOrder.map((id) =>
+				editor.getBlock(id)?.textContent(),
+			),
+		).toEqual(["abcone", "twodef"]);
+		expect(editor.undoManager.undo()).toBe(true);
+		expect(
+			editor.documentState.blockOrder.map((id) =>
+				editor.getBlock(id)?.textContent(),
+			),
+		).toEqual(["abcdef"]);
 
 		editor.destroy();
 	});

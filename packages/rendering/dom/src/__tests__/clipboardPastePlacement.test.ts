@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi } from "vitest";
-import { createEditor, type PendingBlock } from "@input/pen-core";
+import {
+	createEditor,
+	deriveContentMoves,
+	repairAnchor,
+	type PendingBlock,
+} from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
 import { defaultSchema } from "@input/pen-schema";
 import { handleCopy } from "../field-editor/clipboard";
@@ -233,6 +238,56 @@ describe("IOP9: parsed paste lands at the caret", () => {
 			{ type: "divider", text: "" },
 			{ type: "paragraph", text: "def" },
 		]);
+	});
+
+	it("keeps the caret line's props on the text after the caret", async () => {
+		const { editor, ids } = createDocument([""]);
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: "title",
+				blockType: "heading",
+				props: { level: 2, textAlignment: "center" },
+				position: { before: ids[0] },
+			},
+			{
+				type: "splice-text",
+				blockId: "title",
+				from: 0,
+				to: 0,
+				insert: "abcdef",
+			},
+		]);
+		editor.selectText("title", 3, 3);
+
+		await pasteParsed(editor, [paragraph("one"), paragraph("two")]);
+
+		const tail = editor.getBlock(editor.documentState.blockOrder[1])!;
+		expect(tail.textContent()).toBe("twodef");
+		expect(tail.type).toBe("heading");
+		expect(tail.props).toMatchObject({ level: 2, textAlignment: "center" });
+	});
+
+	it("AN14: repairs anchors after the caret into the split tail", async () => {
+		const { editor, ids } = createDocument(["abcdef"]);
+		let anchor = editor.anchors.create({ blockId: ids[0], offset: 4 }, 1)!;
+		editor.on("commit", (event) => {
+			anchor = repairAnchor(
+				editor,
+				anchor,
+				deriveContentMoves(event.summary, undefined),
+			);
+		});
+		editor.selectText(ids[0], 3, 3);
+
+		await pasteParsed(editor, [paragraph("one"), paragraph("three")]);
+
+		const tailId = editor.documentState.blockOrder[1];
+		expect(editor.getBlock(tailId)!.textContent()).toBe("threedef");
+		expect(editor.anchors.resolve(anchor)).toEqual({
+			blockId: tailId,
+			offset: 6,
+		});
 	});
 
 	it("keeps blocks pasted inside a container in that container", async () => {

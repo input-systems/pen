@@ -19,10 +19,7 @@ import {
 	type PenBlock,
 } from "../utils/clipboardPayload";
 import { pasteBlocks, pasteInlineText } from "./transferBlocks";
-import {
-	buildBlockPlacementOps,
-	placeCaretAfterPaste,
-} from "./transferBlockPlacement";
+import { pasteBlocksAtCaret } from "./transferBlockPlacement";
 import { tryPasteClipboardUrlAsLink } from "./transferPasteUrl";
 import {
 	deleteSelectionForTransfer,
@@ -369,17 +366,9 @@ function applyParsedBlocksPaste(options: {
 	}
 
 	const { cursorAfter } = deleteSelectionForTransfer(editor, cursorBefore);
-	const { ops, caret } = buildBlockPlacementOps(
-		editor,
-		normalized.blocks,
-		cursorAfter,
-	);
-
-	editor.apply(ops, {
-		origin: "user",
-		...(undoGroup ? { undoGroup: true } : {}),
+	pasteBlocksAtCaret(editor, fieldEditor, normalized.blocks, cursorAfter, {
+		undoGroup,
 	});
-	placeCaretAfterPaste(editor, fieldEditor, caret);
 	return true;
 }
 

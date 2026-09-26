@@ -3,24 +3,66 @@ import {
 	buildSplitBlockRecipe,
 	type PendingBlock,
 } from "@input/pen-core";
-import type { DocumentOp, Editor, Position } from "@input/pen-types";
+import type {
+	DocumentOp,
+	Editor,
+	Position,
+	StructuralOriginTag,
+} from "@input/pen-types";
 import { generateId } from "@input/pen-types";
 import { getLastDescendantBlockId } from "../utils/parentIdTree";
 import type { FieldEditorTransferController } from "./controller";
 import type { TransferCursorContext } from "./transferSelection";
 
-export interface BlockPlacement {
+interface BlockPlacement {
+	/** applied first, on its own, so AN14 anchor repair sees the split */
+	split: { ops: DocumentOp[]; structural: StructuralOriginTag } | null;
 	ops: DocumentOp[];
 	/** offset is absent when the caret lands on a block without inline content */
 	caret: { blockId: string; offset?: number } | null;
 }
 
 /**
- * Places pasted blocks at the caret: the first pasted block joins the text
- * before the caret, the last one joins the text after it, and anything in
- * between splits the caret line. An empty caret line is replaced.
+ * Pastes blocks at the caret (IOP9) and places the caret after them.
  */
-export function buildBlockPlacementOps(
+export function pasteBlocksAtCaret(
+	editor: Editor,
+	fieldEditor: FieldEditorTransferController,
+	blocks: PendingBlock[],
+	cursor: TransferCursorContext | null,
+	options: { undoGroup: boolean },
+): void {
+	const { split, ops, caret } = buildBlockPlacement(editor, blocks, cursor);
+	const undoGroup = options.undoGroup ? { undoGroup: true } : {};
+	if (split) {
+		editor.apply(split.ops, {
+			origin: "user",
+			...undoGroup,
+			structural: split.structural,
+		});
+	}
+	if (ops.length > 0) {
+		// without undoGroup the rest joins the split's undo step
+		editor.apply(ops, { origin: "user", ...(split ? {} : undoGroup) });
+	}
+
+	if (caret?.offset !== undefined) {
+		fieldEditor.activateTextSelection(
+			caret.blockId,
+			caret.offset,
+			caret.offset,
+		);
+	} else if (caret) {
+		editor.selectBlock(caret.blockId);
+	}
+}
+
+/**
+ * The first pasted block joins the text before the caret, the last one joins
+ * the text after it, and anything in between splits the caret line. An empty
+ * caret line is replaced.
+ */
+function buildBlockPlacement(
 	editor: Editor,
 	blocks: PendingBlock[],
 	cursor: TransferCursorContext | null,
@@ -60,11 +102,13 @@ export function buildBlockPlacementOps(
 
 	if (between.length === 0) {
 		return {
+			split: null,
 			ops: inlineContentOps(first, line.id, offset),
 			caret: { blockId: line.id, offset: offset + inlineLength(first) },
 		};
 	}
 
+	let split: BlockPlacement["split"] = null;
 	const ops: DocumentOp[] = [];
 	let position: Position = afterLine;
 	let tailBlockId: string | null = null;
@@ -76,13 +120,23 @@ export function buildBlockPlacementOps(
 		} else {
 			position = { after: line.id };
 			tailBlockId = generateId();
-			ops.push(
-				...buildSplitBlockRecipe({
-					block: line,
-					offset,
-					newBlockId: tailBlockId,
-				}).ops,
-			);
+			const recipe = buildSplitBlockRecipe({
+				block: line,
+				offset,
+				newBlockId: tailBlockId,
+			});
+			split = {
+				// the tail is still the caret line, so it keeps its props
+				ops: [
+					...recipe.ops,
+					{
+						type: "set-props",
+						blockId: tailBlockId,
+						props: { ...line.props },
+					},
+				],
+				structural: recipe.structural,
+			};
 		}
 	}
 	if (mergeFirst) {
@@ -94,6 +148,7 @@ export function buildBlockPlacementOps(
 		const inserted = insertBlocks(editor, between.slice(0, -1), position);
 		ops.push(...inserted.ops, ...inlineContentOps(last, tailBlockId, 0));
 		return {
+			split,
 			ops,
 			caret: { blockId: tailBlockId, offset: inlineLength(last) },
 		};
@@ -101,23 +156,7 @@ export function buildBlockPlacementOps(
 
 	const inserted = insertBlocks(editor, between, position);
 	ops.push(...inserted.ops);
-	return { ops, caret: inserted.caret };
-}
-
-export function placeCaretAfterPaste(
-	editor: Editor,
-	fieldEditor: FieldEditorTransferController,
-	caret: BlockPlacement["caret"],
-): void {
-	if (caret?.offset !== undefined) {
-		fieldEditor.activateTextSelection(
-			caret.blockId,
-			caret.offset,
-			caret.offset,
-		);
-	} else if (caret) {
-		editor.selectBlock(caret.blockId);
-	}
+	return { split, ops, caret: inserted.caret };
 }
 
 function insertBlocks(
@@ -129,11 +168,12 @@ function insertBlocks(
 	const lastBlockId = getLastTopLevelInsertedBlockId(ops);
 	const lastBlock = blocks[blocks.length - 1];
 	if (!lastBlockId || !lastBlock) {
-		return { ops, caret: null };
+		return { split: null, ops, caret: null };
 	}
 	const isInline =
 		editor.schema.resolve(lastBlock.type)?.content === "inline";
 	return {
+		split: null,
 		ops,
 		caret: isInline
 			? { blockId: lastBlockId, offset: inlineLength(lastBlock) }
