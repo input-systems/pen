@@ -4,8 +4,6 @@ import type { FieldEditorTransferController } from "./controller";
 import type { Delta, PenBlock } from "../utils/clipboardPayload";
 import type { TransferCursorContext } from "./transferSelection";
 import { pasteBlocksAtCaret } from "./transferBlockPlacement";
-import { getInsertSiblingBlockOp } from "../utils/parentIdTree";
-import { generateId } from "@input/pen-types";
 
 export function pasteBlocks(
 	blocks: PenBlock[],
@@ -65,110 +63,12 @@ export function pasteInlineText(
 ): void {
 	if (!cursor?.isInline) return;
 
-	const { blockId, offset, blockType } = cursor;
-	const lines = text.split(/\r?\n/);
-
-	if (lines.length === 1) {
-		const insertedText = lines[0];
-		editor.apply(
-			[
-				{
-					type: "splice-text",
-					blockId,
-					from: offset,
-					to: offset,
-					insert: insertedText,
-				},
-			],
-			{
-				origin: "user",
-				...(options?.undoGroup === false ? {} : { undoGroup: true }),
-			},
-		);
-		fieldEditor.activateTextSelection(
-			blockId,
-			offset + insertedText.length,
-			offset + insertedText.length,
-		);
-		return;
-	}
-
-	const ops: DocumentOp[] = [];
-	const firstLine = lines[0];
-	if (firstLine) {
-		ops.push({
-			type: "splice-text",
-			blockId,
-			from: offset,
-			to: offset,
-			insert: firstLine,
-		});
-	}
-
-	const tailText =
-		editor.getBlock(blockId)?.textContent().slice(offset) ?? "";
-	if (tailText) {
-		ops.push({
-			type: "splice-text",
-			blockId,
-			from: offset + (firstLine?.length ?? 0),
-			to: offset + (firstLine?.length ?? 0) + tailText.length,
-			insert: "",
-		});
-	}
-
-	let previousBlockId = blockId;
-	let lastInsertedId = blockId;
-	let lastInsertedTextLength = offset + (firstLine?.length ?? 0);
-
-	for (let i = 1; i < lines.length; i++) {
-		const newId = generateId();
-		const isLast = i === lines.length - 1;
-		const lineText = isLast ? lines[i] + tailText : lines[i];
-
-		ops.push({
-			...(previousBlockId === blockId
-				? getInsertSiblingBlockOp(editor, {
-						siblingBlockId: previousBlockId,
-						blockId: newId,
-						blockType,
-						props: {},
-					})
-				: {
-						type: "insert-block",
-						blockId: newId,
-						blockType,
-						props: {},
-						position: { after: previousBlockId },
-					}),
-		});
-
-		if (lineText) {
-			ops.push({
-				type: "splice-text",
-				blockId: newId,
-				from: 0,
-				to: 0,
-				insert: lineText,
-			});
-		}
-
-		lastInsertedId = newId;
-		lastInsertedTextLength = lines[i]?.length ?? 0;
-		previousBlockId = newId;
-	}
-
-	if (ops.length > 0) {
-		editor.apply(ops, {
-			origin: "user",
-			...(options?.undoGroup === false ? {} : { undoGroup: true }),
-		});
-		fieldEditor.activateTextSelection(
-			lastInsertedId,
-			lastInsertedTextLength,
-			lastInsertedTextLength,
-		);
-	}
+	const lines = text
+		.split(/\r?\n/)
+		.map((line) => ({ type: cursor.blockType, props: {}, content: line }));
+	pasteBlocksAtCaret(editor, fieldEditor, lines, cursor, {
+		undoGroup: options?.undoGroup !== false,
+	});
 }
 
 function pasteInlineFragment(

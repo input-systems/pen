@@ -10,6 +10,7 @@ import {
 import type { Editor } from "@input/pen-types";
 import { defaultSchema } from "@input/pen-schema";
 import { handleCopy } from "../field-editor/clipboard";
+import { pasteBlocksAtCaret } from "../field-editor/transferBlockPlacement";
 import { executePasteTransfer } from "../field-editor/transferPaste";
 import type { FieldEditorTransferController } from "../field-editor/controller";
 import type { PasteImporters } from "../types/paste";
@@ -397,5 +398,90 @@ describe("IOP9: Pen clipboard paste lands at the caret", () => {
 			"abcone",
 			"twodef",
 		]);
+	});
+});
+
+describe("IOP9: plain-text paste lands at the caret", () => {
+	it("keeps the caret line's props on the text after pasted lines", async () => {
+		const { editor, ids } = createDocument([""]);
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: "title",
+				blockType: "heading",
+				props: { level: 2 },
+				position: { before: ids[0] },
+			},
+			{
+				type: "splice-text",
+				blockId: "title",
+				from: 0,
+				to: 0,
+				insert: "abcdef",
+			},
+		]);
+		editor.selectText("title", 3, 3);
+
+		await paste(editor, new Map([["text/plain", "one\ntwo"]]));
+
+		const [head, tail] = editor.documentState.blockOrder.map((blockId) =>
+			editor.getBlock(blockId)!,
+		);
+		expect(head.id).toBe("title");
+		expect(head.textContent()).toBe("abcone");
+		expect(tail.textContent()).toBe("twodef");
+		expect(tail.props).toMatchObject({ level: 2 });
+	});
+
+	it("fills an empty line in place so it keeps its id and props", async () => {
+		const { editor, ids } = createDocument([""]);
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: "item",
+				blockType: "bulletListItem",
+				props: { indent: 1 },
+				position: { before: ids[0] },
+			},
+		]);
+		editor.selectText("item", 0, 0);
+
+		await paste(editor, new Map([["text/plain", "one\ntwo"]]));
+
+		const item = editor.getBlock("item")!;
+		expect(item.textContent()).toBe("one");
+		expect(item.props).toMatchObject({ indent: 1 });
+		expect(
+			editor.getBlock(editor.documentState.blockOrder[1])!.textContent(),
+		).toBe("two");
+	});
+});
+
+describe("pasteBlocksAtCaret", () => {
+	it("drops the paste with a diagnostic when the caret block is gone", () => {
+		const { editor } = createDocument(["hello"]);
+		const diagnostics: string[] = [];
+		editor.on("diagnostic", (event) => diagnostics.push(event.code));
+		const apply = vi.spyOn(editor, "apply");
+
+		pasteBlocksAtCaret(
+			editor,
+			{ activateTextSelection: vi.fn() },
+			[paragraph("lost")],
+			{
+				blockId: "deleted",
+				offset: 0,
+				blockType: "paragraph",
+				isInline: true,
+				isEmpty: false,
+			},
+			{ undoGroup: false },
+		);
+
+		expect(apply).not.toHaveBeenCalled();
+		expect(readBlocks(editor)).toEqual([
+			{ type: "paragraph", text: "hello" },
+		]);
+		expect(diagnostics).toEqual(["paste-target-missing"]);
 	});
 });

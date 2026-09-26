@@ -196,6 +196,11 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		sources: ["core/src/schema/normalize.ts"],
 	},
 	{
+		code: "paste-target-missing",
+		levels: ["warn"],
+		sources: ["rendering/dom/src/field-editor/transferBlockPlacement.ts"],
+	},
+	{
 		code: "PEN_APPLY_002",
 		levels: ["warn"],
 		sources: ["core/src/editor/applyPipelineRunner.ts"],

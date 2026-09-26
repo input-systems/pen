@@ -1,6 +1,7 @@
 import {
 	blocksToOps,
 	buildSplitBlockRecipe,
+	inlineContentToOps,
 	type PendingBlock,
 } from "@input/pen-core";
 import type {
@@ -32,7 +33,17 @@ export function pasteBlocksAtCaret(
 	cursor: TransferCursorContext | null,
 	options: { undoGroup: boolean },
 ): void {
-	const { split, ops, caret } = buildBlockPlacement(editor, blocks, cursor);
+	const placement = buildBlockPlacement(editor, blocks, cursor);
+	if (!placement) {
+		editor.internals.emit("diagnostic", {
+			code: "paste-target-missing",
+			level: "warn",
+			source: "paste",
+			message: "caret block no longer exists; paste dropped",
+		});
+		return;
+	}
+	const { split, ops, caret } = placement;
 	const undoGroup = options.undoGroup ? { undoGroup: true } : {};
 	if (split) {
 		editor.apply(split.ops, {
@@ -60,39 +71,37 @@ export function pasteBlocksAtCaret(
 /**
  * The first pasted block joins the text before the caret, the last one joins
  * the text after it, and anything in between splits the caret line. An empty
- * caret line is replaced.
+ * caret line is replaced unless the first pasted block can fill it in place.
+ * Returns null when the caret block no longer exists.
  */
 function buildBlockPlacement(
 	editor: Editor,
 	blocks: PendingBlock[],
 	cursor: TransferCursorContext | null,
-): BlockPlacement {
+): BlockPlacement | null {
 	if (!cursor) {
 		return insertBlocks(editor, blocks, "last");
 	}
+	const line = editor.getBlock(cursor.blockId);
+	if (!line) {
+		return null;
+	}
+
 	// pasted blocks stay in the caret line's container
 	const siblings = withParentId(
 		blocks,
-		editor.documentState.parentOf(cursor.blockId),
+		editor.documentState.parentOf(line.id),
 	);
 	const afterLine: Position = {
-		after:
-			getLastDescendantBlockId(editor, cursor.blockId) ?? cursor.blockId,
+		after: getLastDescendantBlockId(editor, line.id) ?? line.id,
 	};
 	if (!cursor.isInline) {
 		return insertBlocks(editor, siblings, afterLine);
 	}
-	if (cursor.isEmpty) {
-		const replaced = insertBlocks(editor, siblings, {
-			before: cursor.blockId,
-		});
-		replaced.ops.push({ type: "delete-block", blockId: cursor.blockId });
+	if (cursor.isEmpty && replacesEmptyLine(blocks[0], line.type)) {
+		const replaced = insertBlocks(editor, siblings, { before: line.id });
+		replaced.ops.push({ type: "delete-block", blockId: line.id });
 		return replaced;
-	}
-
-	const line = editor.getBlock(cursor.blockId);
-	if (!line) {
-		return insertBlocks(editor, siblings, afterLine);
 	}
 
 	const { offset } = cursor;
@@ -103,7 +112,7 @@ function buildBlockPlacement(
 	if (between.length === 0) {
 		return {
 			split: null,
-			ops: inlineContentOps(first, line.id, offset),
+			ops: inlineContentToOps(first, line.id, offset),
 			caret: { blockId: line.id, offset: offset + inlineLength(first) },
 		};
 	}
@@ -140,13 +149,13 @@ function buildBlockPlacement(
 		}
 	}
 	if (mergeFirst) {
-		ops.push(...inlineContentOps(first, line.id, offset));
+		ops.push(...inlineContentToOps(first, line.id, offset));
 	}
 
 	const last = between[between.length - 1];
 	if (tailBlockId && canMergeInline(editor, last)) {
 		const inserted = insertBlocks(editor, between.slice(0, -1), position);
-		ops.push(...inserted.ops, ...inlineContentOps(last, tailBlockId, 0));
+		ops.push(...inserted.ops, ...inlineContentToOps(last, tailBlockId, 0));
 		return {
 			split,
 			ops,
@@ -194,23 +203,18 @@ function withParentId(
 	}));
 }
 
+// an empty line keeps its id and props unless the first pasted block brings its own type or props
+function replacesEmptyLine(block: PendingBlock, lineType: string): boolean {
+	return (
+		block.type !== lineType ||
+		Object.values(block.props).some((value) => value !== undefined)
+	);
+}
+
 function canMergeInline(editor: Editor, block: PendingBlock): boolean {
 	return (
 		editor.schema.resolve(block.type)?.content === "inline" &&
 		(block.children?.length ?? 0) === 0
-	);
-}
-
-// materialize the block like an import, then retarget its content into an existing block
-function inlineContentOps(
-	block: PendingBlock,
-	blockId: string,
-	offset: number,
-): DocumentOp[] {
-	return blocksToOps([block]).flatMap((op) =>
-		op.type === "splice-text" || op.type === "format-text"
-			? [{ ...op, blockId, from: op.from + offset, to: op.to + offset }]
-			: [],
 	);
 }
 
