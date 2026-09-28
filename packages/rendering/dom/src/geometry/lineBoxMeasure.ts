@@ -19,7 +19,7 @@ import {
 	elementRect,
 	findAtomHost,
 	measureLogicalRange,
-	readInkRects,
+	readLineRects,
 } from "./geometryMeasure";
 import type { BidiRun, LineBox, Rect } from "./types";
 import { isUsefulRect, rectFromDOMRect, unionRects } from "./types";
@@ -176,7 +176,7 @@ function fragmentsForTextNode(
 		// detached text node.
 		return [];
 	}
-	const rects = readInkRects(range);
+	const rects = readLineRects(range);
 	if (rects.length === 0) {
 		return [];
 	}

@@ -67,8 +67,22 @@ export function getBlockSurfaceRole(
 		return role;
 	}
 
-	return getBlockSelectionRoleFromType(
+	const typeRole = getBlockSelectionRoleFromType(
 		blockEl.getAttribute(DATA_ATTRS.blockType),
+	);
+	// a delegated block with one text surface of its own (a code block) holds
+	// text offsets until expanded mode stamps its role; a table's cells do not.
+	if (typeRole === "delegated" && ownsTextSurface(blockEl)) {
+		return "editable-inline";
+	}
+	return typeRole;
+}
+
+function ownsTextSurface(blockEl: HTMLElement): boolean {
+	const inlineEl = findInlineContentElement(blockEl);
+	return (
+		inlineEl !== null &&
+		inlineEl.closest(`[${DATA_ATTRS.tableCell}]`) === null
 	);
 }
 
