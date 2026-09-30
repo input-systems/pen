@@ -5,6 +5,7 @@ import { createEditor as createCoreEditor } from "@input/pen-core";
 import type { AssetProvider } from "@input/pen-types";
 import { defaultPreset } from "@input/pen";
 import {
+	getPasteImporters,
 	handleClipboardPaste,
 	handleCopy,
 } from "@input/pen-dom/field-editor/clipboard";
@@ -206,6 +207,42 @@ describe("@input/pen-react clipboard: paste round-trips", () => {
 		editor.destroy();
 	});
 
+	it("IOP9: undoes a paste that splits the caret line as a single history entry", async () => {
+		const editor = createEditor({}, { undo: true });
+		const blockId = editor.firstBlock()!.id;
+		const clipboardData = createClipboardData();
+		const fieldEditor = createFieldEditorStub();
+
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "abcdef" },
+		]);
+		editor.undoManager.stopCapturing();
+		clipboardData.setData("text/html", "<p>one</p><p>two</p>");
+
+		editor.selectText(blockId, 3, 3);
+		handleClipboardPaste(
+			{ clipboardData } as ClipboardEvent,
+			editor,
+			fieldEditor,
+			getPasteImporters(editor),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(
+			editor.documentState.blockOrder.map((id) =>
+				editor.getBlock(id)?.textContent(),
+			),
+		).toEqual(["abcone", "twodef"]);
+		expect(editor.undoManager.undo()).toBe(true);
+		expect(
+			editor.documentState.blockOrder.map((id) =>
+				editor.getBlock(id)?.textContent(),
+			),
+		).toEqual(["abcdef"]);
+
+		editor.destroy();
+	});
+
 	it("does not delete the current selection when image upload fails", async () => {
 		const editor = createEditor();
 		const blockId = editor.firstBlock()!.id;
@@ -320,7 +357,7 @@ describe("@input/pen-react clipboard: paste round-trips", () => {
 		editor.destroy();
 	});
 
-	it("does not replace a non-empty block when pasting blocks", () => {
+	it("IOP9: joins a pasted block into a non-empty caret line", () => {
 		const editor = createEditor();
 		const blockId = editor.firstBlock()!.id;
 		const clipboardData = createClipboardData();
@@ -354,9 +391,9 @@ describe("@input/pen-react clipboard: paste round-trips", () => {
 		);
 
 		const blockOrder = editor.documentState.blockOrder;
-		expect(blockOrder).toHaveLength(2);
-		expect(editor.getBlock(blockOrder[0])!.textContent()).toBe("existing");
-		expect(editor.getBlock(blockOrder[1])!.type).toBe("heading");
+		expect(blockOrder).toEqual([blockId]);
+		expect(editor.getBlock(blockId)!.type).toBe("paragraph");
+		expect(editor.getBlock(blockId)!.textContent()).toBe("existingTitle");
 
 		editor.destroy();
 	});
