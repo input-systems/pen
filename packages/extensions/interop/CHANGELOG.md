@@ -1,5 +1,15 @@
 # @input/pen-interop
 
+## 0.2.13
+
+### Patch Changes
+
+- Updated dependencies [8e2654b]
+  - @input/pen-core@0.2.13
+  - @input/pen-ingest@0.2.13
+  - @input/pen-markdown@0.2.13
+  - @input/pen-types@0.2.13
+
 ## 0.2.12
 
 ### Patch Changes
