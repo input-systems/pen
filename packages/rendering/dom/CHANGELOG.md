@@ -1,5 +1,16 @@
 # @input/pen-dom
 
+## 0.2.13
+
+### Patch Changes
+
+- bbf8fe9: Keep the caret inside code blocks: ArrowUp/ArrowDown now stop on blank lines instead of skipping past them, and a click in a code block places the caret where it lands instead of at the top.
+- 9032a68: Place pasted content (parsed HTML and Markdown, full blocks from the Pen clipboard, and multi-line plain text) at the caret instead of after the caret's block: the first pasted block joins the text before the caret, the last joins the text after it, and blocks in between split the line. A paste whose caret block no longer exists is dropped with a `paste-target-missing` diagnostic.
+- Updated dependencies [8e2654b]
+  - @input/pen-core@0.2.13
+  - @input/pen-shortcuts@0.2.13
+  - @input/pen-types@0.2.13
+
 ## 0.2.12
 
 ### Patch Changes
