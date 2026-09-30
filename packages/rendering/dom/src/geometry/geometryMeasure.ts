@@ -218,6 +218,33 @@ export function readInkRects(range: Range): DOMRect[] {
 	return readClientRects(range).filter(isInkRect);
 }
 
+/**
+ * Ink rects plus one zero-width rect per line that has no ink. A blank line
+ * inside a text node (`"a\n\nb"`) only reports a zero-width rect for its
+ * `\n`; dropping it with the ghosts leaves the line without a box, so
+ * vertical motion steps over it. Zero-width rects on a line that has ink are
+ * still ghosts (G3).
+ */
+export function readLineRects(range: Range): DOMRect[] {
+	const rects = readClientRects(range);
+	const lineTops = rects.filter(isInkRect).map((rect) => rect.top);
+	const kept: DOMRect[] = [];
+	for (const rect of rects) {
+		if (isInkRect(rect)) {
+			kept.push(rect);
+			continue;
+		}
+		const ownsLine = lineTops.every(
+			(top) => Math.abs(top - rect.top) > LINE_TOP_EPSILON,
+		);
+		if (ownsLine) {
+			kept.push(rect);
+			lineTops.push(rect.top);
+		}
+	}
+	return kept;
+}
+
 function caretFromAffinity(
 	previous: Rect | null,
 	next: Rect | null,

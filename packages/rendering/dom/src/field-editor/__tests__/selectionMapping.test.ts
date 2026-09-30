@@ -8,6 +8,7 @@ import {
 	domPointToOffset,
 	domSelectionToEditor,
 	getBlockBoundaryPoint,
+	getBlockSurfaceRole,
 } from "../selectionMapping";
 
 const BRIDGE_VALUE_EXPORTS = [
@@ -291,6 +292,28 @@ describe("pointToEditorSelectionPoint", () => {
 			root.remove();
 		}
 	});
+
+	it("maps a hit inside a code block to its text offset (G4)", () => {
+		const { root, inline } = mountBlock({
+			blockId: "c1",
+			text: "hey\n\nthere",
+			blockType: "codeBlock",
+		});
+		const doc = document as unknown as {
+			caretPositionFromPoint?: () => { offsetNode: Node; offset: number };
+		};
+		const text = inline!.firstChild as Text;
+		doc.caretPositionFromPoint = () => ({ offsetNode: text, offset: 4 });
+		try {
+			expect(pointToEditorSelectionPoint(root, 40, 30)).toEqual({
+				blockId: "c1",
+				offset: 4,
+			});
+		} finally {
+			delete doc.caretPositionFromPoint;
+			root.remove();
+		}
+	});
 });
 
 describe("editorSelectionToDOM", () => {
@@ -443,6 +466,48 @@ describe("editorSelectionToDOM", () => {
 			expect(range.startOffset).toBe(0);
 			expect(range.endContainer).toBe(nestedText);
 			expect(range.endOffset).toBe(6);
+		} finally {
+			root.remove();
+		}
+	});
+});
+
+describe("getBlockSurfaceRole", () => {
+	it("reads a code block's own text surface as editable-inline (G4)", () => {
+		const { root, block } = mountBlock({
+			blockId: "c1",
+			text: "hey",
+			blockType: "codeBlock",
+		});
+		try {
+			expect(getBlockSurfaceRole(block)).toBe("editable-inline");
+		} finally {
+			root.remove();
+		}
+	});
+
+	it("keeps a stamped delegated role and a table's cells delegated (G4)", () => {
+		const { root, block: stamped } = mountBlock({
+			blockId: "c1",
+			text: "hey",
+			blockType: "codeBlock",
+			surfaceRole: "delegated",
+		});
+		const table = document.createElement("div");
+		table.setAttribute(DATA_ATTRS.editorBlock, "");
+		table.setAttribute(DATA_ATTRS.blockId, "t1");
+		table.setAttribute(DATA_ATTRS.blockType, "table");
+		const cell = document.createElement("div");
+		cell.setAttribute(DATA_ATTRS.tableCell, "");
+		const cellInline = document.createElement("span");
+		cellInline.setAttribute(DATA_ATTRS.inlineContent, "");
+		cellInline.textContent = "cell";
+		cell.append(cellInline);
+		table.append(cell);
+		root.append(table);
+		try {
+			expect(getBlockSurfaceRole(stamped)).toBe("delegated");
+			expect(getBlockSurfaceRole(table)).toBe("delegated");
 		} finally {
 			root.remove();
 		}
