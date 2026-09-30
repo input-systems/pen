@@ -11,7 +11,11 @@ export type FixtureName =
 	| "g5-geometry"
 	| "bidi-mixed"
 	| "nested-toggle"
-	| "grapheme-clusters";
+	| "grapheme-clusters"
+	| "code-block";
+
+export const CODE_BLOCK_LINES_ID = "code-lines";
+export const CODE_BLOCK_TRAILING_ID = "code-trailing";
 
 export const NESTED_TOGGLE_PARENT_ID = "nest-parent";
 export const NESTED_TOGGLE_CHILD_ID = "nest-child";
@@ -34,6 +38,7 @@ const FIXTURE_PRESENT = {
 	"bidi-mixed": true,
 	"nested-toggle": true,
 	"grapheme-clusters": true,
+	"code-block": true,
 } as const satisfies Record<FixtureName, true>;
 
 export const FIXTURE_NAMES: readonly FixtureName[] = Object.keys(
@@ -144,6 +149,25 @@ export const LOCAL_FIXTURES: Record<
 		},
 	],
 	"grapheme-clusters": [...GRAPHEME_CLUSTER_BLOCKS],
+	"code-block": [
+		{
+			id: "code-above",
+			type: "paragraph",
+			content: "Above the code",
+		},
+		{
+			id: CODE_BLOCK_LINES_ID,
+			type: "codeBlock",
+			// a blank line between two text lines
+			content: "hey\n\nthere",
+		},
+		{
+			id: CODE_BLOCK_TRAILING_ID,
+			type: "codeBlock",
+			// the reported shape: a line, then Enter twice
+			content: "hey\n\n",
+		},
+	],
 };
 
 export function isLocalFixtureName(
