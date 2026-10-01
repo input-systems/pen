@@ -9,36 +9,25 @@
     "headings": "none",
     "lists": "none",
     "tables": "none",
-    "code": "flattened to one paragraph per token span",
+    "code": "flattened to one paragraph per line",
     "links": "none",
     "images": "none",
     "marks": "none",
     "colors": "token colors kept as textColor"
   },
   "intentionalLosses": [
-    "Styled VS Code copy has no pre/code wrapper, so it does not become a codeBlock",
-    "Each colored span becomes its own paragraph"
+    "Styled VS Code copy has no pre/code wrapper, so it does not become a codeBlock"
   ],
   "blocks": [
     {
       "type": "paragraph",
-      "text": "const",
-      "marks": [{ "type": "textColor", "text": "const" }]
-    },
-    {
-      "type": "paragraph",
-      "text": " x = ",
-      "marks": [{ "type": "textColor", "text": " x = " }]
-    },
-    {
-      "type": "paragraph",
-      "text": "1",
-      "marks": [{ "type": "textColor", "text": "1" }]
-    },
-    {
-      "type": "paragraph",
-      "text": ";",
-      "marks": [{ "type": "textColor", "text": ";" }]
+      "text": "const x = 1;",
+      "marks": [
+        { "type": "textColor", "text": "const" },
+        { "type": "textColor", "text": " x = " },
+        { "type": "textColor", "text": "1" },
+        { "type": "textColor", "text": ";" }
+      ]
     }
   ]
 }
