@@ -62,7 +62,7 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		]);
 	});
 
-	it("IOP2 keeps marks on a block container's inline content", () => {
+	it("IOP10 keeps marks on a block container's inline content", () => {
 		const blocks = convert("<div>Hello <b>world</b> again</div>");
 
 		expect(blocks).toMatchObject([
@@ -87,7 +87,7 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		]);
 	});
 
-	it("IOP2 imports a Gmail draft's enters, blank lines and shift-enters", () => {
+	it("IOP10 imports a Gmail draft's enters, blank lines and shift-enters", () => {
 		const blocks = convert(
 			'<div dir="ltr"><div>one enter</div><div>two enter</div><div><br></div>' +
 				"<div>three enter</div><div><br></div><div><br></div><div><br></div>" +
@@ -106,7 +106,7 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		]);
 	});
 
-	it("IOP2 keeps blocks nested in an inline wrapper as separate blocks", () => {
+	it("IOP10 keeps blocks nested in an inline wrapper as separate blocks", () => {
 		const blocks = convert(
 			'<div><a href="https://a.test"><div>card one</div></a><a href="https://b.test"><div>card two</div></a></div>',
 		);
@@ -117,7 +117,7 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		]);
 	});
 
-	it("IOP2 collapses source formatting whitespace in a block container", () => {
+	it("IOP10 collapses source formatting whitespace in a block container", () => {
 		const blocks = convert(
 			"<div>\n  <span>Label</span>\n  <span>Value</span>\n</div>" +
 				"<div>line one<br>\nline two </div>" +
@@ -139,7 +139,7 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		]);
 	});
 
-	it("IOP2 keeps spaces that are not source formatting, such as code indentation", () => {
+	it("IOP10 keeps spaces that are not source formatting, such as code indentation", () => {
 		const blocks = convert(
 			"<div><span>    </span><span>return  1;</span></div>",
 		);
@@ -149,7 +149,7 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		]);
 	});
 
-	it("IOP2 does not turn a break between top-level blocks into a paragraph", () => {
+	it("IOP10 does not turn a break between top-level blocks into a paragraph", () => {
 		const blocks = convert(
 			'<p>one</p><br><p>two</p><br class="Apple-interchange-newline">',
 		);
@@ -157,7 +157,7 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		expect(blocks.map((block) => block.content)).toEqual(["one", "two"]);
 	});
 
-	it("EM8 drops a top-level run of several breaks", () => {
+	it("IOP10 drops a top-level run of several breaks", () => {
 		const blocks = convert(
 			"<p>one</p><br><br><p>two</p>\n<br>\n<br>\n<br>\n<p>three</p><br><br>",
 		);
