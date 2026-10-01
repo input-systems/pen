@@ -1,5 +1,16 @@
 # @input/pen-test
 
+## 0.2.14
+
+### Patch Changes
+
+- Updated dependencies [b416b6d]
+  - @input/pen-interop@0.2.14
+  - @input/pen-core@0.2.14
+  - @input/pen-yjs@0.2.14
+  - @input/pen-schema@0.2.14
+  - @input/pen-types@0.2.14
+
 ## 0.2.13
 
 ### Patch Changes
