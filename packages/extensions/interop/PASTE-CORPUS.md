@@ -15,7 +15,7 @@ Generated from `src/html/import/__tests__/pasteCorpus/` by `src/html/import/__te
 | Google Docs | synthetic-until-capture | flattened into one paragraph | flattened into one paragraph | flattened (cell text concatenated) | none | kept | none | span bold and italic kept; font-weight normal wrapper ignored | span color kept as textColor | The docs-internal-guid <b> wrapper still collapses headings, lists, and tables into one paragraph; Adjacent block text is concatenated with no separator |
 | Apple Notes | captured: Apple Notes 4.13 (2026-09-23) | none | flat numbered and bullets | none | none | none in capture | none | bold, italic, and class-based underline kept | none | font family, size, margins, minimum heights, and list marker CSS are discarded |
 | Notion | synthetic-until-capture | h1 | nested bullets (indent 0/1) plus checklist | none | codeBlock language ts | kept | 1 remote src kept | bold, italic, strike, link | none | Notion-specific block identity (if a real capture adds data-block-id) is ignored; conversion uses tags only |
-| VS Code | synthetic-until-capture | none | none | none | flattened to one paragraph per token span | none | none | none | token colors kept as textColor | Styled VS Code copy has no pre/code wrapper, so it does not become a codeBlock; Each colored span becomes its own paragraph |
+| VS Code | synthetic-until-capture | none | none | none | flattened to one paragraph per line | none | none | none | token colors kept as textColor | Styled VS Code copy has no pre/code wrapper, so it does not become a codeBlock |
 | Browser article | synthetic-until-capture | h1 | none | none | codeBlock | kept | 1 remote src kept; title becomes caption; figcaption becomes a paragraph | italic, bold, link | none | figure/figcaption wrappers unwrap; caption text is a sibling paragraph, not image.caption (title attribute is) |
 | Excel / Google Sheets | synthetic-until-capture | none | none | 2×2, no header row | none | none | none | none | none | google-sheets-html-origin is stripped; the table remains; Excel mso-number-format / <style> (when present on a real Excel capture) are stripped; The first row is not promoted to a header row without <thead> |
 | Pen | synthetic-until-capture | h1 | flat bullets | none | none | none | none | bold, italic | none | The data-pen-blocks meta is stripped on the HTML import path; structured Pen blocks arrive only through the JSON clipboard flavor (IOP1) |
@@ -79,7 +79,6 @@ Generated from `src/html/import/__tests__/pasteCorpus/` by `src/html/import/__te
 - **Markers:** `Menlo, Monaco, Consolas`, `span style=color`, `background-color: #1e1e1e`
 
 - Styled VS Code copy has no pre/code wrapper, so it does not become a codeBlock
-- Each colored span becomes its own paragraph
 
 ### Browser article
 
