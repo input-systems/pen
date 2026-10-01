@@ -152,14 +152,13 @@ export const PASTE_CORPUS_ROWS: readonly PasteCorpusRow[] = [
 		headings: "none",
 		lists: "none",
 		tables: "none",
-		code: "flattened to one paragraph per token span",
+		code: "flattened to one paragraph per line",
 		links: "none",
 		images: "none",
 		marks: "none",
 		colors: "token colors kept as textColor",
 		intentionalLosses: [
 			"Styled VS Code copy has no pre/code wrapper, so it does not become a codeBlock",
-			"Each colored span becomes its own paragraph",
 		],
 	},
 	{
