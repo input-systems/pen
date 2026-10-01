@@ -456,6 +456,10 @@ function paragraphFromInlineRun(
   resolveFormattingGaps(source);
   const inline = parseInlineContent(source);
 
+  // residue is dropped however many breaks it holds: only the last one is the
+  // line terminator `parseInlineContent` removes
+  if (!keepsPlaceholderBreak && /^[ \n]*$/.test(inline.text)) return null;
+
   // gmail and apple mail write a blank line as `<div><br></div>`; the break is the
   // container's empty placeholder (EM8), the same as a paragraph's sole `<br>`
   if (/^ *$/.test(inline.text)) {
