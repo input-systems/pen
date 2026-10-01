@@ -50,6 +50,113 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		]);
 	});
 
+	it("EM8 imports a container break wrapped in inline formatting as one empty paragraph", () => {
+		const blocks = convert(
+			"<div>hello there</div><div><b><br></b></div><div>this is a test</div>",
+		);
+
+		expect(blocks).toMatchObject([
+			{ type: "paragraph", content: "hello there" },
+			{ type: "paragraph", content: "" },
+			{ type: "paragraph", content: "this is a test" },
+		]);
+	});
+
+	it("IOP2 keeps marks on a block container's inline content", () => {
+		const blocks = convert("<div>Hello <b>world</b> again</div>");
+
+		expect(blocks).toMatchObject([
+			{
+				type: "paragraph",
+				content: "Hello world again",
+				marks: [{ type: "bold", start: 6, end: 11 }],
+			},
+		]);
+	});
+
+	it("EM8 drops the line-terminating break of a block container and clamps its mark", () => {
+		const blocks = convert("<div><b>hello<br></b></div><div>there</div>");
+
+		expect(blocks).toMatchObject([
+			{
+				type: "paragraph",
+				content: "hello",
+				marks: [{ type: "bold", start: 0, end: 5 }],
+			},
+			{ type: "paragraph", content: "there" },
+		]);
+	});
+
+	it("IOP2 imports a Gmail draft's enters, blank lines and shift-enters", () => {
+		const blocks = convert(
+			'<div dir="ltr"><div>one enter</div><div>two enter</div><div><br></div>' +
+				"<div>three enter</div><div><br></div><div><br></div><div><br></div>" +
+				"<div>one shift enter<br>two shift enter<br><br>three shift enter<br><br><br>end</div></div>",
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"one enter",
+			"two enter",
+			"",
+			"three enter",
+			"",
+			"",
+			"",
+			"one shift enter\ntwo shift enter\n\nthree shift enter\n\n\nend",
+		]);
+	});
+
+	it("IOP2 keeps blocks nested in an inline wrapper as separate blocks", () => {
+		const blocks = convert(
+			'<div><a href="https://a.test"><div>card one</div></a><a href="https://b.test"><div>card two</div></a></div>',
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"card one",
+			"card two",
+		]);
+	});
+
+	it("IOP2 collapses source formatting whitespace in a block container", () => {
+		const blocks = convert(
+			"<div>\n  <span>Label</span>\n  <span>Value</span>\n</div>" +
+				"<div>line one<br>\nline two </div>" +
+				"<div><b> </b></div>",
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"Label Value",
+			"line one\nline two",
+		]);
+	});
+
+	it("EM8 drops the line-terminating break of a paragraph like a container's", () => {
+		const blocks = convert("<p>hello<br></p><p>there<br><br></p>");
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"hello",
+			"there\n",
+		]);
+	});
+
+	it("IOP2 keeps spaces that are not source formatting, such as code indentation", () => {
+		const blocks = convert(
+			"<div><span>    </span><span>return  1;</span></div>",
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"    return  1;",
+		]);
+	});
+
+	it("IOP2 does not turn a break between top-level blocks into a paragraph", () => {
+		const blocks = convert(
+			'<p>one</p><br><p>two</p><br class="Apple-interchange-newline">',
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual(["one", "two"]);
+	});
+
 	it("IOP2 preserves a break between inline text", () => {
 		const blocks = convert("<p>hello<br>there</p>");
 
