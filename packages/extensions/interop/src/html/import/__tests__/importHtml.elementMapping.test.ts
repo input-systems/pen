@@ -157,6 +157,18 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		expect(blocks.map((block) => block.content)).toEqual(["one", "two"]);
 	});
 
+	it("EM8 drops a top-level run of several breaks", () => {
+		const blocks = convert(
+			"<p>one</p><br><br><p>two</p>\n<br>\n<br>\n<br>\n<p>three</p><br><br>",
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"one",
+			"two",
+			"three",
+		]);
+	});
+
 	it("IOP2 preserves a break between inline text", () => {
 		const blocks = convert("<p>hello<br>there</p>");
 
