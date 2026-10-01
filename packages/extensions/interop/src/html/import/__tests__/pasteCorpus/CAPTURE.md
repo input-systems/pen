@@ -16,6 +16,7 @@ and bold / italic / strike (skip a structure the application cannot emit).
 | `google-docs` | Google Docs | Docs, not a published-to-web page |
 | `apple-notes` | Apple Notes | Notes.app, not the iCloud web UI |
 | `notion` | Notion | Desktop or web |
+| `slack` | Slack | Copy a posted message, not the composer; include nested bullets |
 | `vscode` | VS Code | Styled editor copy, not the terminal |
 | `article` | Safari | Select a real article in Safari (not Chrome) |
 | `excel-sheets` | Excel or Google Sheets | A 2×2-or-larger range |

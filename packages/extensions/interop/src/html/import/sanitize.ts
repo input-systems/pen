@@ -90,6 +90,7 @@ const PURIFY_CONFIG = {
 		"table",
 		"thead",
 		"tbody",
+		"tfoot",
 		"tr",
 		"th",
 		"td",
