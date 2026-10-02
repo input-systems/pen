@@ -165,8 +165,8 @@ importers:
         specifier: ^13.6.33
         version: 13.6.33
       yjs-duplicate:
-        specifier: npm:yjs@13.6.32
-        version: yjs@13.6.32
+        specifier: npm:yjs@13.6.33
+        version: yjs@13.6.33
 
   packages/docs:
     dependencies:
@@ -4021,10 +4021,6 @@ packages:
     engines: {node: '>= 14.6'}
     hasBin: true
 
-  yjs@13.6.32:
-    resolution: {integrity: sha512-lfiJIIC4Xayt5ItynE407ehlE03pCjeOc4hkR4yxxvvNJ4kuiN25B0g+Qp8XagYz361LLL7DCzR5bvFJ81QKtQ==}
-    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
-
   yjs@13.6.33:
     resolution: {integrity: sha512-q/UYvr1gOk4XII+Cu1CW2dINjYqJJFifTzogEaIARznrvX7uOlHsdTEXcnOBMuIsrCGEEKdNxi74kyMLZlKVfw==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
@@ -6888,10 +6884,6 @@ snapshots:
   yallist@3.1.1: {}
 
   yaml@2.9.0: {}
-
-  yjs@13.6.32:
-    dependencies:
-      lib0: 0.2.117
 
   yjs@13.6.33:
     dependencies:
