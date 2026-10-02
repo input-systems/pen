@@ -31,6 +31,21 @@ interface CachedResolve {
 	target: AnchorTarget | null;
 }
 
+interface ObservedTarget {
+	commitId: number;
+	target: AnchorTarget | null;
+}
+
+/**
+ * The two most recent observations of an anchor, from distinct commits.
+ * `previous` is kept so a resolve made after a commit landed does not erase
+ * the pre-commit target that AN14 repair has to read.
+ */
+interface TargetHistory {
+	latest: ObservedTarget;
+	previous: ObservedTarget | null;
+}
+
 interface WirePayload {
 	v: unknown;
 	b: unknown;
@@ -141,7 +156,7 @@ export class EditorAnchorsImpl implements EditorAnchors {
 	private _doc: CRDTDocument;
 	private readonly _host: EditorAnchorsHost;
 	private readonly _cache = new WeakMap<Anchor, CachedResolve>();
-	private readonly _lastTarget = new WeakMap<Anchor, AnchorTarget>();
+	private readonly _observed = new WeakMap<Anchor, TargetHistory>();
 	private _liveCount = 0;
 	private _budgetWarned = false;
 
@@ -158,12 +173,37 @@ export class EditorAnchorsImpl implements EditorAnchors {
 		this._doc = doc;
 	}
 
-	peekLastTarget(anchor: Anchor): AnchorTarget | null {
-		return this._lastTarget.get(anchor) ?? null;
+	/**
+	 * The anchor's target as last observed before the current commit (AN14).
+	 *
+	 * A mint or resolve made at the current `commitId` already sees the
+	 * post-commit document, so it is skipped in favor of the observation it
+	 * replaced. A `null` observation is kept: an anchor that last resolved to
+	 * nothing has no pre-commit target to repair from.
+	 */
+	peekPreCommitTarget(anchor: Anchor): AnchorTarget | null {
+		const history = this._observed.get(anchor);
+		if (!history) {
+			return null;
+		}
+		if (history.latest.commitId < this._host.commitId()) {
+			return history.latest.target;
+		}
+		return history.previous?.target ?? null;
 	}
 
-	rememberTarget(anchor: Anchor, target: AnchorTarget): void {
-		this._lastTarget.set(anchor, target);
+	private _observe(anchor: Anchor, target: AnchorTarget | null): void {
+		const commitId = this._host.commitId();
+		const observation: ObservedTarget = { commitId, target };
+		const history = this._observed.get(anchor);
+		if (history && history.latest.commitId === commitId) {
+			history.latest = observation;
+			return;
+		}
+		this._observed.set(anchor, {
+			latest: observation,
+			previous: history?.latest ?? null,
+		});
 	}
 
 	remint(
@@ -191,7 +231,7 @@ export class EditorAnchorsImpl implements EditorAnchors {
 			provenance,
 			...(target.cell ? { cell: target.cell } : {}),
 		});
-		this._lastTarget.set(anchor, {
+		this._observe(anchor, {
 			blockId: target.blockId,
 			offset: target.offset,
 			...(target.cell ? { cell: target.cell } : {}),
@@ -238,6 +278,7 @@ export class EditorAnchorsImpl implements EditorAnchors {
 		const adapter = this._host.adapter;
 		if (typeof adapter.resolveRelativePosition !== "function") {
 			this._cache.set(anchor, { commitId, target: null });
+			this._observe(anchor, null);
 			return null;
 		}
 		const target = adapter.resolveRelativePosition(
@@ -248,9 +289,7 @@ export class EditorAnchorsImpl implements EditorAnchors {
 			},
 		);
 		this._cache.set(anchor, { commitId, target });
-		if (target) {
-			this._lastTarget.set(anchor, target);
-		}
+		this._observe(anchor, target);
 		return target;
 	}
 
@@ -365,12 +404,12 @@ export class EditorAnchorsImpl implements EditorAnchors {
 	}
 }
 
-export function peekAnchorTarget(
+export function peekPreCommitTarget(
 	anchors: EditorAnchors,
 	anchor: Anchor,
 ): AnchorTarget | null {
 	if (anchors instanceof EditorAnchorsImpl) {
-		return anchors.peekLastTarget(anchor);
+		return anchors.peekPreCommitTarget(anchor);
 	}
 	return null;
 }

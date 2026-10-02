@@ -363,4 +363,140 @@ describe("anchorRepair AN14", () => {
 		});
 		editor.destroy();
 	});
+
+	it("AN14: a resolve after the commit does not replace the pre-commit target", () => {
+		const editor = createEditor();
+		const source = editor.firstBlock()!.id;
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId: source,
+				from: 0,
+				to: 0,
+				insert: "meadow sage",
+			},
+		]);
+		const tail = editor.anchors.create({ blockId: source, offset: 9 }, 1)!;
+
+		applySplitBlock(editor, {
+			blockId: source,
+			offset: 6,
+			newBlockId: "dest",
+		});
+		// another holder resolving first sees the copied-away text collapsed
+		// onto the split point, which is the post-commit position
+		expect(editor.anchors.resolve(tail)).toEqual({
+			blockId: source,
+			offset: 6,
+		});
+
+		const moves = deriveContentMoves(editor.lastChangeSummary!, undefined);
+		expect(
+			editor.anchors.resolve(repairAnchor(editor, tail, moves)),
+		).toEqual({
+			blockId: "dest",
+			offset: 3,
+		});
+		editor.destroy();
+	});
+
+	it("AN14: an anchor that resolved to null before the commit stays dead through a move", () => {
+		const editor = createEditor();
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: "leaf",
+				blockType: "paragraph",
+				props: {},
+				position: "last",
+			},
+			{
+				type: "splice-text",
+				blockId: "leaf",
+				from: 0,
+				to: 0,
+				insert: "sage leaf",
+			},
+		]);
+		const anchor = editor.anchors.create({ blockId: "leaf", offset: 6 }, 1)!;
+		editor.apply([{ type: "delete-block", blockId: "leaf" }]);
+		expect(editor.anchors.resolve(anchor)).toBeNull();
+
+		// a new block reuses the id, so the anchor's last live target names a
+		// block that exists again, but the anchor itself is still dead (AN1)
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: "leaf",
+				blockType: "paragraph",
+				props: {},
+				position: "last",
+			},
+			{
+				type: "splice-text",
+				blockId: "leaf",
+				from: 0,
+				to: 0,
+				insert: "other text",
+			},
+		]);
+		expect(editor.anchors.resolve(anchor)).toBeNull();
+		applySplitBlock(editor, {
+			blockId: "leaf",
+			offset: 2,
+			newBlockId: "dest",
+		});
+
+		const moves = deriveContentMoves(editor.lastChangeSummary!, undefined);
+		expect(moves).toHaveLength(1);
+		expect(repairAnchor(editor, anchor, moves)).toBe(anchor);
+		expect(editor.anchors.resolve(anchor)).toBeNull();
+		editor.destroy();
+	});
+
+	it("AN14: a merge carries an assoc -1 anchor at the start of the removed source", () => {
+		const editor = createEditor();
+		const target = editor.firstBlock()!.id;
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId: target,
+				from: 0,
+				to: 0,
+				insert: "meadow",
+			},
+			{
+				type: "insert-block",
+				blockId: "source",
+				blockType: "paragraph",
+				props: {},
+				position: "last",
+			},
+			{
+				type: "splice-text",
+				blockId: "source",
+				from: 0,
+				to: 0,
+				insert: " sage",
+			},
+		]);
+		const sourceStart = editor.anchors.create(
+			{ blockId: "source", offset: 0 },
+			-1,
+		)!;
+
+		applyMergeBlocks(editor, {
+			targetBlockId: target,
+			sourceBlockId: "source",
+		});
+
+		const moves = deriveContentMoves(editor.lastChangeSummary!, undefined);
+		expect(
+			editor.anchors.resolve(repairAnchor(editor, sourceStart, moves)),
+		).toEqual({
+			blockId: target,
+			offset: 6,
+		});
+		editor.destroy();
+	});
 });
