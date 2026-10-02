@@ -5,7 +5,7 @@ import {
 	normalizePendingBlocksForImport,
 	reportPendingBlockImportViolations,
 } from "../index";
-import { blocksToOps } from "../importerUtils";
+import { blocksToOps, inlineContentToOps } from "../importerUtils";
 import type { DocumentOp } from "@input/pen-types";
 import type { PendingBlock } from "../importerUtils";
 import { defaultSchema } from "./fixtures/testSchema";
@@ -420,5 +420,92 @@ describe("blocksToOps table materialization", () => {
 		);
 
 		editor.destroy();
+	});
+});
+
+describe("inlineContentToOps", () => {
+	it("writes pending content and marks into an existing block at an offset", () => {
+		expect(
+			inlineContentToOps(
+				{
+					type: "paragraph",
+					props: {},
+					content: "big",
+					marks: [{ type: "bold", start: 0, end: 3 }],
+				},
+				"target",
+				6,
+			),
+		).toEqual([
+			{
+				type: "splice-text",
+				blockId: "target",
+				from: 6,
+				to: 6,
+				insert: "big",
+			},
+			{
+				type: "format-text",
+				blockId: "target",
+				from: 6,
+				to: 9,
+				marks: { bold: true },
+			},
+		]);
+	});
+
+	it("writes pending segments, counting an inline node as one unit", () => {
+		expect(
+			inlineContentToOps(
+				{
+					type: "paragraph",
+					props: {},
+					segments: [
+						{
+							type: "text",
+							text: "hi",
+							attributes: { italic: true },
+						},
+						{
+							type: "node",
+							nodeType: "mention",
+							props: { id: "m" },
+						},
+						{ type: "text", text: "!" },
+					],
+				},
+				"target",
+				2,
+			),
+		).toEqual([
+			{
+				type: "splice-text",
+				blockId: "target",
+				from: 2,
+				to: 2,
+				insert: "hi",
+			},
+			{
+				type: "format-text",
+				blockId: "target",
+				from: 2,
+				to: 4,
+				marks: { italic: true },
+			},
+			{
+				type: "splice-text",
+				blockId: "target",
+				from: 4,
+				to: 4,
+				insert: { nodeType: "mention", props: { id: "m" } },
+			},
+			{
+				type: "splice-text",
+				blockId: "target",
+				from: 5,
+				to: 5,
+				insert: "!",
+			},
+		]);
 	});
 });

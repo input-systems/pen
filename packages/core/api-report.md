@@ -77,6 +77,7 @@
 - hasFieldEditorSurface
 - hasIndexedCellSelectionMetadata
 - hookPriorityToPrecedence
+- inlineContentToOps
 - inlineLogicalText
 - interpolateMessage
 - isBlockSelected

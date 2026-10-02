@@ -1,5 +1,5 @@
 import type { DOMNode } from "./domAdapter";
-import { parseInlineContent } from "./inlineParser";
+import { containsBreak, parseInlineContent } from "./inlineParser";
 import { parseSafeStyleDeclarations } from "./sanitize";
 import type {
   BlockImportMatch,
@@ -70,9 +70,7 @@ function walkElements(
   }
 
   if (node.type !== "element" || !node.tagName) {
-    for (const child of node.children ?? []) {
-      walkElements(child, blocks, registry);
-    }
+    walkBlockContainer(node, blocks, registry);
     return;
   }
 
@@ -122,9 +120,7 @@ function walkElements(
   }
 
   if (isBlockElement(node.tagName)) {
-    for (const child of node.children ?? []) {
-      walkElements(child, blocks, registry);
-    }
+    walkBlockContainer(node, blocks, registry);
     return;
   }
 
@@ -338,6 +334,146 @@ const BLOCK_ELEMENTS = new Set([
 
 function isBlockElement(tagName: string): boolean {
   return BLOCK_ELEMENTS.has(tagName);
+}
+
+// a container's inline children between two block children are one line box in
+// the source, so they import as one paragraph: text, marks and `<br>` together
+function walkBlockContainer(
+  node: DOMNode,
+  blocks: PendingBlock[],
+  registry: SchemaRegistry,
+): void {
+  // a break between top-level blocks is clipboard residue, not a blank line
+  const keepsPlaceholderBreak = node.type === "element";
+  let run: DOMNode[] = [];
+  const flushRun = () => {
+    const paragraph = paragraphFromInlineRun(run, keepsPlaceholderBreak);
+    if (paragraph) blocks.push(paragraph);
+    run = [];
+  };
+  for (const child of node.children ?? []) {
+    if (importsAsOwnBlock(child, registry)) {
+      flushRun();
+      walkElements(child, blocks, registry);
+    } else {
+      run.push(child);
+    }
+  }
+  flushRun();
+}
+
+function importsAsOwnBlock(child: DOMNode, registry: SchemaRegistry): boolean {
+  return (
+    containsBlockish(child) || resolveFromHTMLSchema(child, registry) !== null
+  );
+}
+
+function containsBlockish(node: DOMNode): boolean {
+  return isBlockishChild(node) || (node.children ?? []).some(containsBlockish);
+}
+
+// whitespace that includes a line break is source formatting, which html renders
+// as at most one space. plain spaces stay: the sanitizer drops `white-space`, so
+// they cannot be told apart from code indentation
+const FORMATTING_WHITESPACE = /[ \t]*[\n\r\f][ \t\n\r\f]*/g;
+const FORMATTING_GAP = "\u0000";
+const FORMATTING_GAPS = new RegExp(`${FORMATTING_GAP}+`, "g");
+
+function markFormattingWhitespace(node: DOMNode): DOMNode {
+  if (node.type === "text") {
+    return {
+      ...node,
+      textContent: (node.textContent ?? "").replace(
+        FORMATTING_WHITESPACE,
+        FORMATTING_GAP,
+      ),
+    };
+  }
+  return node.children
+    ? { ...node, children: node.children.map(markFormattingWhitespace) }
+    : node;
+}
+
+// a container's own text is trimmed at the edges of its line, as it was when
+// each text child was a paragraph; spaces inside an inline element are content
+function trimRunEdges(run: DOMNode[]): DOMNode[] {
+  return run.map((child, index) => {
+    if (child.type !== "text") return child;
+    let text = child.textContent ?? "";
+    if (index === 0) text = text.replace(/^[ \t\n\r\f]+/, "");
+    if (index === run.length - 1) text = text.replace(/[ \t\n\r\f]+$/, "");
+    return { ...child, textContent: text };
+  });
+}
+
+function collectInlineLeaves(node: DOMNode, leaves: DOMNode[]): void {
+  if (node.type === "text" || node.tagName === "br") {
+    leaves.push(node);
+    return;
+  }
+  for (const child of node.children ?? []) {
+    collectInlineLeaves(child, leaves);
+  }
+}
+
+// a formatting gap paints one space, and none at a line edge or beside a space
+function resolveFormattingGaps(source: DOMNode): void {
+  const leaves: DOMNode[] = [];
+  collectInlineLeaves(source, leaves);
+  const leafText = (leaf: DOMNode) =>
+    leaf.type === "text" ? (leaf.textContent ?? "") : "\n";
+  const line = leaves.map(leafText).join("");
+  const isLineEdgeOrSpace = (char: string | undefined) =>
+    char === undefined || char === "\n" || char === " ";
+  const resolved = line.replace(FORMATTING_GAPS, (gaps, offset: number) => {
+    const paints =
+      !isLineEdgeOrSpace(line[offset - 1]) &&
+      !isLineEdgeOrSpace(line[offset + gaps.length]);
+    return (paints ? " " : FORMATTING_GAP) + gaps.slice(1);
+  });
+
+  let offset = 0;
+  for (const leaf of leaves) {
+    const end = offset + leafText(leaf).length;
+    if (leaf.type === "text") {
+      leaf.textContent = resolved
+        .slice(offset, end)
+        .split(FORMATTING_GAP)
+        .join("");
+    }
+    offset = end;
+  }
+}
+
+function paragraphFromInlineRun(
+  run: DOMNode[],
+  keepsPlaceholderBreak: boolean,
+): PendingBlock | null {
+  const source: DOMNode = {
+    type: "root",
+    children: trimRunEdges(run).map(markFormattingWhitespace),
+  };
+  resolveFormattingGaps(source);
+  const inline = parseInlineContent(source);
+
+  // residue is dropped however many breaks it holds: only the last one is the
+  // line terminator `parseInlineContent` removes
+  if (!keepsPlaceholderBreak && /^[ \n]*$/.test(inline.text)) return null;
+
+  // gmail and apple mail write a blank line as `<div><br></div>`; the break is the
+  // container's empty placeholder (EM8), the same as a paragraph's sole `<br>`
+  if (/^ *$/.test(inline.text)) {
+    return keepsPlaceholderBreak && containsBreak(source)
+      ? { type: "paragraph", props: {}, content: "" }
+      : null;
+  }
+
+  return {
+    type: "paragraph",
+    props: {},
+    content: inline.text,
+    marks: inline.marks,
+  };
 }
 
 function resolveFromHTMLSchema(

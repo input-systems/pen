@@ -1,5 +1,20 @@
 # @input/pen-core
 
+## 0.2.14
+
+### Patch Changes
+
+- @input/pen-yjs@0.2.14
+  - @input/pen-types@0.2.14
+
+## 0.2.13
+
+### Patch Changes
+
+- 8e2654b: Export `inlineContentToOps(block, blockId, offset)`, which writes a pending block's inline content (text, marks, inline nodes) into an existing block. `blocksToOps` uses it for new blocks.
+- @input/pen-yjs@0.2.13
+  - @input/pen-types@0.2.13
+
 ## 0.2.12
 
 ### Patch Changes

@@ -154,7 +154,9 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 68 -> 69 is FE10: suites/geometry/host-chrome-drag.spec.ts, where the
 	// drag anchors beside the column rather than on a block, so the gesture
 	// only exists if the host-chrome fallback opened it.
-	const expectedPlaywrightSpecs = 69;
+	// 69 -> 70 is G4/G5 in code blocks: scenarios/g5-code-block-lines.spec.ts,
+	// where blank lines own line boxes and clicks map to text offsets.
+	const expectedPlaywrightSpecs = 70;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,
