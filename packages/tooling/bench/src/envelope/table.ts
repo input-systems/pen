@@ -68,7 +68,7 @@ ${enforcementRows}
 
 ## Past the ceiling
 
-Past these sizes, per-commit decoration collection and full-document render degrade first — Pen does not virtualize (\`spec/rules/dom.md\`). Hosts that need larger documents window blocks themselves (\`packages/rendering/react/VIRTUALIZATION.md\`, SCALE5).
+Past these sizes, full-document mount and structural commits, which stay linear in block count, degrade first — Pen does not virtualize (\`spec/rules/dom.md\`). Hosts that need larger documents window blocks themselves (\`packages/rendering/react/VIRTUALIZATION.md\`, SCALE5).
 `;
 }
 
