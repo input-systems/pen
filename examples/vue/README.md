@@ -46,4 +46,4 @@ Client-only mount: Vue has no `"use client"` directive, so `@input/pen-vue` does
 
 ## Run
 
-Requires Node 22+ and pnpm 10. The install commands above start Vite at `http://localhost:5176`.
+Requires Node 22.22.2+, 24.15+, or 26+ and pnpm 10. The install commands above start Vite at `http://localhost:5176`.

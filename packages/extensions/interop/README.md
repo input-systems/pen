@@ -12,7 +12,7 @@ This package has no peer dependencies.
 pnpm add @input/pen @input/pen-interop
 ```
 
-`engines.node` is `>=22`.
+`engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`.
 
 ## Usage
 

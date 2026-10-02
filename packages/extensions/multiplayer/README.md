@@ -18,7 +18,7 @@ It does **not** own transport, reconnect, auth, or Yjs wire protocol behavior.
 pnpm add @input/pen-multiplayer
 ```
 
-This package has no peer dependencies. `engines.node` is `>=22`.
+This package has no peer dependencies. `engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`.
 
 ## Presence is host-provided and untrusted
 
