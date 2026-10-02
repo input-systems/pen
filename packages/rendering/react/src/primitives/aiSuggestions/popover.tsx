@@ -6,6 +6,7 @@ import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import { useAISuggestionsContext } from "./root";
+import { resolveEditorRootElement } from "../../utils/aiDomScope";
 
 const POPOVER_ACTION_COUNT = 2;
 const DISMISS_OPTION_INDEX = 0;
@@ -107,7 +108,7 @@ export function AISuggestionsPopover(props: AISuggestionsPopoverProps) {
 		if (!isOpen) {
 			return;
 		}
-		const field = findActiveField();
+		const field = findActiveField(editor);
 		if (!field) {
 			return;
 		}
@@ -121,7 +122,7 @@ export function AISuggestionsPopover(props: AISuggestionsPopoverProps) {
 		return () => {
 			clearFieldPopupAria(field);
 		};
-	}, [isOpen, listboxId, selectedIndex]);
+	}, [editor, isOpen, listboxId, selectedIndex]);
 
 	if (!suggestion || !position) {
 		return null;
@@ -431,9 +432,9 @@ function getAISuggestionsOptionId(listboxId: string, index: number): string {
 	return `${listboxId}-option-${index}`;
 }
 
-function findActiveField(): HTMLElement | null {
-	const editorRoot = document.querySelector(`[${DATA_ATTRS.editorRoot}]`);
-	if (!(editorRoot instanceof HTMLElement)) {
+function findActiveField(editor: Editor): HTMLElement | null {
+	const editorRoot = resolveEditorRootElement(editor);
+	if (!editorRoot) {
 		return null;
 	}
 	return (

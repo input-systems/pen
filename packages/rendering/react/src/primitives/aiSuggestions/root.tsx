@@ -2,7 +2,7 @@ import React from "react";
 import type { Editor } from "@input/pen-types";
 import { EditorContext } from "../../context/editorContext";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
-import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
+import { resolveEditorRootElement } from "../../utils/aiDomScope";
 import { getAttachedFieldEditor } from "../../utils/fieldEditor";
 import { useAISuggestionPopover } from "../../hooks/useAISuggestionPopover";
 
@@ -174,7 +174,5 @@ function restoreEditorFocus(editor: Editor): void {
 		return;
 	}
 
-	document
-		.querySelector<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`)
-		?.focus({ preventScroll: true });
+	resolveEditorRootElement(editor)?.focus({ preventScroll: true });
 }

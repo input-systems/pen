@@ -159,6 +159,30 @@ async function openSuggestionsPopover() {
 	return fixture;
 }
 
+/** Mounts a second editor before the one under test, so `document.querySelector` finds it first. */
+async function mountBystanderEditor() {
+	const editor = createEditor({ schema: defaultSchema });
+	const container = document.createElement("div");
+	document.body.prepend(container);
+	const root = createRoot(container);
+	await act(async () => {
+		root.render(
+			createElement(
+				Pen.Editor.Root,
+				{ editor },
+				createElement(
+					"div",
+					{ "data-pen-field-editor-active-surface": "", tabIndex: 0 },
+					"bystander",
+				),
+			),
+		);
+		await flush();
+	});
+	fixtures.push({ blockId: editor.firstBlock()!.id, container, editor, root });
+	return { container, editor };
+}
+
 const fixtures: Array<{
 	blockId: string;
 	container: HTMLElement;
@@ -327,5 +351,41 @@ describe("@input/pen-react AI suggestions popover AX3", () => {
 		expect(
 			document.querySelector("[data-pen-ai-suggestions-popover]"),
 		).toBeNull();
+	});
+
+	it("AX3: the AI suggestions popover wires aria-controls on its own editor's field when two editors are mounted", async () => {
+		const bystander = await mountBystanderEditor();
+		const fixture = await openSuggestionsPopover();
+		const field = fixture.container.querySelector<HTMLElement>(
+			"[data-pen-field-editor-active-surface]",
+		);
+		const otherField = bystander.container.querySelector<HTMLElement>(
+			"[data-pen-field-editor-active-surface]",
+		);
+
+		expect(field?.getAttribute("aria-controls")).toBeTruthy();
+		expect(otherField?.getAttribute("aria-controls")).toBeNull();
+	});
+
+	it("AX3: the AI suggestions popover restores focus to its own editor root when two editors are mounted", async () => {
+		const bystander = await mountBystanderEditor();
+		const fixture = await openSuggestionsPopover();
+		const ownRoot = fixture.container.querySelector<HTMLElement>(
+			"[data-pen-editor-root]",
+		);
+		const otherRoot = bystander.container.querySelector<HTMLElement>(
+			"[data-pen-editor-root]",
+		);
+
+		await act(async () => {
+			dispatchKey("Escape");
+			await flush();
+		});
+
+		expect(document.activeElement).not.toBe(otherRoot);
+		expect(
+			document.activeElement === ownRoot ||
+				ownRoot?.contains(document.activeElement),
+		).toBe(true);
 	});
 });
