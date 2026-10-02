@@ -83,7 +83,7 @@
 				"scan.blocksMapReads": 108,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
-				"scan.textFullReads": 18,
+				"scan.textFullReads": 14,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"notifier.deliveries": 2
@@ -94,10 +94,10 @@
 				"listeners.invoked.store": 1,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 92,
+				"scan.blocksMapReads": 101,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 32,
+				"scan.textFullReads": 30,
 				"scheduler.measureNow": 0,
 				"notifier.deliveries": 1
 			},
@@ -112,7 +112,7 @@
 				"scan.blocksMapReads": 165,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 40,
+				"scan.textFullReads": 32,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"notifier.deliveries": 5
@@ -144,7 +144,7 @@
 				"scan.blocksMapReads": 2400,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
-				"scan.textFullReads": 55,
+				"scan.textFullReads": 43,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 2,
 				"notifier.deliveries": 8
@@ -160,7 +160,7 @@
 				"scan.blocksMapReads": 2820,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
-				"scan.textFullReads": 55,
+				"scan.textFullReads": 43,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 2,
 				"notifier.deliveries": 8
@@ -214,7 +214,7 @@
 				"scan.blocksMapReads": 108,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
-				"scan.textFullReads": 18,
+				"scan.textFullReads": 14,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"notifier.deliveries": 2
@@ -225,10 +225,10 @@
 				"listeners.invoked.store": 1,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 92,
+				"scan.blocksMapReads": 101,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 32,
+				"scan.textFullReads": 30,
 				"scheduler.measureNow": 0,
 				"notifier.deliveries": 1
 			},
@@ -243,7 +243,7 @@
 				"scan.blocksMapReads": 165,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 40,
+				"scan.textFullReads": 32,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"notifier.deliveries": 5
@@ -275,7 +275,7 @@
 				"scan.blocksMapReads": 10800,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
-				"scan.textFullReads": 55,
+				"scan.textFullReads": 43,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 2,
 				"notifier.deliveries": 8
@@ -291,7 +291,7 @@
 				"scan.blocksMapReads": 11220,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
-				"scan.textFullReads": 55,
+				"scan.textFullReads": 43,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 2,
 				"notifier.deliveries": 8
@@ -787,6 +787,30 @@
 				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 55 !== 50",
 				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 11220 !== 11210",
 				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 55 !== 50"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 6: the projector skips the write when the DOM and focus already agree (fewer full-text reads per action) and pays one read-back on caretRight",
+			"moved": [
+				"vanilla/scale-1k/keystroke/scan.textFullReads: 14 !== 18",
+				"vanilla/scale-1k/caretRight/scan.blocksMapReads: 101 !== 92",
+				"vanilla/scale-1k/caretRight/scan.textFullReads: 30 !== 32",
+				"vanilla/scale-1k/caretDown/scan.textFullReads: 32 !== 40",
+				"vanilla/scale-1k/enterParagraph/scan.textFullReads: 43 !== 55",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 43 !== 55"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 6: the projector skips the write when the DOM and focus already agree (fewer full-text reads per action) and pays one read-back on caretRight",
+			"moved": [
+				"vanilla/scale-5k/keystroke/scan.textFullReads: 14 !== 18",
+				"vanilla/scale-5k/caretRight/scan.blocksMapReads: 101 !== 92",
+				"vanilla/scale-5k/caretRight/scan.textFullReads: 30 !== 32",
+				"vanilla/scale-5k/caretDown/scan.textFullReads: 32 !== 40",
+				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 43 !== 55",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 43 !== 55"
 			]
 		}
 	]

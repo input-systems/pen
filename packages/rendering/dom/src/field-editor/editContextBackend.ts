@@ -660,6 +660,18 @@ export class EditContextBackend {
 			: offset;
 	}
 
+	/** Whether the EditContext buffer's selection is the authority's (W3.R6). */
+	selectionAgreesWithAuthority(): boolean {
+		const blockId = this.fieldEditor.focusBlockId;
+		if (!this.editContext || !blockId) return true;
+		const offsets = authorityOffsetsInBlock(this.editor, blockId);
+		return (
+			offsets !== null &&
+			this.editContext.selectionStart === offsets.start &&
+			this.editContext.selectionEnd === offsets.end
+		);
+	}
+
 	protected resolveEditorSelectionRange(
 		blockId: string,
 	): EditContextRange | null {

@@ -193,3 +193,48 @@ describe("selection projector non-text projection (S2)", () => {
 		text.remove();
 	});
 });
+
+describe("selection projector triggers and guards (W3.R6, W3.R7)", () => {
+	const AGREEING: ProjectionReadBack = {
+		...DROPPED,
+		equivalent: true,
+		actual: DROPPED.expected,
+	};
+
+	it("P1: a projection that finds the DOM equivalent and focus on target writes nothing", () => {
+		const { controller, writes } = createDroppingController(() => AGREEING);
+		controller.syncDomSelectionOnce();
+		expect(writes()).toBe(0);
+		expect(controller.lastProjectedVersion).toBe(1);
+	});
+
+	it("P2: a divergence equal to the reported read-back is not re-projected", () => {
+		const { controller, diagnostics, writes } = createDroppingController(
+			() => DROPPED,
+		);
+		controller.syncDomSelectionOnce();
+		expect(diagnostics).toHaveLength(1);
+		controller.requestDivergenceProjection(DROPPED.actual);
+		expect(writes()).toBe(1);
+		// A different divergent read is a new state and is answered.
+		controller.requestDivergenceProjection({
+			type: "text",
+			anchor: { blockId: "first", offset: 1 },
+			focus: { blockId: "first", offset: 1 },
+		});
+		expect(writes()).toBe(2);
+	});
+
+	it("P1: projection is withheld while composing in the target field and runs once on compositionend-completed", () => {
+		const { controller, writes } = createDroppingController(() => DROPPED);
+		controller.notifyGestureEvent("compositionstart");
+		expect(controller.withholdForComposition()).toBe(true);
+		controller.requestDivergenceProjection();
+		controller.projectAfterRebuild(["first"]);
+		expect(writes()).toBe(0);
+		controller.notifyGestureEvent("compositionend-completed");
+		expect(writes()).toBe(1);
+		controller.notifyGestureEvent("compositionend-completed");
+		expect(writes()).toBe(1);
+	});
+});

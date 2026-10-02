@@ -11,4 +11,9 @@ export interface InputBackend {
 	interceptDomSelectionRead?(
 		proposal: Exclude<ReaderSelection, null>,
 	): boolean;
+	/**
+	 * W3.R6 equivalence skip: whether selection state the backend keeps
+	 * outside the DOM (an EditContext buffer) already matches the authority.
+	 */
+	selectionAgreesWithAuthority?(): boolean;
 }

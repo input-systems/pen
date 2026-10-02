@@ -89,7 +89,7 @@
 				"scan.blocksMapReads": 114,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
-				"scan.textFullReads": 25,
+				"scan.textFullReads": 17,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"render.blocksRendered": 1,
@@ -103,10 +103,10 @@
 				"render.reactCommits": 1,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 96,
+				"scan.blocksMapReads": 105,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 32,
+				"scan.textFullReads": 30,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 13
@@ -124,7 +124,7 @@
 				"scan.blocksMapReads": 139,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 36,
+				"scan.textFullReads": 28,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -164,7 +164,7 @@
 				"scan.blocksMapReads": 2335,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
-				"scan.textFullReads": 38,
+				"scan.textFullReads": 30,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -184,7 +184,7 @@
 				"scan.blocksMapReads": 2619,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
-				"scan.textFullReads": 38,
+				"scan.textFullReads": 30,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -250,7 +250,7 @@
 				"scan.blocksMapReads": 114,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
-				"scan.textFullReads": 25,
+				"scan.textFullReads": 17,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"render.blocksRendered": 1,
@@ -264,10 +264,10 @@
 				"render.reactCommits": 1,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 96,
+				"scan.blocksMapReads": 105,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 32,
+				"scan.textFullReads": 30,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 13
@@ -285,7 +285,7 @@
 				"scan.blocksMapReads": 139,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 36,
+				"scan.textFullReads": 28,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -325,7 +325,7 @@
 				"scan.blocksMapReads": 10735,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
-				"scan.textFullReads": 38,
+				"scan.textFullReads": 30,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -345,7 +345,7 @@
 				"scan.blocksMapReads": 11019,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
-				"scan.textFullReads": 38,
+				"scan.textFullReads": 30,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -834,6 +834,30 @@
 				"react/scale-5k/caretDown/scan.textFullReads: 36 !== 42",
 				"react/scale-5k/remoteInsert/scan.blocksMapReads: 5354 !== 5376",
 				"react/scale-5k/remoteInsert/scan.textFullReads: 8 !== 20"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 6: the projector skips the write when the DOM and focus already agree (fewer full-text reads per action) and pays one read-back on caretRight",
+			"moved": [
+				"react/scale-1k/keystroke/scan.textFullReads: 17 !== 25",
+				"react/scale-1k/caretRight/scan.blocksMapReads: 105 !== 96",
+				"react/scale-1k/caretRight/scan.textFullReads: 30 !== 32",
+				"react/scale-1k/caretDown/scan.textFullReads: 28 !== 36",
+				"react/scale-1k/enterParagraph/scan.textFullReads: 30 !== 38",
+				"react/scale-1k/enterNumbered/scan.textFullReads: 30 !== 38"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 6: the projector skips the write when the DOM and focus already agree (fewer full-text reads per action) and pays one read-back on caretRight",
+			"moved": [
+				"react/scale-5k/keystroke/scan.textFullReads: 17 !== 25",
+				"react/scale-5k/caretRight/scan.blocksMapReads: 105 !== 96",
+				"react/scale-5k/caretRight/scan.textFullReads: 30 !== 32",
+				"react/scale-5k/caretDown/scan.textFullReads: 28 !== 36",
+				"react/scale-5k/enterParagraph/scan.textFullReads: 30 !== 38",
+				"react/scale-5k/enterNumbered/scan.textFullReads: 30 !== 38"
 			]
 		}
 	]

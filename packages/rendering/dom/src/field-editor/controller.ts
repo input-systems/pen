@@ -168,7 +168,7 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 	getGestureWindows?(): GestureWindowState;
 	isAdmissibleGestureRead?(): boolean;
 	isProjectionInFlight?(): boolean;
-	requestDivergenceProjection?(): void;
+	requestDivergenceProjection?(read?: ReaderSelection): void;
 	/**
 	 * P3: a reconcile rebuilt these blocks' DOM; project the authority now
 	 * when one of them is the mounted projection target. Reconciles never

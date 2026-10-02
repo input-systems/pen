@@ -87,7 +87,7 @@
 				"scan.blocksMapReads": 95,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
-				"scan.textFullReads": 19,
+				"scan.textFullReads": 15,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"render.blocksRendered": 1,
@@ -100,10 +100,10 @@
 				"render.blockRenders": 2,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 92,
+				"scan.blocksMapReads": 101,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 32,
+				"scan.textFullReads": 30,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 2
@@ -120,7 +120,7 @@
 				"scan.blocksMapReads": 128,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 36,
+				"scan.textFullReads": 28,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -158,7 +158,7 @@
 				"scan.blocksMapReads": 2326,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
-				"scan.textFullReads": 40,
+				"scan.textFullReads": 32,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -177,7 +177,7 @@
 				"scan.blocksMapReads": 2690,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
-				"scan.textFullReads": 40,
+				"scan.textFullReads": 32,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -240,7 +240,7 @@
 				"scan.blocksMapReads": 95,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
-				"scan.textFullReads": 19,
+				"scan.textFullReads": 15,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"render.blocksRendered": 1,
@@ -253,10 +253,10 @@
 				"render.blockRenders": 2,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 92,
+				"scan.blocksMapReads": 101,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 32,
+				"scan.textFullReads": 30,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 2
@@ -273,7 +273,7 @@
 				"scan.blocksMapReads": 128,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 36,
+				"scan.textFullReads": 28,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -311,7 +311,7 @@
 				"scan.blocksMapReads": 10726,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
-				"scan.textFullReads": 40,
+				"scan.textFullReads": 32,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -330,7 +330,7 @@
 				"scan.blocksMapReads": 11090,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
-				"scan.textFullReads": 40,
+				"scan.textFullReads": 32,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -754,6 +754,30 @@
 				"vue/scale-5k/caretDown/scan.textFullReads: 36 !== 42",
 				"vue/scale-5k/remoteInsert/scan.blocksMapReads: 5347 !== 5358",
 				"vue/scale-5k/remoteInsert/scan.textFullReads: 8 !== 14"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 6: the projector skips the write when the DOM and focus already agree (fewer full-text reads per action) and pays one read-back on caretRight",
+			"moved": [
+				"vue/scale-1k/keystroke/scan.textFullReads: 15 !== 19",
+				"vue/scale-1k/caretRight/scan.blocksMapReads: 101 !== 92",
+				"vue/scale-1k/caretRight/scan.textFullReads: 30 !== 32",
+				"vue/scale-1k/caretDown/scan.textFullReads: 28 !== 36",
+				"vue/scale-1k/enterParagraph/scan.textFullReads: 32 !== 40",
+				"vue/scale-1k/enterNumbered/scan.textFullReads: 32 !== 40"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 6: the projector skips the write when the DOM and focus already agree (fewer full-text reads per action) and pays one read-back on caretRight",
+			"moved": [
+				"vue/scale-5k/keystroke/scan.textFullReads: 15 !== 19",
+				"vue/scale-5k/caretRight/scan.blocksMapReads: 101 !== 92",
+				"vue/scale-5k/caretRight/scan.textFullReads: 30 !== 32",
+				"vue/scale-5k/caretDown/scan.textFullReads: 28 !== 36",
+				"vue/scale-5k/enterParagraph/scan.textFullReads: 32 !== 40",
+				"vue/scale-5k/enterNumbered/scan.textFullReads: 32 !== 40"
 			]
 		}
 	]

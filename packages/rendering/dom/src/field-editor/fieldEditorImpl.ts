@@ -235,6 +235,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 					: null;
 			},
 			getSurface: () => (this._mode === "expanded" ? "expanded" : "text"),
+			backendSelectionAgrees: () =>
+				this._backendLifecycle.current?.selectionAgreesWithAuthority?.() ??
+				true,
 		});
 		// FE4: the commit feed lives here rather than in a host's mount,
 		// because both the vanilla mount and the framework bindings build a
@@ -271,9 +274,12 @@ export class FieldEditorImpl implements FieldEditorSession {
 				// written into the DOM while a native control that is
 				// not this field owns focus. the backend write is held
 				// back too — it projects the DOM selection the same way.
+				// C1/C2: the composing field keeps its range until
+				// compositionend-completed releases the projection.
 				const withheld =
 					!alreadyProjected &&
-					this._selectionCoordinator.isFocusHeldByNativeControlOutsideRoot();
+					(this._selectionCoordinator.isFocusHeldByNativeControlOutsideRoot() ||
+						this._selectionCoordinator.withholdForComposition());
 				// surface first so P1 sees the new focus block. skip is
 				// not delivery — the projector has not run yet.
 				this._recomputeSurfaceFromSelection({
@@ -818,8 +824,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 		return this._selectionCoordinator.getGestureWindows();
 	}
 
-	requestDivergenceProjection(): void {
-		this._selectionCoordinator.requestDivergenceProjection();
+	requestDivergenceProjection(read?: ReaderSelection): void {
+		this._selectionCoordinator.requestDivergenceProjection(read);
 	}
 
 	/**
@@ -864,7 +870,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 			// must not write; P2 must not run either, because projecting
 			// the multi-block range makes the engine confine it again.
 			if (!isLeftoverField) {
-				this.requestDivergenceProjection();
+				this.requestDivergenceProjection(proposal);
 			}
 			return decided.decision;
 		}
@@ -877,7 +883,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 			// accepting it would drop the structural cover. Re-project
 			// so the DOM follows the authority instead. A click is
 			// collapsed, so it still accepts.
-			this.requestDivergenceProjection();
+			this.requestDivergenceProjection(proposal);
 			return "diverge";
 		}
 		this._applyAcceptedDomSelection(decided.normalized, decided.origin);

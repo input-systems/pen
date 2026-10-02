@@ -1,6 +1,10 @@
 import type { SelectionState } from "@input/pen-types";
 import type { PenFieldEditorFocusOptions } from "./controller";
-import type { GestureEventKind, GestureWindowState } from "./selectionReader";
+import type {
+	GestureEventKind,
+	GestureWindowState,
+	ReaderSelection,
+} from "./selectionReader";
 import {
 	FieldEditorSelectionAuthority,
 	type FieldEditorSelectionSnapshot,
@@ -124,8 +128,8 @@ export class FieldEditorSelectionCoordinator {
 		return this._projection.isProjectionInFlight();
 	}
 
-	requestDivergenceProjection(): void {
-		this._projection.requestDivergenceProjection();
+	requestDivergenceProjection(read?: ReaderSelection): void {
+		this._projection.requestDivergenceProjection(read);
 	}
 
 	prepareSyncedTextSelection(
@@ -176,6 +180,10 @@ export class FieldEditorSelectionCoordinator {
 
 	projectNonTextSelection(state: SelectionState | null): void {
 		this._projection.projectNonTextSelection(state);
+	}
+
+	withholdForComposition(): boolean {
+		return this._projection.withholdForComposition();
 	}
 
 	projectAfterRebuild(blockIds: readonly string[]): void {

@@ -13,6 +13,7 @@ import {
 	type GestureEventKind,
 	type GestureWindowState,
 	type ProjectionReadBack,
+	type ReaderSelection,
 } from "./selectionReader";
 import { clearNativeRangeIn } from "./selectionProjector";
 import {
@@ -57,11 +58,29 @@ type SelectionProjectionControllerOptions = {
 	readBack?: (target: HTMLElement) => ProjectionReadBack | null;
 	/** "text", "expanded" or "cell" for the mismatch payload. */
 	getSurface?: () => string;
+	/**
+	 * Whether the attached backend's own selection state (an EditContext
+	 * buffer) already matches the record. The equivalence skip needs it as
+	 * well as an equivalent DOM; absent means there is no such state.
+	 */
+	backendSelectionAgrees?: () => boolean;
 };
 
 /** What asked for a projection, for the mismatch payload and its once-per key. */
 type ProjectionTrigger =
-	"selection-change" | "mount-ack" | "divergence" | "target-rebuilt";
+	| "selection-change"
+	| "mount-ack"
+	| "divergence"
+	| "target-rebuilt"
+	| "window-closed";
+
+/** Authority-driven triggers (P1–P4); a composition withholds them. */
+const AUTHORITY_TRIGGERS: ReadonlySet<ProjectionTrigger> = new Set([
+	"selection-change",
+	"mount-ack",
+	"divergence",
+	"target-rebuilt",
+]);
 
 export class SelectionProjectionController {
 	private readonly _historySelectionCoordinator: HistorySelectionCoordinator;
@@ -75,6 +94,13 @@ export class SelectionProjectionController {
 	private _parkedDiagnosticKey: string | null = null;
 	private _trigger: ProjectionTrigger = "selection-change";
 	private readonly _reportedMismatches = new Set<string>();
+	/** A projection withheld while composing; released once on compositionend-completed. */
+	private _withheldForComposition = false;
+	/** W3.R7: the version and read-back of the last reported mismatch. */
+	private _lastMismatch: {
+		version: number;
+		actual: ReaderSelection | null;
+	} | null = null;
 
 	constructor(options: SelectionProjectionControllerOptions) {
 		this._historySelectionCoordinator = options.historySelectionCoordinator;
@@ -83,6 +109,7 @@ export class SelectionProjectionController {
 
 	reset(): void {
 		this._pendingSelectionProjectionVersion = null;
+		this._withheldForComposition = false;
 		this._gestureWindows = CLOSED_GESTURE_WINDOWS;
 		this._pointerSettledBound = false;
 	}
@@ -142,6 +169,33 @@ export class SelectionProjectionController {
 		if (eventKind === "pointerup") {
 			this._schedulePointerSettled();
 		}
+		if (eventKind === "compositionend-completed") {
+			this._releaseCompositionWithholding();
+		}
+	}
+
+	/**
+	 * W3.R6, C1/C2: while the IME window is open the composing field owns its
+	 * DOM range, so an authority-driven projection (P1–P4) is recorded, not
+	 * written. True when this call withheld one.
+	 */
+	withholdForComposition(): boolean {
+		if (!this._gestureWindows.ime) {
+			return false;
+		}
+		this._withheldForComposition = true;
+		return true;
+	}
+
+	private _releaseCompositionWithholding(): void {
+		if (!this._withheldForComposition || this._gestureWindows.ime) {
+			return;
+		}
+		this._withheldForComposition = false;
+		if (this.isFocusHeldByNativeControlOutsideRoot()) {
+			return;
+		}
+		this._withTrigger("window-closed", () => this.syncDomSelectionOnce());
 	}
 
 	getGestureWindows(): GestureWindowState {
@@ -156,8 +210,16 @@ export class SelectionProjectionController {
 		return this._pendingSelectionProjectionVersion !== null;
 	}
 
-	requestDivergenceProjection(): void {
+	/**
+	 * P2. `read` is the divergent proposal; W3.R7 refuses to re-project a
+	 * version whose last projection read back exactly this, because the
+	 * engine normalized the write and another write would loop.
+	 */
+	requestDivergenceProjection(read?: ReaderSelection): void {
 		if (this.isFocusHeldByNativeControlOutsideRoot()) {
+			return;
+		}
+		if (read !== undefined && this._isReportedMismatch(read)) {
 			return;
 		}
 		this._withTrigger("divergence", () => this.syncDomSelectionOnce());
@@ -226,6 +288,13 @@ export class SelectionProjectionController {
 	}
 
 	syncDomSelectionOnce(options: PenFieldEditorFocusOptions = {}): void {
+		if (
+			AUTHORITY_TRIGGERS.has(this._trigger) &&
+			this._trigger !== "selection-change" &&
+			this.withholdForComposition()
+		) {
+			return;
+		}
 		const version = ++this._syncDomVersion;
 		this._pendingSelectionProjectionVersion = version;
 
@@ -481,6 +550,9 @@ export class SelectionProjectionController {
 		const attachedElement = this._options.getAttachedElement();
 		if (attachedElement !== element || !attachedElement?.isConnected) {
 			didAttach = this._options.attachElement(element, options);
+		} else if (this._alreadyAgrees(element)) {
+			// W3.R6: the DOM and focus already show the record; no write.
+			return true;
 		}
 		if (
 			didAttach &&
@@ -504,17 +576,40 @@ export class SelectionProjectionController {
 	 * W3.R1: read the write back. A mismatch is reported once per
 	 * (version, trigger) and never answered with a second write.
 	 */
+	private _alreadyAgrees(element: HTMLElement): boolean {
+		const readBack = this._options.readBack?.(element);
+		return (
+			readBack != null &&
+			readBack.equivalent &&
+			readBack.focusOnTarget &&
+			(this._options.backendSelectionAgrees?.() ?? true)
+		);
+	}
+
 	private _checkReadBack(element: HTMLElement): void {
 		const readBack = this._options.readBack?.(element);
 		if (!readBack || (readBack.equivalent && readBack.focusOnTarget)) {
 			return;
 		}
 		const version = this._options.getRecord?.()?.version ?? 0;
+		this._lastMismatch = {
+			version,
+			actual: readBack.actual,
+		};
 		if (this._alreadyReported(`${version}:${this._trigger}`)) {
 			return;
 		}
 		this._options.emitDiagnostic?.(
 			this._mismatchDiagnostic(version, readBack),
+		);
+	}
+
+	private _isReportedMismatch(read: ReaderSelection): boolean {
+		const mismatch = this._lastMismatch;
+		return (
+			mismatch !== null &&
+			mismatch.version === (this._options.getRecord?.()?.version ?? 0) &&
+			sameTextRead(mismatch.actual, read)
 		);
 	}
 
@@ -643,5 +738,29 @@ export function isCollapsedDomAgainstProjectedOffsets(
 	return (
 		selection.anchor.offset !== projectedSelection.anchorOffset ||
 		selection.focus.offset !== projectedSelection.focusOffset
+	);
+}
+
+type ReadPoint = { blockId: string; offset: number };
+
+function samePoint(left: ReadPoint, right: ReadPoint): boolean {
+	return left.blockId === right.blockId && left.offset === right.offset;
+}
+
+/**
+ * Exact equality of two text reads (W3.R7 compares a divergent read with the
+ * reported read-back, not logical equivalence). Other types never match, so
+ * the guard only stops the text writes an engine normalizes.
+ */
+function sameTextRead(
+	left: ReaderSelection | null,
+	right: ReaderSelection | null,
+): boolean {
+	if (left?.type !== "text" || right?.type !== "text") {
+		return false;
+	}
+	return (
+		samePoint(left.anchor, right.anchor) &&
+		samePoint(left.focus, right.focus)
 	);
 }
