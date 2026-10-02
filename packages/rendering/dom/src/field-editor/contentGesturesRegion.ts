@@ -118,7 +118,6 @@ export function createRegionGestures<
 		if (!gesture.isSelecting) {
 			gesture.isSelecting = true;
 			skipNextClickRef.current = true;
-			gestureEl.ownerDocument?.getSelection()?.removeAllRanges();
 		}
 		event.preventDefault();
 		const boundedRect = intersectRegionSelectionRect(

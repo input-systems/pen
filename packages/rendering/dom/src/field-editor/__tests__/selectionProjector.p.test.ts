@@ -152,3 +152,44 @@ describe("selection projector rebuild projection (P3)", () => {
 		}
 	});
 });
+
+describe("selection projector non-text projection (S2)", () => {
+	function placeNativeCaret(): HTMLElement {
+		const text = document.createElement("span");
+		text.textContent = "hello";
+		document.body.append(text);
+		document.getSelection()!.collapse(text.firstChild, 2);
+		return text;
+	}
+
+	it("S2: projecting a block selection clears a native range inside the root", () => {
+		const { controller } = createDroppingController(() => DROPPED);
+		const text = placeNativeCaret();
+		controller.projectNonTextSelection({
+			type: "block",
+			blockIds: ["first"],
+		});
+		expect(document.getSelection()!.rangeCount).toBe(0);
+		text.remove();
+	});
+
+	it("S2: projecting a text selection leaves the native range alone", () => {
+		const { controller } = createDroppingController(() => DROPPED);
+		const text = placeNativeCaret();
+		controller.projectNonTextSelection(record(1).state);
+		expect(document.getSelection()!.rangeCount).toBe(1);
+		text.remove();
+	});
+
+	it("HOST9: a null-selection projection while a foreign input owns focus does not clear", () => {
+		const { controller } = createDroppingController(() => DROPPED);
+		const input = document.createElement("input");
+		document.body.append(input);
+		input.focus();
+		const text = placeNativeCaret();
+		controller.projectNonTextSelection(null);
+		expect(document.getSelection()!.rangeCount).toBe(1);
+		input.remove();
+		text.remove();
+	});
+});

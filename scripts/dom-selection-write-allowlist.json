@@ -1,47 +1,4 @@
 {
   "_comment": "S1 (spec/rules/selection.md): one selection writer. Each entry is a DOM selection or EditContext selection write outside the projector, with the W3 step that moves it. pen/no-dom-selection-write fails an entry with no matching write (I15); the list ends empty when W3.R3 closes.",
-  "entries": [
-    {
-      "file": "packages/rendering/dom/src/field-editor/cellEditingController.ts",
-      "symbol": "placeCaretInCell",
-      "api": "addRange",
-      "reason": "Places the caret in a newly active cell, ignoring the authority; becomes cell activation that projects (W3 step 3c).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/cellEditingController.ts",
-      "symbol": "placeCaretInCell",
-      "api": "removeAllRanges",
-      "reason": "Places the caret in a newly active cell, ignoring the authority; becomes cell activation that projects (W3 step 3c).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/contentGesturesRegion.ts",
-      "symbol": "handleMouseMove",
-      "api": "removeAllRanges",
-      "reason": "Region drag start clears the native range; becomes selectBlocks on the authority with the projection clearing it (W3 step 3c).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/contentGesturesShared.ts",
-      "symbol": "activateCanonicalSelection",
-      "api": "removeAllRanges",
-      "reason": "Unreachable block branch; deleted in W3 step 3c.",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/fieldEditorImpl.ts",
-      "symbol": "focus",
-      "api": "addRange",
-      "reason": "FieldEditor.focus() collapses to the inline end when the authority is elsewhere; becomes an authority write that projects (W3 step 3c).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/fieldEditorImpl.ts",
-      "symbol": "focus",
-      "api": "removeAllRanges",
-      "reason": "FieldEditor.focus() collapses to the inline end when the authority is elsewhere; becomes an authority write that projects (W3 step 3c).",
-      "closedBy": "W3.R3"
-    }
-  ]
+  "entries": []
 }

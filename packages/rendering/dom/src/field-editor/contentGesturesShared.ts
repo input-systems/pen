@@ -196,7 +196,6 @@ export function activateCanonicalSelection(
 	});
 	if (normalizedSelection.type === "block") {
 		if (!ctx.blockSelectionEnabled) return;
-		ctx.gestureEl.ownerDocument?.getSelection()?.removeAllRanges();
 		ctx.editor.selectBlocks(normalizedSelection.blockIds);
 		ctx.fieldEditor.deactivate();
 		return;

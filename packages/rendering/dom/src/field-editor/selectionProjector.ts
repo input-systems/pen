@@ -47,6 +47,28 @@ export function writeLegacyFieldRange(
 	);
 }
 
+/**
+ * Collapses the native caret at the end of `element`'s contents. The cell
+ * caret is not in the authority yet (W3 step 13), so cell activation writes
+ * it here; step 13 projects it from the record instead.
+ */
+export function writeNativeCaretAtEnd(element: HTMLElement): void {
+	const selection = element.ownerDocument.getSelection();
+	if (!selection) return;
+	const range = element.ownerDocument.createRange();
+	range.selectNodeContents(element);
+	range.collapse(false);
+	replaceNativeRange(selection, range);
+}
+
+/** Clears the native range when it lies inside `root`. */
+export function clearNativeRangeIn(root: HTMLElement): void {
+	const selection = root.ownerDocument.getSelection();
+	if (!selection || selection.rangeCount === 0) return;
+	if (!selection.anchorNode || !root.contains(selection.anchorNode)) return;
+	selection.removeAllRanges();
+}
+
 /** Replaces the native selection with `range`. */
 export function replaceNativeRange(selection: Selection, range: Range): void {
 	selection.removeAllRanges();

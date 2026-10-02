@@ -14,6 +14,7 @@ import {
 	type GestureWindowState,
 	type ProjectionReadBack,
 } from "./selectionReader";
+import { clearNativeRangeIn } from "./selectionProjector";
 import {
 	isForeignNativeTextEntryTarget,
 	isNativeTextEntryTarget,
@@ -341,6 +342,24 @@ export class SelectionProjectionController {
 			return state.focus.blockId;
 		}
 		return this._options.getFocusBlockId();
+	}
+
+	/**
+	 * S2: a block or null selection leaves no native range in the root, so
+	 * its projection clears one. Withheld while a native control outside the
+	 * field owns focus (HOST9).
+	 */
+	projectNonTextSelection(state: SelectionState | null): void {
+		if (state !== null && state.type !== "block") {
+			return;
+		}
+		if (this.isFocusHeldByNativeControlOutsideRoot()) {
+			return;
+		}
+		const root = this._options.getRootElement();
+		if (root) {
+			clearNativeRangeIn(root);
+		}
 	}
 
 	/**

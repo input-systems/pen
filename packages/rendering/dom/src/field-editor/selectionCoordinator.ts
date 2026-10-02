@@ -184,6 +184,10 @@ export class FieldEditorSelectionCoordinator {
 		this._projection.syncDomSelectionOnce();
 	}
 
+	projectNonTextSelection(state: SelectionState | null): void {
+		this._projection.projectNonTextSelection(state);
+	}
+
 	projectAfterRebuild(blockIds: readonly string[]): void {
 		this._projection.projectAfterRebuild(blockIds);
 	}

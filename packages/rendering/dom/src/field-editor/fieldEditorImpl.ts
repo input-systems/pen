@@ -272,6 +272,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 					this._selectionCoordinator.syncDomSelectionOnce();
 					scheduler?.setSelection(record);
 				}
+				this._selectionCoordinator.projectNonTextSelection(record.state);
 				const delivered =
 					record.version <=
 					this._selectionCoordinator.lastProjectedVersion;
@@ -509,15 +510,14 @@ export class FieldEditorImpl implements FieldEditorSession {
 			return true;
 		}
 
-		const nativeSelection = root.ownerDocument?.getSelection();
-		if (!nativeSelection) return true;
-
-		const range = root.ownerDocument.createRange();
-		range.selectNodeContents(inlineEl);
-		range.collapse(false);
-
-		nativeSelection.removeAllRanges();
-		nativeSelection.addRange(range);
+		// S1: the caret lands in the authority first and is projected from it.
+		const end = this._editor.getBlock(this._focusBlockId)?.length() ?? 0;
+		this.commitProgrammaticTextSelection(
+			this._focusBlockId,
+			end,
+			end,
+			options,
+		);
 		return true;
 	}
 

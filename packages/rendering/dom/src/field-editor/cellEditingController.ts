@@ -5,6 +5,7 @@ import type {
 } from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
 import { resolveCellInlineElement } from "./contentResolution";
+import { writeNativeCaretAtEnd } from "./selectionProjector";
 
 type CellEditingControllerOptions = {
 	getRootElement: () => HTMLElement | null;
@@ -73,14 +74,7 @@ export class CellEditingController {
 		) {
 			return;
 		}
-		const selection = cellEl.ownerDocument?.getSelection();
-		if (!selection) return;
-
-		const range = cellEl.ownerDocument.createRange();
-		range.selectNodeContents(cellEl);
-		range.collapse(false);
-		selection.removeAllRanges();
-		selection.addRange(range);
+		writeNativeCaretAtEnd(cellEl);
 	}
 
 	resolveInlineElement(blockId: string): HTMLElement | null {
