@@ -30,6 +30,14 @@ export function bindBackendTransferEvents(
 	attachment.listen(element, "dragstart", (event) => {
 		fieldEditor.notifyGestureEvent?.("dragstart");
 		event.preventDefault();
+		// A cancelled dragstart starts no drag operation, so neither drop nor
+		// dragend follows (HTML DnD). Close the window in the same handler (R1).
+		fieldEditor.notifyGestureEvent?.("dragend-completed");
+	});
+	attachment.listenDocument(element.ownerDocument, "dragend", () => {
+		// R1/R2: dragend is a close input, not gated on content; it may fire
+		// outside the field after an in-field start.
+		fieldEditor.notifyGestureEvent?.("dragend-completed");
 	});
 	attachment.listen(element, "drop", (event) => {
 		fieldEditor.notifyGestureEvent?.("drop-completed");

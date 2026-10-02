@@ -51,6 +51,7 @@ import {
 	decideDomSelectionRead,
 	type DomSelectionReadDecision,
 	type GestureEventKind,
+	type GestureWindowState,
 	type GestureSelectionOrigin,
 	type ReaderSelection,
 } from "./selectionReader";
@@ -782,6 +783,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	isAdmissibleGestureRead(): boolean {
 		return this._selectionCoordinator.isAdmissibleGestureRead();
+	}
+
+	getGestureWindows(): GestureWindowState {
+		return this._selectionCoordinator.getGestureWindows();
 	}
 
 	requestDivergenceProjection(): void {
