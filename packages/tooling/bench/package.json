@@ -68,11 +68,11 @@
     "@input/pen-test": "workspace:*",
     "@input/pen-types": "workspace:*",
     "@input/pen-undo": "workspace:*",
-    "@types/node": "^26.6.2",
+    "@types/node": "^25.9.9",
     "tsup": "^8.4.0",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2",
-    "vitest": "^5.0.1",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.7",
     "yjs": "^13.6.32"
   }
 }

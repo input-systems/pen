@@ -76,10 +76,10 @@
     "@input/pen-test": "workspace:*",
     "@input/pen-undo": "workspace:*",
     "@vue/test-utils": "^2.5.1",
-    "jsdom": "^30.1.1",
+    "jsdom": "^28.1.0",
     "tsup": "^8.4.0",
-    "typescript": "^7.0.2",
-    "vitest": "^5.0.1",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.7",
     "vue": "^3.5.42"
   }
 }
