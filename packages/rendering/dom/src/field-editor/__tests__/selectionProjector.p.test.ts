@@ -3,8 +3,13 @@
 import type { DiagnosticEvent, SelectionRecord } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 import { HistorySelectionCoordinator } from "../historySelectionCoordinator";
-import { SelectionProjectionController } from "../selectionProjectionController";
-import type { ProjectionReadBack } from "../selectionReader";
+import { SelectionProjector } from "../selectionProjector";
+import {
+	CLOSED_GESTURE_WINDOWS,
+	nextGestureWindowState,
+	type GestureEventKind,
+	type ProjectionReadBack,
+} from "../selectionReader";
 
 function record(version: number): SelectionRecord {
 	return {
@@ -28,7 +33,9 @@ function createDroppingController(readBack: () => ProjectionReadBack) {
 	const diagnostics: DiagnosticEvent[] = [];
 	let writes = 0;
 	let current = record(1);
-	const controller = new SelectionProjectionController({
+	let windows = CLOSED_GESTURE_WINDOWS;
+	const controller = new SelectionProjector({
+		getGestureWindows: () => windows,
 		historySelectionCoordinator: new HistorySelectionCoordinator({
 			facet: () => undefined as never,
 		}),
@@ -51,9 +58,15 @@ function createDroppingController(readBack: () => ProjectionReadBack) {
 		emitDiagnostic: (event) => diagnostics.push(event),
 		readBack: () => readBack(),
 	});
+	/** A gesture input as the reader delivers it: windows first, then the projector. */
+	const gesture = (kind: GestureEventKind) => {
+		windows = nextGestureWindowState(kind, windows);
+		controller.onGesture(kind);
+	};
 	return {
 		controller,
 		diagnostics,
+		gesture,
 		writes: () => writes,
 		setVersion: (version: number) => {
 			current = record(version);
@@ -81,7 +94,7 @@ describe("selection projector read-back (W3.R1)", () => {
 		const { controller, diagnostics, writes } = createDroppingController(
 			() => DROPPED,
 		);
-		controller.syncDomSelectionOnce();
+		controller.project("selection-change");
 		expect(writes()).toBe(1);
 		expect(diagnostics).toHaveLength(1);
 		expect(diagnostics[0]).toMatchObject({
@@ -97,8 +110,8 @@ describe("selection projector read-back (W3.R1)", () => {
 	it("P1: a mismatch is reported once per version and trigger, and a new version reports again", () => {
 		const { controller, diagnostics, setVersion } =
 			createDroppingController(() => DROPPED);
-		controller.syncDomSelectionOnce();
-		controller.syncDomSelectionOnce();
+		controller.project("selection-change");
+		controller.project("selection-change");
 		expect(diagnostics).toHaveLength(1);
 		controller.requestDivergenceProjection();
 		expect(diagnostics.map((event) => event.trigger)).toEqual([
@@ -106,7 +119,7 @@ describe("selection projector read-back (W3.R1)", () => {
 			"divergence",
 		]);
 		setVersion(2);
-		controller.syncDomSelectionOnce();
+		controller.project("selection-change");
 		expect(diagnostics).toHaveLength(3);
 	});
 
@@ -116,7 +129,7 @@ describe("selection projector read-back (W3.R1)", () => {
 			equivalent: true,
 			actual: DROPPED.expected,
 		}));
-		controller.syncDomSelectionOnce();
+		controller.project("selection-change");
 		expect(diagnostics).toEqual([]);
 	});
 });
@@ -203,7 +216,7 @@ describe("selection projector triggers and guards (W3.R6, W3.R7)", () => {
 
 	it("P1: a projection that finds the DOM equivalent and focus on target writes nothing", () => {
 		const { controller, writes } = createDroppingController(() => AGREEING);
-		controller.syncDomSelectionOnce();
+		controller.project("selection-change");
 		expect(writes()).toBe(0);
 		expect(controller.lastProjectedVersion).toBe(1);
 	});
@@ -212,7 +225,7 @@ describe("selection projector triggers and guards (W3.R6, W3.R7)", () => {
 		const { controller, diagnostics, writes } = createDroppingController(
 			() => DROPPED,
 		);
-		controller.syncDomSelectionOnce();
+		controller.project("selection-change");
 		expect(diagnostics).toHaveLength(1);
 		controller.requestDivergenceProjection(DROPPED.actual);
 		expect(writes()).toBe(1);
@@ -226,15 +239,17 @@ describe("selection projector triggers and guards (W3.R6, W3.R7)", () => {
 	});
 
 	it("P1: projection is withheld while composing in the target field and runs once on compositionend-completed", () => {
-		const { controller, writes } = createDroppingController(() => DROPPED);
-		controller.notifyGestureEvent("compositionstart");
+		const { controller, gesture, writes } = createDroppingController(
+			() => DROPPED,
+		);
+		gesture("compositionstart");
 		expect(controller.withholdForComposition()).toBe(true);
 		controller.requestDivergenceProjection();
 		controller.projectAfterRebuild(["first"]);
 		expect(writes()).toBe(0);
-		controller.notifyGestureEvent("compositionend-completed");
+		gesture("compositionend-completed");
 		expect(writes()).toBe(1);
-		controller.notifyGestureEvent("compositionend-completed");
+		gesture("compositionend-completed");
 		expect(writes()).toBe(1);
 	});
 });

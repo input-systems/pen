@@ -4,25 +4,35 @@ import type {
 	GestureEventKind,
 	GestureWindowState,
 	ReaderSelection,
+	SelectionReader,
 } from "./selectionReader";
 import {
 	FieldEditorSelectionAuthority,
 	type FieldEditorSelectionSnapshot,
 	type FieldEditorSelectionSource,
 } from "./selectionAuthority";
-import { SelectionProjectionController } from "./selectionProjectionController";
+import {
+	SelectionProjector,
+	type ProjectionTrigger,
+} from "./selectionProjector";
 
-type SelectionProjectionControllerOptions = ConstructorParameters<
-	typeof SelectionProjectionController
->[0];
+type SelectionProjectorOptions = Omit<
+	ConstructorParameters<typeof SelectionProjector>[0],
+	"getGestureWindows"
+>;
 
 export class FieldEditorSelectionCoordinator {
 	private readonly _authority = new FieldEditorSelectionAuthority();
-	private readonly _projection: SelectionProjectionController;
+	private readonly _projection: SelectionProjector;
+	private readonly _reader: SelectionReader;
 	private _editContextSelection: FieldEditorSelectionSnapshot | null = null;
 
-	constructor(options: SelectionProjectionControllerOptions) {
-		this._projection = new SelectionProjectionController(options);
+	constructor(options: SelectionProjectorOptions, reader: SelectionReader) {
+		this._reader = reader;
+		this._projection = new SelectionProjector({
+			...options,
+			getGestureWindows: () => reader.windows,
+		});
 	}
 
 	get isApplyingSelection(): number {
@@ -33,6 +43,7 @@ export class FieldEditorSelectionCoordinator {
 		this._authority.reset();
 		this._editContextSelection = null;
 		this._projection.reset();
+		this._reader.resetGestures();
 	}
 
 	get lastProjectedVersion(): number {
@@ -105,23 +116,28 @@ export class FieldEditorSelectionCoordinator {
 	}
 
 	beginPointerSelection(): void {
-		this._projection.beginPointerSelection();
+		this._reader.notifyGesture("pointerdown");
 	}
 
 	endPointerSelection(): void {
-		this._projection.endPointerSelection();
+		this._reader.notifyGesture("pointerup");
 	}
 
 	notifyGestureEvent(eventKind: GestureEventKind): void {
-		this._projection.notifyGestureEvent(eventKind);
+		this._reader.notifyGesture(eventKind);
+	}
+
+	/** The reader's gesture inputs reach the projector after the windows change. */
+	onGesture(eventKind: GestureEventKind): void {
+		this._projection.onGesture(eventKind);
 	}
 
 	getGestureWindows(): GestureWindowState {
-		return this._projection.getGestureWindows();
+		return this._reader.windows;
 	}
 
 	isAdmissibleGestureRead(): boolean {
-		return this._projection.isAdmissibleGestureRead();
+		return this._reader.isAdmissibleRead();
 	}
 
 	isProjectionInFlight(): boolean {
@@ -174,8 +190,8 @@ export class FieldEditorSelectionCoordinator {
 		);
 	}
 
-	syncDomSelectionOnce(): void {
-		this._projection.syncDomSelectionOnce();
+	project(trigger: ProjectionTrigger): void {
+		this._projection.project(trigger);
 	}
 
 	projectNonTextSelection(state: SelectionState | null): void {

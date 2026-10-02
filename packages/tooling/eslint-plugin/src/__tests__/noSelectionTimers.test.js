@@ -234,14 +234,14 @@ describe("no-selection-timers (S4)", () => {
 				{
 					code: "window.setImmediate(() => {});\n",
 					filename:
-						"packages/rendering/dom/src/field-editor/selectionProjectionController.ts",
+						"packages/rendering/dom/src/field-editor/selectionProjector.ts",
 					errors: [
 						{
 							messageId: "timer",
 							data: {
 								kind: "setImmediate",
 								symbol: "(module)",
-								file: "packages/rendering/dom/src/field-editor/selectionProjectionController.ts",
+								file: "packages/rendering/dom/src/field-editor/selectionProjector.ts",
 							},
 						},
 					],

@@ -53,7 +53,7 @@ import {
 import {
 	isCollapsedDomAgainstProjectedOffsets,
 	isFullBlockEchoAgainstCollapsedCaret,
-} from "./selectionProjectionController";
+} from "./contenteditableEchoRestore";
 
 export class ContentEditableBackend {
 	protected element: HTMLElement | null = null;

@@ -3,7 +3,8 @@
 import { describe, expect, it } from "vitest";
 import type { SelectionRecord } from "@input/pen-types";
 import { HistorySelectionCoordinator } from "../historySelectionCoordinator";
-import { SelectionProjectionController } from "../selectionProjectionController";
+import { SelectionProjector } from "../selectionProjector";
+import { CLOSED_GESTURE_WINDOWS } from "../selectionReader";
 
 function programmaticRecord(
 	blockId: string,
@@ -44,7 +45,8 @@ function createController(
 	}> = [];
 	const diagnostics: Array<{ code: string }> = [];
 	let record = initialRecord;
-	const controller = new SelectionProjectionController({
+	const controller = new SelectionProjector({
+		getGestureWindows: () => CLOSED_GESTURE_WINDOWS,
 		historySelectionCoordinator: new HistorySelectionCoordinator({
 			facet: () => undefined as never,
 		}),
@@ -78,7 +80,7 @@ function createController(
 	return { controller, setTextSelection, diagnostics };
 }
 
-describe("SelectionProjectionController lastProjectedVersion", () => {
+describe("SelectionProjector lastProjectedVersion", () => {
 	it("does not clear lastProjectedVersion on reset", () => {
 		const { controller } = createController();
 		controller.recordProjectedVersion(9);
@@ -87,16 +89,7 @@ describe("SelectionProjectionController lastProjectedVersion", () => {
 	});
 });
 
-describe("SelectionProjectionController gesture windows", () => {
-	it("opens the pointer window on beginPointerSelection and keeps it open after end", () => {
-		const { controller } = createController();
-		expect(controller.isAdmissibleGestureRead()).toBe(false);
-		controller.beginPointerSelection();
-		expect(controller.isAdmissibleGestureRead()).toBe(true);
-		controller.endPointerSelection();
-		expect(controller.isAdmissibleGestureRead()).toBe(true);
-	});
-
+describe("SelectionProjector gesture windows", () => {
 	it("does not expose leftover suppress stubs", () => {
 		const { controller } = createController();
 		expect("shouldSuppressSelectionSync" in controller).toBe(false);
@@ -107,14 +100,14 @@ describe("SelectionProjectionController gesture windows", () => {
 	});
 });
 
-describe("SelectionProjectionController park diagnostics", () => {
+describe("SelectionProjector park diagnostics", () => {
 	it("does not invent selection-target-unmounted for a virtualized unmount", () => {
 		const { controller, diagnostics } = createController(
 			programmaticRecord("first", 0, 0, 4),
 		);
 
-		controller.syncDomSelectionOnce();
-		controller.syncDomSelectionOnce();
+		controller.project("selection-change");
+		controller.project("selection-change");
 
 		expect(controller.parkedProjectionVersion).toBe(4);
 		expect(diagnostics.map((event) => event.code)).toEqual([]);
@@ -147,7 +140,7 @@ describe("SelectionProjectionController park diagnostics", () => {
 			},
 		);
 
-		controller.syncDomSelectionOnce();
+		controller.project("selection-change");
 
 		expect(attached).toBe(0);
 		expect(controller.lastProjectedVersion).toBe(11);
@@ -166,8 +159,8 @@ describe("SelectionProjectionController park diagnostics", () => {
 			},
 		);
 
-		controller.syncDomSelectionOnce();
-		controller.syncDomSelectionOnce();
+		controller.project("selection-change");
+		controller.project("selection-change");
 
 		expect(controller.parkedProjectionVersion).toBe(7);
 		expect(
@@ -178,7 +171,7 @@ describe("SelectionProjectionController park diagnostics", () => {
 	});
 });
 
-describe("SelectionProjectionController shouldProjectSelectionAfterReconcile", () => {
+describe("SelectionProjector shouldProjectSelectionAfterReconcile", () => {
 	it("does not project while a native text input outside the editor owns focus", () => {
 		const root = document.createElement("div");
 		const attached = document.createElement("div");

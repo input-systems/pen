@@ -84,11 +84,7 @@ export type GestureEventKind =
 	| "keyup";
 
 export type DomSelectionReadDecision =
-	| "ignore-inflight"
-	| "no-proposal"
-	| "equivalent"
-	| "diverge"
-	| "accept";
+	"ignore-inflight" | "no-proposal" | "equivalent" | "diverge" | "accept";
 
 export type GestureSelectionOrigin = "pointer" | "ime";
 
@@ -245,8 +241,14 @@ export function readBackProjection(
 	const actual = readNormalizedDomProposal(root, editor);
 	const active = target.ownerDocument.activeElement;
 	return {
-		equivalent: isLogicallyEquivalent(actual, expected, buildLazyNormalPositionSnapshot(editor)),
-		focusOnTarget: active instanceof Node && (active === target || target.contains(active)),
+		equivalent: isLogicallyEquivalent(
+			actual,
+			expected,
+			buildLazyNormalPositionSnapshot(editor),
+		),
+		focusOnTarget:
+			active instanceof Node &&
+			(active === target || target.contains(active)),
 		expected,
 		actual,
 	};
@@ -272,6 +274,8 @@ export interface SelectionReaderOptions {
 	 */
 	readonly intercept?: (proposal: Exclude<ReaderSelection, null>) => boolean;
 	readonly dom?: SelectionReaderDomPort;
+	/** After every gesture input, once the windows reflect it. */
+	readonly onGesture?: (kind: GestureEventKind) => void;
 }
 
 export interface SelectionReader {
@@ -284,6 +288,13 @@ export interface SelectionReader {
 	peek(): ReaderSelection;
 	/** Whether the live selection maps inside this root. */
 	hasSelectionInRoot(): boolean;
+	/** R1–R3 gesture input; the only way window state changes. */
+	notifyGesture(kind: GestureEventKind): void;
+	readonly windows: GestureWindowState;
+	/** Whether a `selectionchange` now would be admissible (any window open). */
+	isAdmissibleRead(): boolean;
+	/** Closes every window, as a session reset does. */
+	resetGestures(): void;
 }
 
 /**
@@ -326,6 +337,41 @@ export function createSelectionReader(
 ): SelectionReader {
 	const dom = options.dom ?? DOCUMENT_SELECTION;
 	let root: HTMLElement | null = null;
+	let windows: GestureWindowState = CLOSED_GESTURE_WINDOWS;
+	let pointerSettledBound = false;
+
+	// R1: a pointerup anywhere in the document ends the pointer gesture,
+	// which may have started in the content and ended outside it.
+	const bindPointerSettled = (): void => {
+		if (pointerSettledBound) {
+			return;
+		}
+		const doc = root?.ownerDocument ?? globalThis.document;
+		if (typeof doc?.addEventListener !== "function") {
+			return;
+		}
+		pointerSettledBound = true;
+		const onUp = (): void => {
+			doc.removeEventListener("pointerup", onUp);
+			pointerSettledBound = false;
+			notifyGesture("pointerup");
+		};
+		doc.addEventListener("pointerup", onUp);
+	};
+	const notifyGesture = (kind: GestureEventKind): void => {
+		if (kind === "pointerdown") {
+			bindPointerSettled();
+		}
+		windows = nextGestureWindowState(kind, windows);
+		if (kind === "pointerup") {
+			// R1: the one microtask on a selection path; it changes window
+			// state only, so a click-collapse settles first (S4).
+			queueMicrotask(() => {
+				windows = nextGestureWindowState("pointer-settled", windows);
+			});
+		}
+		options.onGesture?.(kind);
+	};
 
 	const peek = (): ReaderSelection => {
 		if (!root) {
@@ -356,7 +402,10 @@ export function createSelectionReader(
 		sync();
 	};
 	const detach = (): void => {
-		root?.ownerDocument.removeEventListener("selectionchange", onSelectionChange);
+		root?.ownerDocument.removeEventListener(
+			"selectionchange",
+			onSelectionChange,
+		);
 		root = null;
 	};
 
@@ -367,12 +416,24 @@ export function createSelectionReader(
 			}
 			detach();
 			root = nextRoot;
-			nextRoot.ownerDocument.addEventListener("selectionchange", onSelectionChange);
+			nextRoot.ownerDocument.addEventListener(
+				"selectionchange",
+				onSelectionChange,
+			);
 		},
 		detach,
 		sync,
 		peek,
 		hasSelectionInRoot: () => peek() !== null,
+		notifyGesture,
+		get windows() {
+			return windows;
+		},
+		isAdmissibleRead: () => isAdmissibleDomRead("selectionchange", windows),
+		resetGestures() {
+			windows = CLOSED_GESTURE_WINDOWS;
+			pointerSettledBound = false;
+		},
 	};
 }
 
@@ -579,7 +640,11 @@ function resolveTextBlock(
 	snapshot: ReaderSnapshot,
 	blockId: string,
 ): ReaderBlock | null {
-	if (!(snapshot.has ? snapshot.has(blockId) : snapshot.blockOrder.includes(blockId))) {
+	if (
+		!(snapshot.has
+			? snapshot.has(blockId)
+			: snapshot.blockOrder.includes(blockId))
+	) {
 		return null;
 	}
 	const block = snapshot.blocks[blockId];

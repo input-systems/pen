@@ -120,3 +120,40 @@ describe("single selection reader (S1, W3.R4)", () => {
 		expect(getSelection).toHaveBeenCalledWith(document);
 	});
 });
+
+describe("reader gesture windows (R1–R3)", () => {
+	it("R1: pointerdown opens the pointer window, which stays open after pointerup until pointer-settled", async () => {
+		const { editor, root } = seed();
+		const onGesture = vi.fn();
+		const reader = createSelectionReader({
+			editor,
+			read: () => "accept",
+			onGesture,
+		});
+		reader.attach(root);
+		expect(reader.isAdmissibleRead()).toBe(false);
+		reader.notifyGesture("pointerdown");
+		expect(reader.isAdmissibleRead()).toBe(true);
+		reader.notifyGesture("pointerup");
+		expect(reader.isAdmissibleRead()).toBe(true);
+		await Promise.resolve();
+		expect(reader.isAdmissibleRead()).toBe(false);
+		expect(onGesture.mock.calls.map(([kind]) => kind)).toEqual([
+			"pointerdown",
+			"pointerup",
+		]);
+	});
+
+	it("R3: windows are independent; closing ime leaves an open pointer window", () => {
+		const { editor, root } = seed();
+		const reader = createSelectionReader({ editor, read: () => "accept" });
+		reader.attach(root);
+		reader.notifyGesture("compositionstart");
+		reader.notifyGesture("pointerdown");
+		reader.notifyGesture("compositionend-completed");
+		expect(reader.windows.ime).toBe(false);
+		expect(reader.windows.pointer).toBe(true);
+		reader.resetGestures();
+		expect(reader.isAdmissibleRead()).toBe(false);
+	});
+});

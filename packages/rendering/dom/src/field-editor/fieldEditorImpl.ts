@@ -191,54 +191,64 @@ export class FieldEditorImpl implements FieldEditorSession {
 				this._backendLifecycle.current?.interceptDomSelectionRead?.(
 					proposal,
 				) ?? false,
+			onGesture: (kind) => this._selectionCoordinator.onGesture(kind),
 		});
-		this._selectionCoordinator = new FieldEditorSelectionCoordinator({
-			historySelectionCoordinator: this._historySelectionCoordinator,
-			isEditing: () => this._isEditing,
-			getMode: () => this._mode,
-			getFocusBlockId: () => this._focusBlockId,
-			getAttachedElement: () => this._attachedElement,
-			getRootElement: () => this._findEditorRoot(),
-			findExpandedHost: () => this._findExpandedHost(),
-			resolveInlineElement: (blockId) =>
-				this._resolveInlineElement(blockId),
-			attachElement: (element, focusOptions) =>
-				this.attachElement(element, focusOptions),
-			requestDomFocus: (target, reason, focusOptions, policyOptions) =>
-				this.requestDomFocus(
+		this._selectionCoordinator = new FieldEditorSelectionCoordinator(
+			{
+				historySelectionCoordinator: this._historySelectionCoordinator,
+				isEditing: () => this._isEditing,
+				getMode: () => this._mode,
+				getFocusBlockId: () => this._focusBlockId,
+				getAttachedElement: () => this._attachedElement,
+				getRootElement: () => this._findEditorRoot(),
+				findExpandedHost: () => this._findExpandedHost(),
+				resolveInlineElement: (blockId) =>
+					this._resolveInlineElement(blockId),
+				attachElement: (element, focusOptions) =>
+					this.attachElement(element, focusOptions),
+				requestDomFocus: (
 					target,
 					reason,
 					focusOptions,
 					policyOptions,
-				),
-			updateBackendSelection: () => {
-				this._backendLifecycle.updateSelection(null);
+				) =>
+					this.requestDomFocus(
+						target,
+						reason,
+						focusOptions,
+						policyOptions,
+					),
+				updateBackendSelection: () => {
+					this._backendLifecycle.updateSelection(null);
+				},
+				setTextSelection: (blockId, anchorOffset, focusOffset) =>
+					this.setTextSelection(blockId, anchorOffset, focusOffset),
+				activate: (blockId) => this.activate(blockId),
+				emitSelectionProjected: () => {
+					this._emitFocusLifecycle({
+						type: "selection-projected",
+						editor: this._editor,
+						blockId: this._focusBlockId,
+					});
+				},
+				getRecord: () => getEditorSelectionRecord(this._editor),
+				emitDiagnostic: (event) => {
+					this._editor.internals.emit("diagnostic", event);
+				},
+				readBack: (target) => {
+					const root = this._findEditorRoot();
+					return root
+						? readBackProjection(this._editor, root, target)
+						: null;
+				},
+				getSurface: () =>
+					this._mode === "expanded" ? "expanded" : "text",
+				backendSelectionAgrees: () =>
+					this._backendLifecycle.current?.selectionAgreesWithAuthority?.() ??
+					true,
 			},
-			setTextSelection: (blockId, anchorOffset, focusOffset) =>
-				this.setTextSelection(blockId, anchorOffset, focusOffset),
-			activate: (blockId) => this.activate(blockId),
-			emitSelectionProjected: () => {
-				this._emitFocusLifecycle({
-					type: "selection-projected",
-					editor: this._editor,
-					blockId: this._focusBlockId,
-				});
-			},
-			getRecord: () => getEditorSelectionRecord(this._editor),
-			emitDiagnostic: (event) => {
-				this._editor.internals.emit("diagnostic", event);
-			},
-			readBack: (target) => {
-				const root = this._findEditorRoot();
-				return root
-					? readBackProjection(this._editor, root, target)
-					: null;
-			},
-			getSurface: () => (this._mode === "expanded" ? "expanded" : "text"),
-			backendSelectionAgrees: () =>
-				this._backendLifecycle.current?.selectionAgreesWithAuthority?.() ??
-				true,
-		});
+			this._selectionReader,
+		);
 		// FE4: the commit feed lives here rather than in a host's mount,
 		// because both the vanilla mount and the framework bindings build a
 		// field editor while only the vanilla one has a mount function. The
@@ -287,10 +297,12 @@ export class FieldEditorImpl implements FieldEditorSession {
 					skipBackendWrite: true,
 				});
 				if (!alreadyProjected && !withheld) {
-					this._selectionCoordinator.syncDomSelectionOnce();
+					this._selectionCoordinator.project("selection-change");
 					scheduler?.setSelection(record);
 				}
-				this._selectionCoordinator.projectNonTextSelection(record.state);
+				this._selectionCoordinator.projectNonTextSelection(
+					record.state,
+				);
 				const delivered =
 					record.version <=
 					this._selectionCoordinator.lastProjectedVersion;
@@ -315,7 +327,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 			shouldProjectSelection: () =>
 				this.shouldProjectSelectionAfterReconcile(),
 			projectSelection: () =>
-				this._selectionCoordinator.syncDomSelectionOnce(),
+				this._selectionCoordinator.project("selection-change"),
 			notifyDomReconciled: (blockId) => this.notifyDomReconciled(blockId),
 			getScheduler: () => this._ensureScheduler(),
 		});
@@ -387,7 +399,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 		) {
 			return;
 		}
-		this._selectionCoordinator.syncDomSelectionOnce();
+		this._selectionCoordinator.project("selection-change");
 		if (this._selectionCoordinator.parkedProjectionVersion != null) {
 			return "parked";
 		}
@@ -1132,7 +1144,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 			this.activate(point.blockId);
 		}
 
-		this._selectionCoordinator.syncDomSelectionOnce();
+		this._selectionCoordinator.project("activation");
 	}
 
 	delegate(blockSchema: BlockSchema): boolean {
@@ -1149,7 +1161,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	protected _syncSelectionToDOM(): void {
 		if (!this._isEditing) return;
-		this._selectionCoordinator.syncDomSelectionOnce();
+		this._selectionCoordinator.project("activation");
 	}
 
 	togglePendingMark(markType: string): boolean {
