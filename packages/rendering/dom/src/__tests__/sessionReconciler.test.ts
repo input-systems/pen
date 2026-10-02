@@ -187,6 +187,7 @@ function createReconciler(
 	options: {
 		mode?: "single" | "expanded";
 		projectSelection?: () => void;
+		projectAfterRebuild?: (blockIds: readonly string[]) => void;
 	} = {},
 ) {
 	const scheduler = new DomScheduler("session-reconciler-test");
@@ -201,7 +202,7 @@ function createReconciler(
 		getAttachedElement: () => null,
 		getInlineElement: () => null,
 		getYText,
-		shouldPreserveSelection: () => false,
+		projectAfterRebuild: options.projectAfterRebuild ?? (() => {}),
 		shouldProjectSelection: () => shouldProjectSelection,
 		projectSelection: options.projectSelection ?? (() => {}),
 		getScheduler: () => scheduler,

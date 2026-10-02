@@ -168,9 +168,10 @@ export const PenInlineContent = defineComponent({
 					editor.schema,
 					{
 						editor,
-						preserveSelection: false,
 					},
 				);
+				// P3: a no-op unless this block is the projection target.
+				fieldEditor?.projectAfterRebuild?.([props.blockId]);
 			},
 			{ immediate: true },
 		);

@@ -91,7 +91,7 @@ describe("DomScheduler CS6 session reconcile", () => {
 				order.push("reconcile");
 				return null;
 			},
-			shouldPreserveSelection: () => false,
+			projectAfterRebuild: () => {},
 			shouldProjectSelection: () => true,
 			projectSelection: () => {
 				order.push("project-after-flush");
@@ -141,7 +141,7 @@ describe("DomScheduler CS6 session reconcile", () => {
 				order.push("reconcile");
 				return null;
 			},
-			shouldPreserveSelection: () => false,
+			projectAfterRebuild: () => {},
 			shouldProjectSelection: () => true,
 			projectSelection: () => {
 				order.push("project-after-flush");

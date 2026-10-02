@@ -176,8 +176,6 @@
 - ReplaceInlineAtomWithTextOptions
 - resolveInlineAtomDropTarget
 - ResolveInlineAtomDropTargetOptions
-- restoreSelection
-- saveSelection
 - SelectionPoint
 - TextDiffOp
 
@@ -425,12 +423,6 @@ _no exports_
 - applyDeltaToDOM
 - fullReconcileDeltasToDOM
 - fullReconcileToDOM
-- restoreSelection
-- saveSelection
-
-### type
-
-- SavedSelection
 
 ## ./field-editor/selectionBridge
 

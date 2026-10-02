@@ -92,7 +92,6 @@ export const PenTableCellContent = defineComponent({
 					editor.schema,
 					{
 						editor,
-						preserveSelection: false,
 					},
 				);
 			},

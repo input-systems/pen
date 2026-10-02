@@ -28,7 +28,6 @@ function mountInline(): HTMLElement {
 function fullReconcile(host: HTMLElement, text: string): void {
 	fullReconcileDeltasToDOM([{ insert: text }], host, defaultSchema, {
 		urlPolicy: { resolve: () => null },
-		preserveSelection: false,
 	});
 }
 

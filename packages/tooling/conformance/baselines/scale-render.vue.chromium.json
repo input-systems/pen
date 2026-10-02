@@ -117,10 +117,10 @@
 				"render.blockRenders": 4,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 139,
+				"scan.blocksMapReads": 128,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 42,
+				"scan.textFullReads": 36,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -192,10 +192,10 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 2102,
 				"scan.blocksMapIterations": 2102,
-				"scan.blocksMapReads": 1158,
+				"scan.blocksMapReads": 1147,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
-				"scan.textFullReads": 14,
+				"scan.textFullReads": 8,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"dom.blocksTouched": 1,
@@ -270,10 +270,10 @@
 				"render.blockRenders": 4,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 139,
+				"scan.blocksMapReads": 128,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 42,
+				"scan.textFullReads": 36,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -345,10 +345,10 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 10502,
 				"scan.blocksMapIterations": 10502,
-				"scan.blocksMapReads": 5358,
+				"scan.blocksMapReads": 5347,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
-				"scan.textFullReads": 14,
+				"scan.textFullReads": 8,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"dom.blocksTouched": 1,
@@ -734,6 +734,26 @@
 				"vue/scale-5k/enterNumbered/scan.textFullReads: 40 !== 38",
 				"vue/scale-5k/remoteInsert/scan.blocksMapReads: 5358 !== 5347",
 				"vue/scale-5k/remoteInsert/scan.textFullReads: 14 !== 12"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 3b: reconciles stop saving/restoring the native range; P3 projects after a target rebuild (one projection + read-back per rebuilt keystroke/Enter), and the microtask divergence projection after unowned rebuilds is gone",
+			"moved": [
+				"vue/scale-1k/caretDown/scan.blocksMapReads: 128 !== 139",
+				"vue/scale-1k/caretDown/scan.textFullReads: 36 !== 42",
+				"vue/scale-1k/remoteInsert/scan.blocksMapReads: 1147 !== 1158",
+				"vue/scale-1k/remoteInsert/scan.textFullReads: 8 !== 14"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 3b: reconciles stop saving/restoring the native range; P3 projects after a target rebuild (one projection + read-back per rebuilt keystroke/Enter), and the microtask divergence projection after unowned rebuilds is gone",
+			"moved": [
+				"vue/scale-5k/caretDown/scan.blocksMapReads: 128 !== 139",
+				"vue/scale-5k/caretDown/scan.textFullReads: 36 !== 42",
+				"vue/scale-5k/remoteInsert/scan.blocksMapReads: 5347 !== 5358",
+				"vue/scale-5k/remoteInsert/scan.textFullReads: 8 !== 14"
 			]
 		}
 	]

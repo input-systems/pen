@@ -1,3 +1,4 @@
+import { findLogicalDOMPoint } from "./inlineAtomDom";
 import { findDOMPoint } from "./selectionBridgeOffsets";
 import type { SelectionPoint } from "./selectionBridge";
 
@@ -23,6 +24,27 @@ export function writeNativeRange(
 	if (!sel) return;
 
 	writeNativeRangeAt(sel, anchorResult, focusResult);
+}
+
+/**
+ * Writes element-local logical offsets into one field (W3.R3, PH1 only). The
+ * backends' stamp restores call it with the offsets they resolve today, so
+ * the stamp sources can be removed one by one; `source` names the stamp each
+ * removal deletes. No read-back. W3.R10 deletes it.
+ */
+export function writeLegacyFieldRange(
+	element: HTMLElement,
+	anchorOffset: number,
+	focusOffset: number,
+	_source: "programmatic" | "edit-context-textupdate" | "user-dom" | "cell",
+): void {
+	const selection = element.ownerDocument.getSelection();
+	if (!selection) return;
+	writeNativeRangeAt(
+		selection,
+		findLogicalDOMPoint(element, Math.max(0, anchorOffset)),
+		findLogicalDOMPoint(element, Math.max(0, focusOffset)),
+	);
 }
 
 /** Replaces the native selection with `range`. */

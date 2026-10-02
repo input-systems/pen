@@ -184,6 +184,10 @@ export class FieldEditorSelectionCoordinator {
 		this._projection.syncDomSelectionOnce();
 	}
 
+	projectAfterRebuild(blockIds: readonly string[]): void {
+		this._projection.projectAfterRebuild(blockIds);
+	}
+
 	shouldProjectSelectionAfterReconcile(): boolean {
 		return this._projection.shouldProjectSelectionAfterReconcile();
 	}

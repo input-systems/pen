@@ -59,7 +59,8 @@ type SelectionProjectionControllerOptions = {
 };
 
 /** What asked for a projection, for the mismatch payload and its once-per key. */
-type ProjectionTrigger = "selection-change" | "mount-ack" | "divergence";
+type ProjectionTrigger =
+	"selection-change" | "mount-ack" | "divergence" | "target-rebuilt";
 
 export class SelectionProjectionController {
 	private readonly _historySelectionCoordinator: HistorySelectionCoordinator;
@@ -107,7 +108,10 @@ export class SelectionProjectionController {
 		this._withTrigger("mount-ack", () => this.syncDomSelectionOnce());
 	}
 
-	private _withTrigger(trigger: ProjectionTrigger, project: () => void): void {
+	private _withTrigger(
+		trigger: ProjectionTrigger,
+		project: () => void,
+	): void {
 		const previous = this._trigger;
 		this._trigger = trigger;
 		try {
@@ -339,6 +343,45 @@ export class SelectionProjectionController {
 		return this._options.getFocusBlockId();
 	}
 
+	/**
+	 * P3: a reconcile rebuilt these blocks' DOM. When one of them is the
+	 * mounted projection target, project the authority now, after the
+	 * rebuild. Withheld while a native control that is not this field owns
+	 * focus (HOST9).
+	 */
+	projectAfterRebuild(blockIds: readonly string[]): void {
+		if (!this._options.isEditing()) {
+			return;
+		}
+		if (!blockIds.some((blockId) => this._isProjectionTarget(blockId))) {
+			return;
+		}
+		if (!this.shouldProjectSelectionAfterReconcile()) {
+			return;
+		}
+		this._withTrigger("target-rebuilt", () => this.syncDomSelectionOnce());
+	}
+
+	private _isProjectionTarget(blockId: string): boolean {
+		const mode = this._options.getMode();
+		switch (mode) {
+			case "single":
+				return this._projectionTargetBlockId() === blockId;
+			case "expanded": {
+				const host = this._options.findExpandedHost();
+				const inline = this._options.resolveInlineElement(blockId);
+				return !!host && !!inline && host.contains(inline);
+			}
+			case "block":
+			case "inactive":
+				return false;
+			default: {
+				const unreachable: never = mode;
+				return unreachable;
+			}
+		}
+	}
+
 	shouldProjectSelectionAfterReconcile(): boolean {
 		const attachedElement = this._options.getAttachedElement();
 		if (!attachedElement) {
@@ -458,7 +501,9 @@ export class SelectionProjectionController {
 		if (this._alreadyReported(`${version}:${this._trigger}`)) {
 			return;
 		}
-		this._options.emitDiagnostic?.(this._mismatchDiagnostic(version, readBack));
+		this._options.emitDiagnostic?.(
+			this._mismatchDiagnostic(version, readBack),
+		);
 	}
 
 	/** Remembers the last 64 (version, trigger) keys; true when this one was reported. */
@@ -472,7 +517,10 @@ export class SelectionProjectionController {
 		return false;
 	}
 
-	private _mismatchDiagnostic(version: number, readBack: ProjectionReadBack): DiagnosticEvent {
+	private _mismatchDiagnostic(
+		version: number,
+		readBack: ProjectionReadBack,
+	): DiagnosticEvent {
 		return {
 			code: "selection-projection-mismatch",
 			level: "warn",

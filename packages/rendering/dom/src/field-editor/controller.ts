@@ -171,6 +171,12 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 	isProjectionInFlight?(): boolean;
 	requestDivergenceProjection?(): void;
 	/**
+	 * P3: a reconcile rebuilt these blocks' DOM; project the authority now
+	 * when one of them is the mounted projection target. Reconciles never
+	 * save or restore the native range themselves.
+	 */
+	projectAfterRebuild?(blockIds: readonly string[]): void;
+	/**
 	 * Whether a field rebuild may write the selection back into the DOM.
 	 * False while a native control that is not this field owns focus (HOST9):
 	 * setting a DOM selection inside the field would move focus with it.

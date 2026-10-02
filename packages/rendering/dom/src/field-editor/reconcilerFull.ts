@@ -1,4 +1,4 @@
-import { fieldEditorHostFacet, sortDeltaAttributes } from "@input/pen-core";
+import { sortDeltaAttributes } from "@input/pen-core";
 import type {
 	Editor,
 	InlineDecoration,
@@ -7,7 +7,6 @@ import type {
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
 import type { UrlPolicy } from "../security/urlPolicy";
 import type { FieldEditorDelta, FieldEditorTextLike } from "./crdt";
-import { restoreSelection, saveSelection } from "./reconcilerSelection";
 import {
 	applyInlineDecorationsToDeltas,
 	filterVisibleInlineDecorationDeltas,
@@ -22,32 +21,11 @@ type ReconcilePolicyOptions =
 	| { editor: Editor; urlPolicy?: undefined }
 	| { urlPolicy: UrlPolicy; editor?: undefined };
 
-type DivergenceProjector = {
-	isAdmissibleGestureRead?: () => boolean;
-	requestDivergenceProjection?: () => void;
-};
-
-function requestUnwindowedProjection(editor: Editor): void {
-	const fieldEditor = editor.facet(
-		fieldEditorHostFacet,
-	) as DivergenceProjector | null;
-	if (!fieldEditor || fieldEditor.isAdmissibleGestureRead?.()) {
-		return;
-	}
-	queueMicrotask(() => {
-		if (fieldEditor.isAdmissibleGestureRead?.()) {
-			return;
-		}
-		fieldEditor.requestDivergenceProjection?.();
-	});
-}
-
 export function fullReconcileToDOM(
 	ytext: FieldEditorTextLike,
 	element: HTMLElement,
 	registry: SchemaRegistry,
 	options: ReconcilePolicyOptions & {
-		preserveSelection?: boolean;
 		inlineDecorations?: readonly InlineDecoration[];
 	},
 ): void {
@@ -70,11 +48,16 @@ export function fullReconcileToDOM(
 	fullReconcileDeltasToDOM(renderedDeltas, element, registry, options);
 }
 
+/**
+ * Rebuilds `element` from `deltas`. A reconcile never saves or restores the
+ * native selection: when it rebuilds a mounted projection target, the caller
+ * asks the field editor to project the authority in the same turn (P3).
+ */
 export function fullReconcileDeltasToDOM(
 	deltas: FieldEditorDelta[],
 	element: HTMLElement,
 	registry: SchemaRegistry,
-	options: ReconcilePolicyOptions & { preserveSelection?: boolean },
+	options: ReconcilePolicyOptions,
 ): void {
 	const policy =
 		options.editor !== undefined
@@ -89,9 +72,6 @@ export function fullReconcileDeltasToDOM(
 			attributes: sortDeltaAttributes(delta.attributes, registry),
 		};
 	});
-
-	const preserveSelection = options.preserveSelection ?? true;
-	const savedSelection = preserveSelection ? saveSelection(element) : null;
 
 	const fragment = document.createDocumentFragment();
 	let hasContent = false;
@@ -120,10 +100,4 @@ export function fullReconcileDeltasToDOM(
 	}
 
 	patchDOM(element, fragment);
-	if (savedSelection) {
-		restoreSelection(element, savedSelection);
-	}
-	if (!preserveSelection && options.editor) {
-		requestUnwindowedProjection(options.editor);
-	}
 }

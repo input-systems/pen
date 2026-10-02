@@ -124,6 +124,11 @@ export const InlineContent = memo(function InlineContent(props: InlineContentPro
 	);
 	const renderedDeltasText = getDeltaText(renderedDeltas);
 
+	// P3: after a rebuild, a no-op unless this block is the projection target.
+	const projectRebuiltBlock = () => {
+		fieldEditor?.projectAfterRebuild?.([blockId]);
+	};
+
 	useIsomorphicLayoutEffect(() => {
 		if (isExpandedOwnedBlock) {
 			return;
@@ -189,11 +194,9 @@ export const InlineContent = memo(function InlineContent(props: InlineContentPro
 				[...renderedDeltas],
 				elementRef.current,
 				editor.schema,
-				{
-					editor,
-					preserveSelection: true,
-				},
+				{ editor },
 			);
+			projectRebuiltBlock();
 			previousRenderedDeltasRef.current = renderedDeltas;
 			syncInlineAtomTargets();
 			return;
@@ -220,15 +223,15 @@ export const InlineContent = memo(function InlineContent(props: InlineContentPro
 			[...renderedDeltas],
 			elementRef.current,
 			editor.schema,
-			{
-				editor,
-				preserveSelection: false,
-			},
+			{ editor },
 		);
+		projectRebuiltBlock();
 		previousRenderedDeltasRef.current = renderedDeltas;
 		syncInlineAtomTargets();
 	}, [
 		editor,
+		fieldEditor,
+		blockId,
 		isExpandedOwnedBlock,
 		field.isComposing,
 		field.domSyncVersion,

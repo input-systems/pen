@@ -12,7 +12,7 @@ import {
 	extractTextFromDOM,
 	getSelectionOffsets,
 } from "./selectionBridge";
-import { writeNativeRange } from "./selectionProjector";
+import { writeLegacyFieldRange, writeNativeRange } from "./selectionProjector";
 import { applyListInputRule } from "./commands";
 import {
 	isCollaboratorTransaction,
@@ -36,7 +36,6 @@ import {
 	mapOffsetThroughRemoteDeltas,
 	rebaseTextDiffOps,
 	requiresResolvedInputRange,
-	setSelectionOffsets,
 } from "./contenteditableDomHelpers";
 import {
 	resolveLiveTextSelection,
@@ -315,7 +314,7 @@ export class ContentEditableBackend {
 			const start = activeSelection.anchorOffset;
 			const end = activeSelection.focusOffset;
 			this.fieldEditor.withBackendSelectionWrite(() => {
-				setSelectionOffsets(element, start, end);
+				writeLegacyFieldRange(element, start, end, "cell");
 			});
 			return;
 		}
@@ -532,7 +531,6 @@ export class ContentEditableBackend {
 		try {
 			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: false,
 				inlineDecorations: this.getInlineDecorationsForBlock(),
 			});
 			this.discardObservedMutations();
@@ -555,11 +553,22 @@ export class ContentEditableBackend {
 			this.fullReconcileActiveField(blockId);
 			this.restoreDOMSelectionFromEditor();
 		} else {
-			this.reconcileDelta(blockId, event.delta);
-			this.restoreProgrammaticSelection();
+			this.reconcileDeltaAndProject(blockId, event.delta);
 		}
 		this.discardObservedMutations();
 	};
+
+	/** A programmatic stamp restores the caret; otherwise a full rebuild projects (P3). */
+	protected reconcileDeltaAndProject(
+		blockId: string | null,
+		delta: FieldEditorDelta[],
+	): void {
+		const rebuilt = this.reconcileDelta(blockId, delta);
+		if (this.restoreProgrammaticSelection() || !rebuilt || !blockId) {
+			return;
+		}
+		this.fieldEditor.projectAfterRebuild?.([blockId]);
+	}
 
 	/** C2: a collaborator delta during composition waits for compositionend. */
 	protected deferCollaboratorDelta(event: FieldEditorTextChangeEvent): void {
@@ -568,14 +577,15 @@ export class ContentEditableBackend {
 		}
 	}
 
+	/** Patches the field with `delta`; true when it fell back to a full rebuild. */
 	protected reconcileDelta(
 		blockId: string | null,
 		delta: FieldEditorDelta[],
-	): void {
+	): boolean {
 		const inlineDecorations = this.getInlineDecorationsForBlock();
 		if (this.requiresFullReconcile(blockId, inlineDecorations)) {
 			this.fullReconcileActiveField(blockId, inlineDecorations);
-			return;
+			return true;
 		}
 		const applied = applyDeltaToDOM(
 			delta,
@@ -586,12 +596,15 @@ export class ContentEditableBackend {
 		if (!applied) {
 			this.fullReconcileActiveField(blockId);
 		}
+		return !applied;
 	}
 
-	protected restoreProgrammaticSelection(): void {
-		if (this.fieldEditor.hasBackendSelectionAuthority("programmatic")) {
-			this.restoreDOMSelectionFromEditor();
+	protected restoreProgrammaticSelection(): boolean {
+		if (!this.fieldEditor.hasBackendSelectionAuthority("programmatic")) {
+			return false;
 		}
+		this.restoreDOMSelectionFromEditor();
+		return true;
 	}
 
 	/** Table cells and decorations that split text runs cannot take a delta patch. */
@@ -615,7 +628,6 @@ export class ContentEditableBackend {
 		if (!this.element || !this.ytext) return;
 		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 			urlPolicy: urlPolicyFromEditor(this.editor),
-			preserveSelection: true,
 			inlineDecorations,
 		});
 		this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
@@ -665,7 +677,7 @@ export class ContentEditableBackend {
 		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
 	}
 
-	protected ensureActiveDOMMatchesYText(preserveSelection = true): boolean {
+	protected ensureActiveDOMMatchesYText(): boolean {
 		if (!this.element || !this.ytext) return false;
 		const nextInlineDecorationsSignature =
 			this.getInlineDecorationsSignature();
@@ -678,7 +690,6 @@ export class ContentEditableBackend {
 
 		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 			urlPolicy: urlPolicyFromEditor(this.editor),
-			preserveSelection,
 			inlineDecorations: this.getInlineDecorationsForBlock(),
 		});
 		this.discardObservedMutations();
@@ -703,10 +714,7 @@ export class ContentEditableBackend {
 		// the selection back into this field would drag focus along with it
 		const projectSelection =
 			this.fieldEditor.shouldProjectSelectionAfterReconcile?.() ?? true;
-		if (
-			this.ensureActiveDOMMatchesYText(projectSelection) &&
-			projectSelection
-		) {
+		if (this.ensureActiveDOMMatchesYText() && projectSelection) {
 			this.restoreDOMSelectionFromEditor();
 		}
 	};

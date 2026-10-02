@@ -218,7 +218,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 			},
 			readBack: (target) => {
 				const root = this._findEditorRoot();
-				return root ? readBackProjection(this._editor, root, target) : null;
+				return root
+					? readBackProjection(this._editor, root, target)
+					: null;
 			},
 			getSurface: () => (this._mode === "expanded" ? "expanded" : "text"),
 		});
@@ -289,8 +291,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 			getAttachedElement: () => this._attachedElement,
 			getInlineElement: (blockId) => this._resolveInlineElement(blockId),
 			getYText: (blockId) => this._getYText(blockId),
-			shouldPreserveSelection: () =>
-				this.shouldProjectSelectionAfterReconcile(),
+			projectAfterRebuild: (blockIds) =>
+				this.projectAfterRebuild(blockIds),
 			shouldProjectSelection: () =>
 				this.shouldProjectSelectionAfterReconcile(),
 			projectSelection: () =>
@@ -804,6 +806,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._selectionCoordinator.requestDivergenceProjection();
 	}
 
+	projectAfterRebuild(blockIds: readonly string[]): void {
+		this._selectionCoordinator.projectAfterRebuild(blockIds);
+	}
+
 	shouldProjectSelectionAfterReconcile(): boolean {
 		return this._selectionCoordinator.shouldProjectSelectionAfterReconcile();
 	}
@@ -1130,9 +1136,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 		const selection = this._editor.selection;
 		const anchor =
 			selection?.type === "text" &&
-			getSelectionBlockRange(this._editor.documentState, selection).includes(
-				this._focusBlockId,
-			)
+			getSelectionBlockRange(
+				this._editor.documentState,
+				selection,
+			).includes(this._focusBlockId)
 				? selection.anchor
 				: { blockId: this._focusBlockId, offset: 0 };
 		const order = getPreorderBlockIds(this._editor);

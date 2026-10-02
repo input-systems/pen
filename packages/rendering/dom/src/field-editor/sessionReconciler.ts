@@ -26,7 +26,8 @@ interface SessionReconcilerOptions {
 	getAttachedElement: () => HTMLElement | null;
 	getInlineElement: (blockId: string) => HTMLElement | null;
 	getYText: (blockId: string) => FieldEditorTextLike | null;
-	shouldPreserveSelection: () => boolean;
+	/** P3, after this flush's rebuilds. */
+	projectAfterRebuild: (blockIds: readonly string[]) => void;
 	shouldProjectSelection: () => boolean;
 	projectSelection: () => void;
 	notifyDomReconciled?: (blockId: string) => void;
@@ -146,7 +147,8 @@ export class SessionReconciler {
 			return;
 		}
 		if (snapshot.mode === "expanded") {
-			const changedBlockIds = snapshot.activeBlockIds.filter(hasBlockChanged);
+			const changedBlockIds =
+				snapshot.activeBlockIds.filter(hasBlockChanged);
 			for (const blockId of changedBlockIds) {
 				this.pendingBlockIds.add(blockId);
 			}
@@ -202,22 +204,17 @@ export class SessionReconciler {
 			return;
 		}
 
-		const preserveSelection = this.options.shouldPreserveSelection();
-
+		const rebuilt: string[] = [];
 		if (snapshot.mode === "expanded") {
 			const activeBlockIdSet = new Set(snapshot.activeBlockIds);
 			for (const blockId of blockIds) {
 				if (!activeBlockIdSet.has(blockId)) {
 					continue;
 				}
-				this.reconcileBlock(blockId, preserveSelection);
+				this.reconcileBlock(blockId);
+				rebuilt.push(blockId);
 			}
-			if (
-				shouldProjectSelection &&
-				this.options.shouldProjectSelection()
-			) {
-				this.options.projectSelection();
-			}
+			this.projectAfterFlush(shouldProjectSelection, rebuilt);
 			return;
 		}
 
@@ -235,28 +232,40 @@ export class SessionReconciler {
 					continue;
 				}
 				fullReconcileToDOM(ytext, element, this.editor.schema, {
-					preserveSelection,
 					inlineDecorations: this.getInlineDecorations(blockId),
 					urlPolicy: urlPolicyFromEditor(this.editor),
 				});
 				this.options.notifyDomReconciled?.(blockId);
+				rebuilt.push(blockId);
 				continue;
 			}
-			this.reconcileBlock(blockId, preserveSelection);
+			this.reconcileBlock(blockId);
+			rebuilt.push(blockId);
 		}
+		this.projectAfterFlush(shouldProjectSelection, rebuilt);
+	}
+
+	/** A requested projection covers the rebuilt target; otherwise P3 decides. */
+	private projectAfterFlush(
+		shouldProjectSelection: boolean,
+		rebuilt: readonly string[],
+	): void {
 		if (shouldProjectSelection && this.options.shouldProjectSelection()) {
 			this.options.projectSelection();
+			return;
+		}
+		if (rebuilt.length > 0) {
+			this.options.projectAfterRebuild(rebuilt);
 		}
 	}
 
-	private reconcileBlock(blockId: string, preserveSelection = true): void {
+	private reconcileBlock(blockId: string): void {
 		const inlineElement = this.options.getInlineElement(blockId);
 		const ytext = this.options.getYText(blockId);
 		if (!inlineElement || !ytext) {
 			return;
 		}
 		fullReconcileToDOM(ytext, inlineElement, this.editor.schema, {
-			preserveSelection,
 			inlineDecorations: this.getInlineDecorations(blockId),
 			urlPolicy: urlPolicyFromEditor(this.editor),
 		});

@@ -55,7 +55,6 @@ function TextCell(props: TableCellContentProps) {
 			editor.schema,
 			{
 				editor,
-				preserveSelection: false,
 			},
 		);
 	}, [editor, isActiveCell, textSnapshot]);

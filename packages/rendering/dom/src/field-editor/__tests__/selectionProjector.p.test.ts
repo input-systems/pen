@@ -29,7 +29,9 @@ function createDroppingController(readBack: () => ProjectionReadBack) {
 	let writes = 0;
 	let current = record(1);
 	const controller = new SelectionProjectionController({
-		historySelectionCoordinator: new HistorySelectionCoordinator({ facet: () => undefined as never }),
+		historySelectionCoordinator: new HistorySelectionCoordinator({
+			facet: () => undefined as never,
+		}),
 		isEditing: () => true,
 		getMode: () => "single",
 		getFocusBlockId: () => "first",
@@ -62,13 +64,23 @@ function createDroppingController(readBack: () => ProjectionReadBack) {
 const DROPPED: ProjectionReadBack = {
 	equivalent: false,
 	focusOnTarget: true,
-	expected: { type: "text", anchor: { blockId: "first", offset: 2 }, focus: { blockId: "first", offset: 2 } },
-	actual: { type: "text", anchor: { blockId: "first", offset: 0 }, focus: { blockId: "first", offset: 0 } },
+	expected: {
+		type: "text",
+		anchor: { blockId: "first", offset: 2 },
+		focus: { blockId: "first", offset: 2 },
+	},
+	actual: {
+		type: "text",
+		anchor: { blockId: "first", offset: 0 },
+		focus: { blockId: "first", offset: 0 },
+	},
 };
 
 describe("selection projector read-back (W3.R1)", () => {
 	it("P1: a read-back that does not map to the record emits selection-projection-mismatch with both values", () => {
-		const { controller, diagnostics, writes } = createDroppingController(() => DROPPED);
+		const { controller, diagnostics, writes } = createDroppingController(
+			() => DROPPED,
+		);
 		controller.syncDomSelectionOnce();
 		expect(writes()).toBe(1);
 		expect(diagnostics).toHaveLength(1);
@@ -83,12 +95,16 @@ describe("selection projector read-back (W3.R1)", () => {
 	});
 
 	it("P1: a mismatch is reported once per version and trigger, and a new version reports again", () => {
-		const { controller, diagnostics, setVersion } = createDroppingController(() => DROPPED);
+		const { controller, diagnostics, setVersion } =
+			createDroppingController(() => DROPPED);
 		controller.syncDomSelectionOnce();
 		controller.syncDomSelectionOnce();
 		expect(diagnostics).toHaveLength(1);
 		controller.requestDivergenceProjection();
-		expect(diagnostics.map((event) => event.trigger)).toEqual(["selection-change", "divergence"]);
+		expect(diagnostics.map((event) => event.trigger)).toEqual([
+			"selection-change",
+			"divergence",
+		]);
 		setVersion(2);
 		controller.syncDomSelectionOnce();
 		expect(diagnostics).toHaveLength(3);
@@ -102,5 +118,37 @@ describe("selection projector read-back (W3.R1)", () => {
 		}));
 		controller.syncDomSelectionOnce();
 		expect(diagnostics).toEqual([]);
+	});
+});
+
+describe("selection projector rebuild projection (P3)", () => {
+	it("P3: a rebuild of the mounted target projects the authority once with trigger target-rebuilt", () => {
+		const { controller, diagnostics, writes } = createDroppingController(
+			() => DROPPED,
+		);
+		controller.projectAfterRebuild(["first"]);
+		expect(writes()).toBe(1);
+		expect(diagnostics.map((event) => event.trigger)).toEqual([
+			"target-rebuilt",
+		]);
+	});
+
+	it("P3: a rebuild of a block that is not the projection target does not write", () => {
+		const { controller, writes } = createDroppingController(() => DROPPED);
+		controller.projectAfterRebuild(["second"]);
+		expect(writes()).toBe(0);
+	});
+
+	it("HOST9: a P3 rebuild while a foreign input owns focus does not write", () => {
+		const { controller, writes } = createDroppingController(() => DROPPED);
+		const input = document.createElement("input");
+		document.body.append(input);
+		input.focus();
+		try {
+			controller.projectAfterRebuild(["first"]);
+			expect(writes()).toBe(0);
+		} finally {
+			input.remove();
+		}
 	});
 });

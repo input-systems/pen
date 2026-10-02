@@ -229,7 +229,6 @@ function reconcileInline(
 	if (revision === nodes.reconciledRevision) return;
 	nodes.reconciledRevision = revision;
 	fullReconcileDeltasToDOM([...block.textDeltas()], inline, editor.schema, {
-		preserveSelection: false,
 		urlPolicy: urlPolicyFromEditor(editor),
 	});
 }

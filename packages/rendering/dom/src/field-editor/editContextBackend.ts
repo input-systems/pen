@@ -411,7 +411,6 @@ export class EditContextBackend {
 		if (this.paintedCompositionPreview && this.element && this.ytext) {
 			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: true,
 				inlineDecorations: this.getInlineDecorationsForBlock(),
 			});
 			this.fieldEditor.notifyDomReconciled(
@@ -447,7 +446,6 @@ export class EditContextBackend {
 		replaceEditContextText(this.editContext, this.ytext.toString());
 		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 			urlPolicy: urlPolicyFromEditor(this.editor),
-			preserveSelection: true,
 			inlineDecorations: this.getInlineDecorationsForBlock(),
 		});
 		this.fieldEditor.notifyDomReconciled(
@@ -946,7 +944,6 @@ export class EditContextBackend {
 			);
 			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: true,
 				inlineDecorations: this.getInlineDecorationsForBlock(),
 			});
 			this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
@@ -958,7 +955,6 @@ export class EditContextBackend {
 		if (inlineDecorationsRequireFullReconcile(inlineDecorations)) {
 			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: true,
 				inlineDecorations,
 			});
 			this.fieldEditor.notifyDomReconciled(
@@ -978,7 +974,6 @@ export class EditContextBackend {
 					this.editor.schema,
 					{
 						urlPolicy: urlPolicyFromEditor(this.editor),
-						preserveSelection: true,
 						inlineDecorations,
 					},
 				);
@@ -1050,7 +1045,6 @@ export class EditContextBackend {
 			this.fieldEditor.shouldProjectSelectionAfterReconcile?.() ?? true;
 		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 			urlPolicy: urlPolicyFromEditor(this.editor),
-			preserveSelection: projectSelection,
 			inlineDecorations: this.getInlineDecorationsForBlock(),
 		});
 		this.inlineDecorationsSignature = nextInlineDecorationsSignature;

@@ -2,7 +2,6 @@ import type { Editor } from "@input/pen-types";
 import { measureWithRoot } from "../geometry/rootGeometry";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import type { FieldEditorDelta } from "./crdt";
-import { findLogicalDOMPoint } from "./inlineAtomDom";
 import { domPointToOffset, getSelectionOffsets } from "./selectionBridge";
 import { findInlineContentElement } from "./selectionDomQueries";
 
@@ -89,91 +88,6 @@ export function staticRangeToOffsets(
 		start: Math.min(startOffset, endOffset),
 		end: Math.max(startOffset, endOffset),
 	};
-}
-
-export function setSelectionOffsets(
-	element: HTMLElement,
-	startOffset: number,
-	endOffset: number,
-): void {
-	const selection = element.ownerDocument?.getSelection();
-	if (!selection) return;
-
-	const startPoint = resolveDomPointForOffset(element, startOffset);
-	const endPoint = resolveDomPointForOffset(element, endOffset);
-
-	const intendedRange =
-		startPoint.node !== endPoint.node ||
-		startPoint.offset !== endPoint.offset;
-
-	const setBaseAndExtent = (
-		selection as Selection & {
-			setBaseAndExtent?: (
-				anchorNode: Node,
-				anchorOffset: number,
-				focusNode: Node,
-				focusOffset: number,
-			) => void;
-		}
-	).setBaseAndExtent;
-	if (typeof setBaseAndExtent === "function") {
-		try {
-			setBaseAndExtent.call(
-				selection,
-				startPoint.node,
-				startPoint.offset,
-				endPoint.node,
-				endPoint.offset,
-			);
-			if (
-				!intendedRange ||
-				(selection.rangeCount > 0 &&
-					selection.anchorNode === startPoint.node &&
-					selection.anchorOffset === startPoint.offset &&
-					selection.focusNode === endPoint.node &&
-					selection.focusOffset === endPoint.offset)
-			) {
-				return;
-			}
-		} catch {
-			// Fall back to the range-based path in non-browser test environments.
-		}
-	}
-
-	selection.removeAllRanges();
-
-	const collapseRange = element.ownerDocument.createRange();
-	collapseRange.setStart(startPoint.node, startPoint.offset);
-	collapseRange.collapse(true);
-	selection.addRange(collapseRange);
-
-	if (intendedRange && typeof selection.extend === "function") {
-		try {
-			selection.extend(endPoint.node, endPoint.offset);
-			if (!selection.isCollapsed) {
-				return;
-			}
-		} catch {
-			// Fall through to an ordered addRange.
-		}
-	}
-
-	if (!intendedRange) {
-		return;
-	}
-
-	selection.removeAllRanges();
-	const range = element.ownerDocument.createRange();
-	range.setStart(startPoint.node, startPoint.offset);
-	range.setEnd(endPoint.node, endPoint.offset);
-	selection.addRange(range);
-}
-
-function resolveDomPointForOffset(
-	element: HTMLElement,
-	targetOffset: number,
-): { node: Node; offset: number } {
-	return findLogicalDOMPoint(element, Math.max(0, targetOffset));
 }
 
 export function rebaseTextDiffOps(
