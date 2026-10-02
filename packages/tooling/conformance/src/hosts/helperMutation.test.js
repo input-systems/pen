@@ -292,7 +292,11 @@ test("isFixtureName and windowedBlockId are live predicates, not always-true", a
 	);
 	assert.match(
 		catalog,
-		/return isLocalFixtureName\(name\) \|\| name === "deterministic"/,
+		/hasOwnProperty\.call\(SCALE_FIXTURE_ROOT_COUNTS, name\)/,
+	);
+	assert.match(
+		catalog,
+		/isLocalFixtureName\(name\) \|\|\s*isScaleFixtureName\(name\) \|\|\s*name === "deterministic"/,
 	);
 	assert.doesNotMatch(
 		catalog,

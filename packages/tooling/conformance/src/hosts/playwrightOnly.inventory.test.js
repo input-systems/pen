@@ -158,7 +158,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// where blank lines own line boxes and clicks map to text offsets.
 	// 70 -> 72 is C2 real composition (suites/ime/c2-real-composition.spec.ts)
 	// and R1 drag-window close (suites/selection/r1-drag-window.spec.ts), W0.
-	const expectedPlaywrightSpecs = 72;
+	// 72 -> 73 is SCALE1 scale fixtures: scenarios/scale-fixtures.spec.ts.
+	const expectedPlaywrightSpecs = 73;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

@@ -67,3 +67,30 @@ jobs:
         env:
           PEN_FUZZ_SEED: ${{ steps.seed.outputs.seed }}
         run: pnpm --filter @input/pen-conformance run fuzz:nightly
+
+  scale-render-large:
+    name: Scale render (large, Chromium)
+    timeout-minutes: 40
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Pen toolchain
+        uses: ./.github/actions/setup
+        with:
+          turbo-cache-scope: nightly-scale
+
+      - name: Build conformance and dependencies
+        run: pnpm --filter @input/pen-conformance... build
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @input/pen-conformance exec playwright install --with-deps chromium
+
+      # SCALE1: the 10k fixture mounts whole with its stated identity. 50k is
+      # opt-in until W2 (the React surface does not finish mounting it yet).
+      - name: Mount the large scale fixtures
+        env:
+          SCALE_FIXTURES: all
+        run: pnpm --filter @input/pen-conformance exec playwright test scenarios/scale-fixtures.spec.ts --project=chromium
