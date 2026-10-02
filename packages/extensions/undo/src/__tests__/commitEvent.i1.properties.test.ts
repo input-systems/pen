@@ -17,6 +17,18 @@ const SEED_INFO = parseFuzzSeed(process.env.PEN_FUZZ_SEED);
 const SEED = SEED_INFO.numeric;
 const STEP_COUNT = resolveOpCount();
 
+// Every nightly seed that failed this suite between runs 33716069126 and
+// 36991548406, replayed at the nightly step count. Each failed with
+// "apply no-op" on a splice that rewrote a character with the same character
+// (2862979418, run 36991548406, at commit 771: " " over " " at 11..12): one
+// delete and one insert in the CRDT, so one commit, with the text unchanged.
+const PINNED_SEEDS = [
+	2862979418, 2331466616, 270714555, 547392220, 653485406, 1033193572,
+	1669096992, 1705328024, 1781895020, 1820414097, 1976218039, 2095813717,
+	2257784941, 2371651956, 2666731515, 2692182216, 2865217711, 3997860482,
+] as const;
+const PINNED_STEP_COUNT = 2_000;
+
 const ACTIONS = ["apply", "remote", "undo", "redo", "stream"] as const;
 type Action = (typeof ACTIONS)[number];
 
@@ -62,8 +74,10 @@ function resolveOpCount(): number {
 	return NIGHTLY ? 2_000 : 200;
 }
 
-function label(action: string, extra: string): string {
-	return `seed=${SEED} (${SEED_INFO.raw}) ${action} ${extra}`;
+interface PropertyRun {
+	seed: number;
+	raw: string;
+	steps: number;
 }
 
 type TestYTextLike = {
@@ -81,13 +95,35 @@ function ydocOf(doc: unknown): Y.Doc {
 	return (doc as { ydoc: Y.Doc }).ydoc;
 }
 
-function documentFingerprint(editor: Editor): string {
-	return [...editor.blocks()]
-		.map(
-			(block) =>
-				`${block.id}:${block.type}:${block.textContent({ resolved: true })}`,
-		)
-		.join("\n");
+function stateMoved(transaction: Y.Transaction): boolean {
+	for (const [client, clock] of transaction.afterState) {
+		if (transaction.beforeState.get(client) !== clock) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// I1 counts durable writes, not visible text. A splice that rewrites a
+// character with the same character deletes one item and inserts another, so
+// the text is unchanged while the document is not. A transaction wrote when it
+// inserted (the state vector moved) or deleted (its delete set is not empty).
+// The returned function reports whether any write landed since its last call.
+function watchWrites(editor: Editor): () => boolean {
+	let wrote = false;
+	ydocOf(editor.internals.crdtDoc).on(
+		"afterTransaction",
+		(transaction: Y.Transaction) => {
+			if (transaction.deleteSet.clients.size > 0 || stateMoved(transaction)) {
+				wrote = true;
+			}
+		},
+	);
+	return () => {
+		const result = wrote;
+		wrote = false;
+		return result;
+	};
 }
 
 function expectedSource(action: Action): CommitEvent["source"] {
@@ -109,164 +145,217 @@ function expectedSource(action: Action): CommitEvent["source"] {
 	}
 }
 
+async function runCommitEventProperty(property: PropertyRun): Promise<void> {
+	const editor = createCoreEditor({
+		schema: defaultSchema,
+		preset: undoOnlyPreset,
+	});
+	await editor.whenReady();
+	const blockId = editor.firstBlock()!.id;
+	const adapter = editor.internals.adapter;
+	const editorDoc = editor.internals.crdtDoc;
+	const remoteDoc = adapter.loadDocument(adapter.encodeState(editorDoc));
+
+	const label = (action: string, extra: string): string =>
+		`seed=${property.seed} (${property.raw}) ${action} ${extra}`;
+	const takeWrites = watchWrites(editor);
+
+	const commits: CommitEvent[] = [];
+	editor.on("commit", (event) => {
+		commits.push(event);
+	});
+
+	const stream: { writer: TextStreamWriter | null } = { writer: null };
+	const rng = new Rng(property.seed);
+	let lastCommitId = 0;
+	const seenSources = new Set<CommitEvent["source"]>();
+
+	const catchUpRemote = () => {
+		adapter.applyUpdate(
+			remoteDoc,
+			adapter.encodeUpdate(
+				editorDoc,
+				Y.encodeStateVector(ydocOf(remoteDoc)),
+			),
+		);
+	};
+
+	const remoteText = (): TestYTextLike => {
+		const text = adapter
+			.raw<TestRawDocLike>(remoteDoc)
+			.getMap("blocks")
+			.get(blockId)
+			?.get("content");
+		if (!text) {
+			throw new Error(`Missing remote text for ${blockId}`);
+		}
+		return text;
+	};
+
+	const run = (action: Action): void => {
+		if (action === "undo" && !editor.undoManager.canUndo()) {
+			return;
+		}
+		if (action === "redo" && !editor.undoManager.canRedo()) {
+			return;
+		}
+
+		takeWrites();
+		const commitCount = commits.length;
+
+		if (action === "apply") {
+			const length = editor.getBlock(blockId)?.length() ?? 0;
+			editor.apply(
+				[
+					{
+						type: "splice-text",
+						blockId,
+						from: rng.int(length + 1),
+						to: rng.int(length + 1),
+						insert: rng.pick(["a", "bb", " "]),
+					},
+				],
+				{ origin: "user" },
+			);
+			editor.undoManager.stopCapturing();
+			catchUpRemote();
+		} else if (action === "remote") {
+			catchUpRemote();
+			const text = remoteText();
+			adapter.transact(
+				remoteDoc,
+				() => {
+					text.insert(rng.int(text.length + 1), rng.pick(["r", "rr"]));
+				},
+				"collaborator",
+			);
+			adapter.applyUpdate(
+				editorDoc,
+				adapter.encodeUpdate(
+					remoteDoc,
+					Y.encodeStateVector(ydocOf(editorDoc)),
+				),
+			);
+		} else if (action === "undo") {
+			editor.undoManager.undo();
+			catchUpRemote();
+		} else if (action === "redo") {
+			editor.undoManager.redo();
+			catchUpRemote();
+		} else if (action === "stream") {
+			if (!stream.writer) {
+				stream.writer = editor.openTextStream(
+					{ blockId },
+					{
+						origin: { type: "ai", groupId: "i1-stream" },
+						flushIntervalMs: 100,
+					},
+				);
+			}
+			stream.writer.append(rng.pick(["s", "ss"]));
+			stream.writer.flush();
+			catchUpRemote();
+		} else {
+			const _exhaustive: never = action;
+			return _exhaustive;
+		}
+
+		const changed = takeWrites();
+		const produced = commits.slice(commitCount);
+		if (!changed) {
+			expect(produced, label(action, "no-op")).toHaveLength(0);
+			return;
+		}
+
+		expect(produced, label(action, "state change")).toHaveLength(1);
+		const event = produced[0]!;
+		expect(event.commitId).toBeGreaterThan(lastCommitId);
+		expect(event.summary).toBeTruthy();
+		expect(event.source).toBe(expectedSource(action));
+		lastCommitId = event.commitId;
+		seenSources.add(event.source);
+	};
+
+	run("apply");
+	run("remote");
+	run("apply");
+	run("undo");
+	run("redo");
+	run("stream");
+
+	expect([...seenSources].sort()).toEqual(
+		["apply", "redo", "remote", "stream", "undo"].sort(),
+	);
+
+	for (let step = 0; step < property.steps; step += 1) {
+		run(rng.pick(ACTIONS));
+	}
+
+	stream.writer?.close();
+	for (const event of commits) {
+		expect(event.summary).toBeTruthy();
+	}
+	for (let index = 1; index < commits.length; index += 1) {
+		expect(commits[index]!.commitId).toBeGreaterThan(
+			commits[index - 1]!.commitId,
+		);
+	}
+
+	editor.destroy();
+}
+
 describe("@input/pen-undo commit event one-event property", () => {
 	it("I1: random apply/remote/undo/redo/stream-flush sequences emit one commit per state change", async () => {
+		await runCommitEventProperty({
+			seed: SEED,
+			raw: SEED_INFO.raw,
+			steps: STEP_COUNT,
+		});
+	});
+
+	it.each(PINNED_SEEDS)(
+		"I1: pinned nightly seed %i replays clean at the nightly step count",
+		async (seed) => {
+			await runCommitEventProperty({
+				seed,
+				raw: `pinned-${seed}`,
+				steps: PINNED_STEP_COUNT,
+			});
+		},
+	);
+
+	it("I1: a splice that rewrites a character with the same character is one commit", async () => {
 		const editor = createCoreEditor({
 			schema: defaultSchema,
 			preset: undoOnlyPreset,
 		});
 		await editor.whenReady();
 		const blockId = editor.firstBlock()!.id;
-		const adapter = editor.internals.adapter;
-		const editorDoc = editor.internals.crdtDoc;
-		const remoteDoc = adapter.loadDocument(adapter.encodeState(editorDoc));
-
+		editor.apply(
+			[{ type: "splice-text", blockId, from: 0, to: 0, insert: "a b" }],
+			{ origin: "user" },
+		);
+		const takeWrites = watchWrites(editor);
 		const commits: CommitEvent[] = [];
 		editor.on("commit", (event) => {
 			commits.push(event);
 		});
 
-		const stream: { writer: TextStreamWriter | null } = { writer: null };
-		const rng = new Rng(SEED);
-		let lastCommitId = 0;
-		const seenSources = new Set<CommitEvent["source"]>();
-
-		const catchUpRemote = () => {
-			adapter.applyUpdate(
-				remoteDoc,
-				adapter.encodeUpdate(
-					editorDoc,
-					Y.encodeStateVector(ydocOf(remoteDoc)),
-				),
-			);
-		};
-
-		const remoteText = (): TestYTextLike => {
-			const text = adapter
-				.raw<TestRawDocLike>(remoteDoc)
-				.getMap("blocks")
-				.get(blockId)
-				?.get("content");
-			if (!text) {
-				throw new Error(`Missing remote text for ${blockId}`);
-			}
-			return text;
-		};
-
-		const run = (action: Action): void => {
-			if (action === "undo" && !editor.undoManager.canUndo()) {
-				return;
-			}
-			if (action === "redo" && !editor.undoManager.canRedo()) {
-				return;
-			}
-
-			// A state change is any CRDT change, not only a visible one: a
-			// splice that replaces "a" with "a" changes no text but is a real
-			// delete and insert, and I1 requires its one commit.
-			const stateOf = () =>
-				`${documentFingerprint(editor)}\n${Y.encodeStateVector(ydocOf(editorDoc)).join(",")}`;
-			const before = stateOf();
-			const commitCount = commits.length;
-
-			if (action === "apply") {
-				const length = editor.getBlock(blockId)?.length() ?? 0;
-				editor.apply(
-					[
-						{
-							type: "splice-text",
-							blockId,
-							from: rng.int(length + 1),
-				to: rng.int(length + 1),
-				insert: rng.pick(["a", "bb", " "]),
-						},
-					],
-					{ origin: "user" },
-				);
-				editor.undoManager.stopCapturing();
-				catchUpRemote();
-			} else if (action === "remote") {
-				catchUpRemote();
-				const text = remoteText();
-				adapter.transact(
-					remoteDoc,
-					() => {
-						text.insert(rng.int(text.length + 1), rng.pick(["r", "rr"]));
-					},
-					"collaborator",
-				);
-				adapter.applyUpdate(
-					editorDoc,
-					adapter.encodeUpdate(
-						remoteDoc,
-						Y.encodeStateVector(ydocOf(editorDoc)),
-					),
-				);
-			} else if (action === "undo") {
-				editor.undoManager.undo();
-				catchUpRemote();
-			} else if (action === "redo") {
-				editor.undoManager.redo();
-				catchUpRemote();
-			} else if (action === "stream") {
-				if (!stream.writer) {
-					stream.writer = editor.openTextStream(
-						{ blockId },
-						{
-							origin: { type: "ai", groupId: "i1-stream" },
-							flushIntervalMs: 100,
-						},
-					);
-				}
-				stream.writer.append(rng.pick(["s", "ss"]));
-				stream.writer.flush();
-				catchUpRemote();
-			} else {
-				const _exhaustive: never = action;
-				return _exhaustive;
-			}
-
-			const changed = stateOf() !== before;
-			const produced = commits.slice(commitCount);
-			if (!changed) {
-				expect(produced, label(action, "no-op")).toHaveLength(0);
-				return;
-			}
-
-			expect(produced, label(action, "state change")).toHaveLength(1);
-			const event = produced[0]!;
-			expect(event.commitId).toBeGreaterThan(lastCommitId);
-			expect(event.summary).toBeTruthy();
-			expect(event.source).toBe(expectedSource(action));
-			lastCommitId = event.commitId;
-			seenSources.add(event.source);
-		};
-
-		run("apply");
-		run("remote");
-		run("apply");
-		run("undo");
-		run("redo");
-		run("stream");
-
-		expect([...seenSources].sort()).toEqual(
-			["apply", "redo", "remote", "stream", "undo"].sort(),
+		editor.apply(
+			[{ type: "splice-text", blockId, from: 1, to: 2, insert: " " }],
+			{ origin: "user" },
 		);
 
-		for (let step = 0; step < STEP_COUNT; step += 1) {
-			run(rng.pick(ACTIONS));
-		}
-
-		stream.writer?.close();
-		for (const event of commits) {
-			expect(event.summary).toBeTruthy();
-		}
-		for (let index = 1; index < commits.length; index += 1) {
-			expect(commits[index]!.commitId).toBeGreaterThan(
-				commits[index - 1]!.commitId,
-			);
-		}
-
+		expect(editor.getBlock(blockId)?.textContent()).toBe("a b");
+		expect(takeWrites()).toBe(true);
+		expect(commits).toHaveLength(1);
+		expect(commits[0]!.summary.blockText).toEqual([
+			{
+				blockId,
+				splices: [{ from: 1, to: 2, insertLength: 1 }],
+				formatRanges: [],
+			},
+		]);
 		editor.destroy();
 	});
 
