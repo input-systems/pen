@@ -7,6 +7,7 @@ import { createEditor } from "@input/pen-core";
 import { defaultPreset } from "@input/pen";
 import { Pen } from "../primitives/index";
 import { defaultSchema } from "@input/pen-schema";
+import { mockSelectionToolbarRect } from "./utils/selectionToolbarRectMock";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -21,68 +22,6 @@ function createTestEditor() {
 			undo: false,
 		}),
 	});
-}
-
-function mockSelectionToolbarRect(rect: {
-	top: number;
-	left: number;
-	width: number;
-	height: number;
-}) {
-	const originalGetSelection = window.getSelection.bind(window);
-	const originalRequestAnimationFrame =
-		window.requestAnimationFrame.bind(window);
-	const originalCancelAnimationFrame =
-		window.cancelAnimationFrame.bind(window);
-	const rangeRect = {
-		top: rect.top,
-		left: rect.left,
-		width: rect.width,
-		height: rect.height,
-		right: rect.left + rect.width,
-		bottom: rect.top + rect.height,
-		x: rect.left,
-		y: rect.top,
-		toJSON() {
-			return this;
-		},
-	} as DOMRect;
-
-	Object.defineProperty(window, "getSelection", {
-		configurable: true,
-		value: () => ({
-			rangeCount: 1,
-			getRangeAt: () => ({
-				getBoundingClientRect: () => rangeRect,
-			}),
-		}),
-	});
-	Object.defineProperty(window, "requestAnimationFrame", {
-		configurable: true,
-		value: (callback: FrameRequestCallback) => {
-			callback(0);
-			return 1;
-		},
-	});
-	Object.defineProperty(window, "cancelAnimationFrame", {
-		configurable: true,
-		value: () => {},
-	});
-
-	return () => {
-		Object.defineProperty(window, "getSelection", {
-			configurable: true,
-			value: originalGetSelection,
-		});
-		Object.defineProperty(window, "requestAnimationFrame", {
-			configurable: true,
-			value: originalRequestAnimationFrame,
-		});
-		Object.defineProperty(window, "cancelAnimationFrame", {
-			configurable: true,
-			value: originalCancelAnimationFrame,
-		});
-	};
 }
 
 async function renderSelectionToolbar() {
@@ -117,6 +56,8 @@ async function renderSelectionToolbar() {
 			createElement(
 				Pen.Editor.Root,
 				{ editor },
+				// The toolbar measures the selection in the rendered content.
+				createElement(Pen.Editor.Content),
 				createElement(
 					Pen.SelectionToolbar.Root,
 					null,
@@ -181,13 +122,15 @@ describe("selection toolbar AX3", () => {
 		await act(async () => {
 			editorRoot?.focus();
 		});
-		expect(document.activeElement).toBe(editorRoot);
+		// The editor may hand root focus to its active field; either is the editor's.
+		const editorFocus = document.activeElement;
+		expect(editorRoot?.contains(editorFocus)).toBe(true);
 
 		const toolbar = fixture.container.querySelector(
 			"[data-pen-selection-toolbar-content]",
 		);
 		expect(toolbar).not.toBeNull();
-		expect(document.activeElement).toBe(editorRoot);
+		expect(document.activeElement).toBe(editorFocus);
 		expect(document.activeElement).not.toBe(toolbar);
 	});
 
@@ -200,7 +143,8 @@ describe("selection toolbar AX3", () => {
 		await act(async () => {
 			editorRoot.focus();
 		});
-		expect(document.activeElement).toBe(editorRoot);
+		const editorFocus = document.activeElement;
+		expect(editorRoot.contains(editorFocus)).toBe(true);
 
 		const toolbar = fixture.container.querySelector(
 			"[data-pen-selection-toolbar-content]",
@@ -214,7 +158,7 @@ describe("selection toolbar AX3", () => {
 		});
 
 		expect(event.defaultPrevented).toBe(true);
-		expect(document.activeElement).toBe(editorRoot);
+		expect(document.activeElement).toBe(editorFocus);
 	});
 
 	it("AX3: Escape closes and restores editor focus", async () => {
@@ -247,6 +191,6 @@ describe("selection toolbar AX3", () => {
 				"[data-pen-selection-toolbar-content]",
 			),
 		).toBeNull();
-		expect(document.activeElement).toBe(editorRoot);
+		expect(editorRoot.contains(document.activeElement)).toBe(true);
 	});
 });

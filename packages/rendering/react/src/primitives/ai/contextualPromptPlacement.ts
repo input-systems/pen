@@ -141,6 +141,7 @@ export function useContextualPromptPlacement(
 			const containerScrollTop = container.scrollTop;
 			const containerScrollLeft = container.scrollLeft;
 			const liveSelectionRect = resolveLiveSelectionRect(
+				editor,
 				host,
 				anchorState.selectionSnapshot,
 			);

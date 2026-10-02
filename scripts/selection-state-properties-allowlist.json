@@ -7,11 +7,6 @@
 			"reason": "browser Selection.isCollapsed after addRange/extend"
 		},
 		{
-			"file": "packages/rendering/react/src/primitives/ai/contextualPromptGeometry.ts",
-			"construct": "selection.isCollapsed",
-			"reason": "window.getSelection().isCollapsed"
-		},
-		{
 			"file": "packages/extensions/ai/src/helpers/session.ts",
 			"construct": "turn.selection.blockRange",
 			"reason": "permanent: not a SelectionState. AISessionTurn.selection is AISessionSelectionSnapshot (extensions/ai types/session.ts:133), a plain anchor/focus/blockRange/isMultiBlock record with no type discriminant, deep-cloned here. getSelectionBlockRange switches on sel.type and does not accept it; forcing the call through a cast falls to the never default and yields undefined."

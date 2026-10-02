@@ -1,9 +1,13 @@
 import React from "react";
-import { isMultiBlock, resolveEditorMessage } from "@input/pen-core";
+import {
+	isCollapsed,
+	isMultiBlock,
+	resolveEditorMessage,
+} from "@input/pen-core";
 import type { AIContextualPromptAnchor, AISession } from "@input/pen-ai";
-import type { Editor } from "@input/pen-types";
+import type { Editor, TextSelection } from "@input/pen-types";
 import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
-import { domSelectionToEditor } from "@input/pen-dom/field-editor";
+import { queryBlockElement } from "@input/pen-dom/field-editor/selectionBridge";
 import { useAISessionActions } from "../../hooks/useAISessionActions";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import {
@@ -227,27 +231,19 @@ export function AIContextualPromptComposer(
 		const updateTargetState = () => {
 			const nextTargetState = resolveInlineSessionTargetState(
 				ownerDocument,
+				editor,
 				hostElement,
 				promptElement,
 				selectionSnapshot ?? undefined,
 			);
-			const liveSelection = ownerDocument.getSelection();
-			const liveRange =
-				liveSelection && liveSelection.rangeCount > 0
-					? liveSelection.getRangeAt(0)
-					: null;
-			const liveCommonAncestor =
-				liveRange?.commonAncestorContainer instanceof Element
-					? liveRange.commonAncestorContainer
-					: (liveRange?.commonAncestorContainer?.parentElement ??
-						null);
+			// A new range selected in the editor, not the one the prompt
+			// opened on, moves the user on from an unsubmitted prompt.
+			const selection = editor.selection;
 			if (
 				nextTargetState === "pinned" &&
 				!hasSubmittedPrompt &&
-				liveSelection &&
-				!liveSelection.isCollapsed &&
-				liveCommonAncestor &&
-				!(promptElement?.contains(liveCommonAncestor) ?? false)
+				selection?.type === "text" &&
+				!isCollapsed(selection)
 			) {
 				actions.suspendInlineSession(sessionId);
 				return;
@@ -256,14 +252,12 @@ export function AIContextualPromptComposer(
 		};
 
 		updateTargetState();
-		ownerDocument.addEventListener("selectionchange", updateTargetState);
+		const unsubscribeSelection =
+			editor.onSelectionChange(updateTargetState);
 		ownerDocument.addEventListener("focusin", updateTargetState, true);
 		ownerDocument.addEventListener("focusout", updateTargetState, true);
 		return () => {
-			ownerDocument.removeEventListener(
-				"selectionchange",
-				updateTargetState,
-			);
+			unsubscribeSelection();
 			ownerDocument.removeEventListener(
 				"focusin",
 				updateTargetState,
@@ -277,6 +271,7 @@ export function AIContextualPromptComposer(
 		};
 	}, [
 		actions,
+		editor,
 		hasSubmittedPrompt,
 		selectionSnapshot,
 		session,
@@ -490,6 +485,7 @@ function resolveInlineSessionLabel(editor: Editor, session: AISession): string {
 
 function resolveInlineSessionTargetState(
 	ownerDocument: Document,
+	editor: Editor,
 	hostElement: HTMLElement | null,
 	promptElement: HTMLElement | null,
 	snapshot: AIContextualPromptAnchor["selectionSnapshot"],
@@ -505,16 +501,24 @@ function resolveInlineSessionTargetState(
 	) {
 		return "active";
 	}
-	if (!hostElement) {
-		return "pinned";
-	}
-	const domSelection = domSelectionToEditor(hostElement);
-	if (!domSelection) {
-		return "pinned";
-	}
-	return selectionMatchesSnapshot(domSelection, snapshot)
+	const selection = textSelectionInHost(editor, hostElement);
+	return selection && selectionMatchesSnapshot(selection, snapshot)
 		? "active"
 		: "pinned";
+}
+
+/** The editor's text selection when its anchor is rendered inside `hostElement`. */
+function textSelectionInHost(
+	editor: Editor,
+	hostElement: HTMLElement | null,
+): TextSelection | null {
+	const selection = editor.selection;
+	if (!hostElement || selection?.type !== "text") {
+		return null;
+	}
+	return queryBlockElement(hostElement, selection.anchor.blockId)
+		? selection
+		: null;
 }
 
 function resolveInlineSessionTargetHint(

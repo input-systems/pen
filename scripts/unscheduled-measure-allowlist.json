@@ -127,16 +127,6 @@
       "reason": "Popover open path sets position from the suggestion element box in the same callback; not a block id."
     },
     {
-      "file": "packages/rendering/react/src/hooks/useSelectionToolbar.ts",
-      "symbol": "resolveNativeSelectionRect",
-      "reason": "Toolbar prefers the live window.Selection range so it can place before a root/GeometryReader is available; resolveSelectionRect is the GeometryReader fallback already."
-    },
-    {
-      "file": "packages/rendering/react/src/primitives/ai/contextualPromptGeometry.ts",
-      "symbol": "resolveLiveSelectionRect",
-      "reason": "Floating prompt tracks the live window.Selection range while the user is still selecting; snapshot rangeRects would lag the native range."
-    },
-    {
       "file": "packages/rendering/react/src/primitives/ai/contextualPromptPlacement.ts",
       "symbol": "measureLayout",
       "reason": "Flip/shift reads the prompt surface, content host, and scroll container boxes — chrome, not document blocks."

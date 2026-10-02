@@ -6,9 +6,10 @@ import {
 	type Rect,
 } from "@input/pen-dom";
 import {
-	domSelectionToEditor,
 	getTextSelectionClientRects,
+	queryBlockElement,
 } from "@input/pen-dom/field-editor/selectionBridge";
+import { resolveSelectionRect } from "@input/pen-dom/utils/selectionPlacement";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import {
 	queryEditorBlockElement,
@@ -91,33 +92,33 @@ export function resolvePromptSelectionRects(
 	return [];
 }
 
+/**
+ * The rect of the selection the prompt was opened on, while the editor's
+ * selection is still that selection. Measured from the authority through the
+ * geometry reader (W3.R5), never from the live range.
+ */
 export function resolveLiveSelectionRect(
+	editor: Editor,
 	hostElement: HTMLElement,
 	selectionSnapshot: AIContextualPromptAnchor["selectionSnapshot"],
 ): DOMRect | null {
-	const selection = window.getSelection();
-	if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+	const selection = editor.selection;
+	if (selection?.type !== "text") {
 		return null;
 	}
-	if (selectionSnapshot) {
-		const domSelection = domSelectionToEditor(hostElement);
-		if (!selectionMatchesSnapshot(domSelection, selectionSnapshot)) {
-			return null;
-		}
-	}
-	const range = selection.getRangeAt(0);
-	if (!range?.commonAncestorContainer) {
+	if (
+		selectionSnapshot &&
+		!selectionMatchesSnapshot(selection, selectionSnapshot)
+	) {
 		return null;
 	}
-	const commonAncestor =
-		range.commonAncestorContainer instanceof Element
-			? range.commonAncestorContainer
-			: (range.commonAncestorContainer.parentElement ?? null);
-	if (!commonAncestor || !hostElement.contains(commonAncestor)) {
+	if (
+		!queryBlockElement(hostElement, selection.anchor.blockId) ||
+		!queryBlockElement(hostElement, selection.focus.blockId)
+	) {
 		return null;
 	}
-	const rect = range.getBoundingClientRect();
-	return rect.width === 0 && rect.height === 0 ? null : rect;
+	return resolveSelectionRect(geometryRoot(hostElement), selection);
 }
 
 export function resolvePromptHostElement(

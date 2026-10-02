@@ -19,6 +19,7 @@ import {
 	useActiveAISession,
 	useAIDebugLog,
 } from "../index";
+import { mockSelectionToolbarRect } from "./utils/selectionToolbarRectMock";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -57,134 +58,6 @@ function withNavigatorPlatform<T>(platform: string, run: () => T): T {
 			Object.defineProperty(navigator, "platform", descriptor);
 		}
 	}
-}
-
-function mockSelectionToolbarRect(rect: {
-	top: number;
-	left: number;
-	width: number;
-	height: number;
-}) {
-	const originalGetSelection = window.getSelection.bind(window);
-	const originalRequestAnimationFrame =
-		window.requestAnimationFrame.bind(window);
-	const originalCancelAnimationFrame =
-		window.cancelAnimationFrame.bind(window);
-	const rangeRect = {
-		top: rect.top,
-		left: rect.left,
-		width: rect.width,
-		height: rect.height,
-		right: rect.left + rect.width,
-		bottom: rect.top + rect.height,
-		x: rect.left,
-		y: rect.top,
-		toJSON() {
-			return this;
-		},
-	} as DOMRect;
-
-	Object.defineProperty(window, "getSelection", {
-		configurable: true,
-		value: () => ({
-			rangeCount: 1,
-			getRangeAt: () => ({
-				getBoundingClientRect: () => rangeRect,
-			}),
-		}),
-	});
-	Object.defineProperty(window, "requestAnimationFrame", {
-		configurable: true,
-		value: (callback: FrameRequestCallback) => {
-			callback(0);
-			return 1;
-		},
-	});
-	Object.defineProperty(window, "cancelAnimationFrame", {
-		configurable: true,
-		value: () => {},
-	});
-
-	return () => {
-		Object.defineProperty(window, "getSelection", {
-			configurable: true,
-			value: originalGetSelection,
-		});
-		Object.defineProperty(window, "requestAnimationFrame", {
-			configurable: true,
-			value: originalRequestAnimationFrame,
-		});
-		Object.defineProperty(window, "cancelAnimationFrame", {
-			configurable: true,
-			value: originalCancelAnimationFrame,
-		});
-	};
-}
-
-function mockMutableSelectionToolbarRect(initialRect: {
-	top: number;
-	left: number;
-	width: number;
-	height: number;
-}) {
-	const rect = { ...initialRect };
-	const originalGetSelection = window.getSelection.bind(window);
-	const originalRequestAnimationFrame =
-		window.requestAnimationFrame.bind(window);
-	const originalCancelAnimationFrame =
-		window.cancelAnimationFrame.bind(window);
-
-	Object.defineProperty(window, "getSelection", {
-		configurable: true,
-		value: () => ({
-			rangeCount: 1,
-			getRangeAt: () => ({
-				getBoundingClientRect: () =>
-					({
-						top: rect.top,
-						left: rect.left,
-						width: rect.width,
-						height: rect.height,
-						right: rect.left + rect.width,
-						bottom: rect.top + rect.height,
-						x: rect.left,
-						y: rect.top,
-						toJSON() {
-							return this;
-						},
-					}) as DOMRect,
-			}),
-		}),
-	});
-	Object.defineProperty(window, "requestAnimationFrame", {
-		configurable: true,
-		value: (callback: FrameRequestCallback) => {
-			callback(0);
-			return 1;
-		},
-	});
-	Object.defineProperty(window, "cancelAnimationFrame", {
-		configurable: true,
-		value: () => {},
-	});
-
-	return {
-		rect,
-		restore: () => {
-			Object.defineProperty(window, "getSelection", {
-				configurable: true,
-				value: originalGetSelection,
-			});
-			Object.defineProperty(window, "requestAnimationFrame", {
-				configurable: true,
-				value: originalRequestAnimationFrame,
-			});
-			Object.defineProperty(window, "cancelAnimationFrame", {
-				configurable: true,
-				value: originalCancelAnimationFrame,
-			});
-		},
-	};
 }
 
 async function waitForAttributeValue(
@@ -302,6 +175,7 @@ describe("@input/pen-react AI primitives: contextual prompt spacing", () => {
 				root.render(
 					<Pen.Editor.Root editor={editor}>
 						<Pen.AI.Root editor={editor}>
+							<Pen.Editor.Content />
 							<Pen.SelectionToolbar.Root>
 								<Pen.SelectionToolbar.Content>
 									<Pen.AI.SelectionTrigger shortcut="ctrl+j">

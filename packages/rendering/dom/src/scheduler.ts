@@ -124,7 +124,23 @@ export class DomScheduler {
 
 	measureNow<T>(fn: () => T): T {
 		this.measureNowCalls += 1;
+		// SCH2 flush boundary: geometry cached before a commit accepted
+		// since the last flush is stale now, not only at the next flush.
+		// The commits stay pending; the flush still collects them.
+		this.invalidatePendingGeometry();
 		return fn();
+	}
+
+	private invalidatePendingGeometry(): void {
+		if (this.pendingCommits.length === 0) {
+			return;
+		}
+		const blockIds = blockIdsFromCommits(this.pendingCommits);
+		if (blockIds.length === 0) {
+			return;
+		}
+		const last = this.pendingCommits[this.pendingCommits.length - 1];
+		this.geometry?.invalidateBlocks(blockIds, last?.commitId);
 	}
 
 	private enqueueRead(job: ScheduledJob): void {

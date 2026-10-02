@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { aiControllerFacet, isCollapsed, isMultiBlock } from "@input/pen-core";
+import { aiControllerFacet, isCollapsed } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
 import type { AIController } from "@input/pen-ai";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
@@ -20,14 +20,10 @@ const CLOSED_STATE: SelectionToolbarState = {
 
 /**
  * Tracks whether the editor has a non-collapsed text selection and
- * provides the native DOM rect of that selection for positioning a
- * floating toolbar.
- *
- * A selection inside one block reads the native DOM range and falls back
- * to canonical editor selection geometry when the browser selection is
- * transient. A selection that spans blocks reads the canonical geometry
- * first: it is measured per block, so the rect covers the selected text
- * rather than the border boxes of the blocks in between.
+ * provides its rect for positioning a floating toolbar. The rect is the
+ * selection authority measured through the geometry reader; a selection
+ * that spans blocks is measured per block, so the rect covers the selected
+ * text rather than the border boxes of the blocks in between.
  */
 export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 	const [state, setState] = useState<SelectionToolbarState>(CLOSED_STATE);
@@ -94,42 +90,10 @@ export function resolveSelectionToolbarRect(editor: Editor): DOMRect | null {
 		return null;
 	}
 
-	// the native range rect of a spanning selection is the column width, so
-	// measure per block first and keep the native rect as the fallback
-	if (isMultiBlock(selection)) {
-		const root = resolveEditorRoot(editor, selection);
-		const rect = root ? resolveSelectionRect(root, selection) : null;
-		if (rect) {
-			return rect;
-		}
-	}
-
-	const nativeRect = resolveNativeSelectionRect();
-	if (nativeRect) {
-		return nativeRect;
-	}
-
+	// W3.R5: measured from the authority through the geometry reader, block
+	// by block for a spanning selection, never from the live range.
 	const root = resolveEditorRoot(editor, selection);
 	return root ? resolveSelectionRect(root, selection) : null;
-}
-
-function resolveNativeSelectionRect(): DOMRect | null {
-	const selection = window.getSelection();
-	if (!selection || selection.rangeCount === 0) {
-		return null;
-	}
-
-	const range = selection.getRangeAt(0);
-	if (range.collapsed) {
-		return null;
-	}
-
-	const rect = range.getBoundingClientRect();
-	if (rect.width === 0 && rect.height === 0) {
-		return null;
-	}
-
-	return rect;
 }
 
 function resolveEditorRoot(
@@ -145,12 +109,6 @@ function resolveEditorRoot(
 				return root;
 			}
 		}
-	}
-
-	const domSelection = window.getSelection();
-	const selectionRoot = resolveNodeRoot(domSelection?.anchorNode);
-	if (selectionRoot) {
-		return selectionRoot;
 	}
 
 	const activeRoot = resolveNodeRoot(document.activeElement);

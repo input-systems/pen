@@ -91,69 +91,6 @@
       "api": "getSelection",
       "reason": "the writer obtains the Selection object to write and clear; it takes it from the reader",
       "closedBy": "W3.R4"
-    },
-    {
-      "file": "packages/rendering/react/src/hooks/useSelectionToolbar.ts",
-      "symbol": "domSelection",
-      "api": "getSelection",
-      "reason": "toolbar positions from the live range; resolveSelectionRect + geometry reader from the authority",
-      "closedBy": "W3.R5"
-    },
-    {
-      "file": "packages/rendering/react/src/hooks/useSelectionToolbar.ts",
-      "symbol": "selection",
-      "api": "getSelection",
-      "reason": "toolbar positions from the live range; resolveSelectionRect + geometry reader from the authority",
-      "closedBy": "W3.R5"
-    },
-    {
-      "file": "packages/rendering/react/src/primitives/ai/contextualPromptComposer.tsx",
-      "symbol": "AIContextualPromptComposer",
-      "api": "selectionchange",
-      "reason": "prompt composer listens for selectionchange and maps the live range; editor.onSelectionChange + authority",
-      "closedBy": "W3.R5"
-    },
-    {
-      "file": "packages/rendering/react/src/primitives/ai/contextualPromptComposer.tsx",
-      "symbol": "domSelection",
-      "api": "domSelectionToEditor",
-      "reason": "prompt composer listens for selectionchange and maps the live range; editor.onSelectionChange + authority",
-      "closedBy": "W3.R5"
-    },
-    {
-      "file": "packages/rendering/react/src/primitives/ai/contextualPromptComposer.tsx",
-      "symbol": "liveSelection",
-      "api": "getSelection",
-      "reason": "prompt composer listens for selectionchange and maps the live range; editor.onSelectionChange + authority",
-      "closedBy": "W3.R5"
-    },
-    {
-      "file": "packages/rendering/react/src/primitives/ai/contextualPromptGeometry.ts",
-      "symbol": "domSelection",
-      "api": "domSelectionToEditor",
-      "reason": "prompt geometry from the live range; resolveSelectionRect + geometry reader from the authority",
-      "closedBy": "W3.R5"
-    },
-    {
-      "file": "packages/rendering/react/src/primitives/ai/contextualPromptGeometry.ts",
-      "symbol": "selection",
-      "api": "getSelection",
-      "reason": "prompt geometry from the live range; resolveSelectionRect + geometry reader from the authority",
-      "closedBy": "W3.R5"
-    },
-    {
-      "file": "packages/rendering/react/src/primitives/slash-menu/content.tsx",
-      "symbol": "SlashMenuContent",
-      "api": "selectionchange",
-      "reason": "slash menu repositions on selectionchange; observe editor.onSelectionChange",
-      "closedBy": "W3.R5"
-    },
-    {
-      "file": "packages/rendering/react/src/primitives/suggestion-menu/content.tsx",
-      "symbol": "SuggestionMenuContent",
-      "api": "selectionchange",
-      "reason": "suggestion menu repositions on selectionchange; observe editor.onSelectionChange",
-      "closedBy": "W3.R5"
     }
   ]
 }

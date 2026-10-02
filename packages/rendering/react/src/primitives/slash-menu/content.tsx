@@ -83,13 +83,14 @@ export function SlashMenuContent(props: SlashMenuContentProps) {
 		updatePosition();
 		window.addEventListener("resize", schedulePosition);
 		window.addEventListener("scroll", schedulePosition, true);
-		document.addEventListener("selectionchange", schedulePosition);
+		// Reposition when the selection authority moves (W3.R5), not on the native event.
+		const unsubscribeSelection = editor.onSelectionChange(schedulePosition);
 
 		return () => {
 			window.cancelAnimationFrame(frame);
 			window.removeEventListener("resize", schedulePosition);
 			window.removeEventListener("scroll", schedulePosition, true);
-			document.removeEventListener("selectionchange", schedulePosition);
+			unsubscribeSelection();
 		};
 	}, [
 		alignOffset,

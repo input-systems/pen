@@ -22,6 +22,7 @@ import {
 	useAIDebugLog,
 } from "../index";
 import { resolveSelectionToolbarRect } from "../hooks/useSelectionToolbar";
+import { mockMutableSelectionToolbarRect } from "./utils/selectionToolbarRectMock";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -60,141 +61,6 @@ function withNavigatorPlatform<T>(platform: string, run: () => T): T {
 			Object.defineProperty(navigator, "platform", descriptor);
 		}
 	}
-}
-
-function mockSelectionToolbarRect(rect: {
-	top: number;
-	left: number;
-	width: number;
-	height: number;
-}) {
-	const originalGetSelection = window.getSelection.bind(window);
-	const originalRequestAnimationFrame =
-		window.requestAnimationFrame.bind(window);
-	const originalCancelAnimationFrame =
-		window.cancelAnimationFrame.bind(window);
-	const rangeRect = {
-		top: rect.top,
-		left: rect.left,
-		width: rect.width,
-		height: rect.height,
-		right: rect.left + rect.width,
-		bottom: rect.top + rect.height,
-		x: rect.left,
-		y: rect.top,
-		toJSON() {
-			return this;
-		},
-	} as DOMRect;
-
-	Object.defineProperty(window, "getSelection", {
-		configurable: true,
-		value: () => ({
-			rangeCount: 1,
-			getRangeAt: () => ({
-				getBoundingClientRect: () => rangeRect,
-			}),
-		}),
-	});
-	Object.defineProperty(window, "requestAnimationFrame", {
-		configurable: true,
-		value: (callback: FrameRequestCallback) => {
-			callback(0);
-			return 1;
-		},
-	});
-	Object.defineProperty(window, "cancelAnimationFrame", {
-		configurable: true,
-		value: () => {},
-	});
-
-	return () => {
-		Object.defineProperty(window, "getSelection", {
-			configurable: true,
-			value: originalGetSelection,
-		});
-		Object.defineProperty(window, "requestAnimationFrame", {
-			configurable: true,
-			value: originalRequestAnimationFrame,
-		});
-		Object.defineProperty(window, "cancelAnimationFrame", {
-			configurable: true,
-			value: originalCancelAnimationFrame,
-		});
-	};
-}
-
-function mockMutableSelectionToolbarRect(initialRect: {
-	top: number;
-	left: number;
-	width: number;
-	height: number;
-}) {
-	const rect = { ...initialRect };
-	let nextRect: typeof rect | null = null;
-	const originalGetSelection = window.getSelection.bind(window);
-	const originalRequestAnimationFrame =
-		window.requestAnimationFrame.bind(window);
-	const originalCancelAnimationFrame =
-		window.cancelAnimationFrame.bind(window);
-
-	Object.defineProperty(window, "getSelection", {
-		configurable: true,
-		value: () => ({
-			rangeCount: 1,
-			getRangeAt: () => ({
-				getBoundingClientRect: () => {
-					const measuredRect = nextRect ?? rect;
-					nextRect = null;
-					return {
-						top: measuredRect.top,
-						left: measuredRect.left,
-						width: measuredRect.width,
-						height: measuredRect.height,
-						right: measuredRect.left + measuredRect.width,
-						bottom: measuredRect.top + measuredRect.height,
-						x: measuredRect.left,
-						y: measuredRect.top,
-						toJSON() {
-							return this;
-						},
-					} as DOMRect;
-				},
-			}),
-		}),
-	});
-	Object.defineProperty(window, "requestAnimationFrame", {
-		configurable: true,
-		value: (callback: FrameRequestCallback) => {
-			callback(0);
-			return 1;
-		},
-	});
-	Object.defineProperty(window, "cancelAnimationFrame", {
-		configurable: true,
-		value: () => {},
-	});
-
-	return {
-		rect,
-		returnRectOnce: (value: typeof rect) => {
-			nextRect = { ...value };
-		},
-		restore: () => {
-			Object.defineProperty(window, "getSelection", {
-				configurable: true,
-				value: originalGetSelection,
-			});
-			Object.defineProperty(window, "requestAnimationFrame", {
-				configurable: true,
-				value: originalRequestAnimationFrame,
-			});
-			Object.defineProperty(window, "cancelAnimationFrame", {
-				configurable: true,
-				value: originalCancelAnimationFrame,
-			});
-		},
-	};
 }
 
 async function waitForAttributeValue(

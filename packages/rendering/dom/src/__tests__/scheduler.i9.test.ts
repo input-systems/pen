@@ -130,6 +130,29 @@ describe("DomScheduler I9 collect", () => {
 		]);
 	});
 
+	it("SCH2 G2: measureNow invalidates blocks committed since the last flush before it measures", async () => {
+		const invalidated: Array<readonly string[]> = [];
+		const scheduler = new DomScheduler("root-a", {
+			geometry: {
+				invalidateBlocks: (blockIds) => {
+					invalidated.push([...blockIds]);
+				},
+			},
+		});
+
+		scheduler.acceptCommit(commit(4, ["a"]));
+		const seen = scheduler.measureNow(() =>
+			invalidated.map((ids) => ids.join(",")),
+		);
+		expect(seen).toEqual(["a"]);
+
+		// The commit is still the flush's to collect.
+		flushFrame();
+		expect(
+			scheduler.collect?.commits.map((event) => event.commitId),
+		).toEqual([4]);
+	});
+
 	it("G2 SCH3: structural split/merge ids join the invalidation scan", async () => {
 		const invalidated: Array<{
 			blockIds: readonly string[];
