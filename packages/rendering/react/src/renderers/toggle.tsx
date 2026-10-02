@@ -27,7 +27,7 @@ function ToggleView({
 }): React.ReactElement {
 	const open = (block.props?.open as boolean) ?? false;
 	const { editor } = useEditorContext();
-	const childBlockIds = useChildBlockIds(editor, block.id);
+	const childBlockIds = useChildBlockIds(block.id);
 	const toggleBodyProps: React.HTMLAttributes<HTMLDivElement> &
 		Record<string, unknown> = {
 		"data-pen-toggle-body": "",

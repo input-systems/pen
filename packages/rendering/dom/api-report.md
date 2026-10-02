@@ -469,7 +469,24 @@ _no exports_
 
 `./dist/field-editor/store.d.ts`
 
-_no exports_
+### value
+
+- BlockCommitSlice
+- BlockFieldSlice
+- BlockListSegment
+- BlockListSlice
+- BlockNotifier
+- BlockNotifierDiagnostics
+- BlockNotifierEventKind
+- BlockSelectionSlice
+- BlockSnapshot
+- DocumentSnapshot
+- SurfaceSnapshot
+
+### type
+
+- FieldEditorStore
+- FieldEditorStoreSnapshot
 
 ## ./field-editor/transfer
 
@@ -875,6 +892,7 @@ _no exports_
 ### function
 
 - isInlineAtomSelected
+- isInlineAtomSelectedInSlice
 
 ## ./utils/pointerSelection
 

@@ -21,7 +21,7 @@ export function BlockChildren(
 ): React.ReactElement | null {
 	const { parentBlockId, containerProps } = props;
 	const { editor } = useEditorContext();
-	const childBlockIds = useChildBlockIds(editor, parentBlockId);
+	const childBlockIds = useChildBlockIds(parentBlockId);
 
 	if (childBlockIds.length === 0) {
 		return null;

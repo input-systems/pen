@@ -27,7 +27,7 @@ function getFieldEditor(
 }
 
 describe("@input/pen-react mount ack", () => {
-	it("acks mounted blocks from Content in the layout-effect phase", async () => {
+	it("P1: a block acks its own mount, and a text commit does not ack every block", async () => {
 		const editor = createEditor({
 			schema: defaultSchema,
 			preset: defaultPreset({
@@ -59,20 +59,19 @@ describe("@input/pen-react mount ack", () => {
 			};
 
 			await act(async () => {
+				editor.apply([{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hi" }]);
+			});
+			// Same host element: nothing to acknowledge (SCALE6, W2.R4).
+			expect(acks).toEqual([]);
+
+			await act(async () => {
 				editor.apply([
-					{
-						type: "splice-text",
-						blockId,
-						from: 0,
-						to: 0,
-						insert: "Hi",
-					},
+					{ type: "insert-block", blockId: "mounted", blockType: "paragraph", props: {}, position: "last" },
 				]);
 			});
-
-			expect(acks).toContain(blockId);
+			expect(acks).toEqual(["mounted"]);
 			expect(
-				container.querySelector(`[${DATA_ATTRS.editorBlock}]`),
+				container.querySelector(`[${DATA_ATTRS.blockId}="mounted"]`),
 			).not.toBeNull();
 		} finally {
 			await act(async () => {

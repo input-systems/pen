@@ -22,6 +22,7 @@
 - applySplitBlock
 - blockLogicalText
 - blocksToOps
+- buildLazyNormalPositionSnapshot
 - buildMergeBlocksRecipe
 - buildNormalPositionSnapshot
 - buildSplitBlockRecipe

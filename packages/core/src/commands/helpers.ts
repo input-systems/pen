@@ -31,6 +31,7 @@ export {
 	textSelectionResult,
 } from "./commandSelection";
 export {
+	buildLazyNormalPositionSnapshot,
 	buildNormalPositionSnapshot,
 	buildTransitionSnapshot,
 	fromTransitionSelection,

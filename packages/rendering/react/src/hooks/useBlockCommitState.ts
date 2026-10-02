@@ -1,6 +1,7 @@
-import { affectedBlockIdsFromSummary } from "@input/pen-core";
-import { useRef, useSyncExternalStore } from "react";
-import type { Editor, OpOrigin } from "@input/pen-types";
+import type { OpOrigin } from "@input/pen-types";
+import { useMemo } from "react";
+
+import { useBlockSlice } from "./useBlockNotifier";
 
 interface BlockCommitState {
 	revision: number;
@@ -8,48 +9,11 @@ interface BlockCommitState {
 	commitId: number;
 }
 
-export function useBlockCommitState(
-	editor: Editor,
-	blockId: string,
-): BlockCommitState {
-	const snapshotRef = useRef<BlockCommitState>({
-		revision: editor.getBlockRevision(blockId),
-		origin: null,
-		commitId: 0,
-	});
-
-	return useSyncExternalStore(
-		(callback) =>
-			editor.on("commit", (event) => {
-				if (
-					!affectedBlockIdsFromSummary(event.summary).includes(
-						blockId,
-					)
-				) {
-					return;
-				}
-				snapshotRef.current = {
-					revision: editor.getBlockRevision(blockId),
-					origin: event.origin,
-					commitId: event.commitId,
-				};
-				callback();
-			}),
-		() => {
-			const revision = editor.getBlockRevision(blockId);
-			if (snapshotRef.current.revision !== revision) {
-				snapshotRef.current = {
-					revision,
-					origin: null,
-					commitId: snapshotRef.current.commitId,
-				};
-			}
-			return snapshotRef.current;
-		},
-		() => ({
-			revision: 0,
-			origin: null,
-			commitId: 0,
-		}),
+/** Revision and last commit that named the block, from the `commit` slice (SCALE6). */
+export function useBlockCommitState(blockId: string): BlockCommitState {
+	const commit = useBlockSlice(blockId, "commit");
+	return useMemo(
+		() => ({ revision: commit.revision, origin: commit.lastOrigin, commitId: commit.lastCommitId }),
+		[commit],
 	);
 }

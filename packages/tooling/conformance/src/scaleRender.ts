@@ -164,7 +164,12 @@ function invariantHolds(
 	row: ScaleRenderInvariant,
 	counts: Partial<Record<ScaleRenderCountFixture, ScaleRenderCounts>>,
 ): boolean {
-	const read = (fixture: ScaleRenderCountFixture) => counts[fixture]?.[row.action]?.[row.metric];
+	// A probe records nothing for a counter that stayed at zero, so a metric
+	// missing from a recorded action is 0; a missing action is unknown.
+	const read = (fixture: ScaleRenderCountFixture) => {
+		const action = counts[fixture]?.[row.action];
+		return action ? (action[row.metric] ?? 0) : undefined;
+	};
 	const relation = row.relation;
 	if (relation.kind === "equal-across") {
 		const values = relation.fixtures.map(read);

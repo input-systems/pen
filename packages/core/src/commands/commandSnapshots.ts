@@ -17,6 +17,7 @@ import {
 	LIST_BLOCK_TYPES,
 	logicalInline,
 	isContainerBlockType,
+	shouldRenderContainerChildren,
 } from "./commandBlockContext";
 import { blockSelectionResult, textSelectionResult } from "./commandSelection";
 
@@ -52,6 +53,55 @@ export function buildNormalPositionSnapshot(
 		};
 	}
 	return { blockOrder, blocks };
+}
+
+/**
+ * A {@link NormalPositionSnapshot} that reads the document on demand (SCALE2):
+ * `has(id)` walks the block's parents, `blocks[id]` reads that block once, and
+ * `blockOrder` is materialised only if a caller asks for it. The per-keystroke
+ * DOM read and caret motion touch one or two blocks, so they read one or two
+ * blocks rather than the whole document. Read it in the same turn it was built.
+ */
+export function buildLazyNormalPositionSnapshot(
+	editor: Editor,
+): NormalPositionSnapshot {
+	let blockOrder: readonly string[] | null = null;
+	const cache = new Map<string, NormalPositionBlock | undefined>();
+	const blocks = new Proxy({} as Record<string, NormalPositionBlock>, {
+		get(_target, key) {
+			if (typeof key !== "string") return undefined;
+			if (!cache.has(key)) cache.set(key, normalPositionBlock(editor, key));
+			return cache.get(key);
+		},
+	});
+	return {
+		get blockOrder() {
+			blockOrder ??= [...getVisibleBlockIds(editor)];
+			return blockOrder;
+		},
+		blocks,
+		has: (blockId) => isVisibleBlock(editor, blockId),
+	};
+}
+
+function normalPositionBlock(editor: Editor, blockId: string): NormalPositionBlock | undefined {
+	const block = editor.getBlock(blockId);
+	if (!block) return undefined;
+	if (!isEditableTextBlock(editor, blockId)) return { kind: "structural", text: "" };
+	const logical = logicalInline(block);
+	return { kind: "text", text: logical.text, atoms: logical.atoms };
+}
+
+/** In `getVisibleBlockIds`: a root in block order, or under open containers only. */
+function isVisibleBlock(editor: Editor, blockId: string): boolean {
+	const state = editor.documentState;
+	if (!editor.getBlock(blockId)) return false;
+	let current = blockId;
+	for (let parent = state.parentOf(current); parent !== null; parent = state.parentOf(current)) {
+		if (!shouldRenderContainerChildren(editor, editor.getBlock(parent))) return false;
+		current = parent;
+	}
+	return state.indexOf(current) >= 0;
 }
 
 export function buildTransitionSnapshot(editor: Editor): TransitionSnapshot {

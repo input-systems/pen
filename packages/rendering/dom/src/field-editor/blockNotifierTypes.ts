@@ -71,6 +71,13 @@ export interface BlockSnapshot {
 	readonly isPlaceholderTarget: boolean;
 	/** The visible inline completion when it targets this block, else null. */
 	readonly inlineCompletion: InlineCompletionSuggestion | null;
+	/**
+	 * Whether any inline completion is visible, in this block or another.
+	 * Placeholders hide while one is. Kept current for the blocks that can show
+	 * a placeholder (the focus and caret blocks and the document placeholder
+	 * target); every snapshot is rebuilt from live state when next notified.
+	 */
+	readonly inlineCompletionVisible: boolean;
 }
 
 /** List-level field state. Never changes on a DOM sync. */

@@ -1,4 +1,4 @@
-import React, { Children, cloneElement, isValidElement, useRef } from "react";
+import React, { Children, cloneElement, isValidElement, memo, useRef } from "react";
 import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
 import { resolveBlockDirection } from "@input/pen-core";
 import type {
@@ -28,28 +28,34 @@ export interface EditorBlockProps extends AsChildProps {
 	ref?: React.Ref<HTMLElement>;
 }
 
-export function EditorBlock(props: EditorBlockProps) {
+/**
+ * One block. Memoized on `blockId`: its state comes from its own notifier
+ * slices, so a keystroke or caret move elsewhere does not re-render it (SCALE6).
+ */
+export const EditorBlock = memo(function EditorBlock(props: EditorBlockProps) {
 	const { blockId, ...rest } = props;
 	const { editor, readonly, renderers, blockControls } = useEditorContext();
 	const fieldEditor = useFieldEditorContext();
-	const isEditable = useBlockEditingState(fieldEditor, blockId);
+	const isEditable = useBlockEditingState(blockId);
 	const blockModel = useBlockModel(editor, blockId);
-	const isSelected = useBlockSelectionState(editor, blockId);
-	const surfaceRole = useBlockSurfaceRole(editor, fieldEditor, blockId);
-	const blockDecorations = useBlockDecorations(editor, blockId);
+	const isSelected = useBlockSelectionState(blockId);
+	const surfaceRole = useBlockSurfaceRole(blockId);
+	const blockDecorations = useBlockDecorations(blockId);
 	const externalDropPosition = useBlockDropPreview(blockId);
 	const blockRef = useRef<HTMLElement>(null);
+	const ackedRef = useRef<{ element: HTMLElement; fieldEditor: object } | null>(null);
 
+	// This block acknowledges its own mount and any replacement of its host
+	// element (P1). It runs only when this memoized block renders, and acks
+	// only when the element or field editor changed.
 	useIsomorphicLayoutEffect(() => {
 		const element = blockRef.current;
-		if (!element) {
-			return;
-		}
-		if (!fieldEditor) {
-			return;
-		}
+		if (!element || !fieldEditor) return;
+		const acked = ackedRef.current;
+		if (acked?.element === element && acked.fieldEditor === fieldEditor) return;
 		fieldEditor.ackBlockMounted(blockId, element);
-	}, [fieldEditor, blockId, blockModel.exists]);
+		ackedRef.current = { element, fieldEditor };
+	});
 
 	if (!blockModel.exists) return null;
 
@@ -109,7 +115,7 @@ export function EditorBlock(props: EditorBlockProps) {
 		[DATA_ATTRS.dropPosition]: externalDropPosition,
 		...buildDataAttributes({
 			selected: isSelected,
-			focused: fieldEditor?.focusBlockId === blockId,
+			focused: isEditable,
 			"drop-target": Boolean(externalDropPosition),
 			"ai-generating": isAiGenerating,
 		}),
@@ -138,7 +144,7 @@ export function EditorBlock(props: EditorBlockProps) {
 		"div",
 		primitiveProps,
 	);
-}
+});
 
 function injectBlockDecorationsIntoInlineContent(
 	node: React.ReactNode,

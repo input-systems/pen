@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	ariaReadOnlyFacet,
 	clipboardFacet,
@@ -92,17 +92,56 @@ export function EditorRoot(props: EditorRootProps) {
 		ref,
 		...rest
 	} = props;
-	const resolvedBlockDragAndDrop = resolveBlockDragAndDrop(
-		editorViewMode,
-		blockDragAndDrop,
+	// Memoized on their inputs so the EditorContext value below stays stable
+	// across a focus change; a fresh value re-renders every block (SCALE6).
+	const resolvedBlockDragAndDrop = useMemo(
+		() => resolveBlockDragAndDrop(editorViewMode, blockDragAndDrop),
+		[editorViewMode, blockDragAndDrop],
 	);
-	const resolvedInteractionModel = resolveInteractionModel(
-		editorViewMode,
-		interactionModel,
+	const resolvedInteractionModel = useMemo(
+		() => resolveInteractionModel(editorViewMode, interactionModel),
+		[editorViewMode, interactionModel],
 	);
-	const resolvedBlockSelection = resolveBlockSelection(blockSelection);
-	const resolvedInlineAtomInteractions = resolveInlineAtomInteractions(
-		inlineAtomInteractions,
+	const resolvedBlockSelection = useMemo(
+		() => resolveBlockSelection(blockSelection),
+		[blockSelection],
+	);
+	const resolvedInlineAtomInteractions = useMemo(
+		() => resolveInlineAtomInteractions(inlineAtomInteractions),
+		[inlineAtomInteractions],
+	);
+	const documentProfile = editor.documentProfile;
+	const editorContextValue = useMemo(
+		() => ({
+			editor,
+			readonly,
+			documentProfile,
+			editorViewMode,
+			interactionModel: resolvedInteractionModel,
+			blockDragAndDrop: resolvedBlockDragAndDrop,
+			blockSelection: resolvedBlockSelection,
+			blockControls,
+			importers,
+			assets: assets ?? importers?.assets,
+			renderers,
+			inlineAtomRenderers,
+			inlineAtomInteractions: resolvedInlineAtomInteractions,
+		}),
+		[
+			editor,
+			readonly,
+			documentProfile,
+			editorViewMode,
+			resolvedInteractionModel,
+			resolvedBlockDragAndDrop,
+			resolvedBlockSelection,
+			blockControls,
+			importers,
+			assets,
+			renderers,
+			inlineAtomRenderers,
+			resolvedInlineAtomInteractions,
+		],
 	);
 	const [focused, setFocused] = useState(false);
 	const [rootElement, setRootElement] = useState<HTMLElement | null>(null);
@@ -126,6 +165,11 @@ export function EditorRoot(props: EditorRootProps) {
 	if (!regionSelectionStoreRef.current) {
 		regionSelectionStoreRef.current = new RegionSelectionStore();
 	}
+	const regionSelectionStore = regionSelectionStoreRef.current;
+	const regionSelectionContextValue = useMemo(
+		() => ({ rootElement, setRootElement, store: regionSelectionStore }),
+		[rootElement, regionSelectionStore],
+	);
 
 	useIsomorphicLayoutEffect(() => {
 		if (chrome === false) {
@@ -320,31 +364,9 @@ export function EditorRoot(props: EditorRootProps) {
 	};
 
 	return (
-		<EditorContext.Provider
-			value={{
-				editor,
-				readonly,
-				documentProfile: editor.documentProfile,
-				editorViewMode,
-				interactionModel: resolvedInteractionModel,
-				blockDragAndDrop: resolvedBlockDragAndDrop,
-				blockSelection: resolvedBlockSelection,
-				blockControls,
-				importers,
-				assets: resolvedAssets,
-				renderers,
-				inlineAtomRenderers,
-				inlineAtomInteractions: resolvedInlineAtomInteractions,
-			}}
-		>
+		<EditorContext.Provider value={editorContextValue}>
 			<BlockDragSessionProvider viewId={editor.internals.viewId}>
-				<EditorRegionSelectionContext.Provider
-					value={{
-						rootElement,
-						setRootElement,
-						store: regionSelectionStoreRef.current,
-					}}
-				>
+				<EditorRegionSelectionContext.Provider value={regionSelectionContextValue}>
 					<FieldEditorContext.Provider value={fieldEditorRef.current}>
 						{renderAsChild(
 							{

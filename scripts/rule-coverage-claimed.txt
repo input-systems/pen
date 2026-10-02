@@ -289,3 +289,4 @@ rules/architecture#I15
 rules/reliability#CH11
 rules/selection#R1
 rules/selection#R2
+rules/scale#SCALE6

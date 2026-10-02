@@ -48,6 +48,7 @@ flowchart TD
 
 Important responsibilities:
 
+- `EditorBlock` and `InlineContent` are memoized and read their block's slices from the field editor's block notifier, so a keystroke or caret move re-renders only the blocks it changed (SCALE6). `EditorContext`, `EditorContentContext`, the region-selection and block-drag contexts are stable while their inputs are, and `EditorContent` reads root ids from the notifier's document snapshot and only whether the surface is expanded. Each block acknowledges its own mount when it mounts or its host element changes; `EditorContent` does not acknowledge every block.
 - Mount editor roots and block rendering surfaces
 - Subscribe React state to editor state through hooks and contexts
 - Install the shared field-editor session and `bindEditorDocumentKeyDown()` for the active editor root. Escape (HOST7) and block-selection Enter (HOST8) are bubbling defaults; other document shortcuts stay in capture. Host `importers` / assets, when passed, are written with `internals.assignSlot("paste:importers" | "paste:assetProvider", …)`. This package does not install a default HTML importer; `defaultPreset()`'s `html-clipboard` extension does.

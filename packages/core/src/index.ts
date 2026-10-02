@@ -76,7 +76,10 @@ export {
 } from "./selection/helpers";
 export { snapToNormalPosition } from "./selection/normalPosition";
 export type { NormalPositionSnapshot } from "./selection/normalPosition";
-export { buildNormalPositionSnapshot } from "./commands/helpers";
+export {
+	buildLazyNormalPositionSnapshot,
+	buildNormalPositionSnapshot,
+} from "./commands/helpers";
 export { ExtensionManagerImpl } from "./editor/extensionManager";
 // ApplyPipeline stays off the barrel; hosts call editor.apply.
 export {

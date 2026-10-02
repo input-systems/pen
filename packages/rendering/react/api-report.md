@@ -15,7 +15,6 @@
 - composeRefs
 - DefaultRenderer
 - DividerRenderer
-- EditorBlock
 - EditorBlockHandle
 - EditorCaretOverlay
 - EditorContent
@@ -26,7 +25,6 @@
 - EditorSelectionRect
 - HeadingRenderer
 - ImageRenderer
-- InlineContent
 - NumberedListItemRenderer
 - ParagraphRenderer
 - PenEditor
@@ -171,6 +169,7 @@
 - Decoration
 - DecorationSet
 - Editor
+- EditorBlock
 - EditorContext
 - FieldEditor
 - FieldEditorContext
@@ -181,6 +180,7 @@
 - getInlineAtomAtOffset
 - InlineAtomInteractions
 - InlineAtomRenderInteractionProps
+- InlineContent
 - InlineDecoration
 - InlineSuggestionControlPosition
 - InlineSuggestionControlsState

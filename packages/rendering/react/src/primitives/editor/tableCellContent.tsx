@@ -3,7 +3,7 @@ import type { Editor } from "@input/pen-types";
 import { useEditorContext } from "../../context/editorContext";
 import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
 import { useFieldEditorContext } from "../../context/fieldEditorContext";
-import { useFieldEditorState } from "../../hooks/useFieldEditorState";
+import { useBlockSlice } from "../../hooks/useBlockNotifier";
 import { fullReconcileDeltasToDOM } from "@input/pen-dom/field-editor/reconciler";
 import { useCellTextSnapshot } from "../../hooks/useCellTextSnapshot";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
@@ -28,11 +28,11 @@ function TextCell(props: TableCellContentProps) {
 	const { tableBlockId, row, col, placeholder } = props;
 	const { editor } = useEditorContext();
 	const fieldEditor = useFieldEditorContext();
-	const fieldEditorState = useFieldEditorState(fieldEditor);
+	const activeCell = useBlockSlice(tableBlockId, "field").activeCell;
 	const textSnapshot = useCellTextSnapshot(editor, tableBlockId, row, col);
 	const elementRef = useRef<HTMLSpanElement>(null);
 
-	const isActiveCell = isCellActive(fieldEditorState, tableBlockId, row, col);
+	const isActiveCell = activeCell?.row === row && activeCell.col === col;
 	const showPlaceholder =
 		!!placeholder && isInlineContentEmpty(textSnapshot.deltas);
 
@@ -75,20 +75,6 @@ function TextCell(props: TableCellContentProps) {
 	);
 }
 
-function isCellActive(
-	fieldEditorState: {
-		activeCellCoord: { blockId: string; row: number; col: number } | null;
-	},
-	tableBlockId: string,
-	row: number,
-	col: number,
-): boolean {
-	return (
-		fieldEditorState.activeCellCoord?.blockId === tableBlockId &&
-		fieldEditorState.activeCellCoord.row === row &&
-		fieldEditorState.activeCellCoord.col === col
-	);
-}
 
 function cellSurfaceAttrs(
 	editor: Editor,

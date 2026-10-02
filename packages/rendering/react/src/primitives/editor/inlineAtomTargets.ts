@@ -4,7 +4,7 @@ import {
 	resolveInlineAtomDisplayText,
 	resolveInlineAtomInsert,
 } from "@input/pen-dom/field-editor/inlineAtomModel";
-import { isInlineAtomSelected } from "@input/pen-dom/utils/inlineAtomSelection";
+import { isInlineAtomSelectedInSlice } from "@input/pen-dom/utils/inlineAtomSelection";
 import { replaceElementChildren } from "@input/pen-dom/utils/replaceElementChildren";
 import type {
 	InlineAtomRenderer,
@@ -107,7 +107,7 @@ function getInlineAtomDescriptors(
 	return descriptors;
 }
 
-export { isInlineAtomSelected };
+export { isInlineAtomSelectedInSlice };
 
 function areInlineAtomTargetsEqual(
 	currentTargets: InlineAtomRenderTarget[],

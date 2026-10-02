@@ -1,39 +1,8 @@
-import type { Decoration, DecorationSet, Editor } from "@input/pen-types";
-import { emptyDecorationSet } from "@input/pen-core";
-import { useSyncExternalStoreWithSelector } from "../utils/useSyncExternalStoreWithSelector";
+import type { Decoration } from "@input/pen-types";
 
-export function useBlockDecorations(
-	editor: Editor,
-	blockId: string,
-): readonly Decoration[] {
-	return useSyncExternalStoreWithSelector(
-		(callback) => editor.on("decorationsChange", callback),
-		() => getDecorationSet(editor),
-		() => emptyDecorationSet(),
-		(decorations) => decorations.forBlock(blockId),
-		decorationsEqual,
-	);
-}
+import { useBlockSlice } from "./useBlockNotifier";
 
-function getDecorationSet(editor: Editor): DecorationSet {
-	return editor.getDecorations();
-}
-
-function decorationsEqual(
-	a: readonly Decoration[],
-	b: readonly Decoration[],
-): boolean {
-	if (a === b) return true;
-	if (a.length === 0 && b.length === 0) {
-		return true;
-	}
-	if (a.length !== b.length) return false;
-
-	for (let i = 0; i < a.length; i++) {
-		if (a[i] !== b[i]) {
-			return false;
-		}
-	}
-
-	return true;
+/** The block's decorations, identity-stable while unchanged (SCALE2, SCALE6). */
+export function useBlockDecorations(blockId: string): readonly Decoration[] {
+	return useBlockSlice(blockId, "decorations");
 }

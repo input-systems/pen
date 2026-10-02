@@ -186,11 +186,12 @@ function checkAgainstBaseline(
 }
 
 /**
- * React and Vue at 5k exceed a 600s test today: every caret move is O(M²)
- * across their per-block selection hooks (W2's subject). Until W2 lands they
- * run only under SCALE_RENDER_5K=1 (nightly), with a longer budget.
+ * Vue at 5k exceeds a 600s test today: every caret move is O(M²) across its
+ * per-block selection reads (W2-S6's subject). Until that lands it runs only
+ * under SCALE_RENDER_5K=1 (nightly), with a longer budget. React moved to the
+ * block notifier in W2-S5 and runs at 5k on every run.
  */
-const SLOW_UNTIL_W2 = new Set(["react/scale-5k", "vue/scale-5k"]);
+const SLOW_UNTIL_W2 = new Set(["vue/scale-5k"]);
 const RUN_SLOW = process.env.SCALE_RENDER_5K === "1";
 
 for (const surface of SURFACES) {

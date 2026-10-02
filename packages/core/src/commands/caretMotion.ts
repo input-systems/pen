@@ -21,7 +21,7 @@ import {
 import { isCollapsed } from "../selection/helpers";
 import {
 	blockSelectionResult,
-	buildNormalPositionSnapshot,
+	buildLazyNormalPositionSnapshot,
 	buildTransitionSnapshot,
 	collapsedAt,
 	documentOrderedTextPoints,
@@ -125,7 +125,7 @@ export function handleGraphemeCaret(
 		return finishNonVertical(editor, atomSelection);
 	}
 
-	const snapshot = buildNormalPositionSnapshot(editor);
+	const snapshot = buildLazyNormalPositionSnapshot(editor);
 	const stepped = nextNormalPosition(snapshot, focus, direction);
 	const next = resolveStep(editor, focus, stepped, direction);
 	if (!next) {

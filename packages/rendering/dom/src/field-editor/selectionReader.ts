@@ -1,5 +1,5 @@
 import {
-	buildNormalPositionSnapshot,
+	buildLazyNormalPositionSnapshot,
 	getEditorSelectionRecord,
 	snapToNormalPosition,
 } from "@input/pen-core";
@@ -49,6 +49,8 @@ export type ReaderBlock = {
 export type ReaderSnapshot = {
 	readonly blockOrder: readonly string[];
 	readonly blocks: Readonly<Record<string, ReaderBlock>>;
+	/** Visibility without materialising `blockOrder` (SCALE2). */
+	readonly has?: (blockId: string) => boolean;
 };
 
 type GestureWindowKind = "pointer" | "ime" | "context-menu" | "drag";
@@ -198,7 +200,7 @@ export function shouldStopEquivalentDomRead(
 			projectionInFlight: false,
 			proposal,
 			authorityState: toReaderSelection(record.state),
-			snapshot: buildNormalPositionSnapshot(editor),
+			snapshot: buildLazyNormalPositionSnapshot(editor),
 			gestureWindows: CLOSED_GESTURE_WINDOWS,
 		}) === "equivalent"
 	);
@@ -261,7 +263,7 @@ export function decideDomSelectionRead(input: {
 	origin: GestureSelectionOrigin;
 } {
 	const record = getEditorSelectionRecord(input.editor);
-	const snapshot = buildNormalPositionSnapshot(input.editor);
+	const snapshot = buildLazyNormalPositionSnapshot(input.editor);
 	const decision = classifyDomSelectionRead({
 		projectionInFlight: input.projectionInFlight,
 		proposal: input.proposal,
@@ -453,7 +455,7 @@ function resolveTextBlock(
 	snapshot: ReaderSnapshot,
 	blockId: string,
 ): ReaderBlock | null {
-	if (!snapshot.blockOrder.includes(blockId)) {
+	if (!(snapshot.has ? snapshot.has(blockId) : snapshot.blockOrder.includes(blockId))) {
 		return null;
 	}
 	const block = snapshot.blocks[blockId];

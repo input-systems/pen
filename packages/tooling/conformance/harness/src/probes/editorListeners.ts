@@ -8,9 +8,14 @@ import { bump } from "./counters";
  */
 const live = new Map<string, number>();
 
+let lastCountedCommit: unknown = null;
+
+/** Once per commit, not once per listener the commit reaches. */
 function countCommit(args: unknown[]): void {
-	const summary = (args[0] as { summary?: { affectedBlockIds?: readonly string[] } })?.summary;
-	bump("commit.affectedBlockIds", summary?.affectedBlockIds?.length ?? 0);
+	const event = args[0] as { commitId?: unknown; summary?: { affectedBlockIds?: readonly string[] } } | undefined;
+	if (event?.commitId === undefined || event.commitId === lastCountedCommit) return;
+	lastCountedCommit = event.commitId;
+	bump("commit.affectedBlockIds", event.summary?.affectedBlockIds?.length ?? 0);
 }
 
 export function installEditorListenerProbe(editor: Editor): void {

@@ -319,7 +319,16 @@ class BlockNotifierImpl implements BlockNotifier {
 		const previous = this._completionBlockId;
 		const next = this._completion?.getState().visibleSuggestion?.blockId ?? null;
 		this._completionBlockId = next;
-		this._deliver("completion", [previous, next].filter((id): id is string => id !== null));
+		const ids = [previous, next];
+		// Visibility flipped: the blocks that can show a placeholder must hear it.
+		if ((previous === null) !== (next === null)) {
+			ids.push(
+				this._surface.focusBlockId,
+				this.getDocumentSnapshot().placeholderTargetBlockId,
+				...endpoints(this._selection),
+			);
+		}
+		this._deliver("completion", ids.filter((id): id is string => id !== null));
 	}
 
 	// ── Derived state ────────────────────────────────────────
@@ -351,6 +360,11 @@ class BlockNotifierImpl implements BlockNotifier {
 					break;
 				default:
 					break;
+			}
+			// The parentId route: a root-order insert or removal can still change
+			// a container's children.
+			for (const id of structuralBlockIds(change)) {
+				parents.push(this._editor.documentState.parentOf(id), this._cachedParentOf(id));
 			}
 		}
 		return parents.filter((id): id is string => typeof id === "string");
@@ -464,6 +478,7 @@ class BlockNotifierImpl implements BlockNotifier {
 			list: buildListSlice(this._ordinalFor(blockId, commit.type, context), previous?.list),
 			isPlaceholderTarget: this.getDocumentSnapshot().placeholderTargetBlockId === blockId,
 			inlineCompletion: this._completionFor(blockId, previous),
+			inlineCompletionVisible: this._visibleCompletion() !== null,
 		};
 		return previous && snapshotsEqual(previous, next) ? previous : next;
 	}
@@ -488,9 +503,13 @@ class BlockNotifierImpl implements BlockNotifier {
 		return this._sources.length > 0 ? this._store : (this._fieldEditor?.getSnapshot() ?? null);
 	}
 
-	private _completionFor(blockId: string, previous: BlockSnapshot | undefined): InlineCompletionSuggestion | null {
+	private _visibleCompletion(): InlineCompletionSuggestion | null {
 		const controller = this._completion ?? getInlineCompletionController(this._editor);
-		const suggestion = controller?.getState().visibleSuggestion ?? null;
+		return controller?.getState().visibleSuggestion ?? null;
+	}
+
+	private _completionFor(blockId: string, previous: BlockSnapshot | undefined): InlineCompletionSuggestion | null {
+		const suggestion = this._visibleCompletion();
 		const mine = suggestion?.blockId === blockId ? suggestion : null;
 		return previous?.inlineCompletion === mine ? previous.inlineCompletion : mine;
 	}
@@ -629,7 +648,8 @@ function snapshotsEqual(previous: BlockSnapshot, next: BlockSnapshot): boolean {
 		previous.childIds === next.childIds &&
 		previous.list === next.list &&
 		previous.isPlaceholderTarget === next.isPlaceholderTarget &&
-		previous.inlineCompletion === next.inlineCompletion
+		previous.inlineCompletion === next.inlineCompletion &&
+		previous.inlineCompletionVisible === next.inlineCompletionVisible
 	);
 }
 

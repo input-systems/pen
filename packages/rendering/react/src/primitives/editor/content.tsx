@@ -1,17 +1,11 @@
-import React, { useRef, useSyncExternalStore } from "react";
+import React, { useMemo, useRef, useSyncExternalStore } from "react";
 import { resolveEditorMessage } from "@input/pen-core";
-import type { FieldEditorSession } from "@input/pen-dom";
 import { EditorContentContext } from "../../context/editorContentContext";
 import { useEditorContext } from "../../context/editorContext";
 import { useFieldEditorContext } from "../../context/fieldEditorContext";
 
-import { useFieldEditorState } from "../../hooks/useFieldEditorState";
+import { useDocumentSnapshot, useSurfaceExpansion } from "../../hooks/useBlockNotifier";
 import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
-import { useBlockList } from "../../hooks/useBlockList";
-import {
-	useDocumentEmptyState,
-	useDocumentPlaceholderTarget,
-} from "../../hooks/useDocumentEmptyState";
 import { useInlineCompletionState } from "../../hooks/useInlineCompletionState";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import {
@@ -57,10 +51,14 @@ export function EditorContent(props: EditorContentProps) {
 	const emptyPlaceholder =
 		emptyPlaceholderProp ??
 		resolveEditorMessage(editor, "pen.schema.document.emptyPlaceholder");
+	// Stable while the placeholder is: a fresh value would re-render every block.
+	const contentContext = useMemo(() => ({ emptyPlaceholder }), [emptyPlaceholder]);
 	const fieldEditor = useFieldEditorContext();
 	const { store: regionSelectionStore } = useEditorRegionSelectionContext();
-	const fieldEditorState = useFieldEditorState(fieldEditor);
-	const blockIds = useBlockList(editor);
+	// List-level state only: never the store's domSyncVersion (SCALE6).
+	const surface = useSurfaceExpansion();
+	const documentSnapshot = useDocumentSnapshot();
+	const blockIds = documentSnapshot.rootIds;
 	const visibleSuggestion = useInlineCompletionState(editor);
 	const blockDragSession = useBlockDragSession();
 	const contentRef = useRef<HTMLElement>(null);
@@ -75,9 +73,7 @@ export function EditorContent(props: EditorContentProps) {
 		clearPointerSelectionState,
 	} = useEditorContentPointerState(interactionModel);
 
-	const isEmpty = useDocumentEmptyState(editor);
-	const documentPlaceholderTargetBlockId =
-		useDocumentPlaceholderTarget(editor);
+	const isEmpty = documentSnapshot.isEmpty;
 	const {
 		isDropActive,
 		dropPreview,
@@ -102,17 +98,10 @@ export function EditorContent(props: EditorContentProps) {
 	const isInlineAtomDropActive = inlineAtomDropCaretStyle !== null;
 
 	useIsomorphicLayoutEffect(() => {
-		if (!fieldEditor || fieldEditorState.mode !== "expanded") return;
+		if (!fieldEditor || !surface.expanded) return;
 		if (!blocksHostRef.current) return;
 		fieldEditor.attachElement(blocksHostRef.current);
-	}, [fieldEditor, fieldEditorState.mode, fieldEditorState.activeBlockIds]);
-
-	// no dep array: acks every commit, matching the Vue binding's
-	// onMounted + onUpdated pair. A text-only splice leaves blockIds
-	// referentially stable but can still replace block DOM nodes.
-	useIsomorphicLayoutEffect(() => {
-		ackMountedBlockElements(fieldEditor, blocksHostRef.current);
-	});
+	}, [fieldEditor, surface.expanded, surface.activeBlockIds]);
 
 	// Click-to-activate: when user clicks on a block, activate the field editor.
 	// Shift-click: select a range of blocks (AC #22).
@@ -260,7 +249,7 @@ export function EditorContent(props: EditorContentProps) {
 		<>
 			<div
 				data-pen-editor-blocks-host=""
-				{...(fieldEditorState.mode === "expanded"
+				{...(surface.expanded
 					? {
 							[DATA_ATTRS.fieldEditorSurface]: "",
 							...fieldEditorTextEntryAttrs(true, editor),
@@ -287,9 +276,7 @@ export function EditorContent(props: EditorContentProps) {
 	};
 
 	return (
-		<EditorContentContext.Provider
-			value={{ emptyPlaceholder, documentPlaceholderTargetBlockId }}
-		>
+		<EditorContentContext.Provider value={contentContext}>
 			<DropPreviewProvider value={dropPreview}>
 				{renderAsChild(
 					{
@@ -303,24 +290,4 @@ export function EditorContent(props: EditorContentProps) {
 			</DropPreviewProvider>
 		</EditorContentContext.Provider>
 	);
-}
-
-function ackMountedBlockElements(
-	fieldEditor: FieldEditorSession | null,
-	host: HTMLElement | null,
-): void {
-	if (!fieldEditor || !host) {
-		return;
-	}
-	for (const element of host.querySelectorAll(
-		`[${DATA_ATTRS.editorBlock}]`,
-	)) {
-		if (!(element instanceof HTMLElement)) {
-			continue;
-		}
-		const blockId = element.getAttribute(DATA_ATTRS.blockId);
-		if (blockId) {
-			fieldEditor.ackBlockMounted(blockId, element);
-		}
-	}
 }
