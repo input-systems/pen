@@ -65,11 +65,24 @@ class FakeEditContext implements EditContext {
 }
 
 /**
+ * jsdom builds a document's selector engine on its first `matches` /
+ * `closest` / `querySelector` call, and that engine registers capture
+ * listeners on the window for `:focus-visible` tracking that live as long as
+ * the document. jsdom 28 built it with the document; jsdom 30 builds it
+ * lazily, so whichever test first reaches `closest()` inside a ledger would be
+ * billed for nine `Window` listeners that are jsdom's, not the backend's.
+ */
+function buildJsdomSelectorEngine(): void {
+	document.documentElement.matches("*");
+}
+
+/**
  * Counts every listener and observer the process holds, by target and type,
  * so a backend that forgets one is caught by name rather than by a later
  * flaky failure.
  */
 function installLedger() {
+	buildJsdomSelectorEngine();
 	const listeners = new Map<string, number>();
 	const observers = new Set<MutationObserver>();
 	const addEventListener = EventTarget.prototype.addEventListener;
