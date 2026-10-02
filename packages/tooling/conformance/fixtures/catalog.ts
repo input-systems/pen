@@ -2,7 +2,19 @@ import type { TestBlock } from "@input/pen-test";
 import { BIDI_MIXED_BLOCKS } from "./bidi";
 import { GRAPHEME_CLUSTER_BLOCKS } from "./grapheme";
 
+/** Large mixed fixtures (`@input/pen-test` mixed scale fixture), built on demand. */
+export type ScaleFixtureName = "scale-1k" | "scale-5k" | "scale-10k" | "scale-50k";
+
+/** Root-block count per scale fixture. */
+export const SCALE_FIXTURE_ROOT_COUNTS: Readonly<Record<ScaleFixtureName, number>> = {
+	"scale-1k": 1_000,
+	"scale-5k": 5_000,
+	"scale-10k": 10_000,
+	"scale-50k": 50_000,
+};
+
 export type FixtureName =
+	| ScaleFixtureName
 	| "hello-world"
 	| "two-paragraph"
 	| "empty"
@@ -39,11 +51,14 @@ const FIXTURE_PRESENT = {
 	"nested-toggle": true,
 	"grapheme-clusters": true,
 	"code-block": true,
-} as const satisfies Record<FixtureName, true>;
+} as const satisfies Record<Exclude<FixtureName, ScaleFixtureName>, true>;
 
-export const FIXTURE_NAMES: readonly FixtureName[] = Object.keys(
-	FIXTURE_PRESENT,
-) as FixtureName[];
+/**
+ * Every small fixture. Scale fixtures are excluded on purpose: suites that
+ * iterate this list (AX1 runs axe per fixture) must not mount 50k blocks.
+ */
+export const FIXTURE_NAMES: readonly Exclude<FixtureName, ScaleFixtureName>[] =
+	Object.keys(FIXTURE_PRESENT) as Exclude<FixtureName, ScaleFixtureName>[];
 
 export const WINDOWED_LARGE_BLOCK_COUNT = 40;
 export const WINDOWED_WINDOW_SIZE = 8;
@@ -65,7 +80,7 @@ function windowedLargeBlocks(): TestBlock[] {
 }
 
 export const LOCAL_FIXTURES: Record<
-	Exclude<FixtureName, "deterministic">,
+	Exclude<FixtureName, "deterministic" | ScaleFixtureName>,
 	readonly TestBlock[]
 > = {
 	"hello-world": [
@@ -172,10 +187,18 @@ export const LOCAL_FIXTURES: Record<
 
 export function isLocalFixtureName(
 	name: string,
-): name is Exclude<FixtureName, "deterministic"> {
+): name is Exclude<FixtureName, "deterministic" | ScaleFixtureName> {
 	return Object.prototype.hasOwnProperty.call(LOCAL_FIXTURES, name);
 }
 
+export function isScaleFixtureName(name: string): name is ScaleFixtureName {
+	return Object.prototype.hasOwnProperty.call(SCALE_FIXTURE_ROOT_COUNTS, name);
+}
+
 export function isFixtureName(name: string): name is FixtureName {
-	return isLocalFixtureName(name) || name === "deterministic";
+	return (
+		isLocalFixtureName(name) ||
+		isScaleFixtureName(name) ||
+		name === "deterministic"
+	);
 }

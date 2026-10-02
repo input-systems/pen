@@ -32,8 +32,11 @@ import { defaultPreset } from "@input/pen";
 import { defaultSchema } from "@input/pen-schema";
 import {
 	createDeterministicYDocFixture,
+	generateMixedBlockSpecs,
+	mixedFixtureOps,
 	populateYDoc,
 } from "@input/pen-test";
+import { getRootBlockIds } from "@input/pen-dom/utils/parentIdTree";
 import {
 	type CRDTAdapter,
 	type CRDTDocument,
@@ -53,6 +56,8 @@ import { createReducedMotionSignal } from "../../../../rendering/dom/src/a11y/mo
 import {
 	isFixtureName,
 	isLocalFixtureName,
+	isScaleFixtureName,
+	SCALE_FIXTURE_ROOT_COUNTS,
 	LOCAL_FIXTURES,
 	WINDOWED_WINDOW_SIZE,
 } from "../../fixtures/catalog";
@@ -156,11 +161,15 @@ function createLocalDocument(name: string): {
 			document: fixture.crdtDoc,
 		};
 	}
+	const adapter = yjsAdapter({ awareness: createYjsAwareness });
+	const ydoc = new Y.Doc({ gc: false });
+	if (isScaleFixtureName(name)) {
+		populateYDoc(ydoc, generateMixedBlockSpecs(SCALE_FIXTURE_ROOT_COUNTS[name]));
+		return { adapter, ydoc, document: wrapYjsDocument(adapter, ydoc) };
+	}
 	if (!isLocalFixtureName(name)) {
 		throw new Error(`Unknown conformance fixture: ${name}`);
 	}
-	const adapter = yjsAdapter({ awareness: createYjsAwareness });
-	const ydoc = new Y.Doc({ gc: false });
 	populateYDoc(ydoc, [...LOCAL_FIXTURES[name]]);
 	return {
 		adapter,
@@ -257,6 +266,13 @@ function createSession(fixtureName: string): Session {
 		brokenProjection: null,
 	};
 	wireEvents(next);
+	if (isScaleFixtureName(fixtureName)) {
+		// Tables and marks need editor.apply (populateYDoc drops them). This runs
+		// before any surface mounts, so construction is never measured.
+		editor.apply(mixedFixtureOps(SCALE_FIXTURE_ROOT_COUNTS[fixtureName]), {
+			origin: "system",
+		});
+	}
 	return next;
 }
 
@@ -684,6 +700,23 @@ function applyOps(ops: readonly DocumentOp[]): void {
 	getHarnessSession().editor.apply([...ops], { origin: "user" });
 }
 
+function selectTextById(
+	blockId: string,
+	anchorOffset: number,
+	focusOffset = anchorOffset,
+): void {
+	getHarnessSession().editor.selectText(blockId, anchorOffset, focusOffset);
+}
+
+/** Clock runs disconnect the in-page peer so its sync is not measured. */
+function setPeersConnected(connected: boolean): void {
+	const current = getHarnessSession();
+	current.disconnectPeers();
+	current.disconnectPeers = connected
+		? connectPeers(current.localY, current.remoteY)
+		: () => {};
+}
+
 function remoteApply(ops: readonly DocumentOp[]): void {
 	getHarnessSession().remoteEditor.apply([...ops], { origin: "collaborator" });
 }
@@ -971,6 +1004,11 @@ function installBridge(): void {
 		get documentText() {
 			return documentText();
 		},
+		get rootBlockIds() {
+			return [...getRootBlockIds(getHarnessSession().editor)];
+		},
+		setPeersConnected,
+		selectTextById,
 		get blockIds() {
 			return blockIds();
 		},

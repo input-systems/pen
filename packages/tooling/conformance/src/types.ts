@@ -291,6 +291,8 @@ export type PenConformanceBridge = {
 	readonly diagnostics: readonly SerializedDiagnostic[];
 	readonly documentText: string;
 	readonly blockIds: readonly string[];
+	/** Root ids as the renderer sees them (`getRootBlockIds`). */
+	readonly rootBlockIds: readonly string[];
 	readonly hasFocus: boolean;
 	readonly fixtureName: string;
 	readonly generation: number;
@@ -302,6 +304,10 @@ export type PenConformanceBridge = {
 	load(name: string): void;
 	focusText(block?: number): void;
 	selectText(block: number, offset?: number): void;
+	/** Select by block id; scale fixtures address blocks by id, not index. */
+	selectTextById(blockId: string, anchorOffset: number, focusOffset?: number): void;
+	/** Disconnect or reconnect the in-page remote peer (`connectPeers`). */
+	setPeersConnected(connected: boolean): void;
 	setWindow(start: number): void;
 	apply(ops: readonly DocumentOp[]): void;
 	remoteApply(ops: readonly DocumentOp[]): void;
