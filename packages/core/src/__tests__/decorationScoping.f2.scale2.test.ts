@@ -8,7 +8,6 @@ import { describe, expect, it } from "vitest";
 import {
 	createDecorationSet,
 	emptyDecorationSet,
-	recomputeDecorations,
 	updateDecorationsForAffectedBlocks,
 } from "../editor/decorations";
 
@@ -119,62 +118,6 @@ describe("SCALE2 decoration scoping (F.2)", () => {
 			emptyDecorationSet().forBlock("missing"),
 		);
 		expect(next.forBlock("a")).toHaveLength(0);
-		expect(next.forBlock("b")).toBe(untouchedB);
-	});
-
-	it("SCALE2: eight no-op providers run once per commit, not once per block", () => {
-		const previousDecorations: Decoration[] = [];
-		for (let i = 1; i <= 20; i++) {
-			previousDecorations.push(inlineDec(`b${i}`, 0, 1, `m${i}`));
-		}
-		const previous = createDecorationSet(previousDecorations);
-		const untouched = previous.forBlock("b1");
-
-		const counts = [0, 0, 0, 0, 0, 0, 0, 0];
-		const seen: string[][] = [];
-		const providers = counts.map((_, index) => {
-			return (affectedBlocks: readonly string[]) => {
-				counts[index] += 1;
-				seen.push([...affectedBlocks]);
-				return emptyDecorationSet();
-			};
-		});
-
-		const next = recomputeDecorations(previous, ["b7"], providers);
-
-		expect(counts).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
-		expect(seen).toHaveLength(8);
-		for (const args of seen) {
-			expect(args).toEqual(["b7"]);
-		}
-		expect(next.forBlock("b1")).toBe(untouched);
-		expect(next.forBlock("b7")).toHaveLength(0);
-	});
-
-	it("SCALE2: a participating provider is invoked once and only for the affected block", () => {
-		const previous = createDecorationSet([
-			inlineDec("a", 0, 1, "old-a"),
-			inlineDec("b", 0, 1, "old-b"),
-		]);
-		const untouchedB = previous.forBlock("b");
-		let calls = 0;
-		let seen: readonly string[] = [];
-
-		const next = recomputeDecorations(
-			previous,
-			["a"],
-			[
-				(affectedBlocks) => {
-					calls += 1;
-					seen = affectedBlocks;
-					return [inlineDec("a", 0, 4, "next-a")];
-				},
-			],
-		);
-
-		expect(calls).toBe(1);
-		expect(seen).toEqual(["a"]);
-		expect(next.forBlock("a")).toEqual([inlineDec("a", 0, 4, "next-a")]);
 		expect(next.forBlock("b")).toBe(untouchedB);
 	});
 });

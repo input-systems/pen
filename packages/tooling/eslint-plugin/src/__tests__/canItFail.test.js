@@ -211,6 +211,19 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 		);
 	});
 
+	it("no-unscoped-decoration-source errors by name on a function-form decorations source", () => {
+		expectRuleErrors(
+			tsTester,
+			"no-unscoped-decoration-source",
+			rules["no-unscoped-decoration-source"],
+			{
+				code: "export function seededExtension() {\n\treturn decorationsFacet.of(() => createDecorationSet([]));\n}\n",
+				filename: "packages/extensions/search/src/seeded-unscoped-decorations.ts",
+				errors: [{ messageId: "unscoped" }],
+			},
+		);
+	});
+
 	it("no-v1-extension-fields errors by name on keyBindings", () => {
 		expectRuleErrors(
 			tsTester,
@@ -420,7 +433,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 		);
 	});
 
-	it("plugin ships twenty rules and each can-it-fail case is registered", () => {
+	it("plugin ships twenty-one rules and each can-it-fail case is registered", () => {
 		expect(Object.keys(rules).sort()).toEqual([
 			"no-above-floor-api",
 			"no-aria-hidden-visible",
@@ -439,6 +452,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 			"no-selection-timers",
 			"no-unescaped-markup-concat",
 			"no-unscheduled-measure",
+			"no-unscoped-decoration-source",
 			"no-unstyled-focus",
 			"no-user-facing-literals",
 			"no-v1-extension-fields",

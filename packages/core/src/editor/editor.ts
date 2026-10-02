@@ -41,6 +41,7 @@ import type {
 	TextStreamWriter,
 	EditorAnchors,
 	SelectAllBehavior,
+	DecorationUpdateScope,
 } from "@input/pen-types";
 import {
 	MUTATION_GROUP_METADATA_KEY,
@@ -66,7 +67,12 @@ import { ExtensionManagerImpl } from "./extensionManager";
 import { EditorAnchorsImpl } from "./anchors";
 import { SelectionAuthorityImpl } from "./selection";
 import { DocumentStateImpl } from "./documentState";
-import { emptyDecorationSet, reconcileDecorationSets } from "./decorations";
+import {
+	DecorationCollector,
+	type DecorationRefresh,
+	type DecorationTrigger,
+} from "./decorationCollector";
+import { emptyDecorationSet } from "./decorations";
 import { DocumentRangeImpl } from "./range";
 import { createDocumentSession } from "./documentSession";
 
@@ -177,6 +183,7 @@ class EditorImpl implements Editor {
 	private _unsubSummary: Unsubscribe | null = null;
 	private readonly _blockRevisions = new Map<string, number>();
 	private _decorations: DecorationSet;
+	private readonly _decorationCollector: DecorationCollector;
 	private readonly _viewId = generateId();
 	private _extensionLifecycle: Promise<void> = Promise.resolve();
 	private _facetRegistry!: FacetRegistry;
@@ -285,6 +292,9 @@ class EditorImpl implements Editor {
 
 		this.undoManager = NOOP_UNDO;
 		this._decorations = emptyDecorationSet();
+		this._decorationCollector = new DecorationCollector(this, (event) =>
+			this._emitter.emit("diagnostic", event),
+		);
 		this._refreshCoreSlots();
 
 		// Constructing a document is not a change to one, so none of the three
@@ -555,11 +565,16 @@ class EditorImpl implements Editor {
 
 	// ── Decorations ──────────────────────────────────────────
 
-	requestDecorationUpdate(): void {
-		const previousGeneration = this._decorations.generation;
-		const decoSet = this._refreshDecorations();
-		if (decoSet.generation === previousGeneration) return;
-		this._emitter.emit("decorationsChange", decoSet.generation);
+	requestDecorationUpdate(scope?: DecorationUpdateScope): void {
+		const refresh = this._refreshDecorations(
+			scope ? { kind: "scope", scope } : { kind: "full" },
+		);
+		if (refresh.changedBlockIds.length === 0) return;
+		this._emitter.emit(
+			"decorationsChange",
+			refresh.set.generation,
+			refresh.changedBlockIds,
+		);
 	}
 
 	getDecorations(): DecorationSet {
@@ -577,14 +592,14 @@ class EditorImpl implements Editor {
 		return this._emitter.on(event, handler);
 	}
 
-	private _refreshDecorations(): DecorationSet {
-		// providers rebuild every decoration on each pass; keep the previous
-		// per-block lists where nothing changed so only touched blocks re-render
-		this._decorations = reconcileDecorationSets(
-			this._decorations,
-			this._extensions.collectDecorations(this._documentState, this),
-		);
-		return this._decorations;
+	private _refreshDecorations(
+		trigger: DecorationTrigger = { kind: "full" },
+	): DecorationRefresh {
+		// Only blocks a source touched are re-merged; the rest keep their list
+		// identity, so only touched blocks re-render (SCALE2).
+		const refresh = this._decorationCollector.refresh(trigger);
+		this._decorations = refresh.set;
+		return refresh;
 	}
 
 	onSelectionChange(callback: PenEventMap["selectionChange"]): Unsubscribe {

@@ -33,6 +33,7 @@ import type { BlockIndex } from "../changes/blockIndex";
 import type { SchemaEngineImpl } from "../schema/normalize";
 import type { FacetRegistry } from "../facets/registry";
 import type { ApplyPipeline } from "./apply";
+import type { DecorationCollector, DecorationRefresh, DecorationTrigger } from "./decorationCollector";
 import type { DocumentStateImpl } from "./documentState";
 import type { EventEmitter } from "./events";
 import type { ExtensionManagerImpl } from "./extensionManager";
@@ -69,6 +70,7 @@ export interface EditorApiContext {
 	_extensionLifecycle: Promise<void>;
 	readonly _extensions: ExtensionManagerImpl;
 	_decorations: DecorationSet;
+	readonly _decorationCollector: DecorationCollector;
 	_pendingSummary: ChangeSummary | null;
 	_deferredCRDTEvent: CRDTEvent | null;
 	_lastChangeSummary: ChangeSummary | null;
@@ -123,7 +125,7 @@ export interface EditorLifecycleContext extends EditorApiContext {
 	_createCommitEvent(event: CRDTEvent): DocumentCommitEvent;
 	_recordPipelinePhase(phase: PipelinePhase): void;
 	_captureSelectionBeforeForCommit(): void;
-	_refreshDecorations(): DecorationSet;
+	_refreshDecorations(trigger?: DecorationTrigger): DecorationRefresh;
 	_activateExtensions(): Promise<void>;
 	_syncDocumentProfileFromStorage(): void;
 	_wireObservation(): void;

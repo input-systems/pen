@@ -427,10 +427,17 @@ export function dispatchCRDTEvent(
 			summary.blockText.length === 0 && summary.structural.length === 0,
 		selectionVersion: self._selection.record.version,
 	});
-	const previousDecorationGeneration = self._decorations.generation;
-	const nextDecorations = self._refreshDecorations();
-	if (nextDecorations.generation !== previousDecorationGeneration) {
-		self._emitter.emit("decorationsChange", nextDecorations.generation);
+	const decorations = self._refreshDecorations({
+		kind: "commit",
+		summary,
+		origin: event.origin,
+	});
+	if (decorations.changedBlockIds.length > 0) {
+		self._emitter.emit(
+			"decorationsChange",
+			decorations.set.generation,
+			decorations.changedBlockIds,
+		);
 	}
 	self._recordPipelinePhase("emit");
 	const commit = buildCommitEvent({

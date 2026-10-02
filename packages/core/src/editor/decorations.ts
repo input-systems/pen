@@ -8,10 +8,6 @@ let nextGeneration = 1;
 
 const EMPTY_ARRAY: readonly Decoration[] = Object.freeze([]);
 
-export type DecorationScopeProvider = (
-	affectedBlocks: readonly string[],
-) => DecorationSet | readonly Decoration[] | null | undefined;
-
 class DecorationSetImpl implements DecorationSet {
 	private _decorations: Decoration[];
 	readonly generation: number;
@@ -145,81 +141,12 @@ export function updateDecorationsForAffectedBlocks(
 	);
 }
 
-export function recomputeDecorations(
-	previous: DecorationSet,
-	affectedBlocks: readonly string[],
-	providers: readonly DecorationScopeProvider[],
+/** A set over an already grouped block index, taking ownership of it. */
+export function decorationSetFromIndex(
+	index: Map<string, Decoration[]>,
 ): DecorationSet {
-	if (affectedBlocks.length === 0) return previous;
-	const nextAffected: Decoration[] = [];
-	for (const provider of providers) {
-		const result = provider(affectedBlocks);
-		if (!result) continue;
-		if (isDecorationSet(result)) {
-			nextAffected.push(...result.decorations);
-		} else {
-			nextAffected.push(...result);
-		}
-	}
-	return updateDecorationsForAffectedBlocks(
-		previous,
-		affectedBlocks,
-		nextAffected,
-	);
-}
-
-/**
- * Reconciles a freshly collected set against the one it replaces so blocks whose
- * decorations did not change keep their list identity. Providers rebuild every
- * object on each pass; without this, one changed block re-renders every block
- * subscriber in the document. Returns `previous` itself when nothing changed, so
- * its generation holds and set-level subscribers bail out too.
- */
-export function reconcileDecorationSets(
-	previous: DecorationSet,
-	next: DecorationSet,
-): DecorationSet {
-	if (previous === next) return previous;
-	if (
-		!(previous instanceof DecorationSetImpl) ||
-		!(next instanceof DecorationSetImpl) ||
-		previous.isReleased
-	) {
-		return next;
-	}
-
-	const previousIndex = previous.blockIndex;
-	const nextIndex = next.blockIndex;
-	if (previousIndex.size !== nextIndex.size) {
-		return reuseUnchangedBlocks(previousIndex, nextIndex);
-	}
-
-	for (const [blockId, nextList] of nextIndex) {
-		const previousList = previousIndex.get(blockId);
-		if (!previousList || !decorationsListEqual(previousList, nextList)) {
-			return reuseUnchangedBlocks(previousIndex, nextIndex);
-		}
-	}
-	return previous;
-}
-
-function reuseUnchangedBlocks(
-	previousIndex: ReadonlyMap<string, Decoration[]>,
-	nextIndex: ReadonlyMap<string, Decoration[]>,
-): DecorationSet {
-	const index = new Map<string, Decoration[]>();
-	const flat: Decoration[] = [];
-	for (const [blockId, nextList] of nextIndex) {
-		const previousList = previousIndex.get(blockId);
-		const list =
-			previousList && decorationsListEqual(previousList, nextList)
-				? previousList
-				: nextList;
-		index.set(blockId, list);
-		flat.push(...list);
-	}
-	if (flat.length === 0) return EMPTY_SET;
-	return new DecorationSetImpl(flat, undefined, index);
+	if (index.size === 0) return EMPTY_SET;
+	return new DecorationSetImpl([...index.values()].flat(), undefined, index);
 }
 
 export function releaseDecorationSet(set: DecorationSet): void {
@@ -261,18 +188,7 @@ function groupDecorationsByAffectedBlock(
 	return grouped;
 }
 
-function isDecorationSet(
-	value: DecorationSet | readonly Decoration[],
-): value is DecorationSet {
-	return (
-		typeof value === "object" &&
-		value !== null &&
-		!Array.isArray(value) &&
-		"forBlock" in value
-	);
-}
-
-function decorationsListEqual(
+export function decorationsListEqual(
 	left: readonly Decoration[],
 	right: readonly Decoration[],
 ): boolean {

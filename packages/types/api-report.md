@@ -148,6 +148,7 @@
 - DateFormat
 - Decoration
 - DecorationSet
+- DecorationUpdateScope
 - DefaultAssoc
 - DefineCommand
 - DefineFacet

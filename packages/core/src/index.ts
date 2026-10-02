@@ -157,6 +157,7 @@ export {
 	keymapFacet,
 	beforeApplyFacet,
 	decorationsFacet,
+	scopedDecorationSource,
 	inputRulesFacet,
 	commandsFacet,
 	ariaReadOnlyFacet,
@@ -342,6 +343,9 @@ export type {
 	Keymap,
 	BeforeApplyHook,
 	DecorationSource,
+	DecorationInterest,
+	ScopedDecorationSource,
+	ScopedDecorationSourceSpec,
 	ClipboardHandler,
 	CommandHandlerTable,
 } from "./facets/coreFacets";

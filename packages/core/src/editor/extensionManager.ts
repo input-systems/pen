@@ -202,38 +202,6 @@ export class ExtensionManagerImpl {
 		}
 	}
 
-	// ── Decorations ──────────────────────────────────────────
-
-	collectDecorations(state: DocumentState, editor: Editor): DecorationSet {
-		const sets: DecorationSet[] = [];
-		for (const source of editor.facet(decorationsFacet)) {
-			try {
-				const set =
-					typeof source === "function"
-						? source(state, editor)
-						: source;
-				if (set && set.decorations.length > 0) {
-					sets.push(set);
-				}
-			} catch (err) {
-				this._emitter.emit("diagnostic", {
-					code: "PEN_EXT_003",
-					level: "error",
-					source: "extension",
-					message: "A decorations facet source threw",
-					remediation:
-						"Fix the decorations facet provider to return a valid decoration set " +
-						"for the current document state.",
-					error: err,
-				});
-			}
-		}
-
-		if (sets.length === 0) return emptyDecorationSet();
-		if (sets.length === 1) return sets[0];
-		return mergeDecorationSets(...sets);
-	}
-
 	// ── Key Bindings ─────────────────────────────────────────
 
 	collectKeyBindings(

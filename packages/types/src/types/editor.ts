@@ -203,12 +203,26 @@ export interface DocumentValidationError {
 	severity: "error" | "warning";
 }
 
+/** Which scoped decoration source to recompute, and for which blocks. */
+export interface DecorationUpdateScope {
+	/**
+	 * A `ScopedDecorationSource` from `@input/pen-core`; omitted means every
+	 * scoped source. Typed `unknown` because the type lives in core (API3).
+	 */
+	readonly source?: unknown;
+	readonly blockIds: readonly string[] | "all";
+}
+
 // ── Editor Events ───────────────────────────────────────────
 
 export interface PenEventMap {
 	commit: (event: CommitEvent) => void;
 	historyApplied: (event: HistoryAppliedEvent) => void;
-	decorationsChange: (generation: number) => void;
+	/** `changedBlockIds` names the blocks whose decoration lists changed. */
+	decorationsChange: (
+		generation: number,
+		changedBlockIds: readonly string[],
+	) => void;
 	selectionChange: (record: SelectionRecord) => void;
 	diagnostic: (event: DiagnosticEvent) => void;
 	"crdt:corruption": (errors: DocumentValidationError[]) => void;
@@ -375,7 +389,12 @@ export interface Editor {
 	replaceSelection(content: string | Block[]): void;
 	deleteSelection(options?: ApplyOptions): void;
 
-	requestDecorationUpdate(): void;
+	/**
+	 * Recompute decorations. With no argument every source is recomputed in
+	 * full; with a scope, only scoped sources (one, when `source` is given)
+	 * recompute the named blocks (SCALE2).
+	 */
+	requestDecorationUpdate(scope?: DecorationUpdateScope): void;
 	getDecorations(): DecorationSet;
 	scrollToBlock?(blockId: string): void;
 

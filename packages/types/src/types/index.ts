@@ -240,6 +240,7 @@ export {
 	type EditorViewMode,
 	type InteractionModel,
 	type SelectAllBehavior,
+	type DecorationUpdateScope,
 	HOOK_PRIORITY_AUTH,
 	HOOK_PRIORITY_SUGGEST,
 	HOOK_PRIORITY_INPUT_RULE,

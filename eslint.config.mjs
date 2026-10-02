@@ -223,6 +223,20 @@ export default tseslint.config(
 		},
 	},
 	{
+		// SCALE2: function-form decorationsFacet sources recompute in full on
+		// every commit. Remaining sites are listed with a reason in
+		// scripts/unscoped-decoration-source-allowlist.json; an entry with no
+		// live site fails (I15).
+		files: [
+			"packages/core/src/**/*.{ts,tsx}",
+			"packages/extensions/**/src/**/*.{ts,tsx}",
+		],
+		ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
+		rules: {
+			"pen/no-unscoped-decoration-source": "error",
+		},
+	},
+	{
 		files: ["packages/core/src/editor/textSegmentation.ts"],
 		rules: {
 			// HOST4 sub-floor fallback: word ops degrade to whitespace runs here only.

@@ -124,6 +124,7 @@
 - resolveSelectionTargetBlockIds
 - resolveSuggestionMenuTarget
 - runMigrations
+- scopedDecorationSource
 - selectAdjacentInlineAtom
 - selectionToRange
 - setCellCaretFocus
@@ -248,6 +249,7 @@
 - CreateCommandRegistryOptions
 - CreateFacetRegistryOptions
 - CreateHeadlessEditorOptions
+- DecorationInterest
 - DecorationSource
 - DefaultKeymapBinding
 - DefaultKeymapContext
@@ -270,6 +272,8 @@
 - SchemaA11yAttrs
 - SchemaA11yKind
 - SchemaRegistryConfig
+- ScopedDecorationSource
+- ScopedDecorationSourceSpec
 - SelectBlockParam
 - StructureBlockParam
 - SuggestionMenuBoundary

@@ -365,6 +365,7 @@ export function destroyEditor(editor: EditorImplRuntime): Promise<void> {
 
 function releaseDestroyedEditorCaches(self: EditorImplRuntime): void {
 	self._decorations = emptyDecorationSet();
+	self._decorationCollector.clear();
 	self._pendingSummary = null;
 	self._deferredCRDTEvent = null;
 	self._lastChangeSummary = null;

@@ -1,7 +1,9 @@
 import type {
 	ApplyOptions,
 	AssetProvider,
+	ChangeSummary,
 	CommandHandlerRegistration,
+	Decoration,
 	DecorationSet,
 	DocumentOp,
 	DocumentState,
@@ -9,6 +11,7 @@ import type {
 	Importer,
 	InputRule,
 	KeyBinding,
+	OpOrigin,
 } from "@input/pen-types";
 
 import { defineFacet } from "./defineFacet";
@@ -20,8 +23,63 @@ export type BeforeApplyHook = (
 	options: ApplyOptions,
 ) => DocumentOp[];
 
+/** What a scoped decoration source sees when deciding its interest in a commit. */
+export interface DecorationInterest {
+	readonly summary: ChangeSummary;
+	readonly origin: OpOrigin;
+}
+
+export interface ScopedDecorationSourceSpec {
+	/**
+	 * Blocks to recompute for this commit. Omitted: `summary.affectedBlockIds`.
+	 * `null` or `[]`: no interest, and `decorate` is not called. `"all"`: every
+	 * block in document order. Must cost O(1) or O(|summary|) (SCALE2).
+	 */
+	interest?(event: DecorationInterest): readonly string[] | "all" | null;
+	/**
+	 * Decorations for exactly `blockIds`. An entry for any other block is
+	 * dropped with a `decoration-out-of-scope` diagnostic.
+	 */
+	decorate(blockIds: readonly string[], editor: Editor): readonly Decoration[];
+}
+
+export interface ScopedDecorationSource extends ScopedDecorationSourceSpec {
+	readonly kind: "scoped";
+}
+
+/**
+ * The scoped form of a `decorationsFacet` source (SCALE2): called per commit
+ * with only the blocks it declares interest in, so its per-keystroke cost
+ * follows the change rather than the document.
+ */
+export function scopedDecorationSource(
+	spec: ScopedDecorationSourceSpec,
+): ScopedDecorationSource {
+	return {
+		kind: "scoped",
+		interest: spec.interest,
+		decorate: spec.decorate,
+	};
+}
+
+export function isScopedDecorationSource(
+	source: unknown,
+): source is ScopedDecorationSource {
+	return (
+		source != null &&
+		typeof source === "object" &&
+		(source as { kind?: unknown }).kind === "scoped"
+	);
+}
+
+/**
+ * A function source is interested in every commit and recomputed in full; a
+ * static set is constant; a scoped source recomputes only what it names.
+ */
 export type DecorationSource =
-	((state: DocumentState, editor: Editor) => DecorationSet) | DecorationSet;
+	| ((state: DocumentState, editor: Editor) => DecorationSet)
+	| DecorationSet
+	| ScopedDecorationSource;
 
 export type ClipboardHandler = {
 	readonly html?: Importer;

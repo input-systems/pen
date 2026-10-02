@@ -121,6 +121,11 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		sources: ["core/src/commands/registry.ts"],
 	},
 	{
+		code: "decoration-out-of-scope",
+		levels: ["warn"],
+		sources: ["core/src/editor/decorationCollector.ts"],
+	},
+	{
 		code: "dom-divergence",
 		levels: ["warn"],
 		sources: ["rendering/dom/src/field-editor/contenteditableBackend.ts"],
@@ -268,7 +273,7 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 	{
 		code: "PEN_EXT_003",
 		levels: ["error"],
-		sources: ["core/src/editor/extensionManager.ts"],
+		sources: ["core/src/editor/decorationCollector.ts"],
 	},
 	{
 		code: "PEN_EXT_004",
