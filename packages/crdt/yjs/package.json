@@ -58,6 +58,7 @@
     "yjs": "^13.6"
   },
   "devDependencies": {
+    "@types/node": "^25.4.0",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
     "vitest": "^4.1.11",

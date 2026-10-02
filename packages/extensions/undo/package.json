@@ -58,6 +58,7 @@
     "@input/pen-yjs": "workspace:*",
     "@input/pen-schema": "workspace:*",
     "@input/pen-test": "workspace:*",
+    "@types/node": "^25.4.0",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
     "vitest": "^4.1.11",

@@ -143,6 +143,7 @@
     "@input/pen": "workspace:*",
     "@input/pen-search": "workspace:*",
     "@input/pen-undo": "workspace:*",
+    "@types/node": "^25.4.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "jsdom": "^28.1.0",

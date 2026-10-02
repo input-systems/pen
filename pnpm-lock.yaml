@@ -130,6 +130,9 @@ importers:
         specifier: workspace:^
         version: link:../crdt/yjs
     devDependencies:
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
@@ -149,6 +152,9 @@ importers:
         specifier: workspace:^
         version: link:../../types
     devDependencies:
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
@@ -286,6 +292,9 @@ importers:
       '@input/pen-undo':
         specifier: workspace:*
         version: link:../undo
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
@@ -342,6 +351,9 @@ importers:
       '@input/pen-schema':
         specifier: workspace:^
         version: link:../../schema
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
@@ -479,6 +491,9 @@ importers:
       '@input/pen-test':
         specifier: workspace:*
         version: link:../../tooling/test
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
@@ -507,6 +522,9 @@ importers:
       '@input/pen-yjs':
         specifier: workspace:*
         version: link:../../crdt/yjs
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
@@ -547,6 +565,9 @@ importers:
         specifier: workspace:^
         version: link:../extensions/undo
     devDependencies:
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
@@ -575,6 +596,9 @@ importers:
       '@input/pen-undo':
         specifier: workspace:*
         version: link:../../extensions/undo
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
@@ -627,6 +651,9 @@ importers:
       '@input/pen-undo':
         specifier: workspace:*
         version: link:../../extensions/undo
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       '@types/react':
         specifier: ^19.3.0
         version: 19.3.0
@@ -679,6 +706,9 @@ importers:
       '@input/pen-undo':
         specifier: workspace:*
         version: link:../../extensions/undo
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       '@vue/test-utils':
         specifier: ^2.4.11
         version: 2.4.11(@vue/compiler-dom@3.5.42)(@vue/server-renderer@3.5.42)(vue@3.5.42(typescript@5.9.3))
@@ -967,6 +997,9 @@ importers:
         specifier: ^13.6.32
         version: 13.6.32
     devDependencies:
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
@@ -989,6 +1022,9 @@ importers:
         specifier: workspace:^
         version: link:../types
     devDependencies:
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
@@ -1001,6 +1037,9 @@ importers:
 
   packages/types:
     devDependencies:
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
