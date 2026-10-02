@@ -196,13 +196,10 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 		const fieldEditor = new FieldEditorImpl(editor);
 
 		fieldEditor.activate(blockId);
-		expect(fieldEditor.shouldHandleDomSelectionChange(0)).toBe(true);
 		fieldEditor.beginPointerSelection();
 		expect(fieldEditor.isAdmissibleGestureRead()).toBe(true);
-		expect(fieldEditor.shouldHandleDomSelectionChange(0)).toBe(true);
 
 		fieldEditor.deactivate();
-		expect(fieldEditor.shouldHandleDomSelectionChange(0)).toBe(true);
 
 		fieldEditor.destroy();
 		expect(fieldEditor.getSnapshot().mode).toBe("inactive");

@@ -58,7 +58,6 @@ describe("FieldEditorImpl root pointer window", () => {
 			new PointerEvent("pointerdown", { bubbles: true, button: 0 }),
 		);
 		expect(fieldEditor.isAdmissibleGestureRead()).toBe(true);
-		expect(fieldEditor.shouldHandleDomSelectionChange(0)).toBe(true);
 	});
 
 	it("opens the window from root pointerdown when no field is attached", () => {

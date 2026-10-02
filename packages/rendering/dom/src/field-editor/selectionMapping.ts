@@ -180,10 +180,11 @@ export function resolveSelectionPoint(
 /**
  * Convert DOM selection range to editor (blockId, offset) pairs.
  */
+/** Maps `sel` (by default the live document selection) inside `root`. */
 export function domSelectionToEditor(
 	root: HTMLElement,
+	sel: Selection | null = window.getSelection(),
 ): { anchor: SelectionPoint; focus: SelectionPoint } | null {
-	const sel = window.getSelection();
 	if (!sel || sel.rangeCount === 0) return null;
 
 	const anchorNode = sel.anchorNode;

@@ -29,11 +29,6 @@ import {
 } from "./keyHandling";
 import { dispatchKeymapEvent } from "./keymap";
 import { mapBeforeInput } from "./beforeinputMap";
-import {
-	forwardDomSelectionToReader,
-	readNormalizedDomProposal,
-	shouldStopEquivalentDomRead,
-} from "./selectionReader";
 
 /**
  * Expanded mode owns the shared cross-block selected state on the real block
@@ -66,13 +61,6 @@ export class ExpandedContentEditableBackend {
 			this.editor,
 			this.fieldEditor,
 		);
-		if (element.ownerDocument) {
-			this.attachment.listenDocument(
-				element.ownerDocument,
-				"selectionchange",
-				this.handleSelectionChange,
-			);
-		}
 
 		const selection = this.editor.selection;
 		if (selection?.type === "text") {
@@ -125,47 +113,6 @@ export class ExpandedContentEditableBackend {
 			writeNativeRange(element, selection.anchor, selection.focus);
 		});
 	}
-
-	private handleSelectionChange = (): void => {
-		if (!this.element) return;
-		if (
-			!this.fieldEditor.shouldHandleDomSelectionChange(
-				this.fieldEditor.getBackendSelectionApplicationDepth(),
-			)
-		) {
-			return;
-		}
-
-		const normalizedSelection = readNormalizedDomProposal(
-			this.element,
-			this.editor,
-		);
-		if (!normalizedSelection) return;
-
-		if (shouldStopEquivalentDomRead(this.editor, normalizedSelection)) {
-			return;
-		}
-
-		if (
-			forwardDomSelectionToReader(this.fieldEditor, normalizedSelection)
-		) {
-			return;
-		}
-
-		if (normalizedSelection.type === "block") {
-			this.fieldEditor.deactivate();
-			this.editor.setSelection({
-				type: "block",
-				blockIds: normalizedSelection.blockIds,
-			});
-			return;
-		}
-
-		this.fieldEditor.applyDomTextSelection(
-			normalizedSelection.anchor,
-			normalizedSelection.focus,
-		);
-	};
 
 	private handleBeforeInput = (event: InputEvent): void => {
 		const selection = this.editor.selection;

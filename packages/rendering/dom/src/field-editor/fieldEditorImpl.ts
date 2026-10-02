@@ -48,6 +48,7 @@ import { queryBlockElement, queryInlineElement } from "./selectionBridge";
 import { areBlockIdsEqual, resolveInputMode } from "./fieldEditorImplHelpers";
 import { isSingleFieldNativeLeftover } from "./singleFieldNativeLeftover";
 import {
+	createSelectionReader,
 	decideDomSelectionRead,
 	type DomSelectionReadDecision,
 	type GestureEventKind,
@@ -55,6 +56,7 @@ import {
 	type GestureSelectionOrigin,
 	type ReaderSelection,
 	readBackProjection,
+	type SelectionReader,
 } from "./selectionReader";
 import type { FieldEditorStoreSnapshot } from "./store";
 import {
@@ -138,6 +140,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected readonly _pendingMarkController: PendingMarkController;
 	protected _selectAllBehavior: EditorSelectAllBehavior;
 	protected readonly _selectionCoordinator: FieldEditorSelectionCoordinator;
+	/** S1: the one `selectionchange` listener for this editor's root. */
+	protected readonly _selectionReader: SelectionReader;
 	protected _scheduler: DomScheduler | null = null;
 	/** Per-block fan-out for renderers (SCALE6); one per field editor. */
 	readonly blockNotifier: BlockNotifier;
@@ -180,6 +184,14 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._historySelectionCoordinator = new HistorySelectionCoordinator(
 			this._editor,
 		);
+		this._selectionReader = createSelectionReader({
+			editor: this._editor,
+			read: (proposal) => this.readDomSelection(proposal),
+			intercept: (proposal) =>
+				this._backendLifecycle.current?.interceptDomSelectionRead?.(
+					proposal,
+				) ?? false,
+		});
 		this._selectionCoordinator = new FieldEditorSelectionCoordinator({
 			historySelectionCoordinator: this._historySelectionCoordinator,
 			isEditing: () => this._isEditing,
@@ -567,6 +579,11 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._unbindRootPointerGesture();
 		this._rootElement = element;
 		if (element) {
+			this._selectionReader.attach(element);
+		} else {
+			this._selectionReader.detach();
+		}
+		if (element) {
 			this._bindFocusSink(element);
 			this._bindAnnouncer(element);
 			this._bindRootPointerGesture(element);
@@ -612,9 +629,15 @@ export class FieldEditorImpl implements FieldEditorSession {
 			}
 			this._selectionCoordinator.notifyGestureEvent("pointerdown");
 		};
+		// R1: the context-menu window opens from the root, attached field or not.
+		const onContextMenu = (): void => {
+			this._selectionCoordinator.notifyGestureEvent("contextmenu");
+		};
 		root.addEventListener("pointerdown", onPointerDown, true);
+		root.addEventListener("contextmenu", onContextMenu);
 		this._unbindRootPointerWindow = () => {
 			root.removeEventListener("pointerdown", onPointerDown, true);
+			root.removeEventListener("contextmenu", onContextMenu);
 			this._unbindRootPointerWindow = null;
 		};
 	}
@@ -781,13 +804,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 		}
 		this._editor.selectTextRange(anchor, focus);
 		this._emitStateChange();
-	}
-
-	shouldHandleDomSelectionChange(isApplyingSelection: number): boolean {
-		return this._selectionCoordinator.shouldHandleDomSelectionChange(
-			this._focusBlockId,
-			isApplyingSelection,
-		);
 	}
 
 	notifyGestureEvent(eventKind: GestureEventKind): void {
@@ -1225,6 +1241,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 	}
 
 	destroy(): void {
+		this._selectionReader.detach();
 		this._unbindSchedulerProjector();
 		this._unbindFocusSink();
 		this._unbindAnnouncer();

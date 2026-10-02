@@ -34,12 +34,7 @@ import type {
 	EditContextTextFormatUpdateEvent,
 	EditContextTextUpdateEvent,
 } from "./editContextTypes";
-import {
-	forwardDomSelectionToReader,
-	readNormalizedDomProposal,
-	resolveEditorRoot,
-	shouldStopEquivalentDomRead,
-} from "./selectionReader";
+import type { ReaderSelection } from "./selectionReader";
 import { normalizeSelectionFormation } from "../utils/selectionFormation";
 import {
 	buildInlineDecorationsRenderSignature,
@@ -156,7 +151,6 @@ export class EditContextBackend {
 			this.fieldEditor,
 		);
 		this.attachment.listen(element, "pointerdown", this.handlePointerDown);
-		this.attachment.listen(element, "contextmenu", this.handleContextMenu);
 		this.attachment.listen(
 			element,
 			"compositionstart",
@@ -182,13 +176,6 @@ export class EditContextBackend {
 			"characterboundsupdate",
 			this.handleCharacterBoundsUpdate,
 		);
-		if (element.ownerDocument) {
-			this.attachment.listenDocument(
-				element.ownerDocument,
-				"selectionchange",
-				this.handleSelectionChange,
-			);
-		}
 
 		this.observer = (event) => this.handleYTextChange(event);
 		this.attachment.observeText(this.ytext, this.observer);
@@ -292,10 +279,6 @@ export class EditContextBackend {
 			{ blockId, offset: focusOffset },
 		);
 	}
-
-	protected handleContextMenu = (): void => {
-		this.fieldEditor.notifyGestureEvent?.("contextmenu");
-	};
 
 	protected isComposing = false;
 	protected deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [];
@@ -753,137 +736,41 @@ export class EditContextBackend {
 		);
 	};
 
-	protected handleSelectionChange = (): void => {
-		if (!this.element || !this.editContext) return;
-		const isApplyingSelection =
-			this.fieldEditor.getBackendSelectionApplicationDepth();
-		if (
-			!this.fieldEditor.shouldHandleDomSelectionChange(
-				isApplyingSelection,
-			)
-		) {
-			if (isApplyingSelection === 0) {
-				this.restoreDOMCaret();
-			}
-			return;
-		}
-
-		const root = resolveEditorRoot(this.element);
-		if (!root) return;
-
-		const normalizedSelection = readNormalizedDomProposal(
-			root,
-			this.editor,
-		);
-		if (!normalizedSelection) return;
-
-		if (shouldStopEquivalentDomRead(this.editor, normalizedSelection)) {
-			return;
-		}
-
-		if (this.shouldIgnoreStaleCollapsedDomSelection(normalizedSelection)) {
+	/**
+	 * PH1 (W3.R4 removes these one engine-gated change at a time): a stale
+	 * collapsed caret is put back from the EditContext, and a read inside the
+	 * focused field first syncs the EditContext selection from the DOM
+	 * offsets. Reads elsewhere go to the reader's R decision.
+	 */
+	interceptDomSelectionRead(
+		proposal: Exclude<ReaderSelection, null>,
+	): boolean {
+		if (!this.element || !this.editContext) return false;
+		if (proposal.type !== "text") return false;
+		if (this.shouldIgnoreStaleCollapsedDomSelection(proposal)) {
 			this.restoreDOMCaret();
-			return;
+			return true;
 		}
-
-		if (normalizedSelection.type === "block") {
-			if (
-				forwardDomSelectionToReader(
-					this.fieldEditor,
-					normalizedSelection,
-				)
-			) {
-				return;
-			}
-			this.fieldEditor.deactivate();
-			this.editor.setSelection({
-				type: "block",
-				blockIds: normalizedSelection.blockIds,
-			});
-			return;
-		}
-
 		if (
-			normalizedSelection.anchor.blockId !==
-			normalizedSelection.focus.blockId
+			proposal.anchor.blockId !== proposal.focus.blockId ||
+			proposal.anchor.blockId !== this.fieldEditor.focusBlockId
 		) {
-			if (
-				forwardDomSelectionToReader(
-					this.fieldEditor,
-					normalizedSelection,
-				)
-			) {
-				return;
-			}
-			this.fieldEditor.applyDocumentTextSelection(
-				normalizedSelection.anchor,
-				normalizedSelection.focus,
-			);
-			return;
+			return false;
 		}
+		this.syncFieldSelectionFromDom(proposal.anchor.blockId);
+		return true;
+	}
 
-		if (
-			normalizedSelection.anchor.blockId !== this.fieldEditor.focusBlockId
-		) {
-			if (
-				forwardDomSelectionToReader(
-					this.fieldEditor,
-					normalizedSelection,
-				)
-			) {
-				return;
-			}
-			this.fieldEditor.activateTextSelection(
-				normalizedSelection.anchor.blockId,
-				normalizedSelection.anchor.offset,
-				normalizedSelection.focus.offset,
-			);
-			return;
-		}
+	/** The focused field's DOM selection, written into the EditContext and read. */
+	private syncFieldSelectionFromDom(blockId: string): void {
+		const editContext = this.editContext;
+		const offsets = this.liveFieldOffsets();
+		if (!editContext || !offsets) return;
+		if (this.restoreStaleCollapsedOffsets(blockId, offsets)) return;
 
-		const selection = this.element.ownerDocument?.getSelection();
-		if (!selection?.rangeCount) return;
-		if (!this.element.contains(selection.anchorNode)) return;
-		if (!this.element.contains(selection.focusNode)) return;
-
-		const offsets = getDirectionalSelectionOffsets(this.element);
-		if (!offsets) return;
-		const editorSelectionRange = this.resolveEditorSelectionRange(
-			normalizedSelection.anchor.blockId,
-		);
-		if (
-			editorSelectionRange &&
-			offsets.anchor === offsets.focus &&
-			(offsets.start !== editorSelectionRange.start ||
-				offsets.end !== editorSelectionRange.end)
-		) {
-			this.setEditContextSelection({
-				blockId: normalizedSelection.anchor.blockId,
-				anchorOffset: editorSelectionRange.start,
-				focusOffset: editorSelectionRange.end,
-			});
-			this.restoreDOMCaret();
-			return;
-		}
-		const authoritativeSelection = this.getAuthoritativeTextInputSelection(
-			normalizedSelection.anchor.blockId,
-		);
-		if (
-			authoritativeSelection &&
-			offsets.anchor === offsets.focus &&
-			(offsets.anchor !== authoritativeSelection.anchorOffset ||
-				offsets.focus !== authoritativeSelection.focusOffset)
-		) {
-			this.setEditContextSelection(authoritativeSelection, {
-				source: "text-update",
-			});
-			this.restoreDOMCaret();
-			return;
-		}
-
-		writeEditContextSelection(this.editContext, offsets.start, offsets.end);
+		writeEditContextSelection(editContext, offsets.start, offsets.end);
 		const nextSelection = {
-			blockId: normalizedSelection.anchor.blockId,
+			blockId,
 			anchorOffset: offsets.anchor,
 			focusOffset: offsets.focus,
 		};
@@ -892,27 +779,62 @@ export class EditContextBackend {
 			"user-dom",
 			nextSelection,
 		);
+		this.fieldEditor.readDomSelection?.({
+			type: "text",
+			anchor: { blockId, offset: offsets.anchor },
+			focus: { blockId, offset: offsets.focus },
+		});
+	}
+
+	/** Directional offsets of a live selection wholly inside this field, else null. */
+	private liveFieldOffsets(): DirectionalSelectionOffsets | null {
+		const element = this.element;
+		const selection = element?.ownerDocument?.getSelection();
+		if (!element || !selection?.rangeCount) return null;
 		if (
-			forwardDomSelectionToReader(this.fieldEditor, {
-				type: "text",
-				anchor: {
-					blockId: normalizedSelection.anchor.blockId,
-					offset: offsets.anchor,
-				},
-				focus: {
-					blockId: normalizedSelection.anchor.blockId,
-					offset: offsets.focus,
-				},
-			})
+			!element.contains(selection.anchorNode) ||
+			!element.contains(selection.focusNode)
 		) {
-			return;
+			return null;
 		}
-		this.fieldEditor.syncTextSelection(
-			normalizedSelection.anchor.blockId,
-			offsets.anchor,
-			offsets.focus,
-		);
-	};
+		return getDirectionalSelectionOffsets(element);
+	}
+
+	/** A collapsed DOM caret off the editor's or the input's range is put back. */
+	private restoreStaleCollapsedOffsets(
+		blockId: string,
+		offsets: DirectionalSelectionOffsets,
+	): boolean {
+		if (offsets.anchor !== offsets.focus) return false;
+		const editorSelectionRange = this.resolveEditorSelectionRange(blockId);
+		if (
+			editorSelectionRange &&
+			(offsets.start !== editorSelectionRange.start ||
+				offsets.end !== editorSelectionRange.end)
+		) {
+			this.setEditContextSelection({
+				blockId,
+				anchorOffset: editorSelectionRange.start,
+				focusOffset: editorSelectionRange.end,
+			});
+			this.restoreDOMCaret();
+			return true;
+		}
+		const authoritativeSelection =
+			this.getAuthoritativeTextInputSelection(blockId);
+		if (
+			authoritativeSelection &&
+			(offsets.anchor !== authoritativeSelection.anchorOffset ||
+				offsets.focus !== authoritativeSelection.focusOffset)
+		) {
+			this.setEditContextSelection(authoritativeSelection, {
+				source: "text-update",
+			});
+			this.restoreDOMCaret();
+			return true;
+		}
+		return false;
+	}
 
 	protected handleYTextChange = (event: FieldEditorTextChangeEvent): void => {
 		if (!this.editContext || !this.element || !this.ytext) return;

@@ -10,13 +10,6 @@
     },
     {
       "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
-      "symbol": "activate",
-      "api": "selectionchange",
-      "reason": "backend selectionchange listener; the reader binds the only listener per root",
-      "closedBy": "W3.R4"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
       "symbol": "range",
       "api": "getSelectionOffsets",
       "reason": "input ranges from the live selection: applyTextDiffAsOps (CE:646) and the keydown range for handleFieldEditorKeyDown (CE:750; that path is deleted by W35.R18 with keyHandlingInlineAtoms); ranges come from getTargetRanges or reader.sync() + authority",
@@ -38,13 +31,6 @@
     },
     {
       "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "_activateEditContext",
-      "api": "selectionchange",
-      "reason": "backend selectionchange listener; the reader binds the only listener per root",
-      "closedBy": "W3.R4"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
       "symbol": "liveDomOffsets",
       "api": "getDirectionalSelectionOffsets",
       "reason": "keydown range from the live DOM selection; reader.sync() + authority",
@@ -52,9 +38,9 @@
     },
     {
       "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "offsets",
+      "symbol": "liveFieldOffsets",
       "api": "getDirectionalSelectionOffsets",
-      "reason": "backend maps the live DOM selection in its selectionchange handler; the reader maps",
+      "reason": "the EditContext backend's PH1 read intercept maps the live DOM selection inside its field to sync the EditContext buffer selection; the reader maps",
       "closedBy": "W3.R4"
     },
     {
@@ -69,13 +55,6 @@
       "symbol": "selection",
       "api": "getSelection",
       "reason": "backend reads the native selection in its selectionchange path; the reader owns it",
-      "closedBy": "W3.R4"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/expandedContentEditableBackend.ts",
-      "symbol": "activate",
-      "api": "selectionchange",
-      "reason": "backend selectionchange listener; the reader binds the only listener per root",
       "closedBy": "W3.R4"
     },
     {
@@ -101,10 +80,10 @@
     },
     {
       "file": "packages/rendering/dom/src/field-editor/selectionMapping.ts",
-      "symbol": "sel",
+      "symbol": "domSelectionToEditor",
       "api": "getSelection",
-      "reason": "domSelectionToEditor calls window.getSelection(); mapping helpers take a Selection parameter",
-      "closedBy": "W3.R4"
+      "reason": "domSelectionToEditor defaults its Selection parameter to window.getSelection() for callers that do not pass the reader's Selection; the default goes when the last such caller moves (W3.R5)",
+      "closedBy": "W3.R5"
     },
     {
       "file": "packages/rendering/dom/src/field-editor/selectionProjector.ts",

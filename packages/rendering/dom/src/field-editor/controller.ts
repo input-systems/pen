@@ -145,7 +145,6 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 		reason: FieldEditorFocusReason,
 		options?: FocusOptions,
 	): boolean;
-	shouldHandleDomSelectionChange(isApplyingSelection: number): boolean;
 	resetBackendSelectionAuthority(): void;
 	setBackendSelectionAuthority(
 		source: FieldEditorSelectionSource,

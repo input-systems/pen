@@ -46,7 +46,6 @@ function createFieldEditor(blockId: string) {
 		setComposing: () => {},
 		notifyDomReconciled: () => {},
 		requestDomFocus: () => false,
-		shouldHandleDomSelectionChange: () => false,
 		getBackendSelectionApplicationDepth: () => 0,
 		applyDomTextSelection: () => {},
 		applyDocumentTextSelection: () => {},

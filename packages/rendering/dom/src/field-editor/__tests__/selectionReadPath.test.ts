@@ -144,10 +144,8 @@ describe("FieldEditorImpl.readDomSelection PR 6", () => {
 
 	it("PR 6: beginPointerSelection opens the window and does not mute reads", () => {
 		const { fieldEditor } = seedEditor();
-		expect(fieldEditor.shouldHandleDomSelectionChange(0)).toBe(true);
 		fieldEditor.beginPointerSelection();
 		expect(fieldEditor.isAdmissibleGestureRead()).toBe(true);
-		expect(fieldEditor.shouldHandleDomSelectionChange(0)).toBe(true);
 	});
 
 	it("I4: a closed-window cell caret move through the reader diverges and requests P2", () => {

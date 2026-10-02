@@ -163,13 +163,6 @@ export class SelectionProjectionController {
 		this._withTrigger("divergence", () => this.syncDomSelectionOnce());
 	}
 
-	shouldHandleDomSelectionChange(
-		_blockId: string | null,
-		isApplyingSelection: number,
-	): boolean {
-		return isApplyingSelection === 0;
-	}
-
 	prepareSyncedTextSelection(
 		currentSelection: SelectionState | null,
 		blockId: string,

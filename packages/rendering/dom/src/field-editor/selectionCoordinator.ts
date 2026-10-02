@@ -128,16 +128,6 @@ export class FieldEditorSelectionCoordinator {
 		this._projection.requestDivergenceProjection();
 	}
 
-	shouldHandleDomSelectionChange(
-		blockId: string | null,
-		isApplyingSelection: number,
-	): boolean {
-		return this._projection.shouldHandleDomSelectionChange(
-			blockId,
-			isApplyingSelection,
-		);
-	}
-
 	prepareSyncedTextSelection(
 		currentSelection: SelectionState | null,
 		blockId: string,

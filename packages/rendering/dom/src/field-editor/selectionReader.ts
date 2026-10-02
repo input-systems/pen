@@ -187,7 +187,8 @@ export function classifyDomSelectionRead(input: {
 	return "accept";
 }
 
-export function shouldStopEquivalentDomRead(
+/** Reader step 3 against the record alone: the read changes nothing. */
+function isEquivalentToAuthority(
 	editor: Editor,
 	proposal: ReaderSelection,
 ): boolean {
@@ -206,23 +207,16 @@ export function shouldStopEquivalentDomRead(
 	);
 }
 
-/**
- * §4.2 step 2. Backends pick the root (editor root vs expanded host);
- * the reader owns the map + formation normalize.
- */
-export function resolveEditorRoot(element: HTMLElement): HTMLElement | null {
-	return element.closest("[data-pen-editor-root]") as HTMLElement | null;
-}
-
 export function readNormalizedDomProposal(
 	root: HTMLElement,
 	editor: Editor,
+	selection: Selection | null = root.ownerDocument.getSelection(),
 ): ReturnType<typeof normalizeSelectionFormation> | null {
-	const selection = domSelectionToEditor(root);
-	if (!selection) {
+	const mapped = domSelectionToEditor(root, selection);
+	if (!mapped) {
 		return null;
 	}
-	return normalizeSelectionFormation(editor, selection);
+	return normalizeSelectionFormation(editor, mapped);
 }
 
 /** What a projection left in the DOM, compared with the record it projected. */
@@ -258,31 +252,97 @@ export function readBackProjection(
 	};
 }
 
-export function forwardDomSelectionToReader(
-	fieldEditor: {
-		readDomSelection?: (proposal: ReaderSelection) => unknown;
-	},
-	proposal: ReaderSelection,
-): boolean {
-	if (!fieldEditor.readDomSelection || proposal === null) {
-		return false;
-	}
-	if (proposal.type === "block") {
-		fieldEditor.readDomSelection({
-			type: "block",
-			blockIds: proposal.blockIds,
-		});
-		return true;
-	}
-	if (proposal.type !== "text") {
-		return false;
-	}
-	fieldEditor.readDomSelection({
-		type: "text",
-		anchor: proposal.anchor,
-		focus: proposal.focus,
-	});
-	return true;
+/** Test seam for the one `getSelection()` call. */
+export interface SelectionReaderDomPort {
+	getSelection(doc: Document): Selection | null;
+}
+
+const DOCUMENT_SELECTION: SelectionReaderDomPort = {
+	getSelection: (doc) => doc.getSelection(),
+};
+
+export interface SelectionReaderOptions {
+	readonly editor: Editor;
+	/** Steps 3–5 on a mapped proposal: equivalent, diverge (P2) or accept. */
+	readonly read: (proposal: ReaderSelection) => DomSelectionReadDecision;
+	/**
+	 * PH1 only: the attached backend's echo restores (CE echo predicates, EC
+	 * stale caret and EditContext sync). True when the backend handled the
+	 * read. Each is removed in its own engine-gated change (W3.R4).
+	 */
+	readonly intercept?: (proposal: Exclude<ReaderSelection, null>) => boolean;
+	readonly dom?: SelectionReaderDomPort;
+}
+
+export interface SelectionReader {
+	/** Binds the one `selectionchange` listener for `root`. Idempotent per root. */
+	attach(root: HTMLElement): void;
+	detach(): void;
+	/** Runs the R algorithm on the live selection now, as a `selectionchange` would. */
+	sync(): DomSelectionReadDecision;
+	/** Reader step 2 without deciding; null when no range is inside the root. */
+	peek(): ReaderSelection;
+}
+
+/**
+ * The single reader (S1, W3.R4): one `selectionchange` listener per editor
+ * root, bound from `setRootElement` whether or not a field is attached.
+ * Backends no longer listen; a read that maps inside the root goes through
+ * the reader's equivalence check, the backend's transitional intercept, and
+ * then the R decision.
+ */
+export function createSelectionReader(
+	options: SelectionReaderOptions,
+): SelectionReader {
+	const dom = options.dom ?? DOCUMENT_SELECTION;
+	let root: HTMLElement | null = null;
+
+	const peek = (): ReaderSelection => {
+		if (!root) {
+			return null;
+		}
+		return readNormalizedDomProposal(
+			root,
+			options.editor,
+			dom.getSelection(root.ownerDocument),
+		);
+	};
+	const sync = (): DomSelectionReadDecision => {
+		const proposal = peek();
+		if (proposal === null) {
+			return "no-proposal";
+		}
+		// Step 3 first: an echo of the record changes nothing, and is not
+		// offered to the backend's echo restores.
+		if (isEquivalentToAuthority(options.editor, proposal)) {
+			return "equivalent";
+		}
+		if (options.intercept?.(proposal)) {
+			return "no-proposal";
+		}
+		return options.read(proposal);
+	};
+	const onSelectionChange = (): void => {
+		sync();
+	};
+	const detach = (): void => {
+		root?.ownerDocument.removeEventListener("selectionchange", onSelectionChange);
+		root = null;
+	};
+
+	return {
+		attach(nextRoot) {
+			if (root === nextRoot) {
+				return;
+			}
+			detach();
+			root = nextRoot;
+			nextRoot.ownerDocument.addEventListener("selectionchange", onSelectionChange);
+		},
+		detach,
+		sync,
+		peek,
+	};
 }
 
 export function decideDomSelectionRead(input: {

@@ -130,7 +130,6 @@ function stubController(
 		resetBackendSelectionAuthority: () => {},
 		withBackendSelectionWrite,
 		requestDomFocus: () => false,
-		shouldHandleDomSelectionChange: () => false,
 		shouldProjectSelectionAfterReconcile: () =>
 			shouldProjectSelectionAfterReconcile,
 		getBackendSelectionApplicationDepth: () => 0,

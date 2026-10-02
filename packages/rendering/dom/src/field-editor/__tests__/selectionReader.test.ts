@@ -10,7 +10,6 @@ import {
 	normalizeDomSelectionProposal,
 	originForGestureWindows,
 	decideDomSelectionRead,
-	shouldStopEquivalentDomRead,
 	type GestureWindowState,
 	type ReaderSelection,
 	type ReaderSnapshot,
@@ -761,56 +760,6 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 		expect(result.normalized).toEqual(
 			blockSelection([first, "second"], first),
 		);
-		void editor.destroy();
-	});
-});
-
-describe("shouldStopEquivalentDomRead", () => {
-	it("stops when the mapped proposal snaps to the record", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.selectText(id, 0, 0);
-		expect(
-			shouldStopEquivalentDomRead(
-				editor,
-				textSelection({ blockId: id, offset: 0 }),
-			),
-		).toBe(true);
-		void editor.destroy();
-	});
-
-	it("falls through when the proposal is a real caret move", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: id,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		]);
-		editor.selectText(id, 0, 0);
-		expect(
-			shouldStopEquivalentDomRead(
-				editor,
-				textSelection({ blockId: id, offset: 2 }),
-			),
-		).toBe(false);
-		void editor.destroy();
-	});
-
-	it("stops an empty-block sentinel DOM offset against logical 0", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.selectText(id, 0, 0);
-		expect(
-			shouldStopEquivalentDomRead(
-				editor,
-				textSelection({ blockId: id, offset: 1 }),
-			),
-		).toBe(true);
 		void editor.destroy();
 	});
 });

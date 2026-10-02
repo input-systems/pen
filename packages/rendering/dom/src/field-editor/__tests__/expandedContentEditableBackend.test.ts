@@ -37,7 +37,6 @@ function createFieldEditor(blockId: string) {
 		resetBackendSelectionAuthority: () => {},
 		withBackendSelectionWrite: <T>(write: () => T) => write(),
 		requestDomFocus: () => false,
-		shouldHandleDomSelectionChange: () => false,
 		getBackendSelectionApplicationDepth: () => 0,
 		applyDomTextSelection: () => {},
 		selectAllBehavior: "block-first" as const,

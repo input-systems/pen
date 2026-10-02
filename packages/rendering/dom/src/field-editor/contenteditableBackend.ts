@@ -46,12 +46,7 @@ import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
 import { mapBeforeInput } from "./beforeinputMap";
 import { handleFieldEditorKeyDown } from "./keyHandling";
-import {
-	forwardDomSelectionToReader,
-	readNormalizedDomProposal,
-	resolveEditorRoot,
-	shouldStopEquivalentDomRead,
-} from "./selectionReader";
+import type { ReaderSelection } from "./selectionReader";
 import {
 	isCollapsedDomAgainstProjectedOffsets,
 	isFullBlockEchoAgainstCollapsedCaret,
@@ -124,18 +119,6 @@ export class ContentEditableBackend {
 				"pointerdown",
 				this.handlePointerDown,
 			);
-			this.attachment.listen(
-				element,
-				"contextmenu",
-				this.handleContextMenu,
-			);
-			if (element.ownerDocument) {
-				this.attachment.listenDocument(
-					element.ownerDocument,
-					"selectionchange",
-					this.handleSelectionChange,
-				);
-			}
 
 			this.mutationObserver = this.attachment.observeMutations(
 				element,
@@ -346,9 +329,6 @@ export class ContentEditableBackend {
 		});
 	}
 
-	protected handleContextMenu = (): void => {
-		this.fieldEditor.notifyGestureEvent?.("contextmenu");
-	};
 	protected handleBeforeInput = (event: InputEvent): void => {
 		if (this.isComposing) return;
 		if (!this.ytext || !this.element) return;
@@ -769,139 +749,41 @@ export class ContentEditableBackend {
 		return this.resolveLiveInputRange();
 	}
 
-	protected handleSelectionChange = (): void => {
-		if (!this.element) return;
-		const isApplyingSelection =
-			this.fieldEditor.getBackendSelectionApplicationDepth();
-		if (
-			!this.fieldEditor.shouldHandleDomSelectionChange(
-				isApplyingSelection,
-			)
-		) {
-			const suppressed = this.readAttachedNormalizedSelection();
-			if (
-				suppressed &&
-				isFullBlockEchoAgainstCollapsedCaret(
-					suppressed,
-					this.fieldEditor.selection,
-					(blockId) =>
-						this.editor.getBlock(blockId)?.length() ?? null,
-				)
-			) {
-				this.restoreDOMSelectionFromEditor();
-			} else if (
-				isApplyingSelection > 0 &&
-				suppressed &&
-				isCollapsedDomAgainstProjectedOffsets(
-					suppressed,
-					(blockId) =>
-						this.fieldEditor.getBackendSelectionAuthority(
-							"programmatic",
-							blockId,
-						) ??
-						this.fieldEditor.getBackendSelectionAuthority(
-							"user-dom",
-							blockId,
-						),
-				)
-			) {
-				this.restoreDOMSelectionFromEditor();
-			}
-			return;
-		}
-
-		const root = resolveEditorRoot(this.element);
-		if (!root) return;
-
-		const normalizedSelection = readNormalizedDomProposal(
-			root,
-			this.editor,
-		);
-		if (!normalizedSelection) return;
-
-		if (shouldStopEquivalentDomRead(this.editor, normalizedSelection)) {
-			return;
-		}
-
+	/**
+	 * PH1 echo restores (W3.R4 removes them one engine-gated change at a
+	 * time): a full-block echo against a collapsed caret, and a collapsed DOM
+	 * caret that disagrees with the offsets this backend projected, are put
+	 * back from the editor instead of read.
+	 */
+	interceptDomSelectionRead(
+		proposal: Exclude<ReaderSelection, null>,
+	): boolean {
+		if (!this.element) return false;
+		if (proposal.type !== "text") return false;
 		if (
 			isFullBlockEchoAgainstCollapsedCaret(
-				normalizedSelection,
+				proposal,
 				this.fieldEditor.selection,
 				(blockId) => this.editor.getBlock(blockId)?.length() ?? null,
+			) ||
+			isCollapsedDomAgainstProjectedOffsets(proposal, (blockId) =>
+				this.projectedOffsets(blockId),
 			)
 		) {
 			this.restoreDOMSelectionFromEditor();
-			return;
+			return true;
 		}
+		return false;
+	}
 
-		if (
-			isCollapsedDomAgainstProjectedOffsets(
-				normalizedSelection,
-				(blockId) =>
-					this.fieldEditor.getBackendSelectionAuthority(
-						"programmatic",
-						blockId,
-					) ??
-					this.fieldEditor.getBackendSelectionAuthority(
-						"user-dom",
-						blockId,
-					),
-			)
-		) {
-			this.restoreDOMSelectionFromEditor();
-			return;
-		}
-
-		if (
-			forwardDomSelectionToReader(this.fieldEditor, normalizedSelection)
-		) {
-			return;
-		}
-
-		if (normalizedSelection.type === "block") {
-			this.fieldEditor.deactivate();
-			this.editor.setSelection({
-				type: "block",
-				blockIds: normalizedSelection.blockIds,
-			});
-			return;
-		}
-
-		this.fieldEditor.setBackendSelectionAuthority("user-dom", {
-			blockId: normalizedSelection.anchor.blockId,
-			anchorOffset: normalizedSelection.anchor.offset,
-			focusOffset: normalizedSelection.focus.offset,
-		});
-		const projectedSelection =
+	private projectedOffsets(blockId: string) {
+		return (
 			this.fieldEditor.getBackendSelectionAuthority(
 				"programmatic",
-				normalizedSelection.anchor.blockId,
-			);
-		if (
-			!projectedSelection ||
-			projectedSelection.anchorOffset !==
-				normalizedSelection.anchor.offset ||
-			projectedSelection.focusOffset !== normalizedSelection.focus.offset
-		) {
-			this.fieldEditor.clearBackendSelectionAuthority("programmatic");
-		}
-		this.fieldEditor.applyDomTextSelection(
-			normalizedSelection.anchor,
-			normalizedSelection.focus,
+				blockId,
+			) ??
+			this.fieldEditor.getBackendSelectionAuthority("user-dom", blockId)
 		);
-	};
-
-	private readAttachedNormalizedSelection(): ReturnType<
-		typeof readNormalizedDomProposal
-	> {
-		if (!this.element) {
-			return null;
-		}
-		const root = resolveEditorRoot(this.element);
-		if (!root) {
-			return null;
-		}
-		return readNormalizedDomProposal(root, this.editor);
 	}
 
 	// ── Clipboard events ──────────────────────────────────────
