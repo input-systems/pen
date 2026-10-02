@@ -77,9 +77,9 @@ export const ENFORCEMENT_INVENTORY: readonly EnforcementRow[] = [
 		unit: "enforced",
 		unitFailsOn:
 			"assertPeerBObservesPeerAInsert: B missing A's token after sync",
-		isolatedClock: "untrusted-gated",
+		isolatedClock: "record-only",
 		clockNote:
-			"committed wall 1.49ms vs later isolated 0.198ms; load-taken, not reproduced",
+			"quiet record (2026-10-02) agrees with the isolated run; below the 0.5ms signal, record-only",
 	},
 	{
 		id: "streaming.gen-delta-1000-parts",

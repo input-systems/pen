@@ -39,7 +39,8 @@ describe("SCALE1 generated envelope table", () => {
 
 		expect(record.sampleSize).toBe(ENVELOPE_SAMPLE_SIZE);
 		expect(record.points).toHaveLength(SCALE1_MEASUREMENTS.length);
-		expect(record.status).toBe("provisional");
+		// A load-taken record is provisional; a quiet one is the envelope.
+		expect(record.status).toBe(record.loadTaken ? "provisional" : "envelope");
 	});
 
 	it("SCALE1: enforcement inventory covers every fixture and has no unit clock gates", () => {

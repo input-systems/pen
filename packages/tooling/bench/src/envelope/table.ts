@@ -16,7 +16,7 @@ export function renderEnvelopeMarkdown(record: EnvelopeRecord): string {
 		.map((point) => renderLadderRow(point, record))
 		.join("\n");
 	const auditRows = [...SCALE1_FIXTURE_AUDIT, ...RELATED_FIXTURE_AUDIT]
-		.map((row) => renderAuditRow(row))
+		.map((row) => renderAuditRow(row, record))
 		.join("\n");
 	const enforcementRows = ENFORCEMENT_INVENTORY.map((row) =>
 		renderEnforcementRow(row),
@@ -50,7 +50,7 @@ Verification for the ladder is headless (\`createTestEditor\`). No renderer suit
 
 ## Fixture ladder (counts)
 
-Counts are the durable measure and do not decay under load. Wall-clocks below are **load-taken ${record.producedOn}** and must be re-measured on a quiet machine. A row without a fixture count is not a measurement.
+Counts are the durable measure and do not decay under load. ${record.loadTaken ? `Wall-clocks below are **load-taken ${record.producedOn}** and must be re-measured on a quiet machine.` : `Wall-clocks below are a quiet-machine sample of ${record.producedOn}.`} A row without a fixture count is not a measurement.
 
 | Rung | Fixture | Count | Ops | Floor | Date | Load | Wall p50 (ms) | Trust |
 | ---- | ------- | ----- | --- | ----- | ---- | ---- | ------------- | ----- |
@@ -130,10 +130,10 @@ function renderLadderRow(
 	const load = record.loadTaken
 		? `load-taken ${record.producedOn}`
 		: `quiet ${record.producedOn}`;
-	return `| \`${point.id}\` | ${audit.fixture} | ${point.count} ${point.countUnit} | ${point.opsApplied} | ${point.floorKind} ${fmt(point.floorP50Ms)}ms | ${record.producedOn} | ${load} | ${fmt(point.measuredP50Ms)} | ${renderTrust(audit)} |`;
+	return `| \`${point.id}\` | ${audit.fixture} | ${point.count} ${point.countUnit} | ${point.opsApplied} | ${point.floorKind} ${fmt(point.floorP50Ms)}ms | ${record.producedOn} | ${load} | ${fmt(point.measuredP50Ms)} | ${renderTrust(audit, record)} |`;
 }
 
-function renderTrust(row: FixtureAuditRow): string {
+function renderTrust(row: FixtureAuditRow, record: EnvelopeRecord): string {
 	const count =
 		row.countTrust === "trusted" ? "count-trusted" : "count-untrusted";
 	if (row.clockTrust === "not-a-clock") {
@@ -142,11 +142,14 @@ function renderTrust(row: FixtureAuditRow): string {
 	if (row.clockTrust === "untrustworthy") {
 		return `${count}; clock untrustworthy`;
 	}
+	if (row.clockTrust === "record" && !record.loadTaken) {
+		return `${count}; clock quiet`;
+	}
 	return `${count}; clock load-taken`;
 }
 
-function renderAuditRow(row: FixtureAuditRow): string {
-	return `| ${row.fixture} | ${row.claimedSubject} | ${row.actualSubject} | ${row.verdict} | ${renderTrust(row)} | ${row.howMeasured} |`;
+function renderAuditRow(row: FixtureAuditRow, record: EnvelopeRecord): string {
+	return `| ${row.fixture} | ${row.claimedSubject} | ${row.actualSubject} | ${row.verdict} | ${renderTrust(row, record)} | ${row.howMeasured} |`;
 }
 
 function renderEnforcementRow(row: EnforcementRow): string {

@@ -1,3 +1,4 @@
+import { withGatedRung } from "./envelopeRecordFixtures";
 import { assertPeerEditsSurvive, createTestEditor } from "@input/pen-test";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
@@ -346,7 +347,9 @@ describe("SCALE1 envelope ladder", () => {
 		expect(peers?.actualSubject).toMatch(/Peer B does not write/);
 		expect(peers?.floorKind).toBe("empty-sync");
 		expect(peers?.countTrust).toBe("trusted");
-		expect(peers?.clockTrust).toBe("untrustworthy");
+		// The 2026-10-02 quiet record reproduced the isolated run, so the row
+		// takes its clock trust from the record like the ladder rungs.
+		expect(peers?.clockTrust).toBe("record");
 		expect(peers?.howMeasured).toMatch(/B observation asserted before the clock/);
 	});
 
@@ -406,7 +409,13 @@ describe("SCALE1 envelope ladder", () => {
 	});
 
 	it("SCALE1: a 3x attributed median on a gated rung stays at the gate", async () => {
-		const committed = await loadCommittedEnvelope();
+		// A quiet record can leave every rung under the 0.5ms signal, so the
+		// gated rung is built here rather than borrowed from the baseline.
+		const committed = withGatedRung(
+			await loadCommittedEnvelope(),
+			"blocks-1000",
+			2,
+		);
 		const gated = committed.points.find((point) => point.id === "blocks-1000");
 		expect(gated?.gated).toBe(true);
 		expect(gated?.gateP50Ms).toBe(envelopeGateP50Ms(gated!.attributedP50Ms));

@@ -13,6 +13,7 @@ import {
 	loadCommittedEnvelope,
 	type EnvelopeRecord,
 } from "../envelope/compare";
+import { withGatedRung } from "./envelopeRecordFixtures";
 
 const pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -43,20 +44,26 @@ describe("SCALE1 named drift gate", () => {
 	});
 
 	it("SCALE1: checkDrift exits non-zero by name when a gated clock drifted", async () => {
-		const committed = await loadCommittedEnvelope();
+		// A quiet record can leave every rung under the 0.5ms signal, so the
+		// committed side is a copy with one gated rung.
+		const committed = withGatedRung(
+			await loadCommittedEnvelope(),
+			"blocks-1000",
+			2,
+		);
 		const gated = committed.points.find((point) => point.id === "blocks-1000");
-		if (!gated?.gateP50Ms) {
-			throw new Error("blocks-1000 gate missing");
-		}
 		const dir = await mkdtemp(join(tmpdir(), "pen-envelope-clock-"));
+		const committedPath = join(dir, "committed.json");
 		const freshPath = join(dir, "envelope.json");
-		await writeFile(
+		const write = (file: string, record: EnvelopeRecord) =>
+			writeFile(file, `${JSON.stringify(record, null, "\t")}\n`, "utf8");
+		await write(committedPath, committed);
+		await write(
 			freshPath,
-			`${JSON.stringify(withAttributed(committed, "blocks-1000", gated.gateP50Ms + 1), null, "\t")}\n`,
-			"utf8",
+			withAttributed(committed, "blocks-1000", gated!.gateP50Ms! + 1),
 		);
 
-		const result = await runEnvelopeDriftCheck({ freshPath });
+		const result = await runEnvelopeDriftCheck({ freshPath, committedPath });
 		expect(result.exitCode).toBe(1);
 		expect(result.message).toMatch(/blocks-1000 attributed/);
 	});
