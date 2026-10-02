@@ -39,7 +39,7 @@
     "LICENSE.md"
   ],
   "engines": {
-    "node": ">=22"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "sideEffects": false,
   "scripts": {
@@ -73,6 +73,6 @@
     "tsx": "^4.23.12",
     "typescript": "^5.7.3",
     "vitest": "^4.1.11",
-    "yjs": "^13.6.32"
+    "yjs": "^13.6.33"
   }
 }

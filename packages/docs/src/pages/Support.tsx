@@ -5,7 +5,7 @@ export function SupportPage() {
 			<p>
 				This is the HOST3 runtime floor in{" "}
 				<code>spec/rules/host.md</code>. Package manifests declare{" "}
-				<code>engines.node: &quot;&gt;=22&quot;</code>. The same table
+				<code>engines.node: &quot;^22.22.2 || ^24.15.0 || &gt;=26.0.0&quot;</code>. The same table
 				is in the repository root README. Raising the floor is a
 				minor-version change. Lowering it is never silent.
 			</p>

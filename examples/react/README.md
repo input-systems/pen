@@ -46,4 +46,4 @@ That file is `src/App.tsx`.
 
 ## Run
 
-Requires Node 22+ and pnpm 10. The install commands above start Vite at `http://localhost:5175`.
+Requires Node 22.22.2+, 24.15+, or 26+ and pnpm 10. The install commands above start Vite at `http://localhost:5175`.

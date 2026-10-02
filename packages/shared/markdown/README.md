@@ -12,7 +12,7 @@ This package has no peer dependencies. Hosts should install `@input/pen-interop`
 pnpm add @input/pen @input/pen-markdown
 ```
 
-`engines.node` is `>=22`.
+`engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`.
 
 ## Usage
 

@@ -58,8 +58,8 @@
   },
   "pnpm": {
     "overrides": {
-      "undici": "7.29.0",
-      "dompurify": "3.4.14"
+      "undici@<8": "7.29.1",
+      "dompurify": "3.4.16"
     }
   },
   "devDependencies": {

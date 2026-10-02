@@ -50,7 +50,7 @@
     "STYLING.md"
   ],
   "engines": {
-    "node": ">=22"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "sideEffects": false,
   "scripts": {
@@ -81,6 +81,6 @@
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
     "vitest": "^4.1.11",
-    "vue": "^3.5.42"
+    "vue": "^3.5.43"
   }
 }

@@ -19,7 +19,7 @@ It does **not** implement WebSocket transport or a custom Yjs sync provider.
 pnpm add @input/pen-yjs yjs y-protocols
 ```
 
-Required peers are `yjs` (`^13.6`) and `y-protocols` (`^1.0.7`). `engines.node` is `>=22`.
+Required peers are `yjs` (`^13.6`) and `y-protocols` (`^1.0.7`). `engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`.
 
 ## State barriers
 
