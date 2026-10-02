@@ -40,7 +40,7 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 	_applyStormEmitted = false;
 	_suppressObserver = false;
 	_unknownBlockTypesReported: Set<string> | undefined;
-	_unknownScanBlockCount: number | undefined;
+	_unknownScanGeneration: number | undefined;
 	readonly _queue: {
 		ops: DocumentOp[];
 		origin: OpOrigin;
@@ -74,6 +74,7 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 		| null = null;
 	_recordPhase: ((phase: PipelinePhase) => void) | null = null;
 	_captureSelectionBefore: (() => void) | null = null;
+	_documentGeneration: (() => number) | null = null;
 	_commitDiagnostics: DiagnosticEvent[] = [];
 
 	get suppressObserver(): boolean {
@@ -132,11 +133,13 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 		>,
 		recordPhase?: (phase: PipelinePhase) => void,
 		captureSelectionBefore?: () => void,
+		documentGeneration?: () => number,
 	): void {
 		this._onDidApply = onDidApply ?? null;
 		this._resolveBeforeApplyHooks = resolveBeforeApplyHooks ?? null;
 		this._recordPhase = recordPhase ?? null;
 		this._captureSelectionBefore = captureSelectionBefore ?? null;
+		this._documentGeneration = documentGeneration ?? null;
 	}
 
 	getBeforeApplyHooks(): ReadonlyArray<{
@@ -217,6 +220,6 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 		this._doc = doc;
 		this._crdtDoc = crdtDoc;
 		this._engine = engine;
-		this._unknownScanBlockCount = undefined;
+		this._unknownScanGeneration = undefined;
 	}
 }

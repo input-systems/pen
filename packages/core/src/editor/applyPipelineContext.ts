@@ -53,11 +53,11 @@ export interface ApplyPipelineOrchestrationContext extends ApplyPipelineDocument
 	_suppressObserver: boolean;
 	_unknownBlockTypesReported: Set<string> | undefined;
 	/**
-	 * Block count at the last unknown-type scan. A document whose block count
-	 * is unchanged cannot hold a type the previous scan did not already see,
-	 * so the scan is skipped (SCALE2).
+	 * `documentState.generation` at the last unknown-type scan. Only a load or
+	 * a remote insert can add a type, and both rebuild `DocumentState`, so an
+	 * unchanged generation skips the scan (SCALE2).
 	 */
-	_unknownScanBlockCount: number | undefined;
+	_unknownScanGeneration: number | undefined;
 	_commitDiagnostics: DiagnosticEvent[];
 	readonly _queue: {
 		ops: DocumentOp[];
@@ -69,6 +69,8 @@ export interface ApplyPipelineOrchestrationContext extends ApplyPipelineDocument
 	_onDidApply: ((event: CRDTEvent) => void) | null;
 	_recordPhase: ((phase: PipelinePhase) => void) | null;
 	_captureSelectionBefore: (() => void) | null;
+	/** `documentState.generation`, wired by the editor; null before `_init`. */
+	_documentGeneration: (() => number) | null;
 	_resolveBeforeApplyHooks:
 		| (() => ReadonlyArray<
 				(

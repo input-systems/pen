@@ -81,10 +81,7 @@ export function classifySelectionSurface(
 	}
 
 	if (selection?.type === "text") {
-		const blockRange = getSelectionBlockRange(
-			editor.internals.doc,
-			selection,
-		);
+		const blockRange = getSelectionBlockRange(editor.documentState, selection);
 		if (isMultiBlock(selection)) {
 			return {
 				mode: shouldUseBlockSelection(editor, blockRange.length)

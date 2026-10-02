@@ -1,6 +1,7 @@
 import type {
 	Affinity,
 	DocumentRange,
+	DocumentState,
 	PenDocument,
 	Point,
 	ReadonlySelectionState,
@@ -49,12 +50,13 @@ export function isMultiBlock(sel: ReadonlySelectionState): boolean {
 
 /**
  * Document-order block ids covered by `sel`. A live `PenDocument` walks
- * nested `children` as well as top-level `blockOrder`. Pass a plain id
- * snapshot from a renderer effect — walking a live `Y.Array` through a
- * deep-proxied document writes back.
+ * nested `children` as well as top-level `blockOrder`; a `DocumentState`
+ * slices its cached preorder between the endpoints without walking (SCALE2).
+ * Pass a plain id snapshot from a renderer effect — walking a live `Y.Array`
+ * through a deep-proxied document writes back.
  */
 export function getSelectionBlockRange(
-	doc: PenDocument | readonly string[],
+	doc: PenDocument | DocumentState | readonly string[],
 	sel: ReadonlySelectionState,
 ): string[] {
 	if (sel === null) {
@@ -62,8 +64,11 @@ export function getSelectionBlockRange(
 	}
 	switch (sel.type) {
 		case "text":
-			return isBlockOrderList(doc)
-				? blockIdsFromOrder(doc, sel.anchor.blockId, sel.focus.blockId)
+			if (isBlockOrderList(doc)) {
+				return blockIdsFromOrder(doc, sel.anchor.blockId, sel.focus.blockId);
+			}
+			return isDocumentState(doc)
+				? blockIdsFromState(doc, sel.anchor.blockId, sel.focus.blockId)
 				: blockIdsBetween(doc, sel.anchor.blockId, sel.focus.blockId);
 		case "block":
 			return [...sel.blockIds];
@@ -94,9 +99,28 @@ export function selectionToRange(
 }
 
 function isBlockOrderList(
-	value: PenDocument | readonly string[],
+	value: PenDocument | DocumentState | readonly string[],
 ): value is readonly string[] {
 	return Array.isArray(value);
+}
+
+function isDocumentState(value: PenDocument | DocumentState): value is DocumentState {
+	return typeof (value as Partial<DocumentState>).preorderIndexOf === "function";
+}
+
+function blockIdsFromState(
+	state: DocumentState,
+	anchorId: string,
+	focusId: string,
+): string[] {
+	const order = state.preorderBlockIds();
+	return sliceBlockIds(
+		state.preorderIndexOf(anchorId),
+		state.preorderIndexOf(focusId),
+		anchorId,
+		focusId,
+		(index) => order[index] as string,
+	);
 }
 
 function blockIdsFromOrder(

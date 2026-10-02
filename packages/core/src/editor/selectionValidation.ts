@@ -294,10 +294,12 @@ function validateText(
 			offset: host.clampOffset(sel.focus.blockId, sel.focus.offset),
 		},
 	};
-	const order = liveChildIds(host.doc, null);
+	// Read the order only for a mixed text/structural range: a caret move or
+	// keystroke must not read the whole document (SCALE2).
+	let order: string[] | null = null;
 	const covered = coverMixedBoundaryStructuralOffsets(clamped, {
 		isNonText: (blockId) => host.isNonTextBlock(blockId),
-		blockIndex: (blockId) => order.indexOf(blockId),
+		blockIndex: (blockId) => (order ??= liveChildIds(host.doc, null)).indexOf(blockId),
 	});
 	return createTextSelection({
 		anchor: covered.anchor,

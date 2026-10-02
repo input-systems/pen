@@ -152,15 +152,17 @@ function emitSchemaUnknownBlock(
  * no op touches, so the sweep has to look at the whole document. Apply refuses
  * `insert-block` and `set-props` carrying an unregistered type (PEN_APPLY_002),
  * so no local apply can add a type a previous sweep did not already see; only
- * a load or a remote insert can, and both move the block count. Re-sweeping on
- * an unchanged count would make every keystroke O(document) (SCALE2).
+ * a load or a remote insert can, and both rebuild `DocumentState`, which bumps
+ * its generation. The gate reads that generation: `blocks.size` would itself
+ * iterate every block (`YMap#size` spreads its keys), making every keystroke
+ * O(document) (SCALE2).
  */
 function reportUnknownBlocksInDocument(pipeline: ApplyPipelineInternal): void {
-	const blockCount = pipeline._doc.blocks.size;
-	if (blockCount === pipeline._unknownScanBlockCount) {
+	const generation = pipeline._documentGeneration?.();
+	if (generation !== undefined && generation === pipeline._unknownScanGeneration) {
 		return;
 	}
-	pipeline._unknownScanBlockCount = blockCount;
+	pipeline._unknownScanGeneration = generation;
 
 	for (const [, rawBlockMap] of pipeline._doc.blocks.entries()) {
 		if (!isCRDTMap(rawBlockMap)) {

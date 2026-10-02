@@ -301,6 +301,7 @@ export async function rebindActiveScope(
 		() => self._resolveBeforeApplyHooks(),
 		(phase: PipelinePhase) => self._recordPipelinePhase(phase),
 		() => self._captureSelectionBeforeForCommit(),
+		() => self._documentState.generation,
 	);
 	self._wireObservation();
 	await self._activateExtensions();

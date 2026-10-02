@@ -1119,10 +1119,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 		const selection = this._editor.selection;
 		const anchor =
 			selection?.type === "text" &&
-			getSelectionBlockRange(
-				this._editor.internals.doc,
-				selection,
-			).includes(this._focusBlockId)
+			getSelectionBlockRange(this._editor.documentState, selection).includes(
+				this._focusBlockId,
+			)
 				? selection.anchor
 				: { blockId: this._focusBlockId, offset: 0 };
 		const order = getPreorderBlockIds(this._editor);

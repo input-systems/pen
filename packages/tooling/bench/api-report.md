@@ -12,9 +12,11 @@
 - createEnvelopeEditor
 - createLargeDocument
 - createScale3Editor
+- createScale3RealisticEditor
 - envelopeGateP50Ms
 - envelopePointIsGated
 - getScale3Baseline
+- observeScale3Realistic
 - reportConsole
 - reportJSON
 - scale2Plus8GateMs
@@ -53,6 +55,7 @@
 - SCALE3_AXES
 - SCALE3_BASELINES
 - SCALE3_MACHINE_CLASS
+- SCALE3_REALISTIC_BLOCK_COUNTS
 - SCALE3_SHIPPED_STACK
 
 ### type
@@ -65,3 +68,5 @@
 - Scale2Plus8ToleranceResult
 - Scale3Axis
 - Scale3Baseline
+- Scale3RealisticBlockCount
+- Scale3RealisticOptions

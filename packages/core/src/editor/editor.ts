@@ -316,6 +316,7 @@ class EditorImpl implements Editor {
 			() => this._resolveBeforeApplyHooks(),
 			(phase) => this._recordPipelinePhase(phase),
 			() => this._captureSelectionBeforeForCommit(),
+			() => this._documentState.generation,
 		);
 		this._wireObservation();
 		this._extensionLifecycle = this._activateExtensions();

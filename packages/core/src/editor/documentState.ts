@@ -1,3 +1,6 @@
+// DocumentStateImpl's public members are the `DocumentState` interface, read
+// through `editor.documentState`; fallow cannot follow interface dispatch.
+// fallow-ignore-file unused-class-member
 import type {
 	CRDTArray,
 	CRDTDocument,
@@ -20,6 +23,8 @@ export class DocumentStateImpl implements DocumentState {
 	private _childIndex: Map<string, string[]>;
 	private _blockOrder: string[];
 	private _generation = 0;
+	/** Nested preorder, built on first read and dropped on any structural change. */
+	private _preorder: { ids: readonly string[]; index: Map<string, number> } | null = null;
 	private _documentProfile: DocumentProfile;
 	private _doc: PenDocument;
 	private _crdtDoc: CRDTDocument;
@@ -90,6 +95,32 @@ export class DocumentStateImpl implements DocumentState {
 		return this._childIndex.get(blockId) ?? EMPTY_CHILD_IDS;
 	}
 
+	preorderIndexOf(blockId: string): number {
+		return this._preorderCache().index.get(blockId) ?? -1;
+	}
+
+	preorderBlockIds(): readonly string[] {
+		return this._preorderCache().ids;
+	}
+
+	private _preorderCache(): { ids: readonly string[]; index: Map<string, number> } {
+		if (this._preorder) return this._preorder;
+		const ids: string[] = [];
+		const index = new Map<string, number>();
+		const blocks = this._doc.blocks as CRDTBlockMap;
+		const visit = (id: string): void => {
+			if (index.has(id)) return;
+			index.set(id, ids.length);
+			ids.push(id);
+			const children = blocks.get(id)?.get("children") as CRDTArray<string> | undefined;
+			if (!children) return;
+			for (let i = 0; i < children.length; i++) visit(children.get(i));
+		};
+		for (const id of this._blockOrder) visit(id);
+		this._preorder = { ids, index };
+		return this._preorder;
+	}
+
 	*allBlocks(): Iterable<BlockHandle> {
 		const seen = new Set<string>();
 		for (const id of this._blockOrder) {
@@ -106,6 +137,7 @@ export class DocumentStateImpl implements DocumentState {
 	}
 
 	rebuild(): void {
+		this._preorder = null;
 		const order = this._doc.blockOrder;
 		this._blockOrder = [];
 		this._positionIndex = new Map();
@@ -168,6 +200,7 @@ export class DocumentStateImpl implements DocumentState {
 	}
 
 	clear(): void {
+		this._preorder = null;
 		this._positionIndex.clear();
 		this._parentIndex.clear();
 		this._childIndex.clear();
@@ -176,39 +209,48 @@ export class DocumentStateImpl implements DocumentState {
 	}
 
 	incrementalUpdate(affectedBlocks: readonly string[]): void {
-		const orderLength = this._doc.blockOrder.length;
-		if (orderLength !== this._blockOrder.length) {
+		if (this._doc.blockOrder.length !== this._blockOrder.length) {
 			this.rebuild();
 			return;
 		}
-
-		let needsRebuild = false;
 		for (const blockId of affectedBlocks) {
-			const cachedIndex = this._positionIndex.get(blockId);
-			if (cachedIndex === undefined) {
-				needsRebuild = true;
-				break;
-			}
-			const actual = this._doc.blockOrder.get(cachedIndex) as string;
-			if (actual !== blockId) {
-				needsRebuild = true;
-				break;
-			}
-			if (
-				this._actualParentOf(blockId) !== this._parentIndex.get(blockId)
-			) {
-				needsRebuild = true;
-				break;
-			}
-			if (this._childrenChanged(blockId)) {
-				needsRebuild = true;
-				break;
+			this._dropPreorderIfChildrenTouched(blockId);
+			if (this._needsRebuild(blockId)) {
+				this.rebuild();
+				return;
 			}
 		}
+	}
 
-		if (needsRebuild) {
-			this.rebuild();
+	/** A children array can reorder, or vanish, without moving any block's parent. */
+	private _dropPreorderIfChildrenTouched(blockId: string): void {
+		if (
+			this._preorder &&
+			(this._childIndex.has(blockId) || this._hasChildrenArray(blockId))
+		) {
+			this._preorder = null;
 		}
+	}
+
+	private _needsRebuild(blockId: string): boolean {
+		return (
+			this._positionChanged(blockId) ||
+			this._parentChanged(blockId) ||
+			this._childrenChanged(blockId)
+		);
+	}
+
+	/**
+	 * A children-array block has no blockOrder position; one the index already
+	 * knows is checked through its parent instead of rebuilding on every edit
+	 * inside it (SCALE2).
+	 */
+	private _positionChanged(blockId: string): boolean {
+		const cachedIndex = this._positionIndex.get(blockId);
+		if (cachedIndex === undefined) {
+			return !this._isIndexedNestedChild(blockId);
+		}
+		return this._doc.blockOrder.get(cachedIndex) !== blockId;
 	}
 
 	updateDocument(
@@ -256,29 +298,48 @@ export class DocumentStateImpl implements DocumentState {
 		}
 	}
 
-	private _actualParentOf(blockId: string): string | undefined {
+	/**
+	 * Whether `blockId`'s parent differs from the index, in O(children of the
+	 * cached parent) rather than a scan of every block (SCALE2). A block newly
+	 * adopted into a `children` array is caught on the adopting parent, which
+	 * the commit names as affected because its array changed
+	 * (`_childrenChanged`); this method catches a `parentId` change and a
+	 * block that left its cached parent's array.
+	 */
+	private _parentChanged(blockId: string): boolean {
+		const cached = this._parentIndex.get(blockId);
 		const blockMap = (this._doc.blocks as CRDTBlockMap).get(blockId);
 		const props = blockMap?.get("props") as CRDTMap<unknown> | undefined;
 		const parentId = props?.get?.("parentId");
-		if (typeof parentId === "string") {
-			return parentId;
+		if (typeof parentId === "string" && parentId !== "") {
+			return parentId !== cached;
 		}
-
-		for (const [candidateId, candidateMap] of (
-			this._doc.blocks as CRDTBlockMap
-		).entries()) {
-			const children = candidateMap.get("children") as
-				| CRDTArray<string>
-				| undefined;
-			if (!children) continue;
-			for (let i = 0; i < children.length; i++) {
-				if (children.get(i) === blockId) {
-					return candidateId;
-				}
-			}
+		if (cached === undefined) {
+			return false;
 		}
+		const parentMap = (this._doc.blocks as CRDTBlockMap).get(cached);
+		const children = parentMap?.get("children") as
+			| CRDTArray<string>
+			| undefined;
+		if (!children) return true;
+		for (let i = 0; i < children.length; i++) {
+			if (children.get(i) === blockId) return false;
+		}
+		return true;
+	}
 
-		return undefined;
+	private _isIndexedNestedChild(blockId: string): boolean {
+		const parentId = this._parentIndex.get(blockId);
+		return (
+			parentId !== undefined &&
+			(this._childIndex.get(parentId)?.includes(blockId) ?? false) &&
+			(this._doc.blocks as CRDTBlockMap).get(blockId) !== undefined
+		);
+	}
+
+	private _hasChildrenArray(blockId: string): boolean {
+		const blockMap = (this._doc.blocks as CRDTBlockMap).get(blockId);
+		return blockMap?.get("children") !== undefined;
 	}
 
 	private _childrenChanged(blockId: string): boolean {

@@ -1,9 +1,6 @@
 import type { Editor } from "@input/pen-types";
 
-export function getPreorderBlockIds(editor: Editor): string[] {
-	const ids: string[] = [];
-	for (const block of editor.documentState.blocks) {
-		ids.push(block.id);
-	}
-	return ids;
+/** Nested document order from `DocumentState`'s cached preorder (SCALE2). */
+export function getPreorderBlockIds(editor: Editor): readonly string[] {
+	return editor.documentState.preorderBlockIds();
 }

@@ -77,6 +77,14 @@ export interface DocumentState {
 	 * which cannot see children-array children — they are not in `blockOrder`.
 	 */
 	childrenOf(blockId: string): readonly string[];
+	/**
+	 * Position in nested document order — each `blockOrder` entry followed by
+	 * its `children`-array descendants, the order `allBlocks()` yields — or -1
+	 * when absent. O(1) after the first read following a structural change.
+	 */
+	preorderIndexOf(blockId: string): number;
+	/** The same nested order, identity-stable until the next structural change. */
+	preorderBlockIds(): readonly string[];
 }
 
 // ── Undo Manager ────────────────────────────────────────────

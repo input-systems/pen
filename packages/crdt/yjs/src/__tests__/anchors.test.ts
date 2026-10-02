@@ -40,7 +40,7 @@ describe("anchors AN1 adapter totality", () => {
 		).toBeNull();
 	});
 
-	it("AN1: a removed block resolves null via the blocks-map scan, not index 0 on a deleted type", () => {
+	it("AN1: a removed block resolves null via the parent walk, not index 0 on a deleted type", () => {
 		const adapter = yjsAdapter();
 		const doc = createYjsDocument(adapter);
 		const ytext = seedParagraph(doc, "b1", "0123456789");

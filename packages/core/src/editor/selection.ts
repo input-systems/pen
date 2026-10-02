@@ -6,6 +6,7 @@ import type {
 	CRDTDocument,
 	CRDTMap,
 	DiagnosticEvent,
+	DocumentState,
 	Editor,
 	PenDocument,
 	SchemaRegistry,
@@ -155,7 +156,7 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 
 		if (sel.type === "text") {
 			const range = selectionToRange(this._doc, sel);
-			const blockIds = getSelectionBlockRange(this._doc, sel);
+			const blockIds = getSelectionBlockRange(this._rangeSource(), sel);
 			if (blockIds.length <= 1) {
 				const full = this._logicalText(sel.anchor.blockId);
 				const from = Math.min(sel.anchor.offset, sel.focus.offset);
@@ -210,7 +211,7 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 		}
 
 		if (sel.type === "text") {
-			return getSelectionBlockRange(this._doc, sel)
+			return getSelectionBlockRange(this._rangeSource(), sel)
 				.filter((id) => this._blockExists(id))
 				.map((id) => this._handle(id));
 		}
@@ -264,6 +265,11 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 		}
 		this._fromAnchor = repairAnchor(this._editor, this._fromAnchor, moves);
 		this._toAnchor = repairAnchor(this._editor, this._toAnchor, moves);
+	}
+
+	/** The bound editor's cached preorder, or the document before binding. */
+	private _rangeSource(): DocumentState | PenDocument {
+		return this._editor?.documentState ?? this._doc;
 	}
 
 	private _isNonTextBlock(blockId: string): boolean {
