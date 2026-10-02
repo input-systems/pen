@@ -16,6 +16,7 @@ Support development, testing, benchmarking, or local integration workflows aroun
 - Assertions: `assertDocEquals()`, `assertPeerEditsSurvive()`, `assertDocumentRoots()`
 - Fixtures: `encodeFixtureUpdate()`, `normalizeDocumentForSnapshot()`, `DEFAULT_PEN_ROOTS`, `PenFixtureError`
 - AI doubles: `createModelDouble()` and its types, used by the AI and transport suites
+- Scale fixtures: `generateMixedBlockSpecs()`, `mixedFixtureOps()`, `mixedFixtureIdentity()`, `mixedFixtureTargets()`, `mixedBlockId()`, and `MIXED_FIXTURE_SIZES` (1k, 5k, 10k, 50k root blocks) build a deterministic mixed document — headings, paragraphs, bullet, numbered, and check list runs, quotes, code, open toggles with a `parentId` child, dividers, one table per 1,000 blocks, and bold marks — whose counts `mixedFixtureIdentity()` states by arithmetic (SCALE1)
 - `simulateTyping()` / `simulateKeypress()` are methods on `TestEditor` rather than barrel exports
 - Workspace scripts: `build`, `clean`, `dev`, `lint`, `test`, `typecheck`
 

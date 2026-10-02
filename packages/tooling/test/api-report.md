@@ -27,11 +27,16 @@
 - encodeFixtureUpdate
 - failingToolCallParts
 - findParentCycle
+- generateMixedBlockSpecs
 - getChildrenIds
 - getParentId
 - hasParentCycle
 - hostileMutatingTurnCalls
 - listBlockIds
+- mixedBlockId
+- mixedFixtureIdentity
+- mixedFixtureOps
+- mixedFixtureTargets
 - normalizeDocumentForSnapshot
 - parentsOf
 - populateYDoc
@@ -46,6 +51,7 @@
 
 - ASSERT_DOC_EQUALS_FIELDS
 - DEFAULT_PEN_ROOTS
+- MIXED_FIXTURE_SIZES
 - TWO_PEER_INTERLEAVINGS
 
 ### type
@@ -59,6 +65,8 @@
 - ExportContractResult
 - HeadlessEditorContractOptions
 - HeadlessEditorContractResult
+- MixedFixtureIdentity
+- MixedFixtureTargets
 - ModelDouble
 - ModelDoubleEvent
 - ModelDoubleFeature

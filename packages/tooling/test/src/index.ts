@@ -82,3 +82,15 @@ export type {
 	ModelDoubleResponse,
 	ModelDoubleToolCall,
 } from "./modelDouble";
+export {
+	MIXED_FIXTURE_SIZES,
+	generateMixedBlockSpecs,
+	mixedBlockId,
+	mixedFixtureIdentity,
+	mixedFixtureOps,
+	mixedFixtureTargets,
+} from "./fixtures/scale/mixed";
+export type {
+	MixedFixtureIdentity,
+	MixedFixtureTargets,
+} from "./fixtures/scale/mixed";
