@@ -2,7 +2,7 @@ import { expect } from "@playwright/test";
 import { scenario } from "../src/scenario";
 
 scenario(
-	"F39: preserves remote edits that land during IME composition",
+	"F39 C2: preserves remote edits that land during IME composition",
 	async (s, page) => {
 		await s.load("hello-world");
 		await s.keyboard.press("End");
@@ -31,6 +31,9 @@ scenario(
 					?.textContent ?? "",
 		}));
 		expect(during.authority).toContain("XHello");
+		expect(during.dom, "C2: the composed field DOM is untouched").not.toContain(
+			"X",
+		);
 
 		await surface.dispatchEvent("compositionend");
 

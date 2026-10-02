@@ -46,7 +46,10 @@ import {
 } from "../utils/inlineDecorations";
 import { handleEditContextBeforeInput } from "./editContextBeforeInput";
 import { handleFieldEditorKeyDown } from "./keyHandling";
-import { isHistoryTransactionOrigin } from "./historyOrigin";
+import {
+	isCollaboratorTransaction,
+	isHistoryTransactionOrigin,
+} from "./transactionOrigin";
 import { getPasteImporters, handleClipboardPaste } from "./clipboard";
 import { applyListInputRule } from "./commands";
 import { isFieldEditorTextEditingKey } from "../utils/textEntryTarget";
@@ -926,10 +929,7 @@ export class EditContextBackend {
 		if (!this.editContext || !this.element || !this.ytext) return;
 		const isHistory = isHistoryTransactionOrigin(event.transaction?.origin);
 		if (!isHistory && this.hasInFlightEditContextComposition()) {
-			if (
-				event.transaction?.origin === "remote" ||
-				event.transaction?.origin === "collaborator"
-			) {
+			if (isCollaboratorTransaction(event.transaction)) {
 				this.deferredRemoteDeltas.push({ delta: event.delta });
 			}
 			return;

@@ -225,7 +225,11 @@ export function rebaseTextDiffOps(
 		});
 }
 
-function mapOffsetThroughRemoteDeltas(
+/**
+ * Maps an offset recorded before deferred remote deltas onto the text after
+ * them (C2). Shared by the composition diff and the composition caret.
+ */
+export function mapOffsetThroughRemoteDeltas(
 	originalOffset: number,
 	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
 ): number {

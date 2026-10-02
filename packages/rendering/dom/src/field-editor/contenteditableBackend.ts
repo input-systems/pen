@@ -14,7 +14,10 @@ import {
 	getSelectionOffsets,
 } from "./selectionBridge";
 import { applyListInputRule } from "./commands";
-import { isHistoryTransactionOrigin } from "./historyOrigin";
+import {
+	isCollaboratorTransaction,
+	isHistoryTransactionOrigin,
+} from "./transactionOrigin";
 import type { InlineTextDiffOp } from "./inlineTextTransaction";
 import {
 	applyInlineTextDiffInput,
@@ -30,6 +33,7 @@ import { DIRECT_HANDLERS } from "./contenteditableDirectHandlers";
 import {
 	canResolveInputRange,
 	isNavigationSelectionKey,
+	mapOffsetThroughRemoteDeltas,
 	rebaseTextDiffOps,
 	requiresResolvedInputRange,
 	setSelectionOffsets,
@@ -466,7 +470,7 @@ export class ContentEditableBackend {
 				computeTextDiff(baseText, domText),
 				this.deferredRemoteDeltas,
 			);
-			this.applyTextDiffAsOps(blockId, diff);
+			this.applyTextDiffAsOps(blockId, diff, this.deferredRemoteDeltas);
 		}
 
 		if (this.deferredRemoteDeltas.length > 0) {
@@ -542,99 +546,82 @@ export class ContentEditableBackend {
 
 	protected handleYTextChange = (event: FieldEditorTextChangeEvent): void => {
 		if (this.isComposing) {
-			if (
-				event.transaction?.origin === "remote" ||
-				event.transaction?.origin === "collaborator"
-			) {
-				this.deferredRemoteDeltas.push({ delta: event.delta });
-			}
+			this.deferCollaboratorDelta(event);
 			return;
 		}
-
 		if (!this.element || !this.ytext) return;
-		const isHistory = isHistoryTransactionOrigin(event.transaction?.origin);
-		if (isHistory) {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: true,
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.fieldEditor.notifyDomReconciled(
-				this.fieldEditor.focusBlockId ?? undefined,
-			);
-			this.restoreDOMSelectionFromEditor();
-			this.discardObservedMutations();
-			return;
-		}
-
 		const blockId = this.fieldEditor.focusBlockId;
-		const isActiveCell = blockId
-			? !!this._getActiveCellCoord(blockId)
-			: false;
-		if (isActiveCell) {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: true,
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
-			if (
-				this.fieldEditor.hasBackendSelectionAuthority("programmatic") ||
-				event.transaction?.origin === "remote" ||
-				event.transaction?.origin === "collaborator"
-			) {
-				this.restoreDOMSelectionFromEditor();
-			}
-			this.discardObservedMutations();
-			return;
+		if (isHistoryTransactionOrigin(event.transaction?.origin)) {
+			this.fullReconcileActiveField(blockId);
+			this.restoreDOMSelectionFromEditor();
+		} else {
+			this.reconcileDelta(blockId, event.delta);
+			this.restoreProgrammaticSelection();
 		}
+		this.discardObservedMutations();
+	};
 
+	/** C2: a collaborator delta during composition waits for compositionend. */
+	protected deferCollaboratorDelta(event: FieldEditorTextChangeEvent): void {
+		if (isCollaboratorTransaction(event.transaction)) {
+			this.deferredRemoteDeltas.push({ delta: event.delta });
+		}
+	}
+
+	protected reconcileDelta(
+		blockId: string | null,
+		delta: FieldEditorDelta[],
+	): void {
 		const inlineDecorations = this.getInlineDecorationsForBlock();
-		if (inlineDecorationsRequireFullReconcile(inlineDecorations)) {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: true,
-				inlineDecorations,
-			});
-			this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
-			if (
-				this.fieldEditor.hasBackendSelectionAuthority("programmatic") ||
-				event.transaction?.origin === "remote" ||
-				event.transaction?.origin === "collaborator"
-			) {
-				this.restoreDOMSelectionFromEditor();
-			}
-			this.discardObservedMutations();
+		if (this.requiresFullReconcile(blockId, inlineDecorations)) {
+			this.fullReconcileActiveField(blockId, inlineDecorations);
 			return;
 		}
-
 		const applied = applyDeltaToDOM(
-			event.delta,
-			this.element,
+			delta,
+			this.element!,
 			this.editor.schema,
 			urlPolicyFromEditor(this.editor),
 		);
 		if (!applied) {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: true,
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
+			this.fullReconcileActiveField(blockId);
 		}
+	}
 
-		if (
-			this.fieldEditor.hasBackendSelectionAuthority("programmatic") ||
-			event.transaction?.origin === "remote" ||
-			event.transaction?.origin === "collaborator"
-		) {
+	protected restoreProgrammaticSelection(): void {
+		if (this.fieldEditor.hasBackendSelectionAuthority("programmatic")) {
 			this.restoreDOMSelectionFromEditor();
 		}
-		this.discardObservedMutations();
-	};
+	}
+
+	/** Table cells and decorations that split text runs cannot take a delta patch. */
+	protected requiresFullReconcile(
+		blockId: string | null,
+		inlineDecorations: readonly InlineDecoration[],
+	): boolean {
+		const isActiveCell = blockId ? !!this._getActiveCellCoord(blockId) : false;
+		return (
+			isActiveCell || inlineDecorationsRequireFullReconcile(inlineDecorations)
+		);
+	}
+
+	protected fullReconcileActiveField(
+		blockId: string | null,
+		inlineDecorations = this.getInlineDecorationsForBlock(),
+	): void {
+		if (!this.element || !this.ytext) return;
+		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
+			urlPolicy: urlPolicyFromEditor(this.editor),
+			preserveSelection: true,
+			inlineDecorations,
+		});
+		this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
+	}
+
 	protected applyTextDiffAsOps(
 		blockId: string,
 		diff: InlineTextDiffOp[],
+		deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [],
 	): void {
 		if (diff.length === 0) return;
 		const ytext = this.ytext;
@@ -645,8 +632,16 @@ export class ContentEditableBackend {
 		const selection = range
 			? {
 					blockId,
-					anchorOffset: range.start,
-					focusOffset: range.end,
+					// The DOM caret predates deferred remote deltas (C2); map it
+					// the same way the diff was rebased.
+					anchorOffset: mapOffsetThroughRemoteDeltas(
+						range.start,
+						deferredRemoteDeltas,
+					),
+					focusOffset: mapOffsetThroughRemoteDeltas(
+						range.end,
+						deferredRemoteDeltas,
+					),
 					cell: cellCoord
 						? { row: cellCoord.row, col: cellCoord.col }
 						: undefined,

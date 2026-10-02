@@ -156,4 +156,30 @@ describe("C2 EditContext mid-composition remote", () => {
 			"C2: EditContext authority accepted the remote insert",
 		).toBe(true);
 	});
+
+	it("C2: EditContext resyncs its buffer from the document after a deferred collaborator delta", () => {
+		const { editor, inline, blockId } =
+			mountEditContextEditor("Hello world");
+		const editContext = (
+			inline as HTMLElement & { editContext?: FakeEditContext }
+		).editContext!;
+		inline.dispatchEvent(
+			new CompositionEvent("compositionstart", { bubbles: true }),
+		);
+
+		editor.apply(
+			[{ type: "splice-text", blockId, from: 0, to: 0, insert: "X" }],
+			{ origin: "collaborator" },
+		);
+		expect(editContext.text).toBe("Hello world");
+
+		inline.dispatchEvent(
+			new CompositionEvent("compositionend", { bubbles: true, data: "" }),
+		);
+
+		const text = editor.getBlock(blockId)?.textContent();
+		expect(text).toBe("XHello world");
+		expect(editContext.text).toBe(text);
+		expect(extractTextFromDOM(inline)).toBe(text);
+	});
 });
