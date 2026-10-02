@@ -17,6 +17,7 @@ export interface BlockIndex {
 	 * still resolves its shape from storage rather than from summary replay.
 	 */
 	applyTextLengths(blockText: readonly BlockTextChange[]): void;
+	/** Takes ownership of a freshly built snapshot; the caller must not keep it. */
 	replace(snapshot: BlockIndexSnapshot): void;
 }
 
@@ -91,7 +92,9 @@ export function createBlockIndex(initial: BlockIndexSnapshot): BlockIndex {
 			}
 		},
 		replace(snapshot) {
-			current = cloneSnapshot(snapshot);
+			// Fresh from createBlockIndexSnapshot, which already built new maps;
+			// cloning again would copy every entry a second time.
+			current = snapshot as OwnedBlockIndexSnapshot;
 		},
 	};
 }

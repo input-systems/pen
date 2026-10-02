@@ -1,0 +1,60 @@
+{
+	"schemaVersion": 1,
+	"rule": "SCALE2",
+	"points": {
+		"enter.100": {
+			"blockOrderReads": 389,
+			"blocksMapReads": 127,
+			"blocksMapIterations": 431,
+			"textFullReads": 6,
+			"orderArrayReads": 0,
+			"documentWalks": 0
+		},
+		"remoteInsert.100": {
+			"blockOrderReads": 216,
+			"blocksMapReads": 110,
+			"blocksMapIterations": 216,
+			"textFullReads": 1,
+			"orderArrayReads": 0,
+			"documentWalks": 0
+		},
+		"enter.1000": {
+			"blockOrderReads": 3686,
+			"blocksMapReads": 1072,
+			"blocksMapIterations": 4211,
+			"textFullReads": 6,
+			"orderArrayReads": 0,
+			"documentWalks": 0
+		},
+		"remoteInsert.1000": {
+			"blockOrderReads": 2106,
+			"blocksMapReads": 1055,
+			"blocksMapIterations": 2106,
+			"textFullReads": 1,
+			"orderArrayReads": 0,
+			"documentWalks": 0
+		},
+		"enter.5000": {
+			"blockOrderReads": 18386,
+			"blocksMapReads": 5272,
+			"blocksMapIterations": 21011,
+			"textFullReads": 6,
+			"orderArrayReads": 0,
+			"documentWalks": 0
+		},
+		"remoteInsert.5000": {
+			"blockOrderReads": 10506,
+			"blocksMapReads": 5255,
+			"blocksMapIterations": 10506,
+			"textFullReads": 1,
+			"orderArrayReads": 0,
+			"documentWalks": 0
+		}
+	},
+	"history": [
+		{
+			"date": "2026-10-02",
+			"reason": "Initial record (W2-S8): structural commits re-read only the named blocks' text; remote blockOrder changes report exact ids"
+		}
+	]
+}

@@ -631,6 +631,19 @@ function executeOps(
 			continue;
 		}
 
+		const missingParent = missingParentId(pipeline, nextOp, pendingBlockIds);
+		if (missingParent !== null) {
+			// Executing it would write the block outside the tree: insert leaves
+			// an orphan, move detaches the block from wherever it was.
+			emitPipelineDiagnostic(pipeline, {
+				code: "PEN_APPLY_003",
+				level: "warn",
+				source: "apply",
+				message: `apply: skipping ${nextOp.type} into non-existent parent "${missingParent}"`,
+			});
+			continue;
+		}
+
 		if (malformedOpMessage(nextOp)) {
 			emitMalformedOpDiagnostic(pipeline, nextOp);
 			continue;
@@ -700,6 +713,19 @@ function executeOps(
 		origin,
 		applied: true,
 	});
+}
+
+/** The parent an insert or move targets when that parent does not exist. */
+function missingParentId(
+	pipeline: ApplyPipelineInternal,
+	op: DocumentOp,
+	pendingBlockIds: ReadonlySet<string>,
+): string | null {
+	if (op.type !== "insert-block" && op.type !== "move-block") return null;
+	const position = op.position;
+	if (typeof position !== "object" || !("parent" in position)) return null;
+	const parent = position.parent;
+	return blockExists(pipeline, parent) || pendingBlockIds.has(parent) ? null : parent;
 }
 
 function emitApplyBoundary(

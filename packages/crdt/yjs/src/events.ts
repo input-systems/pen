@@ -216,6 +216,21 @@ function resolveBlockId(
 	return null;
 }
 
+/**
+ * Ids a transaction inserted into or removed from `blockOrder`, read from the
+ * array's own event rather than the whole order (SCALE2). Deleted items still
+ * carry their content in `afterTransaction`: Yjs garbage-collects after it.
+ */
+function blockOrderChangedIds(txn: Y.Transaction, blockOrder: Y.Array<unknown>): string[] {
+	const event = (txn.changedParentTypes.get(blockOrder) ?? []).find(
+		(candidate) => candidate.target === blockOrder,
+	);
+	if (!event) return [];
+	const inserted = event.delta.flatMap((op) => (Array.isArray(op.insert) ? op.insert : []));
+	const removed = [...event.changes.deleted].flatMap((item) => item.content.getContent());
+	return [...inserted, ...removed].filter((value): value is string => typeof value === "string");
+}
+
 function extractAffectedBlocks(txn: Y.Transaction): string[] {
 	const blockIds = new Set<string>();
 	const blocksMap = txn.doc.getMap(BLOCKS) as Y.Map<Y.Map<unknown>>;
@@ -229,8 +244,7 @@ function extractAffectedBlocks(txn: Y.Transaction): string[] {
 			continue;
 		}
 		if ((ytype as unknown) === (blockOrderArray as unknown)) {
-			const arr = blockOrderArray.toArray() as string[];
-			for (const id of arr) blockIds.add(id);
+			for (const id of blockOrderChangedIds(txn, blockOrderArray)) blockIds.add(id);
 			continue;
 		}
 		const blockId = resolveBlockId(ytype, blocksMap);

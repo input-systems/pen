@@ -7,8 +7,19 @@ import {
 } from "./blockIndex";
 import { logicalLengthFromStored } from "./summaryBuilder";
 
+/**
+ * Lengths to carry over from the previous index: every block except `named`
+ * keeps its cached length instead of having its text read (SCALE2). A
+ * structural commit cannot change the text of a block its summary does not name.
+ */
+export interface ReusedBlockLengths {
+	readonly lengths: ReadonlyMap<string, number>;
+	readonly named: ReadonlySet<string>;
+}
+
 export function createBlockIndexSnapshotFromDocument(
 	doc: PenDocument,
+	reuse?: ReusedBlockLengths,
 ): BlockIndexSnapshot {
 	if (!doc?.blockOrder || !doc.blocks) {
 		return emptyBlockIndexSnapshot();
@@ -31,9 +42,10 @@ export function createBlockIndexSnapshotFromDocument(
 		}
 		const type = block.get("type");
 		typeById.set(id, typeof type === "string" ? type : "");
+		const cached = reuse && !reuse.named.has(id) ? reuse.lengths.get(id) : undefined;
 		lengthById.set(
 			id,
-			logicalLengthFromStored(storedText(block.get("content"))),
+			cached ?? logicalLengthFromStored(storedText(block.get("content"))),
 		);
 		const children = readStringArray(block.get("children"));
 		childrenByParentId.set(id, children);

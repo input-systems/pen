@@ -7,6 +7,7 @@ import {
 	type BlockIndex,
 } from "./blockIndex";
 import { createBlockIndexSnapshotFromDocument } from "./fromDocument";
+import { summaryTouchedBlockIds } from "./affectedBlocks";
 import { buildChangeSummary } from "./summaryBuilder";
 
 export interface ChangeSummaryHost {
@@ -58,7 +59,10 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 					host._blockIndex.applyTextLengths(summary.blockText);
 				} else {
 					host._blockIndex.replace(
-						createBlockIndexSnapshotFromDocument(host._doc),
+						createBlockIndexSnapshotFromDocument(host._doc, {
+							lengths: host._blockIndex.snapshot().lengthById,
+							named: namedBlockIds(summary),
+						}),
 					);
 				}
 				flushDeferredCRDTEvent(host);
@@ -81,4 +85,15 @@ function flushDeferredCRDTEvent(host: ChangeSummaryHost): void {
 	if (!deferred) return;
 	host._deferredCRDTEvent = null;
 	host._dispatchCRDTEvent(deferred);
+}
+
+/** Blocks whose text a structural commit may have changed, so must be re-read. */
+function namedBlockIds(summary: ChangeSummary): Set<string> {
+	const named = new Set(summaryTouchedBlockIds(summary));
+	for (const change of summary.blockText) named.add(change.blockId);
+	for (const change of summary.structural) {
+		if (change.type === "block-split") named.add(change.newBlockId);
+		else if (change.type === "blocks-merged") named.add(change.targetBlockId);
+	}
+	return named;
 }
