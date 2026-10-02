@@ -5,7 +5,7 @@ import type {
 	TextSplice,
 } from "@input/pen-types";
 
-import { peekAnchorTarget, remintAnchor } from "./anchors";
+import { peekPreCommitTarget, remintAnchor } from "./anchors";
 
 /**
  * A pre-commit text range that a structural commit copied onto another block (AN14).
@@ -21,14 +21,21 @@ function sitsInMovedRange(
 	offset: number,
 	assoc: Anchor["assoc"],
 	range: ContentMove["fromRange"],
+	sourceRemoved: boolean,
 ): boolean {
 	if (offset > range.from && offset < range.to) {
 		return true;
 	}
-	if (offset === range.from && assoc === 1) {
+	// An anchor on an edge stays with the text on its side of that edge, unless
+	// the commit removed the source block and left nothing there to stay with.
+	if (offset === range.from && (assoc === 1 || sourceRemoved)) {
 		return true;
 	}
-	if (offset === range.to && assoc === -1 && range.to > range.from) {
+	if (
+		offset === range.to &&
+		range.to > range.from &&
+		(assoc === -1 || sourceRemoved)
+	) {
 		return true;
 	}
 	return false;
@@ -151,6 +158,9 @@ export function deriveContentMoves(
 /**
  * Re-mint into the destination when the pre-commit target sat in a moved range (AN14).
  *
+ * The pre-commit target is the anchor's last observation before this commit, so
+ * a resolve made after the commit landed does not feed the repair, and an anchor
+ * that last resolved to `null` is not revived from an older position.
  * Returns the same object when no move applies. Remint keeps the original provenance.
  */
 export function repairAnchor(
@@ -161,7 +171,7 @@ export function repairAnchor(
 	if (moves.length === 0) {
 		return anchor;
 	}
-	const prior = peekAnchorTarget(editor.anchors, anchor);
+	const prior = peekPreCommitTarget(editor.anchors, anchor);
 	if (!prior) {
 		return anchor;
 	}
@@ -169,7 +179,15 @@ export function repairAnchor(
 		if (prior.blockId !== move.fromBlockId) {
 			continue;
 		}
-		if (!sitsInMovedRange(prior.offset, anchor.assoc, move.fromRange)) {
+		const sourceRemoved = editor.getBlock(move.fromBlockId) === null;
+		if (
+			!sitsInMovedRange(
+				prior.offset,
+				anchor.assoc,
+				move.fromRange,
+				sourceRemoved,
+			)
+		) {
 			continue;
 		}
 		const destOffset = move.toOffset + (prior.offset - move.fromRange.from);
