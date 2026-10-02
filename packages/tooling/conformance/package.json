@@ -45,7 +45,7 @@
     "@input/pen-types": "workspace:*",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "yjs": "^13.6.32"
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

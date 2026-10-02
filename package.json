@@ -58,8 +58,8 @@
   },
   "pnpm": {
     "overrides": {
-      "undici": "7.29.0",
-      "dompurify": "3.4.14"
+      "undici@<8": "7.29.1",
+      "dompurify": "3.4.16"
     }
   },
   "devDependencies": {
@@ -74,7 +74,7 @@
     "turbo": "^2.11.4",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.70.1",
-    "vitest": "^3.2.7",
+    "vitest": "^4.1.11",
     "yaml": "^2.9.1"
   }
 }

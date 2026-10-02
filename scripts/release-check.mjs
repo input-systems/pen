@@ -541,7 +541,7 @@ async function lintPublishedPackages(packages) {
 }
 
 // Pen resolves under node16 and bundler, not node10. Every package declares
-// `engines.node: ">=22"` and ships an exports map with first-class subpaths
+// `engines.node: "^22.22.2 || ^24.15.0 || >=26.0.0"` and ships an exports map with first-class subpaths
 // (API6); a node10 resolver cannot read exports maps at all, so each subpath
 // would need a duplicated `typesVersions` entry that no gate keeps in sync.
 // The root entry still resolves under node10 — only subpaths do not.

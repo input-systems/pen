@@ -14,7 +14,7 @@ pnpm add @input/pen @input/pen-dom yjs
 
 `yjs` is a peer of `@input/pen-yjs`, which `@input/pen-core` depends on.
 
-`engines.node` is `>=22`.
+`engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`.
 
 ## Usage
 
