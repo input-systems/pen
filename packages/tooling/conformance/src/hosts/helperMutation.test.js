@@ -374,5 +374,10 @@ test("STANDING_DIAGNOSTIC_CODES is a non-empty closed list", async () => {
 	assert.ok(STANDING_DIAGNOSTIC_CODES.includes("dom-divergence"));
 	assert.ok(STANDING_DIAGNOSTIC_CODES.includes("selection-projection-mismatch"));
 	assert.ok(STANDING_DIAGNOSTIC_CODES.length > 0);
-	assert.equal(DIAGNOSTICS_ALLOWLIST.length, 0);
+	// The target is an empty list. An entry is a ratchet: it must name the
+	// workstream requirement or step that removes it.
+	for (const entry of DIAGNOSTICS_ALLOWLIST) {
+		assert.ok(STANDING_DIAGNOSTIC_CODES.includes(entry.code), entry.code);
+		assert.match(entry.reason, /W\d+(\.R\d+| step \d+)/, entry.code);
+	}
 });

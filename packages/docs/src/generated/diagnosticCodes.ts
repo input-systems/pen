@@ -346,6 +346,11 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		sources: ["core/src/editor/selection.ts"],
 	},
 	{
+		code: "selection-projection-mismatch",
+		levels: ["warn"],
+		sources: ["rendering/dom/src/field-editor/selectionProjectionController.ts"],
+	},
+	{
 		code: "selection-reserved-origin",
 		levels: ["warn"],
 		sources: ["core/src/editor/selection.ts"],

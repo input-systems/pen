@@ -23,5 +23,9 @@ export type DiagnosticsAllowlistEntry = {
 };
 
 export const DIAGNOSTICS_ALLOWLIST: readonly DiagnosticsAllowlistEntry[] = [
-	// empty — hello-world baseline has not observed standing-code noise yet
+	{
+		code: "selection-projection-mismatch",
+		reason:
+			"W3.R1 read-back (W3 step 1) reports a projection written while an IME composition is open (F39 C2): the composing field keeps its own range. Closed by W3 step 6 (W3.R6), which withholds projection while composing; W3.G3 cannot close while this entry exists.",
+	},
 ];

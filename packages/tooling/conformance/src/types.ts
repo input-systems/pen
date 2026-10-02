@@ -328,6 +328,9 @@ export type PenConformanceBridge = {
 	): Promise<PresenceSnapshot>;
 	serializePresenceAnchor(blockId: string, offset: number): string;
 	installBrokenProjector(): void;
+	/** W3.R1: drop the next native selection write and count writes from here. */
+	installSelectionWriteFault(): void;
+	readonly selectionWriteFault: { dropped: number; writes: number };
 	forceUnwindowedDomDivergence(): ForcedDomDivergence;
 	domMatchesAuthority(): DomAuthorityCheck;
 	/** CS10: call `domSelectionToEditor` on a page-owned root. */

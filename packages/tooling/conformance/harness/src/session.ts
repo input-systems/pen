@@ -3,6 +3,7 @@ import {
 	createEditor,
 	createHeadlessEditor,
 	createPseudoLocaleCatalog,
+	buildLazyNormalPositionSnapshot,
 	fieldEditorHostFacet,
 	getEditorSelectionRecord,
 	isCollapsed as selectionIsCollapsed,
@@ -84,7 +85,12 @@ import {
 	misplacedOffset,
 	pointsEqual,
 	resolveDomAuthorityCheck,
+	type ExtendedS2Observations,
 } from "./domAuthorityCompare";
+import {
+	isLogicallyEquivalent,
+	readNormalizedDomProposal,
+} from "../../../../rendering/dom/src/field-editor/selectionReader";
 import {
 	serializeDiagnostic,
 	serializeSelection,
@@ -403,7 +409,75 @@ function checkDomMatchesAuthority(): DomAuthorityCheck {
 		hasFocus: editorHasFocus(root),
 		authority: serializeSelection(current.editor.selection),
 		mapped: domSelectionToEditor(root),
+		extended: observeExtendedS2(current.editor, root),
 	});
+}
+
+/** W3.R2: what the extended standing S2 check needs from the page. */
+function observeExtendedS2(editor: Editor, root: HTMLElement): ExtendedS2Observations {
+	return {
+		composing: isFieldComposing(editor),
+		nativeRangeInRoot: hasNativeRangeIn(root),
+		focusedSinkRole: focusedSinkRole(root),
+		equivalent: isDomEquivalentToText(editor, root),
+	};
+}
+
+function isFieldComposing(editor: Editor): boolean {
+	const fieldEditor = editor.facet(fieldEditorHostFacet) as { getSnapshot?: () => { isComposing: boolean } } | null;
+	return fieldEditor?.getSnapshot?.().isComposing === true;
+}
+
+function hasNativeRangeIn(root: HTMLElement): boolean {
+	const native = document.getSelection();
+	if (!native || native.rangeCount === 0) return false;
+	return [native.anchorNode, native.focusNode].some((node) => node !== null && root.contains(node));
+}
+
+function focusedSinkRole(root: HTMLElement): string | null {
+	const active = document.activeElement;
+	if (!(active instanceof HTMLElement) || !root.contains(active)) return null;
+	const role = active.getAttribute("role");
+	return role === "group" || role === "grid" ? role : null;
+}
+
+function isDomEquivalentToText(editor: Editor, root: HTMLElement): boolean {
+	const record = editor.selection;
+	if (record?.type !== "text") return false;
+	return isLogicallyEquivalent(
+		readNormalizedDomProposal(root, editor),
+		{ type: "text", anchor: record.anchor, focus: record.focus },
+		buildLazyNormalPositionSnapshot(editor),
+	);
+}
+
+/**
+ * W3.R1 fault injection: the next native selection write is dropped, as an
+ * engine that rejects it would, and every write is counted from here on, so a
+ * scenario can assert one report and no retry.
+ */
+function installSelectionWriteFault(): void {
+	const counters = { dropped: 0, writes: 0 };
+	(window as unknown as { __penSelectionWriteFault: typeof counters }).__penSelectionWriteFault = counters;
+	const proto = Selection.prototype as unknown as Record<string, (...args: unknown[]) => unknown>;
+	for (const key of ["setBaseAndExtent", "collapse", "addRange"]) {
+		const original = proto[key];
+		proto[key] = function (this: Selection, ...args: unknown[]) {
+			counters.writes += 1;
+			if (counters.dropped === 0) {
+				counters.dropped = 1;
+				return undefined;
+			}
+			return original.apply(this, args);
+		};
+	}
+}
+
+function selectionWriteFaultCounters(): { dropped: number; writes: number } {
+	return (
+		(window as unknown as { __penSelectionWriteFault?: { dropped: number; writes: number } })
+			.__penSelectionWriteFault ?? { dropped: 0, writes: 0 }
+	);
 }
 
 function installBrokenProjector(): void {
@@ -1059,6 +1133,10 @@ function installBridge(): void {
 		injectPresence,
 		serializePresenceAnchor,
 		installBrokenProjector,
+		installSelectionWriteFault,
+		get selectionWriteFault() {
+			return selectionWriteFaultCounters();
+		},
 		forceUnwindowedDomDivergence,
 		domMatchesAuthority: checkDomMatchesAuthority,
 		mapDomSelection: (root) => domSelectionToEditor(root),

@@ -225,6 +225,39 @@ export function readNormalizedDomProposal(
 	return normalizeSelectionFormation(editor, selection);
 }
 
+/** What a projection left in the DOM, compared with the record it projected. */
+export interface ProjectionReadBack {
+	readonly equivalent: boolean;
+	readonly focusOnTarget: boolean;
+	readonly expected: ReaderSelection;
+	readonly actual: ReaderSelection | null;
+}
+
+/**
+ * Reads the DOM selection back after a projection write and compares it with
+ * the authority by the reader's step-3 equivalence, plus focus on the
+ * projection target (W3.R1). Null when there is no record to compare.
+ */
+export function readBackProjection(
+	editor: Editor,
+	root: HTMLElement,
+	target: HTMLElement,
+): ProjectionReadBack | null {
+	const record = getEditorSelectionRecord(editor);
+	if (record === null) {
+		return null;
+	}
+	const expected = toReaderSelection(record.state);
+	const actual = readNormalizedDomProposal(root, editor);
+	const active = target.ownerDocument.activeElement;
+	return {
+		equivalent: isLogicallyEquivalent(actual, expected, buildLazyNormalPositionSnapshot(editor)),
+		focusOnTarget: active instanceof Node && (active === target || target.contains(active)),
+		expected,
+		actual,
+	};
+}
+
 export function forwardDomSelectionToReader(
 	fieldEditor: {
 		readDomSelection?: (proposal: ReaderSelection) => unknown;

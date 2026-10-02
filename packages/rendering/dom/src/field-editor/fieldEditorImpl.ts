@@ -54,6 +54,7 @@ import {
 	type GestureWindowState,
 	type GestureSelectionOrigin,
 	type ReaderSelection,
+	readBackProjection,
 } from "./selectionReader";
 import type { FieldEditorStoreSnapshot } from "./store";
 import {
@@ -215,6 +216,11 @@ export class FieldEditorImpl implements FieldEditorSession {
 			emitDiagnostic: (event) => {
 				this._editor.internals.emit("diagnostic", event);
 			},
+			readBack: (target) => {
+				const root = this._findEditorRoot();
+				return root ? readBackProjection(this._editor, root, target) : null;
+			},
+			getSurface: () => (this._mode === "expanded" ? "expanded" : "text"),
 		});
 		// FE4: the commit feed lives here rather than in a host's mount,
 		// because both the vanilla mount and the framework bindings build a

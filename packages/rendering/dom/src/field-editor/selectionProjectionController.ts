@@ -12,6 +12,7 @@ import {
 	nextGestureWindowState,
 	type GestureEventKind,
 	type GestureWindowState,
+	type ProjectionReadBack,
 } from "./selectionReader";
 import {
 	isForeignNativeTextEntryTarget,
@@ -51,7 +52,14 @@ type SelectionProjectionControllerOptions = {
 	emitSelectionProjected: () => void;
 	getRecord?: () => SelectionRecord | null;
 	emitDiagnostic?: (event: DiagnosticEvent) => void;
+	/** W3.R1: the DOM selection after a write, against the record; null skips the check. */
+	readBack?: (target: HTMLElement) => ProjectionReadBack | null;
+	/** "text", "expanded" or "cell" for the mismatch payload. */
+	getSurface?: () => string;
 };
+
+/** What asked for a projection, for the mismatch payload and its once-per key. */
+type ProjectionTrigger = "selection-change" | "mount-ack" | "divergence";
 
 export class SelectionProjectionController {
 	private readonly _historySelectionCoordinator: HistorySelectionCoordinator;
@@ -63,6 +71,8 @@ export class SelectionProjectionController {
 	private _lastProjectedVersion = 0;
 	private _parked: { version: number; blockId: string | null } | null = null;
 	private _parkedDiagnosticKey: string | null = null;
+	private _trigger: ProjectionTrigger = "selection-change";
+	private readonly _reportedMismatches = new Set<string>();
 
 	constructor(options: SelectionProjectionControllerOptions) {
 		this._historySelectionCoordinator = options.historySelectionCoordinator;
@@ -94,7 +104,17 @@ export class SelectionProjectionController {
 		) {
 			return;
 		}
-		this.syncDomSelectionOnce();
+		this._withTrigger("mount-ack", () => this.syncDomSelectionOnce());
+	}
+
+	private _withTrigger(trigger: ProjectionTrigger, project: () => void): void {
+		const previous = this._trigger;
+		this._trigger = trigger;
+		try {
+			project();
+		} finally {
+			this._trigger = previous;
+		}
 	}
 
 	beginPointerSelection(): void {
@@ -135,7 +155,7 @@ export class SelectionProjectionController {
 		if (this.isFocusHeldByNativeControlOutsideRoot()) {
 			return;
 		}
-		this.syncDomSelectionOnce();
+		this._withTrigger("divergence", () => this.syncDomSelectionOnce());
 	}
 
 	shouldHandleDomSelectionChange(
@@ -419,9 +439,54 @@ export class SelectionProjectionController {
 			)
 		) {
 			this._options.updateBackendSelection();
+			this._checkReadBack(element);
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * W3.R1: read the write back. A mismatch is reported once per
+	 * (version, trigger) and never answered with a second write.
+	 */
+	private _checkReadBack(element: HTMLElement): void {
+		const readBack = this._options.readBack?.(element);
+		if (!readBack || (readBack.equivalent && readBack.focusOnTarget)) {
+			return;
+		}
+		const version = this._options.getRecord?.()?.version ?? 0;
+		if (this._alreadyReported(`${version}:${this._trigger}`)) {
+			return;
+		}
+		this._options.emitDiagnostic?.(this._mismatchDiagnostic(version, readBack));
+	}
+
+	/** Remembers the last 64 (version, trigger) keys; true when this one was reported. */
+	private _alreadyReported(key: string): boolean {
+		if (this._reportedMismatches.has(key)) return true;
+		this._reportedMismatches.add(key);
+		if (this._reportedMismatches.size > 64) {
+			const [oldest] = this._reportedMismatches;
+			if (oldest !== undefined) this._reportedMismatches.delete(oldest);
+		}
+		return false;
+	}
+
+	private _mismatchDiagnostic(version: number, readBack: ProjectionReadBack): DiagnosticEvent {
+		return {
+			code: "selection-projection-mismatch",
+			level: "warn",
+			source: "selection",
+			message: readBack.equivalent
+				? "selection projected, but focus is not on the projection target"
+				: "the DOM selection after projection does not match the selection authority",
+			version,
+			trigger: this._trigger,
+			expected: readBack.expected,
+			actual: readBack.actual,
+			focusOnTarget: readBack.focusOnTarget,
+			surface: this._options.getSurface?.() ?? "text",
+		};
 	}
 
 	private _cancelSelectionProjection(version: number): void {
