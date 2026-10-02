@@ -4,7 +4,7 @@ These rules govern selection end to end: the authority that owns selection truth
 
 Selection bridging inside `@input/pen-dom` is the one part of the shipped surface still unsettled. The rules here are the contract; the current bridge modules do not yet implement all of them, and `spec/packages/rendering/dom.md` marks that bridging as unsettled for the same reason. Treat a divergence as a defect against these rules, not as a second contract.
 
-The letter `R` names two unrelated families. `R1`–`R3` in this document are reader gesture-window admissibility rules. `R1`–`R7` in `spec/rules/facets.md` are facet provider and combine rules. Neither family was renamed.
+The letter `R` names two unrelated families. `R1`–`R3` in this document are reader gesture-window admissibility rules. `R1`–`R8` in `spec/rules/facets.md` are facet provider and combine rules. Neither family was renamed.
 
 ## A — Selection authority writes
 

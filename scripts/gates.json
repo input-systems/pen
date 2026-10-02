@@ -47,7 +47,7 @@
   {
     "id": "catalog-check",
     "command": "node scripts/catalog-check.mjs",
-    "description": "Every diagnostic code has a message catalog entry."
+    "description": "LOC1: referenced `pen.<area>.*` message keys exist in the default catalogs, and every catalog key is referenced or reserved. Diagnostic codes are DOC3's generated table, not this gate."
   },
   {
     "id": "package-metadata",

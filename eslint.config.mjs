@@ -44,10 +44,11 @@ export default tseslint.config(
 			"pen/no-html-injection-sinks": "error",
 
 			// S4: selection paths get no timers. Scope is the in-config
-			// module list (focus, offsetDomain, caretPositions, v1 backend/IME
-			// offenders) plus a basename-contains-`selection` fail-closed net so a
-			// new selectionReader.ts cannot silently escape. sessionReconciler is
-			// outOfScope — a flush coalescer, not a selection module.
+			// module list (contenteditableBackend.ts and the fail-closed
+			// caretPositions.ts basename) plus a basename-contains-`selection`
+			// net so a new selectionReader.ts cannot silently escape.
+			// sessionReconciler is neither matched nor listed: a flush
+			// coalescer, not a selection module.
 			// Do not add a `files:` glob; the rule self-scopes from this list.
 			"pen/no-selection-timers": [
 				"error",

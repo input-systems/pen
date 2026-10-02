@@ -8,14 +8,14 @@ import { fileURLToPath } from "node:url";
  * A timer in this path has repeatedly been a missing attach or a wrong seam,
  * not an engine accommodation.
  *
- * Scope is a decision, not a guess. S4 names the protected set
- * (authority, reader, projector, focus, offsetDomain, transitions,
- * caretPositions) and asks for the module list in-config. Files whose
- * basename contains `selection` stay in as a fail-closed net so a new
- * `selectionReader.ts` cannot silently escape. Files that set cannot see
- * (focus, offsetDomain, caretPositions, the v1 backend/IME offenders) are
- * listed in `modules`. Files that are legitimately not selection code live in
- * `outOfScope`, not in the allowlist — those mean different things.
+ * Scope is a decision, not a guess. Files whose basename contains
+ * `selection` are in as a fail-closed net so a new `selectionReader.ts`
+ * cannot silently escape. `modules` adds what that net cannot see: today
+ * `contenteditableBackend.ts` and the fail-closed `caretPositions.ts`
+ * basename. `focusController.ts`, `offsetDomain.ts`, and core
+ * `transitions.ts` are not covered yet. Files that are legitimately not
+ * selection code live in `outOfScope`, not in the allowlist — those mean
+ * different things.
  */
 
 const REPO_ROOT = path.resolve(

@@ -4,7 +4,7 @@
   "outOfScope": [
     {
       "file": "packages/rendering/dom/src/field-editor/contentGesturesPointerSelection.ts",
-      "reason": "Pointer-selection gestures, not the selection engine. Split from contentGestures.ts (FE5); that file sat outside the S4 basename net. The three rAF sites stay until FE3 adjudicates them."
+      "reason": "Pointer-selection gestures, not the selection engine. Split from contentGestures.ts (FE5); that file sat outside the S4 basename net. It holds no timers: multi-click completion runs in a scheduler read (FE3)."
     }
   ],
   "entries": []
