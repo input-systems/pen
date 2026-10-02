@@ -223,6 +223,16 @@ export default tseslint.config(
 		},
 	},
 	{
+		// S1: one selection writer. Outside the projector, every DOM selection
+		// or EditContext selection write is listed with the requirement that
+		// removes it in scripts/dom-selection-write-allowlist.json; an entry with
+		// no live write fails (I15). The rule self-scopes to the renderer sources.
+		files: ["packages/rendering/**/src/**/*.{ts,tsx}"],
+		rules: {
+			"pen/no-dom-selection-write": "error",
+		},
+	},
+	{
 		// SCALE2: function-form decorationsFacet sources recompute in full on
 		// every commit. Remaining sites are listed with a reason in
 		// scripts/unscoped-decoration-source-allowlist.json; an entry with no

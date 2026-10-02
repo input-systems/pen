@@ -211,6 +211,19 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 		);
 	});
 
+	it("no-dom-selection-write errors by name on a selection write outside the projector", () => {
+		expectRuleErrors(
+			tsTester,
+			"no-dom-selection-write",
+			rules["no-dom-selection-write"],
+			{
+				code: "export function seeded() {\n\twindow.getSelection()?.removeAllRanges();\n}\n",
+				filename: "packages/rendering/dom/src/seeded-selection-write.ts",
+				errors: [{ messageId: "write" }],
+			},
+		);
+	});
+
 	it("no-unscoped-decoration-source errors by name on a function-form decorations source", () => {
 		expectRuleErrors(
 			tsTester,
@@ -433,7 +446,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 		);
 	});
 
-	it("plugin ships twenty-one rules and each can-it-fail case is registered", () => {
+	it("plugin ships twenty-two rules and each can-it-fail case is registered", () => {
 		expect(Object.keys(rules).sort()).toEqual([
 			"no-above-floor-api",
 			"no-aria-hidden-visible",
@@ -441,6 +454,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 			"no-bare-case-folding",
 			"no-bare-random-uuid",
 			"no-bidi-override",
+			"no-dom-selection-write",
 			"no-framework-free-modules-in-renderers",
 			"no-html-injection-sinks",
 			"no-implicit-locale",

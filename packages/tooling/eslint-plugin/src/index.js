@@ -4,6 +4,7 @@ import { noAsciiWordBoundaries } from "./rules/noAsciiWordBoundaries.js";
 import { noBareCaseFolding } from "./rules/noBareCaseFolding.js";
 import { noBareRandomUuid } from "./rules/noBareRandomUuid.js";
 import { noBidiOverride } from "./rules/noBidiOverride.js";
+import { noDomSelectionWrite } from "./rules/noDomSelectionWrite.js";
 import { noFrameworkFreeModulesInRenderers } from "./rules/noFrameworkFreeModulesInRenderers.js";
 import { noHtmlInjectionSinks } from "./rules/noHtmlInjectionSinks.js";
 import { noImplicitLocale } from "./rules/noImplicitLocale.js";
@@ -27,6 +28,7 @@ export const rules = {
 	"no-bare-case-folding": noBareCaseFolding,
 	"no-bare-random-uuid": noBareRandomUuid,
 	"no-bidi-override": noBidiOverride,
+	"no-dom-selection-write": noDomSelectionWrite,
 	"no-framework-free-modules-in-renderers": noFrameworkFreeModulesInRenderers,
 	"no-html-injection-sinks": noHtmlInjectionSinks,
 	"no-implicit-locale": noImplicitLocale,
