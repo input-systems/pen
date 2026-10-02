@@ -939,6 +939,9 @@ importers:
       vite:
         specifier: ^6.4.3
         version: 6.4.3(@types/node@25.4.0)(tsx@4.23.12)(yaml@2.9.0)
+      vue:
+        specifier: ^3.5.42
+        version: 3.5.42(typescript@5.9.3)
 
   packages/tooling/eslint-plugin:
     devDependencies:

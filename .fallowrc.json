@@ -1,0 +1,4 @@
+{
+  "$schema": "https://docs.fallow.tools/schema/fallowrc.json",
+  "entry": ["packages/tooling/conformance/harness/src/main.tsx"]
+}

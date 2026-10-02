@@ -159,7 +159,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 70 -> 72 is C2 real composition (suites/ime/c2-real-composition.spec.ts)
 	// and R1 drag-window close (suites/selection/r1-drag-window.spec.ts), W0.
 	// 72 -> 73 is SCALE1 scale fixtures: scenarios/scale-fixtures.spec.ts.
-	const expectedPlaywrightSpecs = 73;
+	// 73 -> 74 is the harness surfaces: scenarios/harness-surfaces.spec.ts.
+	const expectedPlaywrightSpecs = 74;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

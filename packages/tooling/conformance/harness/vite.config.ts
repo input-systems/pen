@@ -63,6 +63,9 @@ const PEN_SOURCE_ALIASES = {
 	"@input/pen": fileURLToPath(
 		new URL("../../../../packages/pen/src/index.ts", import.meta.url),
 	),
+	"@input/pen-vue": fileURLToPath(
+		new URL("../../../../packages/rendering/vue/src/index.ts", import.meta.url),
+	),
 	"@input/pen-react": fileURLToPath(
 		new URL(
 			"../../../../packages/rendering/react/src/index.ts",
@@ -95,7 +98,7 @@ export default defineConfig({
 	resolve: {
 		alias: PEN_SOURCE_ALIASES,
 		conditions: ["import", "module", "browser", "default"],
-		dedupe: ["react", "react-dom"],
+		dedupe: ["react", "react-dom", "vue"],
 	},
 	server: {
 		host: "127.0.0.1",
