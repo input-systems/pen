@@ -567,7 +567,7 @@ class EditorImpl implements Editor {
 
 	requestDecorationUpdate(scope?: DecorationUpdateScope): void {
 		const refresh = this._refreshDecorations(
-			scope ? { kind: "scope", scope } : { kind: "full" },
+			scope ? { kind: "scope", scope } : { kind: "functions" },
 		);
 		if (refresh.changedBlockIds.length === 0) return;
 		this._emitter.emit(

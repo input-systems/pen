@@ -31,13 +31,17 @@ export function createInitialSearchState(): SearchState {
 	};
 }
 
-export function findDocumentMatches(
+/**
+ * Everything a scan needs for one query, or null when there is nothing to
+ * search (empty query) or the query is invalid (reported as a diagnostic).
+ */
+export function createSearchExecution(
 	editor: Editor,
 	query: string,
 	options: SearchOptions,
-): SearchMatch[] {
+): SearchExecution | null {
 	if (!query) {
-		return [];
+		return null;
 	}
 
 	if (query.length > SEARCH_QUERY_MAX_LENGTH) {
@@ -46,10 +50,9 @@ export function findDocumentMatches(
 			SEARCH_INVALID_PATTERN_CODE,
 			`Search query exceeds the ${SEARCH_QUERY_MAX_LENGTH}-character limit.`,
 		);
-		return [];
+		return null;
 	}
 
-	const locale = resolveSearchLocale(editor, options);
 	const regex = options.regex ? buildSearchRegex(query, options) : null;
 	if (options.regex && !regex) {
 		emitSearchDiagnostic(
@@ -57,23 +60,31 @@ export function findDocumentMatches(
 			SEARCH_INVALID_PATTERN_CODE,
 			"Search pattern is invalid.",
 		);
-		return [];
+		return null;
 	}
 
-	const matches: SearchMatch[] = [];
-	const deadline = options.regex
-		? performance.now() + SEARCH_EXECUTION_BUDGET_MS
-		: null;
-	const execution: SearchExecution = {
+	return {
 		query,
 		options,
-		locale,
+		locale: resolveSearchLocale(editor, options),
 		regex,
-		deadline,
+		// The budget applies per scan, full or scoped.
+		deadline: options.regex ? performance.now() + SEARCH_EXECUTION_BUDGET_MS : null,
 	};
+}
 
+export function findDocumentMatches(
+	editor: Editor,
+	query: string,
+	options: SearchOptions,
+): SearchMatch[] {
+	const execution = createSearchExecution(editor, query, options);
+	if (!execution) {
+		return [];
+	}
+	const matches: SearchMatch[] = [];
 	for (const handle of editor.documentState.allBlocks()) {
-		if (hasExceededDeadline(deadline)) {
+		if (hasExceededDeadline(execution.deadline)) {
 			emitBudgetExceeded(editor);
 			return matches;
 		}
@@ -87,6 +98,36 @@ export function findDocumentMatches(
 	}
 
 	return matches;
+}
+
+/**
+ * Matches in the named blocks only, keyed by block (SCALE2). A missing block
+ * maps to no matches. `index` is block-local; the caller renumbers.
+ */
+export function findBlockMatches(
+	editor: Editor,
+	blockIds: Iterable<string>,
+	execution: SearchExecution,
+): Map<string, SearchMatch[]> {
+	const byBlock = new Map<string, SearchMatch[]>();
+	for (const blockId of blockIds) {
+		const handle = editor.getBlock(blockId);
+		if (!handle) {
+			byBlock.set(blockId, []);
+			continue;
+		}
+		if (hasExceededDeadline(execution.deadline)) {
+			emitBudgetExceeded(editor);
+			break;
+		}
+		const blockResult = findMatchesInBlock(handle, execution, 0);
+		byBlock.set(blockId, blockResult.matches);
+		if (blockResult.exceeded) {
+			emitBudgetExceeded(editor);
+			break;
+		}
+	}
+	return byBlock;
 }
 
 export function buildSearchRegex(
@@ -293,7 +334,7 @@ export function revealActiveMatch(
 	editor.scrollToBlock?.(match.blockId);
 }
 
-interface SearchExecution {
+export interface SearchExecution {
 	query: string;
 	options: SearchOptions;
 	locale: string;

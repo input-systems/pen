@@ -52,6 +52,7 @@ Important rules:
 - Search state is derived from the current editor document and options.
 - Case-insensitive match uses core `foldAndNormalize()` and `localeFacet`. Case-sensitive search skips folding.
 - The extension declares `Mod-f` / `Mod-g` (and siblings) on `keymapFacet`, which is the only binding channel.
+- With an active query, a commit rescans only its affected blocks and rebuilds the match list in document order; a query or option change scans the document once. The search decoration source is scoped: it is recomputed only for the blocks whose matches or active match changed (SCALE2).
 - Active-match navigation is controller state, not renderer-local state.
 - Replace and replace-all actions resolve to editor operations instead of direct DOM mutations.
 

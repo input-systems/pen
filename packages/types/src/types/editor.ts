@@ -390,9 +390,10 @@ export interface Editor {
 	deleteSelection(options?: ApplyOptions): void;
 
 	/**
-	 * Recompute decorations. With no argument every source is recomputed in
-	 * full; with a scope, only scoped sources (one, when `source` is given)
-	 * recompute the named blocks (SCALE2).
+	 * Recompute decorations. With no argument, function-form and static
+	 * sources are recomputed in full. With a scope, only scoped sources (one,
+	 * when `source` is given) recompute the named blocks, or every block for
+	 * `"all"` (SCALE2).
 	 */
 	requestDecorationUpdate(scope?: DecorationUpdateScope): void;
 	getDecorations(): DecorationSet;

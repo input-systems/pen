@@ -14,15 +14,23 @@ import {
 	type DecorationSource,
 	type ScopedDecorationSource,
 } from "../facets/coreFacets";
+import { summaryRemovedBlockIds } from "../changes/affectedBlocks";
 import {
 	decorationSetFromIndex,
 	decorationsListEqual,
 	emptyDecorationSet,
 } from "./decorations";
 
-/** Why decorations are being recomputed. */
+/**
+ * Why decorations are being recomputed. `full` (first collection, or a
+ * changed source list) recomputes every source over every block. `functions`
+ * (an argument-less `requestDecorationUpdate()`) recomputes function-form and
+ * static sources only: a scoped source names its own blocks, so an unrelated
+ * request does not make it re-read the document (SCALE2).
+ */
 export type DecorationTrigger =
 	| { readonly kind: "full" }
+	| { readonly kind: "functions" }
 	| {
 			readonly kind: "commit";
 			readonly summary: ChangeSummary;
@@ -93,14 +101,7 @@ export class DecorationCollector {
 	}
 
 	private _dropRemovedBlocks(summary: ChangeSummary, touched: Set<string>): void {
-		for (const change of summary.structural) {
-			const removed =
-				change.type === "block-removed"
-					? change.blockId
-					: change.type === "blocks-merged"
-						? change.sourceBlockId
-						: null;
-			if (removed === null) continue;
+		for (const removed of summaryRemovedBlockIds(summary)) {
 			for (const lists of this._lists.values()) {
 				if (lists.delete(removed)) touched.add(removed);
 			}
@@ -129,6 +130,8 @@ export class DecorationCollector {
 		switch (trigger.kind) {
 			case "full":
 				return "all";
+			case "functions":
+				return null;
 			case "scope": {
 				const { scope } = trigger;
 				return scope.source === undefined || scope.source === source ? scope.blockIds : null;

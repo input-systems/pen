@@ -456,17 +456,12 @@ describe("@input/pen-react AI primitives: affected-range decoration", () => {
 			}
 		});
 
-		const decorations = (
-			controller as unknown as {
-				buildDecorations: () => Array<{
-					attributes?: Record<string, unknown>;
-				}>;
-			}
-		).buildDecorations();
+		const decorations = editor.getDecorations().decorations;
 		expect(
 			decorations.some(
 				(decoration) =>
-					decoration.attributes?.["data-ai-affected-range"] === "",
+					decoration.type !== "app" &&
+					decoration.attributes["data-ai-affected-range"] === "",
 			),
 		).toBe(true);
 

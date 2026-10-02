@@ -38,6 +38,31 @@ type SuggestionPresentation = NonNullable<
 >;
 type DecorationAttributes = Record<string, string | number | boolean>;
 
+/** One block's suggestion decorations and the inline ranges they came from. */
+export interface BlockSuggestionDecorations {
+	readonly decorations: Decoration[];
+	readonly ranges: SuggestionInlineRange[];
+}
+
+/** Suggestion decorations for one block: its block-level meta and inline marks. */
+export function suggestionDecorationsForBlock(
+	editor: Editor,
+	blockId: string,
+	suggestionPresentation: SuggestionPresentation,
+): BlockSuggestionDecorations | null {
+	const block = editor.getBlock(blockId);
+	if (!block) return null;
+	const decorations: Decoration[] = [];
+	const blockSuggestion = readBlockSuggestionMeta(block);
+	if (blockSuggestion) {
+		decorations.push(createBlockSuggestionDecoration(blockId, blockSuggestion));
+	}
+	const ranges = readSuggestionInlineRanges(editor, blockId, suggestionPresentation);
+	decorations.push(...ranges.map((range) => createSuggestionInlineDecoration(blockId, range)));
+	return decorations.length > 0 ? { decorations, ranges } : null;
+}
+
+/** Every block's suggestion decorations: the full walk the scoped index must equal. */
 export function collectSuggestionDecorations(
 	editor: Editor,
 	suggestionPresentation: SuggestionPresentation,
@@ -46,54 +71,38 @@ export function collectSuggestionDecorations(
 	suggestionRangesByBlock: Map<string, SuggestionInlineRange[]>;
 	hasSuggestions: boolean;
 } {
-	const suggestionDecorations: Decoration[] = [];
+	const decorations: Decoration[] = [];
 	const suggestionRangesByBlock = new Map<string, SuggestionInlineRange[]>();
-	let hasSuggestions = false;
-
 	for (const block of editor.documentState.allBlocks()) {
-		const blockSuggestion = readBlockSuggestionMeta(block);
-		if (blockSuggestion) {
-			hasSuggestions = true;
-			const role = resolveBlockSuggestionRole(blockSuggestion.action);
-			const blockDecoration: BlockDecoration = {
-				type: "block",
-				blockId: block.id,
-				attributes: {
-					class: [
-						REVIEW_SURFACE_CLASSES.blockSuggestion,
-						REVIEW_SURFACE_BLOCK_SUGGESTION_CLASSES[
-							blockSuggestion.action
-						],
-					].join(" "),
-					"data-suggestion-id": blockSuggestion.id,
-					"data-suggestion-action": blockSuggestion.action,
-					"data-suggestion-author-type": blockSuggestion.authorType,
-					[AI_REVIEW_ROLE_ATTRIBUTE]: role,
-				},
-			};
-			suggestionDecorations.push(blockDecoration);
-		}
-
-		const ranges = readSuggestionInlineRanges(
-			editor,
-			block.id,
-			suggestionPresentation,
-		);
-		if (ranges.length > 0) {
-			hasSuggestions = true;
-			suggestionRangesByBlock.set(block.id, ranges);
-			suggestionDecorations.push(
-				...ranges.map((range) =>
-					createSuggestionInlineDecoration(block.id, range),
-				),
-			);
-		}
+		const entry = suggestionDecorationsForBlock(editor, block.id, suggestionPresentation);
+		if (!entry) continue;
+		decorations.push(...entry.decorations);
+		if (entry.ranges.length > 0) suggestionRangesByBlock.set(block.id, entry.ranges);
 	}
-
 	return {
-		decorations: suggestionDecorations,
+		decorations,
 		suggestionRangesByBlock,
-		hasSuggestions,
+		hasSuggestions: decorations.length > 0,
+	};
+}
+
+function createBlockSuggestionDecoration(
+	blockId: string,
+	blockSuggestion: NonNullable<ReturnType<typeof readBlockSuggestionMeta>>,
+): BlockDecoration {
+	return {
+		type: "block",
+		blockId,
+		attributes: {
+			class: [
+				REVIEW_SURFACE_CLASSES.blockSuggestion,
+				REVIEW_SURFACE_BLOCK_SUGGESTION_CLASSES[blockSuggestion.action],
+			].join(" "),
+			"data-suggestion-id": blockSuggestion.id,
+			"data-suggestion-action": blockSuggestion.action,
+			"data-suggestion-author-type": blockSuggestion.authorType,
+			[AI_REVIEW_ROLE_ATTRIBUTE]: resolveBlockSuggestionRole(blockSuggestion.action),
+		},
 	};
 }
 

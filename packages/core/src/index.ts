@@ -378,5 +378,9 @@ export {
 	smoothStreamControllerFacet,
 } from "./facets/controllerFacets";
 export { collectEditorKeyBindings } from "./editor/extensionManager";
-export { affectedBlockIdsFromSummary } from "./changes/affectedBlocks";
+export {
+	affectedBlockIdsFromSummary,
+	summaryRemovedBlockIds,
+	summaryTouchedBlockIds,
+} from "./changes/affectedBlocks";
 export { mapOffsetThroughSplices } from "./changes/mapOffsetThroughSplices";

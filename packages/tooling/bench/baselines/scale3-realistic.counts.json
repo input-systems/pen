@@ -10,11 +10,11 @@
 			"searchMatches": 1,
 			"counts": {
 				"blockOrderReads": 1,
-				"blocksMapReads": 1415,
+				"blocksMapReads": 27,
 				"blocksMapIterations": 0,
-				"textFullReads": 403,
+				"textFullReads": 6,
 				"orderArrayReads": 0,
-				"documentWalks": 4
+				"documentWalks": 0
 			}
 		},
 		{
@@ -24,11 +24,11 @@
 			"searchMatches": 1,
 			"counts": {
 				"blockOrderReads": 1,
-				"blocksMapReads": 14015,
+				"blocksMapReads": 27,
 				"blocksMapIterations": 0,
-				"textFullReads": 4003,
+				"textFullReads": 6,
 				"orderArrayReads": 0,
-				"documentWalks": 4
+				"documentWalks": 0
 			}
 		},
 		{
@@ -38,11 +38,11 @@
 			"searchMatches": 1,
 			"counts": {
 				"blockOrderReads": 1,
-				"blocksMapReads": 70015,
+				"blocksMapReads": 27,
 				"blocksMapIterations": 0,
-				"textFullReads": 20003,
+				"textFullReads": 6,
 				"orderArrayReads": 0,
-				"documentWalks": 4
+				"documentWalks": 0
 			}
 		}
 	],
@@ -50,7 +50,7 @@
 		"producedOn": "2026-10-02",
 		"machine": "macos-arm64 (darwin 27, Apple Silicon). Not the CI runner (github-actions-ubuntu-latest).",
 		"load": {
-			"load1": 7.177734375,
+			"load1": 8.6474609375,
 			"ncpu": 14,
 			"busy": true
 		},
@@ -58,17 +58,17 @@
 			{
 				"id": "scale3.realistic.keystroke.100",
 				"samples": 50,
-				"p50Ms": 0.38
+				"p50Ms": 0.06
 			},
 			{
 				"id": "scale3.realistic.keystroke.1000",
 				"samples": 50,
-				"p50Ms": 2.26
+				"p50Ms": 0.04
 			},
 			{
 				"id": "scale3.realistic.keystroke.5000",
 				"samples": 50,
-				"p50Ms": 13.87
+				"p50Ms": 0.05
 			}
 		]
 	},
@@ -87,6 +87,21 @@
 				"scale3.realistic.keystroke.100/blocksMapIterations: 0 !== 200",
 				"scale3.realistic.keystroke.1000/blocksMapIterations: 0 !== 2000",
 				"scale3.realistic.keystroke.5000/blocksMapIterations: 0 !== 10000"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R9: AI review and search are scoped sources",
+			"moved": [
+				"scale3.realistic.keystroke.100/blocksMapReads: 27 !== 1415",
+				"scale3.realistic.keystroke.100/textFullReads: 6 !== 403",
+				"scale3.realistic.keystroke.100/documentWalks: 0 !== 4",
+				"scale3.realistic.keystroke.1000/blocksMapReads: 27 !== 14015",
+				"scale3.realistic.keystroke.1000/textFullReads: 6 !== 4003",
+				"scale3.realistic.keystroke.1000/documentWalks: 0 !== 4",
+				"scale3.realistic.keystroke.5000/blocksMapReads: 27 !== 70015",
+				"scale3.realistic.keystroke.5000/textFullReads: 6 !== 20003",
+				"scale3.realistic.keystroke.5000/documentWalks: 0 !== 4"
 			]
 		}
 	]

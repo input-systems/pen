@@ -22,6 +22,7 @@ import type {
 	GenerationState,
 	PersistentSuggestion,
 } from "../types";
+import { SuggestionListIndex } from "../suggestions/suggestionListIndex";
 import type {
 	AIInlineHistoryRestoreRequest,
 	GenerationExecutionContext,
@@ -107,6 +108,11 @@ export class AIControllerSessionState {
 	_state: AIControllerState;
 
 	_suggestions: PersistentSuggestion[] = [];
+
+	/** Per-block suggestions; a commit re-reads only the blocks it touched (SCALE2). */
+	// Read through `this: AIControllerImpl` method objects, which fallow cannot follow.
+	// fallow-ignore-next-line unused-class-member
+	readonly _suggestionList = new SuggestionListIndex();
 
 	_documentVersion = 0;
 

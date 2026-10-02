@@ -57,6 +57,7 @@
   "devDependencies": {
     "@input/pen-core": "workspace:*",
     "@input/pen-schema": "workspace:*",
+    "@input/pen-test": "workspace:*",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
     "vitest": "^3.2.7"

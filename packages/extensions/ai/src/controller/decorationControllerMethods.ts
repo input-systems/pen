@@ -1,6 +1,7 @@
 import type { Decoration } from "@input/pen-types";
 import { buildGenerationZoneDecorations } from "../decorations/generationZone";
 import { buildAIReviewPresentationDecorations } from "../review/reviewPresentation";
+import type { SuggestionDecorationIndex } from "../review/suggestionIndex";
 import type {
 	AIStreamingReviewPreview,
 	AIStreamingReviewPreviewInput,
@@ -11,6 +12,24 @@ import type {
 	AIControllerImpl,
 	StreamingPreviewStatePatch,
 } from "./aiController";
+
+function buildControllerDecorations(
+	host: AIControllerImpl,
+	suggestions: SuggestionDecorationIndex,
+): Decoration[] {
+	return [
+		...buildAIReviewPresentationDecorations({
+			activeGeneration: host._state.activeGeneration,
+			activeSessionId: host._state.activeSessionId,
+			editor: host._editor,
+			sessions: host._state.sessions,
+			suggestionPresentation: host._suggestionPresentation,
+			streamingReviewPreviews: host._state.streamingReviewPreviews,
+			suggestions,
+		}),
+		...buildGenerationZoneDecorations(host._state.activeGeneration),
+	];
+}
 
 export const decorationControllerMethods = {
 	// `extra` lands in the same `_setState` as the preview so a token does
@@ -39,19 +58,16 @@ export const decorationControllerMethods = {
 		applyClearStreamingReviewPreview(this, sessionId, extra);
 	},
 
-	buildDecorations(this: AIControllerImpl): Decoration[] {
-		const decorations = [
-			...buildAIReviewPresentationDecorations({
-				activeGeneration: this._state.activeGeneration,
-				activeSessionId: this._state.activeSessionId,
-				editor: this._editor,
-				sessions: this._state.sessions,
-				suggestionPresentation: this._suggestionPresentation,
-				streamingReviewPreviews: this._state.streamingReviewPreviews,
-			}),
-			...buildGenerationZoneDecorations(this._state.activeGeneration),
-		];
-		return decorations;
+	/**
+	 * Everything but suggestion decorations, which the scoped review source
+	 * owns: selection context, streaming previews and the generation zone.
+	 * Cost follows the active session, previews and generation (SCALE2).
+	 */
+	buildPresentationDecorations(
+		this: AIControllerImpl,
+		suggestions: SuggestionDecorationIndex,
+	): Decoration[] {
+		return buildControllerDecorations(this, suggestions);
 	},
 };
 

@@ -143,6 +143,8 @@
 - spliceDeleteOp
 - spliceInsertOp
 - streamThroughEgress
+- summaryRemovedBlockIds
+- summaryTouchedBlockIds
 - supportsInlineInputRules
 - supportsInlineMarks
 - toPseudoLocaleText

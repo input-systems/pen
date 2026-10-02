@@ -152,6 +152,8 @@ describe("SCALE2 scoped decoration sources", () => {
 		expect(functionCalls).toBe(0);
 		editor.requestDecorationUpdate();
 		expect(functionCalls).toBe(1);
+		expect(first.calls).toEqual([]);
+		editor.requestDecorationUpdate({ source: first.source, blockIds: "all" });
 		expect(first.calls).toEqual([[...editor.documentState.preorderBlockIds()]]);
 		editor.destroy();
 	});
@@ -171,7 +173,7 @@ describe("SCALE2 scoped decoration sources", () => {
 	it("SCALE2: a removed block's decorations are dropped from every scoped source without a call", () => {
 		const { source, calls } = recordingSource({ interest: () => null });
 		const editor = editorWith(source);
-		editor.requestDecorationUpdate();
+		editor.requestDecorationUpdate({ source, blockIds: "all" });
 		expect(editor.getDecorations().forBlock("b")).toHaveLength(1);
 		calls.length = 0;
 		editor.apply([{ type: "delete-block", blockId: "b" }]);

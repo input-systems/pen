@@ -58,26 +58,36 @@ export function readSuggestionsFromBlock(
 export function readAllSuggestions(editor: Editor): PersistentSuggestion[] {
 	const suggestions: PersistentSuggestion[] = [];
 	for (const block of editor.documentState.allBlocks()) {
-		const blockSuggestion = readBlockSuggestionMeta(block);
-		if (blockSuggestion) {
-			suggestions.push({
-				kind: "block",
-				id: blockSuggestion.id,
-				action: blockSuggestion.action,
-				author: blockSuggestion.author,
-				authorType: blockSuggestion.authorType,
-				createdAt: blockSuggestion.createdAt,
-				model: blockSuggestion.model,
-				sessionId: blockSuggestion.sessionId,
-				requestId: blockSuggestion.requestId,
-				turnId: blockSuggestion.turnId,
-				generationId: blockSuggestion.generationId,
-				blockId: block.id,
-				previousState: blockSuggestion.previousState,
-			});
-		}
-		suggestions.push(...readSuggestionsFromBlock(editor, block.id));
+		suggestions.push(...readBlockSuggestions(editor, block));
 	}
+	return suggestions;
+}
+
+/** One block's suggestions: its block-level suggestion, then its inline marks. */
+export function readBlockSuggestions(
+	editor: Editor,
+	block: BlockHandle,
+): PersistentSuggestion[] {
+	const suggestions: PersistentSuggestion[] = [];
+	const blockSuggestion = readBlockSuggestionMeta(block);
+	if (blockSuggestion) {
+		suggestions.push({
+			kind: "block",
+			id: blockSuggestion.id,
+			action: blockSuggestion.action,
+			author: blockSuggestion.author,
+			authorType: blockSuggestion.authorType,
+			createdAt: blockSuggestion.createdAt,
+			model: blockSuggestion.model,
+			sessionId: blockSuggestion.sessionId,
+			requestId: blockSuggestion.requestId,
+			turnId: blockSuggestion.turnId,
+			generationId: blockSuggestion.generationId,
+			blockId: block.id,
+			previousState: blockSuggestion.previousState,
+		});
+	}
+	suggestions.push(...readSuggestionsFromBlock(editor, block.id));
 	return suggestions;
 }
 

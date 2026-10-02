@@ -10,7 +10,10 @@ import {
 	shouldShowSelectionContext,
 } from "./contextDecorations";
 import { resolveAIReviewPresentationState } from "./reviewPresentationState";
-import { collectSuggestionDecorations } from "./suggestionDecorations";
+import {
+	collectSuggestionDecorations,
+	type SuggestionInlineRange,
+} from "./suggestionDecorations";
 import { buildStreamingReviewPreviewDecorations } from "./streamingPreviewDecorations";
 
 export {
@@ -25,6 +28,7 @@ export function buildAIReviewPresentationDecorations({
 	sessions,
 	suggestionPresentation,
 	streamingReviewPreviews,
+	suggestions,
 }: {
 	activeGeneration?: GenerationState | null;
 	activeSessionId: string | null | undefined;
@@ -34,6 +38,14 @@ export function buildAIReviewPresentationDecorations({
 		AIExtensionConfig["suggestionPresentation"]
 	>;
 	streamingReviewPreviews?: readonly AIStreamingReviewPreview[];
+	/**
+	 * Suggestion state from the scoped index. When given, suggestion
+	 * decorations come from the review source and are not rebuilt here.
+	 */
+	suggestions?: {
+		readonly hasSuggestions: boolean;
+		readonly rangesByBlock: Map<string, SuggestionInlineRange[]>;
+	};
 }): Decoration[] {
 	const activeSession =
 		sessions.find((session) => session.id === activeSessionId) ?? null;
@@ -41,7 +53,13 @@ export function buildAIReviewPresentationDecorations({
 		decorations: suggestionDecorations,
 		suggestionRangesByBlock,
 		hasSuggestions,
-	} = collectSuggestionDecorations(editor, suggestionPresentation);
+	} = suggestions
+		? {
+				decorations: [],
+				suggestionRangesByBlock: suggestions.rangesByBlock,
+				hasSuggestions: suggestions.hasSuggestions,
+			}
+		: collectSuggestionDecorations(editor, suggestionPresentation);
 
 	const reviewState = resolveAIReviewPresentationState({
 		activeGeneration,

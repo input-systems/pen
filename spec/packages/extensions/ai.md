@@ -59,6 +59,7 @@ Important rules:
 - Model output still has to land through the editor runtime.
 - All model streams go through core `streamThroughEgress()` / `pen.aiEgress`. This package re-exports that helper; it does not keep a second filter chain.
 - Suggest mode and review flows are mutation-management features, not alternate document stores.
+- The review decoration source is scoped (SCALE2): a commit re-reads suggestion marks and block meta only on its affected blocks, and the controller's suggestion list is kept per block and re-read only for blocks a commit touched. Selection context, streaming previews, the generation zone and the inline completion stay in a function-form source whose cost follows the active session and generation.
 - Suggest-mode interception matches on the ten `DocumentOp` primitives plus `origin.intent`. A split arrives as one apply with `intent: "pen.splitBlock"`; suggest-mode renders it as a split from the intent, not from a compound op type.
 - Renderer packages consume AI controller state, but renderer packages do not own the AI runtime contract.
 - Follow-up AI edits should reuse session context instead of treating each prompt as isolated.

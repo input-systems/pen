@@ -4,14 +4,8 @@
     {
       "file": "packages/extensions/ai/src/extension.ts",
       "symbol": "aiExtension",
-      "reason": "The review provider walks every block and reads each Y.Text per commit; W2.R9 makes it a scoped source.",
-      "closedBy": "W2.R9"
-    },
-    {
-      "file": "packages/extensions/search/src/extension.ts",
-      "symbol": "searchExtension",
-      "reason": "Active-query matches are rescanned across the document per commit; W2.R9 makes the source scoped and the rescan affected-only.",
-      "closedBy": "W2.R9"
+      "reason": "Presentation only: selection context, streaming previews, the generation zone and the inline completion. Suggestion marks moved to a scoped source (W2.R9); what remains follows the active session and generation (SCALE2's state-proportional allowance), not the document.",
+      "closedBy": "permitted"
     },
     {
       "file": "packages/extensions/multiplayer/src/extension.ts",

@@ -4,6 +4,7 @@ import {
 	undoMetadataControllerFacet,
 } from "@input/pen-core";
 import type {
+	ChangeSummary,
 	CommitEvent,
 	Decoration,
 	DocumentOp,
@@ -16,6 +17,7 @@ import type {
 	ToolRuntime,
 	UndoHistoryMetadataController,
 } from "@input/pen-types";
+import type { SuggestionDecorationIndex } from "../review/suggestionIndex";
 import { AI_AGENTIC_MAX_STEPS_DEFAULT } from "../tools";
 import { defaultAICommands } from "../commands/defaultCommands";
 import { resolveCatalogCopy } from "../i18n/resolveCatalogCopy";
@@ -617,8 +619,8 @@ export class AIControllerImpl
 		);
 	}
 
-	buildDecorations(): Decoration[] {
-		return decorationControllerMethods.buildDecorations.call(this);
+	buildPresentationDecorations(suggestions: SuggestionDecorationIndex): Decoration[] {
+		return decorationControllerMethods.buildPresentationDecorations.call(this, suggestions);
 	}
 
 	// suggestionControllerMethods
@@ -683,9 +685,10 @@ export class AIControllerImpl
 		return suggestionControllerMethods.rejectAllSuggestions.call(this);
 	}
 
-	_syncSuggestionsFromDocument(): boolean {
+	_syncSuggestionsFromDocument(summaries?: readonly ChangeSummary[]): boolean {
 		return suggestionControllerMethods._syncSuggestionsFromDocument.call(
 			this,
+			summaries,
 		);
 	}
 
