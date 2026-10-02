@@ -12,6 +12,7 @@ import type {
 	AIWorkingSetEnvelope,
 	GenerationState,
 } from "../types";
+import type { AISelectionWorkingSetScope } from "../types/controller";
 import type { GenerationExecutionContext, GenerationTarget } from "../helpers";
 import type {
 	GenerationStreamingSink,
@@ -59,6 +60,7 @@ export interface GenerationExecutionState {
 	baselineSuggestionIds: Set<string>;
 	blockId: string;
 	requestedOperation: AIRequestedOperation | null;
+	selectionScope: AISelectionWorkingSetScope;
 	route: RequestRouterDecision;
 	workingSet: AIWorkingSetEnvelope | null;
 	contentFormat: AIContentFormat;

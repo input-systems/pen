@@ -10,6 +10,7 @@ export function processInlineNodes(
   nodes: MdastNode[],
   ctx: InlineContext,
 ): void {
+  let underlineStart: number | null = null;
   for (const node of nodes) {
     switch (node.type) {
       case "text":
@@ -66,6 +67,19 @@ export function processInlineNodes(
         break;
 
       case "html": {
+        if (isUnderlineOpenTag(node.value)) {
+          underlineStart = ctx.offset;
+          break;
+        }
+        if (isUnderlineCloseTag(node.value) && underlineStart !== null) {
+          ctx.marks.push({
+            type: "underline",
+            start: underlineStart,
+            end: ctx.offset,
+          });
+          underlineStart = null;
+          break;
+        }
         const stripped = stripHTMLTags(node.value ?? "");
         ctx.text += stripped;
         ctx.offset += stripped.length;
@@ -82,6 +96,14 @@ export function processInlineNodes(
         break;
     }
   }
+}
+
+function isUnderlineOpenTag(value: string | undefined): boolean {
+  return /^<u\s*>$/i.test(value?.trim() ?? "");
+}
+
+function isUnderlineCloseTag(value: string | undefined): boolean {
+  return /^<\/u\s*>$/i.test(value?.trim() ?? "");
 }
 
 export function collectInlineContent(nodes: MdastNode[]): {

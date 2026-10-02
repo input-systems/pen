@@ -54,6 +54,27 @@ async function cleanup(
 }
 
 describe("@input/pen-react DIR2", () => {
+	it("renders validated block text alignment", async () => {
+		const editor = createDirEditor();
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			{
+				type: "set-props",
+				blockId,
+				props: { textAlignment: "center" },
+			},
+		]);
+
+		const { container, root } = await renderEditor(editor);
+		expect(
+			container.querySelector<HTMLElement>(
+				`[data-block-id="${blockId}"]`,
+			)?.style.textAlign,
+		).toBe("center");
+
+		await cleanup(editor, root, container);
+	});
+
 	it("DIR2: sets dir on the block content host from props.direction ltr or rtl", async () => {
 		const editor = createDirEditor();
 		const ltrId = editor.firstBlock()!.id;

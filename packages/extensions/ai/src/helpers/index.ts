@@ -20,6 +20,7 @@ export type {
 export {
 	buildSelectionReplacementOps,
 	resolveBlockInsertionOffset,
+	resolveCommonSelectionMarks,
 	resolveSelectionText,
 	shouldReplaceEmptyMarkdownTarget,
 	shouldTrimLeadingBlankBlockGenerationText,

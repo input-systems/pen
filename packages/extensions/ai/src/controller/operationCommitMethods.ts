@@ -9,6 +9,7 @@ import type {
 } from "../types";
 import {
 	buildSelectionReplacementOps,
+	resolveCommonSelectionMarks,
 	resolveFullBlockTextSelection,
 	resolveRequestedOperationConflict,
 	resolveSelectionForRequestedOperation,
@@ -206,7 +207,16 @@ export const operationCommitMethods = {
 		sessionId?: string,
 	): AIMutationReceipt {
 		const selectedText = resolveSelectionText(this._editor, selection);
-		const ops = buildSelectionReplacementOps(this._editor, selection, text);
+		const commonMarks = resolveCommonSelectionMarks(
+			this._editor,
+			selection,
+		);
+		const ops = buildSelectionReplacementOps(
+			this._editor,
+			selection,
+			text,
+			commonMarks,
+		);
 		if (stagesAsSuggestions(mutationMode)) {
 			this._applySuggestedAIOps(ops, sessionId);
 			this._recordCommitDebug({
@@ -248,6 +258,7 @@ export const operationCommitMethods = {
 						from: caret.offset,
 						to: caret.offset,
 						insert: text,
+						...(commonMarks ? { marks: commonMarks } : {}),
 					},
 				],
 				{ origin: "ai" },

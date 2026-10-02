@@ -1,5 +1,114 @@
 # @input/pen-ai
 
+## 0.2.14
+
+### Patch Changes
+
+- @input/pen-core@0.2.14
+  - @input/pen-tools@0.2.14
+  - @input/pen-ingest@0.2.14
+  - @input/pen-types@0.2.14
+
+## 0.2.13
+
+### Patch Changes
+
+- Updated dependencies [8e2654b]
+  - @input/pen-core@0.2.13
+  - @input/pen-tools@0.2.13
+  - @input/pen-ingest@0.2.13
+  - @input/pen-types@0.2.13
+
+## 0.2.12
+
+### Patch Changes
+
+- eeb5eb2: Preserve rich formatting and block structure when AI rewrites selections.
+- Updated dependencies [eeb5eb2]
+  - @input/pen-ingest@0.2.12
+  - @input/pen-tools@0.2.12
+  - @input/pen-core@0.2.12
+  - @input/pen-types@0.2.12
+
+## 0.2.11
+
+### Patch Changes
+
+- @input/pen-core@0.2.11
+  - @input/pen-tools@0.2.11
+  - @input/pen-ingest@0.2.11
+  - @input/pen-types@0.2.11
+
+## 0.2.10
+
+### Patch Changes
+
+- cbe4112: Autocomplete keeps the shape of multi-paragraph completions: a single leading newline after a closed line (`Best,`, a finished sentence) starts a new block instead of splicing onto the punctuation, and the new `paragraphGap: "empty-block"` option lands a blank line between prose paragraphs as an empty block for documents whose paragraphs carry no margin.
+- @input/pen-core@0.2.10
+  - @input/pen-tools@0.2.10
+  - @input/pen-ingest@0.2.10
+  - @input/pen-types@0.2.10
+
+## 0.2.9
+
+### Patch Changes
+
+- 8c4116f: Document-scope suggestions no longer churn on every re-analysis: a repeated fix keeps its id and anchor, a late response is anchored against the live document instead of the text it was asked about, and a dismissed fix stays dismissed across edits elsewhere in the body.
+- @input/pen-core@0.2.9
+  - @input/pen-tools@0.2.9
+  - @input/pen-ingest@0.2.9
+  - @input/pen-types@0.2.9
+
+## 0.2.8
+
+### Patch Changes
+
+- 9b0dcd2: Add `scopeUnit` to proactive suggestions: `block` analyzes the whole dirty block, `document` analyzes every eligible block in one request and anchors each candidate in its own block, so edits in a second paragraph no longer drop the first paragraph's analysis. `blockPolicy.isBlockAllowed` lets hosts veto blocks beyond their type.
+- @input/pen-core@0.2.8
+  - @input/pen-tools@0.2.8
+  - @input/pen-ingest@0.2.8
+  - @input/pen-types@0.2.8
+
+## 0.2.7
+
+### Patch Changes
+
+- d12e779: Proactive suggestions now replace only the suggestions inside the analyzed scope. Earlier sentences in the same block keep their underlines until an edit kills their range, so a paragraph can show more than one fix at a time.
+- @input/pen-core@0.2.7
+  - @input/pen-tools@0.2.7
+  - @input/pen-ingest@0.2.7
+  - @input/pen-types@0.2.7
+
+## 0.2.6
+
+### Patch Changes
+
+- dcd1573: Republish the 0.2.4 train. Those tarballs shipped leftover 0.2.3 `dist/` (no rebuild before `pnpm release`), so `contentRole`, `getBlockContentRole`, and `getDocumentPlaceholderTargetBlockId` were in source and the changelog but not in the packages.
+- Updated dependencies [dcd1573]
+  - @input/pen-core@0.2.6
+  - @input/pen-ingest@0.2.6
+  - @input/pen-tools@0.2.6
+  - @input/pen-types@0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- @input/pen-core@0.2.5
+  - @input/pen-tools@0.2.5
+  - @input/pen-ingest@0.2.5
+  - @input/pen-types@0.2.5
+
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [4ea7542]
+  - @input/pen-types@0.2.4
+  - @input/pen-core@0.2.4
+  - @input/pen-tools@0.2.4
+  - @input/pen-ingest@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes

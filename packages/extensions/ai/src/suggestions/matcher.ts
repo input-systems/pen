@@ -1,4 +1,8 @@
-import type { AISuggestion, AISuggestionCandidate } from "./types";
+import type {
+	AISuggestion,
+	AISuggestionCandidate,
+	AISuggestionScopeSegment,
+} from "./types";
 import { generateId } from "@input/pen-types";
 
 export function materializeSuggestionsFromCandidates(input: {
@@ -8,6 +12,7 @@ export function materializeSuggestionsFromCandidates(input: {
 	scopeText: string;
 	scopeFrom: number;
 	candidates: readonly AISuggestionCandidate[];
+	segments?: readonly AISuggestionScopeSegment[];
 }): readonly AISuggestion[] {
 	const materializedSuggestions: AISuggestion[] = [];
 
@@ -20,13 +25,26 @@ export function materializeSuggestionsFromCandidates(input: {
 			continue;
 		}
 
+		const matchEnd = matchOffset + candidate.originalText.length;
+		const segment = input.segments
+			? findSegmentContaining(input.segments, matchOffset, matchEnd)
+			: null;
+		if (input.segments && !segment) {
+			continue;
+		}
+
+		const blockId = segment?.blockId ?? input.blockId;
+		const blockOffset = segment
+			? matchOffset - segment.from
+			: input.scopeFrom + matchOffset;
+
 		materializedSuggestions.push({
 			id: generateId(),
 			kind: candidate.kind,
 			title: candidate.title,
-			blockId: input.blockId,
-			from: input.scopeFrom + matchOffset,
-			to: input.scopeFrom + matchOffset + candidate.originalText.length,
+			blockId,
+			from: blockOffset,
+			to: blockOffset + candidate.originalText.length,
 			originalText: candidate.originalText,
 			replacementText: candidate.replacementText,
 			reason: candidate.reason,
@@ -52,6 +70,7 @@ export function dedupeOverlappingSuggestions(
 	for (const suggestion of sortedSuggestions) {
 		const overlapsAcceptedSuggestion = acceptedSuggestions.some(
 			(existing) =>
+				existing.blockId === suggestion.blockId &&
 				rangesOverlap(
 					existing.from,
 					existing.to,
@@ -66,6 +85,18 @@ export function dedupeOverlappingSuggestions(
 	}
 
 	return acceptedSuggestions.sort((left, right) => left.from - right.from);
+}
+
+// a match that crosses a block boundary has no single block to anchor in and is dropped
+function findSegmentContaining(
+	segments: readonly AISuggestionScopeSegment[],
+	from: number,
+	to: number,
+): AISuggestionScopeSegment | null {
+	return (
+		segments.find((segment) => from >= segment.from && to <= segment.to) ??
+		null
+	);
 }
 
 function findUniqueMatchOffset(

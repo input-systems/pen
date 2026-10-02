@@ -329,11 +329,27 @@ scenario(
 
 		await s.load("hello-world");
 		await s.importHtml(
-			'<p>Imported <strong>bold</strong> <a href="https://example.com/host4">link</a></p>',
+			'<style>span.host4-underline { text-decoration: underline; }</style><p>Imported <strong>bold</strong> <span class="host4-underline">underlined</span> <a href="https://example.com/host4">link</a></p><ul><li>bullet</li></ul>',
 		);
 		await s.assert.textContains("Imported");
 		await s.assert.textContains("bold");
+		await s.assert.textContains("underlined");
 		await s.assert.textContains("link");
+		const snapshot = await page.evaluate(() =>
+			window.__penConformance.documentSnapshot(),
+		);
+		const underlined = snapshot.blocks
+			.flatMap((block) => block.deltas)
+			.find((delta) => delta.insert === "underlined");
+		expect(underlined?.attributes).toMatchObject({ underline: true });
+		expect(snapshot.blocks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: "bulletListItem",
+					text: "bullet",
+				}),
+			]),
+		);
 
 		await s.pasteHtml("<p>Pasted heading text</p>");
 		await s.assert.textContains("Pasted heading text");

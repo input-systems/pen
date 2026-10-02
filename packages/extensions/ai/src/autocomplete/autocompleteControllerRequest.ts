@@ -192,6 +192,7 @@ export async function runRequest(
 		{
 			activeBlockType: context.blockType,
 			continuationDepth: 0,
+			paragraphGap: controller._paragraphGap,
 		},
 	);
 	controller._continuation.setSequence(

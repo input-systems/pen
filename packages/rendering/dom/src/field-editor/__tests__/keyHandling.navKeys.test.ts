@@ -180,3 +180,70 @@ describe("M3 Home dispatch", () => {
 		}
 	});
 });
+
+describe("word selection extension", () => {
+	it("preserves a backward anchor across repeated Alt+Shift+ArrowLeft", () => {
+		const editor = createEditor({ schema: defaultSchema });
+		fixtures.push(editor);
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: "one two three",
+			},
+		]);
+		editor.selectText(blockId, 13, 13);
+		const fieldEditor = createFieldEditor(blockId);
+
+		const previousPlatform = navigator.platform;
+		Object.defineProperty(navigator, "platform", {
+			configurable: true,
+			value: "MacIntel",
+		});
+		try {
+			expect(
+				handleFieldEditorKeyDown({
+					event: createKeyEvent("ArrowLeft", {
+						altKey: true,
+						shiftKey: true,
+					}),
+					editor,
+					fieldEditor,
+					ytext: getYText(editor, blockId),
+					range: { start: 13, end: 13 },
+				}),
+			).toBe(true);
+			expect(editor.selection).toMatchObject({
+				type: "text",
+				anchor: { blockId, offset: 13 },
+				focus: { blockId, offset: 8 },
+			});
+
+			expect(
+				handleFieldEditorKeyDown({
+					event: createKeyEvent("ArrowLeft", {
+						altKey: true,
+						shiftKey: true,
+					}),
+					editor,
+					fieldEditor,
+					ytext: getYText(editor, blockId),
+					range: { start: 8, end: 13 },
+				}),
+			).toBe(true);
+			expect(editor.selection).toMatchObject({
+				type: "text",
+				anchor: { blockId, offset: 13 },
+				focus: { blockId, offset: 4 },
+			});
+		} finally {
+			Object.defineProperty(navigator, "platform", {
+				configurable: true,
+				value: previousPlatform,
+			});
+		}
+	});
+});

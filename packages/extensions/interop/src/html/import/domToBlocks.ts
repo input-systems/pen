@@ -1,5 +1,6 @@
 import type { DOMNode } from "./domAdapter";
-import { parseInlineContent } from "./inlineParser";
+import { containsBreak, parseInlineContent } from "./inlineParser";
+import { parseSafeStyleDeclarations } from "./sanitize";
 import type {
   BlockImportMatch,
   HTMLImportElement,
@@ -9,14 +10,21 @@ import type {
 import type { PendingBlock } from "@input/pen-core";
 
 const BLOCK_ELEMENT_MAP: Record<string, (node: DOMNode) => PendingBlock> = {
-  h1: (node) => blockWithInline("heading", { level: 1 }, node),
-  h2: (node) => blockWithInline("heading", { level: 2 }, node),
-  h3: (node) => blockWithInline("heading", { level: 3 }, node),
-  h4: (node) => blockWithInline("heading", { level: 4 }, node),
-  h5: (node) => blockWithInline("heading", { level: 5 }, node),
-  h6: (node) => blockWithInline("heading", { level: 6 }, node),
-  p: (node) => blockWithInline("paragraph", {}, node),
-  blockquote: (node) => blockWithInline("blockquote", {}, node),
+  h1: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 1 }), node),
+  h2: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 2 }), node),
+  h3: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 3 }), node),
+  h4: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 4 }), node),
+  h5: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 5 }), node),
+  h6: (node) =>
+    blockWithInline("heading", propsWithTextAlignment(node, { level: 6 }), node),
+  p: (node) => blockWithInline("paragraph", propsWithTextAlignment(node), node),
+  blockquote: (node) =>
+    blockWithInline("blockquote", propsWithTextAlignment(node), node),
   hr: () => ({ type: "divider", props: {} }),
   pre: (node) => {
     const codeNode = node.children?.find((c) => c.tagName === "code");
@@ -62,9 +70,7 @@ function walkElements(
   }
 
   if (node.type !== "element" || !node.tagName) {
-    for (const child of node.children ?? []) {
-      walkElements(child, blocks, registry);
-    }
+    walkBlockContainer(node, blocks, registry);
     return;
   }
 
@@ -114,9 +120,7 @@ function walkElements(
   }
 
   if (isBlockElement(node.tagName)) {
-    for (const child of node.children ?? []) {
-      walkElements(child, blocks, registry);
-    }
+    walkBlockContainer(node, blocks, registry);
     return;
   }
 
@@ -140,6 +144,7 @@ function walkList(
 ): void {
   const items = (node.children ?? []).filter((c) => c.tagName === "li");
   const olStart = ordered ? parseOlStart(node) : undefined;
+  const listAlignment = textAlignment(node);
 
   for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
     const li = items[itemIdx];
@@ -166,6 +171,7 @@ function walkList(
         props: {
           indent,
           checked: checkbox.attributes?.checked !== undefined,
+          ...textAlignmentProps(li, listAlignment),
         },
         content: inline.text,
         marks: inline.marks,
@@ -176,6 +182,7 @@ function walkList(
         props: {
           indent,
           start: itemIdx === 0 ? olStart : undefined,
+          ...textAlignmentProps(li, listAlignment),
         },
         content: inline.text,
         marks: inline.marks,
@@ -183,7 +190,7 @@ function walkList(
     } else {
       blocks.push({
         type: "bulletListItem",
-        props: { indent },
+        props: { indent, ...textAlignmentProps(li, listAlignment) },
         content: inline.text,
         marks: inline.marks,
       });
@@ -267,6 +274,42 @@ function blockWithInline(
   return { type, props, content: inline.text, marks: inline.marks };
 }
 
+const TEXT_ALIGNMENTS = new Set([
+  "left",
+  "right",
+  "center",
+  "justify",
+  "start",
+  "end",
+]);
+
+function propsWithTextAlignment(
+  node: DOMNode,
+  props: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return { ...props, ...textAlignmentProps(node) };
+}
+
+function textAlignmentProps(
+  node: DOMNode,
+  inherited?: string,
+): Record<string, unknown> {
+  const alignment = textAlignment(node) ?? inherited;
+  return alignment ? { textAlignment: alignment } : {};
+}
+
+function textAlignment(node: DOMNode): string | undefined {
+  let alignment = node.attributes?.align?.toLowerCase();
+  for (const declaration of parseSafeStyleDeclarations(
+    node.attributes?.style ?? "",
+  )) {
+    if (declaration.property === "text-align") {
+      alignment = declaration.value;
+    }
+  }
+  return alignment && TEXT_ALIGNMENTS.has(alignment) ? alignment : undefined;
+}
+
 function extractText(node: DOMNode): string {
   if (node.type === "text") return node.textContent ?? "";
   return (node.children ?? []).map(extractText).join("");
@@ -291,6 +334,146 @@ const BLOCK_ELEMENTS = new Set([
 
 function isBlockElement(tagName: string): boolean {
   return BLOCK_ELEMENTS.has(tagName);
+}
+
+// a container's inline children between two block children are one line box in
+// the source, so they import as one paragraph: text, marks and `<br>` together
+function walkBlockContainer(
+  node: DOMNode,
+  blocks: PendingBlock[],
+  registry: SchemaRegistry,
+): void {
+  // a break between top-level blocks is clipboard residue, not a blank line
+  const keepsPlaceholderBreak = node.type === "element";
+  let run: DOMNode[] = [];
+  const flushRun = () => {
+    const paragraph = paragraphFromInlineRun(run, keepsPlaceholderBreak);
+    if (paragraph) blocks.push(paragraph);
+    run = [];
+  };
+  for (const child of node.children ?? []) {
+    if (importsAsOwnBlock(child, registry)) {
+      flushRun();
+      walkElements(child, blocks, registry);
+    } else {
+      run.push(child);
+    }
+  }
+  flushRun();
+}
+
+function importsAsOwnBlock(child: DOMNode, registry: SchemaRegistry): boolean {
+  return (
+    containsBlockish(child) || resolveFromHTMLSchema(child, registry) !== null
+  );
+}
+
+function containsBlockish(node: DOMNode): boolean {
+  return isBlockishChild(node) || (node.children ?? []).some(containsBlockish);
+}
+
+// whitespace that includes a line break is source formatting, which html renders
+// as at most one space. plain spaces stay: the sanitizer drops `white-space`, so
+// they cannot be told apart from code indentation
+const FORMATTING_WHITESPACE = /[ \t]*[\n\r\f][ \t\n\r\f]*/g;
+const FORMATTING_GAP = "\u0000";
+const FORMATTING_GAPS = new RegExp(`${FORMATTING_GAP}+`, "g");
+
+function markFormattingWhitespace(node: DOMNode): DOMNode {
+  if (node.type === "text") {
+    return {
+      ...node,
+      textContent: (node.textContent ?? "").replace(
+        FORMATTING_WHITESPACE,
+        FORMATTING_GAP,
+      ),
+    };
+  }
+  return node.children
+    ? { ...node, children: node.children.map(markFormattingWhitespace) }
+    : node;
+}
+
+// a container's own text is trimmed at the edges of its line, as it was when
+// each text child was a paragraph; spaces inside an inline element are content
+function trimRunEdges(run: DOMNode[]): DOMNode[] {
+  return run.map((child, index) => {
+    if (child.type !== "text") return child;
+    let text = child.textContent ?? "";
+    if (index === 0) text = text.replace(/^[ \t\n\r\f]+/, "");
+    if (index === run.length - 1) text = text.replace(/[ \t\n\r\f]+$/, "");
+    return { ...child, textContent: text };
+  });
+}
+
+function collectInlineLeaves(node: DOMNode, leaves: DOMNode[]): void {
+  if (node.type === "text" || node.tagName === "br") {
+    leaves.push(node);
+    return;
+  }
+  for (const child of node.children ?? []) {
+    collectInlineLeaves(child, leaves);
+  }
+}
+
+// a formatting gap paints one space, and none at a line edge or beside a space
+function resolveFormattingGaps(source: DOMNode): void {
+  const leaves: DOMNode[] = [];
+  collectInlineLeaves(source, leaves);
+  const leafText = (leaf: DOMNode) =>
+    leaf.type === "text" ? (leaf.textContent ?? "") : "\n";
+  const line = leaves.map(leafText).join("");
+  const isLineEdgeOrSpace = (char: string | undefined) =>
+    char === undefined || char === "\n" || char === " ";
+  const resolved = line.replace(FORMATTING_GAPS, (gaps, offset: number) => {
+    const paints =
+      !isLineEdgeOrSpace(line[offset - 1]) &&
+      !isLineEdgeOrSpace(line[offset + gaps.length]);
+    return (paints ? " " : FORMATTING_GAP) + gaps.slice(1);
+  });
+
+  let offset = 0;
+  for (const leaf of leaves) {
+    const end = offset + leafText(leaf).length;
+    if (leaf.type === "text") {
+      leaf.textContent = resolved
+        .slice(offset, end)
+        .split(FORMATTING_GAP)
+        .join("");
+    }
+    offset = end;
+  }
+}
+
+function paragraphFromInlineRun(
+  run: DOMNode[],
+  keepsPlaceholderBreak: boolean,
+): PendingBlock | null {
+  const source: DOMNode = {
+    type: "root",
+    children: trimRunEdges(run).map(markFormattingWhitespace),
+  };
+  resolveFormattingGaps(source);
+  const inline = parseInlineContent(source);
+
+  // residue is dropped however many breaks it holds: only the last one is the
+  // line terminator `parseInlineContent` removes
+  if (!keepsPlaceholderBreak && /^[ \n]*$/.test(inline.text)) return null;
+
+  // gmail and apple mail write a blank line as `<div><br></div>`; the break is the
+  // container's empty placeholder (EM8), the same as a paragraph's sole `<br>`
+  if (/^ *$/.test(inline.text)) {
+    return keepsPlaceholderBreak && containsBreak(source)
+      ? { type: "paragraph", props: {}, content: "" }
+      : null;
+  }
+
+  return {
+    type: "paragraph",
+    props: {},
+    content: inline.text,
+    marks: inline.marks,
+  };
 }
 
 function resolveFromHTMLSchema(

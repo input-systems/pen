@@ -34,6 +34,7 @@ describe("@input/pen-vue AX1 surface", () => {
     expect(root.attributes("role")).toBe("textbox");
     expect(root.attributes("aria-multiline")).toBe("true");
     expect(root.attributes("aria-label")).toBe("Editor");
+    expect(root.attributes("tabindex")).toBe("0");
 
     wrapper.unmount();
     editor.destroy();

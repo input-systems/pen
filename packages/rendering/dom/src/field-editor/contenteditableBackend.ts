@@ -84,6 +84,7 @@ export class ContentEditableBackend {
 		this.ytext = activeYText;
 
 		element.contentEditable = "true";
+		element.tabIndex = -1;
 		this.fieldEditor.resetBackendSelectionAuthority();
 		this.fieldEditor.withBackendSelectionWrite(() => {
 			this.isComposing = false;
@@ -182,6 +183,7 @@ export class ContentEditableBackend {
 			// reach the next block. Absent is equivalent while the parent is
 			// not editable, which is the single-field case.
 			this.element.removeAttribute("contenteditable");
+			this.element.removeAttribute("tabindex");
 		}
 		this.attachment.release();
 		this.mutationObserver = null;

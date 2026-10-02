@@ -32,29 +32,9 @@ import {
 } from "./keyBindingShortcuts";
 import { dispatchKeymapEvent } from "./keymap";
 import {
+	ensureLineEdgeMeasure,
 	isNavigationSelectionKey,
-	measureVisualLineEdge,
 } from "./contenteditableDomHelpers";
-
-const LINE_EDGE_SEAM = Symbol.for("pen.lineEdgeSeam");
-
-type LineEdgeMeasure = (
-	editor: Editor,
-	current: { blockId: string; offset: number },
-	edge: "start" | "end",
-) => { blockId: string; offset: number } | null;
-
-function ensureLineEdgeMeasure(editor: Editor): void {
-	const host = editor as unknown as Record<
-		symbol,
-		LineEdgeMeasure | undefined
-	>;
-	if (host[LINE_EDGE_SEAM]) {
-		return;
-	}
-	host[LINE_EDGE_SEAM] = (_ed, current, edge) =>
-		measureVisualLineEdge(current, edge);
-}
 
 export function handleFieldEditorKeyDown(options: {
 	event: KeyboardEvent;

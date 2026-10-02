@@ -147,6 +147,7 @@
 - AISuggestionsBlockPolicy
 - AISuggestionsController
 - AISuggestionScope
+- AISuggestionScopeSegment
 - AISuggestionsExtensionConfig
 - AISuggestionsMetrics
 - AISuggestionsMode
@@ -185,6 +186,7 @@
 - AutocompleteDismissReason
 - AutocompleteExtensionConfig
 - AutocompleteMetrics
+- AutocompleteParagraphGap
 - AutocompletePolicyInvalidationStage
 - AutocompleteRuntimeSettings
 

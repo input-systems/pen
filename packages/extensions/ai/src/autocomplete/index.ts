@@ -18,6 +18,7 @@ export type {
 	AutocompleteDismissReason,
 	AutocompleteExtensionConfig,
 	AutocompleteMetrics,
+	AutocompleteParagraphGap,
 	AutocompletePolicyInvalidationStage,
 	AutocompleteRequestContext,
 	AutocompleteRuntimeSettings,

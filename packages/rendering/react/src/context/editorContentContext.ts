@@ -2,12 +2,12 @@ import { createContext, useContext } from "react";
 
 export interface EditorContentContextValue {
 	emptyPlaceholder?: string;
-	isEmpty: boolean;
+	documentPlaceholderTargetBlockId: string | null;
 }
 
 const EMPTY_EDITOR_CONTENT_CONTEXT: EditorContentContextValue = {
 	emptyPlaceholder: undefined,
-	isEmpty: false,
+	documentPlaceholderTargetBlockId: null,
 };
 
 export const EditorContentContext =

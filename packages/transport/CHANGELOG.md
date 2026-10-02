@@ -1,5 +1,102 @@
 # @input/pen-transport
 
+## 0.2.14
+
+### Patch Changes
+
+- @input/pen-core@0.2.14
+  - @input/pen-ai@0.2.14
+  - @input/pen-types@0.2.14
+
+## 0.2.13
+
+### Patch Changes
+
+- Updated dependencies [8e2654b]
+  - @input/pen-core@0.2.13
+  - @input/pen-ai@0.2.13
+  - @input/pen-types@0.2.13
+
+## 0.2.12
+
+### Patch Changes
+
+- Updated dependencies [eeb5eb2]
+  - @input/pen-ai@0.2.12
+  - @input/pen-core@0.2.12
+  - @input/pen-types@0.2.12
+
+## 0.2.11
+
+### Patch Changes
+
+- @input/pen-core@0.2.11
+  - @input/pen-ai@0.2.11
+  - @input/pen-types@0.2.11
+
+## 0.2.10
+
+### Patch Changes
+
+- Updated dependencies [cbe4112]
+  - @input/pen-ai@0.2.10
+  - @input/pen-core@0.2.10
+  - @input/pen-types@0.2.10
+
+## 0.2.9
+
+### Patch Changes
+
+- Updated dependencies [8c4116f]
+  - @input/pen-ai@0.2.9
+  - @input/pen-core@0.2.9
+  - @input/pen-types@0.2.9
+
+## 0.2.8
+
+### Patch Changes
+
+- Updated dependencies [9b0dcd2]
+  - @input/pen-ai@0.2.8
+  - @input/pen-core@0.2.8
+  - @input/pen-types@0.2.8
+
+## 0.2.7
+
+### Patch Changes
+
+- Updated dependencies [d12e779]
+  - @input/pen-ai@0.2.7
+  - @input/pen-core@0.2.7
+  - @input/pen-types@0.2.7
+
+## 0.2.6
+
+### Patch Changes
+
+- dcd1573: Republish the 0.2.4 train. Those tarballs shipped leftover 0.2.3 `dist/` (no rebuild before `pnpm release`), so `contentRole`, `getBlockContentRole`, and `getDocumentPlaceholderTargetBlockId` were in source and the changelog but not in the packages.
+- Updated dependencies [dcd1573]
+  - @input/pen-ai@0.2.6
+  - @input/pen-core@0.2.6
+  - @input/pen-types@0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- @input/pen-core@0.2.5
+  - @input/pen-ai@0.2.5
+  - @input/pen-types@0.2.5
+
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [4ea7542]
+  - @input/pen-types@0.2.4
+  - @input/pen-core@0.2.4
+  - @input/pen-ai@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes

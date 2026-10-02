@@ -1,4 +1,5 @@
 import { selectionToRange } from "@input/pen-core";
+import { exportDocumentRangeAsMarkdown } from "@input/pen-tools";
 import type { ToolRuntime } from "@input/pen-types";
 import { buildMutationReceipt } from "../runtime/mutationReceipt";
 import {
@@ -6,10 +7,11 @@ import {
 	refineRouteWithNavigator,
 	type RequestRouterDecision,
 } from "../runtime/router";
+import type { AIMutationReceipt, AIWorkingSetEnvelope } from "../types";
 import type {
-	AIMutationReceipt,
-	AIWorkingSetEnvelope,
-} from "../types";
+	AISelectionWorkingSetContext,
+	AISelectionWorkingSetScope,
+} from "../types/controller";
 import {
 	readWorkingSetNavigatorHints,
 	readWorkingSetToolContext,
@@ -51,31 +53,53 @@ export const workingSetMethods = {
 		blockId: string,
 		_prompt: string,
 		scope?: "document" | "block",
+		selectionScope: AISelectionWorkingSetScope = "partial",
 	): Promise<AIWorkingSetEnvelope | null> {
 		const selectionSignature = this._createSelectionSignature(
 			this._editor.selection,
 		);
 		if (target.type === "selection") {
-			const trackedBlockIds = [
-				...new Set(
-					selectionToRange(
-						this._editor.internals.doc,
-						target.selection,
-					).blockRange,
-				),
-			];
+			const selectionRange = selectionToRange(
+				this._editor.internals.doc,
+				target.selection,
+			);
+			const trackedBlockIds = [...new Set(selectionRange.blockRange)];
+			const viewMode = this._state.suggestMode ? "raw" : "resolved";
+			const selectionContext: AISelectionWorkingSetContext =
+				selectionScope === "whole-blocks"
+					? {
+							selectionScope,
+							selection: target.selection,
+							selectedText: resolveSelectionText(
+								this._editor,
+								target.selection,
+							),
+							markdown: exportDocumentRangeAsMarkdown(
+								this._editor,
+								{
+									startBlockId: trackedBlockIds[0],
+									endBlockId:
+										trackedBlockIds[
+											trackedBlockIds.length - 1
+										],
+								},
+								viewMode,
+							),
+						}
+					: {
+							selectionScope,
+							selection: target.selection,
+							selectedText: resolveSelectionText(
+								this._editor,
+								target.selection,
+							),
+						};
 			return {
 				documentVersion: this._documentVersion,
-				viewMode: this._state.suggestMode ? "raw" : "resolved",
+				viewMode,
 				source: "selection",
 				routeConfidence: route.confidence,
-				context: {
-					selection: target.selection,
-					selectedText: resolveSelectionText(
-						this._editor,
-						target.selection,
-					),
-				},
+				context: selectionContext,
 				trackedBlockIds,
 				viewHashes: this._captureBlockViewHashes(trackedBlockIds),
 				selectionSignature,

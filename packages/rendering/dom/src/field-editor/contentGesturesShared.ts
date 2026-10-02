@@ -41,7 +41,6 @@ export interface ContentGesturesContext<
 	interactionModelRef: GestureSlot<InteractionModel>;
 	clearPointerSelectionState(): void;
 	blockSelectionEnabled: boolean;
-	isDocumentPlaceholderVisible: boolean;
 	runSync: (run: () => void) => void;
 }
 

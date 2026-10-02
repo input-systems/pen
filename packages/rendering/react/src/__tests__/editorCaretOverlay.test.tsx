@@ -69,9 +69,21 @@ describe("@input/pen-react editor caret overlay", () => {
 				throw new Error("Missing inline content element");
 			}
 
+			const overlayElement = container.querySelector(
+				"[data-pen-editor-caret-overlay]",
+			) as HTMLElement | null;
+			expect(overlayElement).not.toBeNull();
+			if (!overlayElement) {
+				throw new Error("Missing caret overlay element");
+			}
+
 			Object.defineProperty(inlineElement, "getBoundingClientRect", {
 				configurable: true,
 				value: () => new DOMRect(24, 32, 240, 24),
+			});
+			Object.defineProperty(overlayElement, "getBoundingClientRect", {
+				configurable: true,
+				value: () => new DOMRect(100, 200, 320, 48),
 			});
 
 			await act(async () => {
@@ -82,8 +94,9 @@ describe("@input/pen-react editor caret overlay", () => {
 			});
 
 			const resolvedCaretStyle = caretStyle as React.CSSProperties | null;
-			expect(resolvedCaretStyle?.left).toBe("24px");
-			expect(resolvedCaretStyle?.top).toBe("32px");
+			expect(resolvedCaretStyle?.position).toBe("absolute");
+			expect(resolvedCaretStyle?.left).toBe("-76px");
+			expect(resolvedCaretStyle?.top).toBe("-168px");
 			expect(resolvedCaretStyle?.height).toBe("24px");
 			expect(resolvedCaretStyle?.width).toBe(
 				"var(--pen-editor-caret-width, var(--pen-caret-width, 2px))",

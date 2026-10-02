@@ -139,6 +139,7 @@ export class EditContextBackend {
 		(
 			element as HTMLElement & { editContext: EditContext | null }
 		).editContext = ec;
+		element.tabIndex = -1;
 
 		this.attachment.listen(element, "keydown", this.handleKeyDown);
 		this.attachment.listen(element, "beforeinput", this.handleBeforeInput);
@@ -218,6 +219,7 @@ export class EditContextBackend {
 					editContext: EditContext | null;
 				}
 			).editContext = null;
+			this.element.removeAttribute("tabindex");
 		}
 		this.editContext = null;
 		this.element = null;

@@ -20,7 +20,6 @@ export interface UseEditorContentGesturesOptions extends EditorContentPointerSta
 	contentRef: RefObject<HTMLElement | null>;
 	blocksHostRef: RefObject<HTMLDivElement | null>;
 	regionSelectionStore: RegionSelectionStore;
-	isDocumentPlaceholderVisible: boolean;
 }
 
 export function useEditorContentGestures(
@@ -34,7 +33,6 @@ export function useEditorContentGestures(
 		contentRef,
 		blocksHostRef,
 		regionSelectionStore,
-		isDocumentPlaceholderVisible,
 		regionGestureRef,
 		pointerGestureRef,
 		pointerGestureVersionRef,
@@ -54,7 +52,6 @@ export function useEditorContentGestures(
 			getBlocksHost: () => blocksHostRef.current,
 			regionSelectionStore,
 			blockSelectionEnabled: blockSelection.enabled,
-			isDocumentPlaceholderVisible,
 			runSync: flushSync,
 			state: {
 				regionGesture: regionGestureRef,
@@ -69,7 +66,6 @@ export function useEditorContentGestures(
 		blockSelection.enabled,
 		editor,
 		fieldEditor,
-		isDocumentPlaceholderVisible,
 		readonly,
 		regionSelectionStore,
 	]);

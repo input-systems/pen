@@ -52,7 +52,7 @@ export function InlineContent(props: InlineContentProps) {
 	} = props;
 	const { editor, inlineAtomInteractions, inlineAtomRenderers, readonly } =
 		useEditorContext();
-	const { emptyPlaceholder, isEmpty: isDocumentEmpty } =
+	const { emptyPlaceholder, documentPlaceholderTargetBlockId } =
 		useEditorContentContext();
 	const fieldEditor = useFieldEditorContext();
 	const fieldEditorState = useFieldEditorState(fieldEditor);
@@ -74,7 +74,8 @@ export function InlineContent(props: InlineContentProps) {
 		fieldEditorState.mode === "expanded" &&
 		fieldEditorState.activeBlockIds.includes(blockId);
 
-	const isFirstBlock = editor.documentState.blockOrder[0] === blockId;
+	const isDocumentPlaceholderTarget =
+		documentPlaceholderTargetBlockId === blockId;
 	const schemaPlaceholder = resolveEditorSchemaPlaceholder(editor, blockId);
 	const isFocusedBlock =
 		isActive ||
@@ -96,8 +97,7 @@ export function InlineContent(props: InlineContentProps) {
 		showBlockPlaceholder,
 	} = resolveInlinePlaceholderVisibility({
 		blockTextEmpty,
-		isDocumentEmpty,
-		isFirstBlock,
+		isDocumentPlaceholderTarget,
 		isFocusedBlock,
 		hasEmptyPlaceholder: !!emptyPlaceholder,
 		hasExplicitPlaceholder: !!placeholderProp,

@@ -1,9 +1,14 @@
 import { defineBlock } from "@input/pen-core";
 import { directionProp } from "../directionProp";
+import {
+	textAlignmentProp,
+	textAlignmentStyle,
+} from "../textAlignmentProp";
 
 export const paragraph = defineBlock("paragraph", {
 	props: {
 		direction: directionProp,
+		textAlignment: textAlignmentProp,
 	},
 	content: "inline",
 	fieldEditor: "richtext",
@@ -16,6 +21,9 @@ export const paragraph = defineBlock("paragraph", {
 	},
 	serialize: {
 		toMarkdown: (block) => block.content ?? "",
-		toHTML: (block) => `<p>${block.content ?? ""}</p>`,
+		toHTML: (block) => {
+			// SEC5: alignment is serialized from a closed enum; content is serialized inline HTML.
+			return `<p${textAlignmentStyle(block.props.textAlignment)}>${block.content ?? ""}</p>`;
+		},
 	},
 });

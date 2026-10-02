@@ -1,4 +1,5 @@
 import type {
+	BlockHandle,
 	CommitEvent,
 	Editor,
 	ModelAdapter,
@@ -33,6 +34,13 @@ export interface AISuggestionCandidate {
 	confidence?: number;
 }
 
+/** one block's slice of a document scope; offsets index into `AISuggestionScope.text`. */
+export interface AISuggestionScopeSegment {
+	blockId: string;
+	from: number;
+	to: number;
+}
+
 export interface AISuggestionScope {
 	id: string;
 	blockId: string;
@@ -42,6 +50,8 @@ export interface AISuggestionScope {
 	to: number;
 	hash: string;
 	documentGeneration: number;
+	/** set for document scopes: which block each part of `text` came from. */
+	segments?: readonly AISuggestionScopeSegment[];
 }
 
 export interface AISuggestionGroup {
@@ -82,6 +92,8 @@ export interface AISuggestionsState {
 export interface AISuggestionsBlockPolicy {
 	allowedBlockTypes?: readonly string[];
 	deniedBlockTypes?: readonly string[];
+	/** host veto beyond block type, e.g. a paragraph nested inside a quoted region. */
+	isBlockAllowed?: (block: BlockHandle) => boolean;
 }
 
 export interface AISuggestionsAnalyzerResult {
@@ -120,6 +132,11 @@ export interface AISuggestionsExtensionConfig {
 	minConfidence?: number;
 	groupGapChars?: number;
 	blockPolicy?: AISuggestionsBlockPolicy;
+	/**
+	 * sentence (default) clips to the edited sentence; block analyzes the whole dirty block;
+	 * document analyzes every eligible block in one request and maps candidates back per block.
+	 */
+	scopeUnit?: "sentence" | "block" | "document";
 }
 
 export interface AISuggestionsController {

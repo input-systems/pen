@@ -63,6 +63,33 @@ describe("AC 24 — paragraph and heading serialization", () => {
     expect(heading.serialize!.toMarkdown!(block)).toBe("### Title");
   });
 
+  it("text block HTML serializers preserve text alignment", () => {
+    expect(
+      paragraph.serialize!.toHTML!({
+        id: "p",
+        type: "paragraph",
+        props: { textAlignment: "center" },
+        content: "Centered",
+      }),
+    ).toBe('<p style="text-align: center">Centered</p>');
+    expect(
+      heading.serialize!.toHTML!({
+        id: "h",
+        type: "heading",
+        props: { level: 2, textAlignment: "right" },
+        content: "Right",
+      }),
+    ).toBe('<h2 style="text-align: right">Right</h2>');
+    expect(
+      bulletListItem.serialize!.toHTML!({
+        id: "li",
+        type: "bulletListItem",
+        props: { indent: 0, textAlignment: "end" },
+        content: "Item",
+      }),
+    ).toBe('<li style="text-align: end">Item</li>');
+  });
+
   it("divider.serialize.toMarkdown returns ---", () => {
     const block = { id: "1", type: "divider" as const, props: {}, content: "" };
     expect(divider.serialize!.toMarkdown!(block)).toBe("---");

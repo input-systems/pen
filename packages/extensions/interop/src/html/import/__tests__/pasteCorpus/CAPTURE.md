@@ -25,7 +25,9 @@ and bold / italic / strike (skip a structure the application cannot emit).
 
 1. Build a short document in the source that exercises the structures above.
 2. Select all and copy.
-3. From this source directory, overwrite the pair (macOS):
+3. Capture the `text/html` and `text/plain` flavors exactly as the paste target receives them. Some native applications, including Apple Notes, put RTF rather than HTML on the macOS pasteboard; for those sources, read `event.clipboardData.getData("text/html")` and `getData("text/plain")` from a browser paste event so the fixture includes the browser's RTF-to-HTML conversion. Do not paste through a chat input or another editor first because it may normalize the payload.
+
+   For sources that place HTML directly on the macOS pasteboard, overwrite the pair from this source directory:
 
    ```bash
    pbpaste -Prefer public.html > clipboard.html

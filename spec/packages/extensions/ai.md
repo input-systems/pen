@@ -79,7 +79,7 @@ Durable document edits always go through `edit_document`. Streaming generation l
 - Chat rewrites that target a title, paragraph, or whole document are resolved into synthetic but explicit range targets rather than open-ended document narration.
 - The preferred rewrite path is `rewrite-selection` with a target kind of either `selection` or `scoped-range`.
 - `scoped-range` is used for synthetic scopes such as `heading`, `paragraph`, `block`, or `document` where the runtime still wants selection-like provenance and diff behavior.
-- A live selection that covers whole paragraphs — one or several — resolves to a `scoped-range` of scope `block` in markdown. A `selection` target commits as a text splice into its first block, which would fold every paragraph the model returns into that block; the block scope requests, previews, and commits the reply as a block-range replacement instead. A selection ending at offset 0 of a block stops at that paragraph boundary and leaves the block out of the scope. Partial selections stay `selection` targets because they have text around them to keep, and so does any selection reaching a block that is not a paragraph: the scope commits by parsing the reply as markdown, and that parse would return a heading or list item rewritten to prose as a paragraph.
+- A live selection that covers whole Markdown-roundtrippable blocks — one or several — resolves to a `scoped-range` of scope `block` in markdown. This includes paragraphs, headings, lists, blockquotes, code blocks, tables, dividers, and images. A `selection` target commits as a text splice into its first block, which would flatten formatting and every block the model returns into that block; the block scope requests, previews, and commits the reply as a block-range replacement instead. A selection ending at offset 0 of a block stops at that boundary and leaves the block out of the scope. Partial selections stay `selection` targets because they have text around them to keep, as do selections containing block types outside the round-trippable subset; their working set and egress inventory contain only the selected text, not the surrounding blocks.
 - A single-block streaming rewrite holds its write head as one `assoc: 1` `editor.anchors` mint at the selection end, repaired on content-move commits and resolved before each delta splices (ST2), with an `assoc: -1` mint at the selection start for the range the first delta marks deleted. The delete gets that one delta: once text sits at the head, deleting from the start again would swallow the arriving text too.
 - An inline turn re-anchors on what the reply landed as: a `selection` target on the text it spliced, a `scoped-range` target on the blocks it staged. The turn re-anchors when it enters review; accepting re-anchors its session and contextual prompt with it. A block-range replacement deletes its own target blocks, so an anchor left there dies with them and leaves the session pointing at a block that is gone — a host positioning its prompt UI from that anchor drops it wherever its own fallback points.
 - A remote edit does not cancel a run. Cancellation on an external commit is for the local user taking the block back, and every update arriving through `applyUpdate` normalizes to `origin: "collaborator"` (COL1), so peers are excluded along with `ai`, `system`, and `extension`.
@@ -150,7 +150,17 @@ Proactive Grammarly-style writing suggestions. Headless: detects eligible local 
 - Suggestions remain advisory until explicitly applied. Scope building stays bounded; this is not a document-wide unrestricted rewrite surface.
 - `@input/pen-react` exposes UI through `Pen.AISuggestions.Root`, `Pen.AISuggestions.Popover`, and related hooks.
 
-Lifecycle: user-originated commits mark blocks dirty; the scheduler waits for debounce, stability, minimum changed characters, and per-block cooldown; scope building extracts a sentence-level or bounded local scope; the host analyzer returns structured candidates; candidates are filtered by confidence, dismissal memory, cache reuse, and overlap; materialized suggestions become inline decorations plus grouped popover state; apply and dismiss go through the controller.
+Lifecycle: user-originated commits mark blocks dirty; the scheduler waits for debounce, stability, minimum changed characters, and per-block cooldown; scope building extracts a sentence-level or bounded local scope (`scopeUnit: "block"` analyzes the whole dirty block, clamped to `maxScopeChars`; `scopeUnit: "document"` joins every eligible block with text into one scope, whole blocks only up to `maxScopeChars`, and records a segment per block); the host analyzer returns structured candidates; candidates are filtered by confidence, dismissal memory, cache reuse, and overlap; materialized suggestions become inline decorations plus grouped popover state; apply and dismiss go through the controller.
+
+An analysis result replaces only the suggestions whose range overlaps the analyzed scope. Suggestions elsewhere in the same block survive until their anchored range dies, so a block accumulates suggestions sentence by sentence. A document scope replaces every suggestion in its segment blocks; a candidate whose match crosses a block boundary has no single block to anchor in and is dropped. A document-scope request also clears the remaining dirty blocks, so a second paragraph edited mid-request restarts one analysis instead of aborting the first paragraph's and losing it.
+
+A suggestion the new analysis repeats (same block, kind, original, and replacement) keeps its id and `createdAt`, so its underline, anchor, and active state survive the refresh instead of being re-minted; if its text moved, the anchor is re-minted at the new offsets. The active suggestion stays active when it survives and otherwise moves to the first new one.
+
+A document-scope response is anchored against the live document: the scope is rebuilt on arrival and, when its text hash differs from the one the request was built from, the rebuilt scope is used for matching. Candidates whose text has since changed fail to match and are dropped rather than landing at stale offsets. `documentGeneration` is not a text-change counter (it moves on structural rebuilds only) and is not used for this.
+
+Dismissal memory for document scopes is keyed on the constant `document` instead of the scope hash, so a dismissed fix stays dismissed across edits elsewhere in the body for `dismissMemoryMs`.
+
+`blockPolicy.isBlockAllowed(block)` is a host veto on top of the type allow/deny lists (e.g. a paragraph nested inside a quoted region). It applies to dirty-marking and to document-scope membership alike.
 
 ## Autocomplete (`@input/pen-ai/autocomplete`)
 
@@ -159,6 +169,7 @@ Low-latency inline ghost-text completion. The subpath owns request scheduling an
 - `autocompleteExtension()`, `getAutocompleteController()`, `createAutocompleteProvider()`, `builtinAutocompleteProviders()`, `AUTOCOMPLETE_SYSTEM_PROMPT`
 - Completion requests stream through core `streamThroughEgress()` / `pen.aiEgress`
 - The continuation target is one `editor.anchors` mint at request time, repaired on content-move commits, and resolved when the completion arrives
+- Prose completions split on newlines into appended paragraph blocks. `paragraphGap` (`"separator"`, the default, or `"empty-block"`) decides whether a blank line between two paragraphs is dropped or lands as an empty block; a margin-less document (email) needs the block. A single leading newline is dropped as a model artifact except in prose right after a closed line (sign-off phrase, finished sentence, no suffix), where it starts a new block — otherwise `Best,` + `\nKrijn` would splice to `Best,Krijn`.
 
 ## Skills (`@input/pen-ai/skills`)
 
@@ -201,7 +212,7 @@ Streaming protocol and processing pipeline. Optional runtime that turns a `PenSt
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.2.3`; intended usage is current-state but still evolving. This is one of the most ambitious packages in the workspace and should be treated as a large extension surface rather than a minimal helper package.
+Workspace package at version `0.2.14`; intended usage is current-state but still evolving. This is one of the most ambitious packages in the workspace and should be treated as a large extension surface rather than a minimal helper package.
 
 ## Non-goals
 

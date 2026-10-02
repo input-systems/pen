@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { isCollapsed, resolveEditorMessage } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
@@ -7,8 +7,11 @@ import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { composeRefs } from "../../utils/composeRefs";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import { getAttachedFieldEditor } from "../../utils/fieldEditor";
+import { resolveSelectionToolbarRect } from "../../hooks/useSelectionToolbar";
+import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
 
 type Side = "top" | "bottom";
+type HorizontalAlign = "left" | "center" | "right";
 
 /**
  * Floating formatting surface for the current text selection.
@@ -24,6 +27,11 @@ export interface SelectionToolbarContentProps extends AsChildProps {
 	 * @default "top"
 	 */
 	side?: Side;
+	/**
+	 * Horizontal alignment relative to the selection.
+	 * @default "center"
+	 */
+	horizontalAlign?: HorizontalAlign;
 	/** Gap in px between the selection and the toolbar. @default 8 */
 	sideOffset?: number;
 	ref?: React.Ref<HTMLElement>;
@@ -32,7 +40,13 @@ export interface SelectionToolbarContentProps extends AsChildProps {
 const TOOLBAR_VIEWPORT_PADDING = 8;
 
 export function SelectionToolbarContent(props: SelectionToolbarContentProps) {
-	const { side: preferredSide = "top", sideOffset = 8, ref, ...rest } = props;
+	const {
+		side: preferredSide = "top",
+		horizontalAlign = "center",
+		sideOffset = 8,
+		ref,
+		...rest
+	} = props;
 	const { editor, selectionToolbar } = useSelectionToolbarContext();
 	const contentRef = useRef<HTMLElement | null>(null);
 	const [dismissed, setDismissed] = useState(false);
@@ -45,17 +59,19 @@ export function SelectionToolbarContent(props: SelectionToolbarContentProps) {
 	const { isOpen, selectionRect } = selectionToolbar;
 	const selectionKey = textSelectionKey(editor);
 
-	useEffect(() => {
+	useIsomorphicLayoutEffect(() => {
 		setDismissed(false);
 	}, [selectionKey]);
 
-	useEffect(() => {
+	useIsomorphicLayoutEffect(() => {
 		const el = contentRef.current;
 		if (!isOpen || !selectionRect || !el) {
 			setPosition(null);
 			return;
 		}
 
+		const liveSelectionRect =
+			resolveSelectionToolbarRect(editor) ?? selectionRect;
 		const elRect = el.getBoundingClientRect();
 		const viewportWidth = window.innerWidth;
 		const viewportHeight = window.innerHeight;
@@ -64,24 +80,33 @@ export function SelectionToolbarContent(props: SelectionToolbarContentProps) {
 		let top: number;
 
 		if (side === "top") {
-			top = selectionRect.top - sideOffset - elRect.height;
+			top = liveSelectionRect.top - sideOffset - elRect.height;
 			if (top < TOOLBAR_VIEWPORT_PADDING) {
 				side = "bottom";
-				top = selectionRect.bottom + sideOffset;
+				top = liveSelectionRect.bottom + sideOffset;
 			}
 		} else {
-			top = selectionRect.bottom + sideOffset;
+			top = liveSelectionRect.bottom + sideOffset;
 			if (
 				top + elRect.height >
 				viewportHeight - TOOLBAR_VIEWPORT_PADDING
 			) {
 				side = "top";
-				top = selectionRect.top - sideOffset - elRect.height;
+				top = liveSelectionRect.top - sideOffset - elRect.height;
 			}
 		}
 
-		let left =
-			selectionRect.left + selectionRect.width / 2 - elRect.width / 2;
+		let left: number;
+		if (horizontalAlign === "left") {
+			left = liveSelectionRect.left;
+		} else if (horizontalAlign === "right") {
+			left = liveSelectionRect.right - elRect.width;
+		} else {
+			left =
+				liveSelectionRect.left +
+				liveSelectionRect.width / 2 -
+				elRect.width / 2;
+		}
 
 		left = Math.max(
 			TOOLBAR_VIEWPORT_PADDING,
@@ -92,7 +117,14 @@ export function SelectionToolbarContent(props: SelectionToolbarContentProps) {
 		);
 
 		setPosition({ top, left, side });
-	}, [isOpen, selectionRect, preferredSide, sideOffset]);
+	}, [
+		editor,
+		isOpen,
+		selectionRect,
+		preferredSide,
+		horizontalAlign,
+		sideOffset,
+	]);
 
 	if (!isOpen || !selectionRect || dismissed) {
 		return null;

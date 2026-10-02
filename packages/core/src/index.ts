@@ -2,6 +2,7 @@ import {
 	filterOpsForDocumentProfile,
 	filterPendingBlocksForDocumentProfile,
 	createImportResult,
+	getBlockContentRole,
 	getBlockSelectionRoleFromSchema,
 	getBlockSelectionRoleFromType,
 	getFlowCapabilityFromSchema,
@@ -94,6 +95,7 @@ export {
 	createImportResult,
 	filterOpsForDocumentProfile,
 	filterPendingBlocksForDocumentProfile,
+	getBlockContentRole,
 	getBlockSelectionRoleFromSchema,
 	getBlockSelectionRoleFromType,
 	getFlowCapabilityFromSchema,
@@ -122,7 +124,7 @@ export type {
 } from "./editor/profilePolicy";
 
 // Importer utilities (used by the interop importers)
-export { blocksToOps } from "./importerUtils";
+export { blocksToOps, inlineContentToOps } from "./importerUtils";
 export type {
 	PendingBlock,
 	ImportOptions as ImporterOptions,

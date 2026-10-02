@@ -1,5 +1,108 @@
 # @input/pen-dom
 
+## 0.2.14
+
+### Patch Changes
+
+- @input/pen-core@0.2.14
+  - @input/pen-shortcuts@0.2.14
+  - @input/pen-types@0.2.14
+
+## 0.2.13
+
+### Patch Changes
+
+- bbf8fe9: Keep the caret inside code blocks: ArrowUp/ArrowDown now stop on blank lines instead of skipping past them, and a click in a code block places the caret where it lands instead of at the top.
+- 9032a68: Place pasted content (parsed HTML and Markdown, full blocks from the Pen clipboard, and multi-line plain text) at the caret instead of after the caret's block: the first pasted block joins the text before the caret, the last joins the text after it, and blocks in between split the line. A paste whose caret block no longer exists is dropped with a `paste-target-missing` diagnostic.
+- Updated dependencies [8e2654b]
+  - @input/pen-core@0.2.13
+  - @input/pen-shortcuts@0.2.13
+  - @input/pen-types@0.2.13
+
+## 0.2.12
+
+### Patch Changes
+
+- 859910e: Preserve HTML block structure, blank-line spacing, inline marks, lists, and text alignment when pasting formatted HTML.
+- @input/pen-shortcuts@0.2.12
+  - @input/pen-core@0.2.12
+  - @input/pen-types@0.2.12
+
+## 0.2.11
+
+### Patch Changes
+
+- 22f354e: Make editor roots a single tab stop that transfers keyboard focus into the active text or selection surface, and keep nested toggle controls at an accessible target size.
+- @input/pen-core@0.2.11
+  - @input/pen-shortcuts@0.2.11
+  - @input/pen-types@0.2.11
+
+## 0.2.10
+
+### Patch Changes
+
+- @input/pen-core@0.2.10
+  - @input/pen-shortcuts@0.2.10
+  - @input/pen-types@0.2.10
+
+## 0.2.9
+
+### Patch Changes
+
+- @input/pen-core@0.2.9
+  - @input/pen-shortcuts@0.2.9
+  - @input/pen-types@0.2.9
+
+## 0.2.8
+
+### Patch Changes
+
+- @input/pen-core@0.2.8
+  - @input/pen-shortcuts@0.2.8
+  - @input/pen-types@0.2.8
+
+## 0.2.7
+
+### Patch Changes
+
+- @input/pen-core@0.2.7
+  - @input/pen-shortcuts@0.2.7
+  - @input/pen-types@0.2.7
+
+## 0.2.6
+
+### Patch Changes
+
+- ba82d14: Fix list input rules eating text when a marker is inserted before existing content on a line. Typing `* ` at the start of a line that already has text (for example `hello`) now converts to a bullet list while preserving the rest of the line.
+- a2e17a8: Paste a plain-text URL as an inline link. A collapsed caret inserts the URL as linked text; a text selection keeps the selected text and wraps it in a `link` mark. URLs rejected by `urlPolicy` (for example `javascript:`) fall through to ordinary paste.
+- dcd1573: Republish the 0.2.4 train. Those tarballs shipped leftover 0.2.3 `dist/` (no rebuild before `pnpm release`), so `contentRole`, `getBlockContentRole`, and `getDocumentPlaceholderTargetBlockId` were in source and the changelog but not in the packages.
+- Updated dependencies [dcd1573]
+  - @input/pen-core@0.2.6
+  - @input/pen-shortcuts@0.2.6
+  - @input/pen-types@0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- f792d89: Preserve backward keyboard selection direction across repeated word-selection commands and allow word selections to continue extending across multiple blocks.
+- @input/pen-core@0.2.5
+  - @input/pen-shortcuts@0.2.5
+  - @input/pen-types@0.2.5
+
+## 0.2.4
+
+### Patch Changes
+
+- 4ea7542: Count content blocks, not root blocks, when deciding document placeholder eligibility (RI8). A block schema can now declare `authoring.contentRole: "chrome"` for furniture the host puts in the document — an email signature, a quoted message — and such a block no longer suppresses the empty-document placeholder or pulls a click below the blocks into itself. `getBlockContentRole` (`@input/pen-core`) is the canonical reader; `contentRole` defaults to `"content"`, so existing hosts are unaffected.
+
+  Eligibility names its block. `getDocumentPlaceholderTargetBlockId` (`@input/pen-dom`) returns the one block the hint paints on and the click-below caret lands in, or null when there is no target. The React and Vue bindings paint on the target instead of on the first root block, so a document that opens with chrome now shows the hint on its body. `InlinePlaceholderVisibilityOptions` replaces its `isFirstBlock` and `isDocumentEmpty` fields with a single `isDocumentPlaceholderTarget`.
+
+- Updated dependencies [4ea7542]
+  - @input/pen-types@0.2.4
+  - @input/pen-core@0.2.4
+  - @input/pen-shortcuts@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes

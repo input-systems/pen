@@ -59,6 +59,7 @@
 - filterPendingBlocksForDocumentProfile
 - foldAndNormalize
 - getApplyOptionsGroupId
+- getBlockContentRole
 - getBlockSelectionRoleFromSchema
 - getBlockSelectionRoleFromType
 - getCellCaretFocus
@@ -76,6 +77,7 @@
 - hasFieldEditorSurface
 - hasIndexedCellSelectionMetadata
 - hookPriorityToPrecedence
+- inlineContentToOps
 - inlineLogicalText
 - interpolateMessage
 - isBlockSelected

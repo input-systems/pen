@@ -1,5 +1,6 @@
 import type {
 	BlockAuthoring,
+	BlockContentRole,
 	BlockSelectionRole,
 	DocumentOp,
 	DocumentProfile,
@@ -75,12 +76,33 @@ export function getBlockSelectionRoleFromSchema(
 	return "delegated";
 }
 
+/**
+ * Reads `authoring.contentRole` from a resolved block schema.
+ *
+ * Unset schemas default to `"content"` so only an explicit `"chrome"`
+ * declaration is furniture. Missing schemas return `null`.
+ *
+ * @param schema - Resolved block schema, or `null`/`undefined` when the type
+ *   is unregistered.
+ * @returns The content role, or `null` when `schema` is missing.
+ * @throws Never.
+ */
+export function getBlockContentRole(
+	schema: BlockSchemaCapabilityLike,
+): BlockContentRole | null {
+	if (!schema) {
+		return null;
+	}
+
+	if (schema.authoring?.contentRole) {
+		return schema.authoring.contentRole;
+	}
+
+	return "content";
+}
+
 type LegacyBlockType =
-	| "codeBlock"
-	| "divider"
-	| "image"
-	| "subdocument"
-	| "table";
+	"codeBlock" | "divider" | "image" | "subdocument" | "table";
 
 function isLegacyBlockType(value: string): value is LegacyBlockType {
 	return (

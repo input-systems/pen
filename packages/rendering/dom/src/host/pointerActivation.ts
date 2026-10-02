@@ -177,7 +177,7 @@ function resolveHostChromeFallbackBlock(
 	return null;
 }
 
-function collectHostTextBlocks(
+export function collectHostTextBlocks(
 	editor: Editor,
 	root: HTMLElement,
 	blocksHost: HTMLElement,

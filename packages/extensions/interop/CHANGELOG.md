@@ -1,5 +1,111 @@
 # @input/pen-interop
 
+## 0.2.14
+
+### Patch Changes
+
+- b416b6d: Import the inline content of a block container such as `<div>` as one paragraph, keeping its marks and `<br>` line breaks, instead of one paragraph per child with the breaks dropped. A container whose only content is a `<br>` (the Gmail and Apple Mail blank line, `<div><br></div>`) now imports as an empty paragraph, and source formatting whitespace between a container's inline children no longer becomes a line break. A `<br>` that ends any block's content, `<p>` included, no longer imports as a trailing newline, matching how browsers render it.
+- @input/pen-core@0.2.14
+  - @input/pen-ingest@0.2.14
+  - @input/pen-markdown@0.2.14
+  - @input/pen-types@0.2.14
+
+## 0.2.13
+
+### Patch Changes
+
+- Updated dependencies [8e2654b]
+  - @input/pen-core@0.2.13
+  - @input/pen-ingest@0.2.13
+  - @input/pen-markdown@0.2.13
+  - @input/pen-types@0.2.13
+
+## 0.2.12
+
+### Patch Changes
+
+- 859910e: Preserve HTML block structure, blank-line spacing, inline marks, lists, and text alignment when pasting formatted HTML.
+- Updated dependencies [eeb5eb2]
+  - @input/pen-ingest@0.2.12
+  - @input/pen-core@0.2.12
+  - @input/pen-markdown@0.2.12
+  - @input/pen-types@0.2.12
+
+## 0.2.11
+
+### Patch Changes
+
+- @input/pen-core@0.2.11
+  - @input/pen-ingest@0.2.11
+  - @input/pen-markdown@0.2.11
+  - @input/pen-types@0.2.11
+
+## 0.2.10
+
+### Patch Changes
+
+- @input/pen-core@0.2.10
+  - @input/pen-ingest@0.2.10
+  - @input/pen-markdown@0.2.10
+  - @input/pen-types@0.2.10
+
+## 0.2.9
+
+### Patch Changes
+
+- @input/pen-core@0.2.9
+  - @input/pen-ingest@0.2.9
+  - @input/pen-markdown@0.2.9
+  - @input/pen-types@0.2.9
+
+## 0.2.8
+
+### Patch Changes
+
+- @input/pen-core@0.2.8
+  - @input/pen-ingest@0.2.8
+  - @input/pen-markdown@0.2.8
+  - @input/pen-types@0.2.8
+
+## 0.2.7
+
+### Patch Changes
+
+- @input/pen-core@0.2.7
+  - @input/pen-ingest@0.2.7
+  - @input/pen-markdown@0.2.7
+  - @input/pen-types@0.2.7
+
+## 0.2.6
+
+### Patch Changes
+
+- dcd1573: Republish the 0.2.4 train. Those tarballs shipped leftover 0.2.3 `dist/` (no rebuild before `pnpm release`), so `contentRole`, `getBlockContentRole`, and `getDocumentPlaceholderTargetBlockId` were in source and the changelog but not in the packages.
+- Updated dependencies [dcd1573]
+  - @input/pen-core@0.2.6
+  - @input/pen-ingest@0.2.6
+  - @input/pen-markdown@0.2.6
+  - @input/pen-types@0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- @input/pen-core@0.2.5
+  - @input/pen-ingest@0.2.5
+  - @input/pen-markdown@0.2.5
+  - @input/pen-types@0.2.5
+
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [4ea7542]
+  - @input/pen-types@0.2.4
+  - @input/pen-core@0.2.4
+  - @input/pen-ingest@0.2.4
+  - @input/pen-markdown@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes

@@ -46,7 +46,6 @@ export interface AttachContentGesturesOptions<
 	regionSelectionStore: RegionSelectionStore;
 	state: ContentGestureState<InteractionModel>;
 	blockSelectionEnabled: boolean;
-	isDocumentPlaceholderVisible: boolean;
 	runSync?: ((run: () => void) => void) | undefined;
 }
 
@@ -61,7 +60,6 @@ export function attachContentGestures<
 		regionSelectionStore,
 		state,
 		blockSelectionEnabled,
-		isDocumentPlaceholderVisible,
 	} = options;
 	const runSync = options.runSync ?? ((run: () => void) => run());
 	const {
@@ -91,7 +89,6 @@ export function attachContentGestures<
 		interactionModelRef,
 		clearPointerSelectionState,
 		blockSelectionEnabled,
-		isDocumentPlaceholderVisible,
 		runSync,
 	};
 

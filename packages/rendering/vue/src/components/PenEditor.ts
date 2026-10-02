@@ -8,6 +8,7 @@ import {
 	adoptEditorChrome,
 	bindEditorDocumentKeyDown,
 	FieldEditorImpl,
+	handleFieldEditorRootFocus,
 	handleFieldEditorPointerActivate,
 	registerVerticalCaretMeasure,
 	resolveSelectAllBehavior,
@@ -164,9 +165,16 @@ export const PenEditor = defineComponent({
 					nextElement,
 				);
 
-				const handleFocusIn = () => {
+				const handleFocusIn = (event: FocusEvent) => {
 					focused.value = true;
 					fieldEditor.setFocused(true);
+					handleFieldEditorRootFocus({
+						event,
+						editor: props.editor,
+						fieldEditor,
+						root: nextElement,
+						readonly: props.readonly,
+					});
 				};
 
 				const handleFocusOut = () => {
@@ -283,7 +291,7 @@ export const PenEditor = defineComponent({
 						[DATA_ATTRS.readonly]: props.readonly,
 						[DATA_ATTRS.empty]: isDocumentEmpty.value,
 					}),
-					tabIndex: -1,
+					tabIndex: focused.value ? -1 : 0,
 					role: "textbox",
 					"aria-multiline": "true",
 					...resolveEditorA11yLabel(props.editor),

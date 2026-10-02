@@ -3,6 +3,10 @@ import {
 	prop,
 } from "@input/pen-core";
 import { directionProp } from "../directionProp";
+import {
+  textAlignmentProp,
+  textAlignmentStyle,
+} from "../textAlignmentProp";
 
 export const checkListItem = defineBlock("checkListItem", {
   props: {
@@ -13,6 +17,7 @@ export const checkListItem = defineBlock("checkListItem", {
       .default(false)
       .describe("Whether the item is checked"),
     direction: directionProp,
+    textAlignment: textAlignmentProp,
   },
   content: "inline",
   fieldEditor: "richtext",
@@ -31,7 +36,8 @@ export const checkListItem = defineBlock("checkListItem", {
     },
     toHTML: (block) => {
       const checked = block.props.checked ? " checked" : "";
-      return `<li><input type="checkbox"${checked} disabled />${block.content ?? ""}</li>`;
+      // SEC5: alignment and checked are closed values; content is serialized inline HTML.
+      return `<li${textAlignmentStyle(block.props.textAlignment)}><input type="checkbox"${checked} disabled />${block.content ?? ""}</li>`;
     },
   },
 });

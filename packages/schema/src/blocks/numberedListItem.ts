@@ -3,6 +3,10 @@ import {
 	prop,
 } from "@input/pen-core";
 import { directionProp } from "../directionProp";
+import {
+  textAlignmentProp,
+  textAlignmentStyle,
+} from "../textAlignmentProp";
 
 export const numberedListItem = defineBlock("numberedListItem", {
   props: {
@@ -13,6 +17,7 @@ export const numberedListItem = defineBlock("numberedListItem", {
       .optional()
       .describe("Restart numbering from this value"),
     direction: directionProp,
+    textAlignment: textAlignmentProp,
   },
   content: "inline",
   fieldEditor: "richtext",
@@ -29,6 +34,9 @@ export const numberedListItem = defineBlock("numberedListItem", {
       const start = (block.props.start as number) ?? 1;
       return `${indent}${start}. ${block.content ?? ""}`;
     },
-    toHTML: (block) => `<li>${block.content ?? ""}</li>`,
+    toHTML: (block) => {
+      // SEC5: alignment is serialized from a closed enum; content is serialized inline HTML.
+      return `<li${textAlignmentStyle(block.props.textAlignment)}>${block.content ?? ""}</li>`;
+    },
   },
 });

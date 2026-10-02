@@ -94,9 +94,12 @@ export type FlowBlockCapability =
 
 export type BlockSelectionRole = "editable-inline" | "structural" | "delegated";
 
+export type BlockContentRole = "content" | "chrome";
+
 export interface BlockAuthoring {
   flowCapability?: FlowBlockCapability;
   selectionRole?: BlockSelectionRole;
+  contentRole?: BlockContentRole;
 }
 
 export interface BlockSchema<

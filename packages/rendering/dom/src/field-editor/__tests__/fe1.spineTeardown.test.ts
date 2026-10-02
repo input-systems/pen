@@ -227,11 +227,13 @@ describe("FE1 spine teardown is total", () => {
 		const ledger = installLedger();
 		try {
 			backend.activate(element, getYText(editor, blockId));
+			expect(element.getAttribute("tabindex")).toBe("-1");
 			exercise(element);
 			backend.deactivate();
 
 			expect(ledger.outstanding()).toEqual([]);
 			expect(ledger.liveObservers()).toBe(0);
+			expect(element.hasAttribute("tabindex")).toBe(false);
 		} finally {
 			ledger.restore();
 		}
@@ -247,6 +249,7 @@ describe("FE1 spine teardown is total", () => {
 		const ledger = installLedger();
 		try {
 			backend.activate(element, getYText(editor, blockId));
+			expect(element.getAttribute("tabindex")).toBe("-1");
 			const editContext = (
 				element as HTMLElement & { editContext: FakeEditContext | null }
 			).editContext;
@@ -267,6 +270,7 @@ describe("FE1 spine teardown is total", () => {
 			expect(
 				(element as HTMLElement & { editContext: unknown }).editContext,
 			).toBeNull();
+			expect(element.hasAttribute("tabindex")).toBe(false);
 		} finally {
 			ledger.restore();
 		}

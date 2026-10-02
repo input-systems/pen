@@ -1,4 +1,8 @@
-import { selectionToRange } from "@input/pen-core";
+import {
+	getBlockContentRole,
+	selectionToRange,
+	usesInlineTextSelection,
+} from "@input/pen-core";
 import {
 	type Editor,
 	type ModelOperationScopedRangeTarget,
@@ -54,36 +58,59 @@ function createResolvedScopedEditTarget(
 	};
 }
 
+// This is the AI rewrite policy, not the full Pen Markdown fidelity table.
+// Only blocks whose complete structure is safe to replace from model-authored
+// Markdown belong here; lossy container formats such as callout and toggle do not.
+const AI_MARKDOWN_REWRITE_BLOCK_TYPES = new Set([
+	"blockquote",
+	"bulletListItem",
+	"checkListItem",
+	"codeBlock",
+	"divider",
+	"heading",
+	"image",
+	"numberedListItem",
+	"paragraph",
+	"table",
+]);
+
 /**
- * The whole-paragraph span a live selection covers, or null when it stops
- * inside a block or reaches a block a prose reply cannot land as. A drag that
- * stops at offset 0 of the next block ended at a paragraph boundary, not inside
- * that block, so it is dropped before the check.
- *
- * The scope commits by parsing the reply as markdown, and that parse decides
- * the block types: a heading or list item rewritten to prose would come back a
- * paragraph. Only paragraphs, which a prose reply reproduces, qualify.
+ * The whole-block span a live selection covers, or null when it stops inside a
+ * block or reaches a block outside Pen's round-trippable markdown subset. A
+ * drag that stops at offset 0 of the next block ended at a block boundary, not
+ * inside that block, so it is dropped before the check.
  */
-function resolveWholeParagraphSelection(
+function resolveWholeMarkdownBlockSelection(
 	editor: Editor,
 	selection: TextSelection,
 ): TextSelection | null {
 	const range = selectionToRange(editor.internals.doc, selection);
-	const blockIds =
+	const selectedBlockIds =
 		range.end.offset === 0 && range.blockRange.length > 1
 			? range.blockRange.slice(0, -1)
 			: [...range.blockRange];
+	const blockIds = trimChromeBoundaries(editor, selectedBlockIds);
 	const firstBlockId = blockIds[0];
 	const lastBlockId = blockIds[blockIds.length - 1];
-	if (range.start.offset !== 0 || !firstBlockId || !lastBlockId) {
+	if (
+		!firstBlockId ||
+		!lastBlockId ||
+		(firstBlockId === range.start.blockId && range.start.offset !== 0)
+	) {
 		return null;
 	}
-	const paragraphs = blockIds.map((blockId) => editor.getBlock(blockId));
-	if (paragraphs.some((block) => block?.type !== "paragraph")) {
+	const blocks = blockIds.map((blockId) => editor.getBlock(blockId));
+	if (
+		blocks.some(
+			(block) =>
+				block == null ||
+				!AI_MARKDOWN_REWRITE_BLOCK_TYPES.has(block.type),
+		)
+	) {
 		return null;
 	}
-	const lastBlockLength =
-		paragraphs[paragraphs.length - 1]?.textContent().length ?? 0;
+	const lastBlock = blocks[blocks.length - 1];
+	const lastBlockLength = lastBlock ? selectionLength(editor, lastBlock) : 0;
 	if (
 		lastBlockId === range.end.blockId &&
 		range.end.offset !== lastBlockLength
@@ -98,26 +125,58 @@ function resolveWholeParagraphSelection(
 	});
 }
 
+function trimChromeBoundaries(
+	editor: Editor,
+	blockIds: readonly string[],
+): string[] {
+	let start = 0;
+	let end = blockIds.length;
+	while (start < end && isChromeBlock(editor, blockIds[start]!)) {
+		start += 1;
+	}
+	while (end > start && isChromeBlock(editor, blockIds[end - 1]!)) {
+		end -= 1;
+	}
+	return blockIds.slice(start, end);
+}
+
+function isChromeBlock(editor: Editor, blockId: string): boolean {
+	const block = editor.getBlock(blockId);
+	return (
+		block != null &&
+		getBlockContentRole(editor.schema.resolve(block.type)) === "chrome"
+	);
+}
+
+function selectionLength(
+	editor: Editor,
+	block: NonNullable<ReturnType<Editor["getBlock"]>>,
+): number {
+	return usesInlineTextSelection(editor.schema.resolve(block.type))
+		? block.length()
+		: 1;
+}
+
 /**
  * A live selection rewrites as a text splice into its first block — which folds
- * every paragraph the model returns into that one block. A selection covering
- * whole paragraphs resolves to a block scope instead, so the reply streams as
- * markdown and lands as a block-range replacement. A partial selection has text
- * around it to keep and stays on the splice path.
+ * every block the model returns into that one block. A selection covering whole
+ * markdown blocks resolves to a block scope instead, so formatting and block
+ * structure can round-trip. A partial selection has text around it to keep and
+ * stays on the splice path.
  */
 function createResolvedLiveSelectionEditTarget(
 	editor: Editor,
 	selection: TextSelection,
 	defaultBlockFormat: AIContentFormat,
 ): ResolvedEditTarget {
-	const wholeParagraphSelection = resolveWholeParagraphSelection(
+	const wholeBlockSelection = resolveWholeMarkdownBlockSelection(
 		editor,
 		selection,
 	);
-	if (wholeParagraphSelection) {
+	if (wholeBlockSelection) {
 		return createResolvedScopedEditTarget(
 			editor,
-			wholeParagraphSelection,
+			wholeBlockSelection,
 			"block",
 			defaultBlockFormat,
 		);

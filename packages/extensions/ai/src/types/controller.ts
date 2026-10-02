@@ -7,6 +7,7 @@ import type {
 	ModelMessage,
 	ModelRequestedOperation,
 	SelectionState,
+	TextSelection,
 	ToolRuntime,
 } from "@input/pen-types";
 import type { AIToolBudgetLimits, AIToolConfirmFn, AIToolTurn } from "../tools";
@@ -45,8 +46,7 @@ export interface PersistentBlockSuggestion extends PersistentSuggestionBase {
 }
 
 export type PersistentSuggestion =
-	| PersistentTextSuggestion
-	| PersistentBlockSuggestion;
+	PersistentTextSuggestion | PersistentBlockSuggestion;
 
 export interface BlockSuggestionMeta {
 	id: string;
@@ -307,6 +307,21 @@ export interface AIWorkingSetEnvelope {
 	selectionSignature: string | null;
 }
 
+export type AISelectionWorkingSetScope = "partial" | "whole-blocks";
+
+export type AISelectionWorkingSetContext =
+	| {
+			selectionScope: "partial";
+			selection: TextSelection;
+			selectedText: string;
+	  }
+	| {
+			selectionScope: "whole-blocks";
+			selection: TextSelection;
+			selectedText: string;
+			markdown: string;
+	  };
+
 export interface AIWorkingSetRetrievedSpan {
 	id: string;
 	blockIds: string[];
@@ -350,9 +365,7 @@ export interface CommitDebugState {
 	attempted: boolean;
 	succeeded: boolean;
 	executionPath?:
-		| "selection-replacement"
-		| "scoped-replacement"
-		| "plain-markdown";
+		"selection-replacement" | "scoped-replacement" | "plain-markdown";
 	contextChars?: number;
 	diffChars?: number;
 	fallbackReason?: string;
@@ -368,11 +381,7 @@ export interface CommitFallbackMetrics {
 }
 
 export type AIMutationReceiptStatus =
-	| "applied"
-	| "staged_suggestions"
-	| "noop"
-	| "invalid"
-	| "error";
+	"applied" | "staged_suggestions" | "noop" | "invalid" | "error";
 
 export interface AIMutationReceiptEvidence {
 	commitId: string;

@@ -1,5 +1,10 @@
 import { affectedBlockIdsFromSummary } from "@input/pen-core";
-import type { ChangeSummary, CommitEvent, Editor } from "@input/pen-types";
+import type {
+	BlockHandle,
+	ChangeSummary,
+	CommitEvent,
+	Editor,
+} from "@input/pen-types";
 import {
 	DEFAULT_ALLOWED_BLOCK_TYPES,
 	DEFAULT_COOLDOWN_MS,
@@ -57,7 +62,7 @@ export class AISuggestionScheduler {
 
 		for (const blockId of affectedBlockIdsFromSummary(event.summary)) {
 			const block = this.editor.getBlock(blockId);
-			if (!block || !this.isEligibleBlockType(block.type)) {
+			if (!block || !isEligibleSuggestionBlock(block, this.config)) {
 				continue;
 			}
 
@@ -133,6 +138,15 @@ export class AISuggestionScheduler {
 		return this.dirtyBlocks.size > 0;
 	}
 
+	// a document-scope request answers for every block, so the remaining dirty blocks are covered
+	clearDirtyBlocks(): void {
+		if (this.dirtyBlocks.size === 0) {
+			return;
+		}
+		this.dirtyBlocks.clear();
+		this.onScheduledChange?.(false);
+	}
+
 	private schedule(onDebouncedReady: () => void): void {
 		this.clearTimer();
 		this.onScheduledChange?.(true);
@@ -152,17 +166,23 @@ export class AISuggestionScheduler {
 		this.debounceTimer = null;
 		this.onScheduledChange?.(this.dirtyBlocks.size > 0);
 	}
+}
 
-	private isEligibleBlockType(blockType: string | null): boolean {
-		const allowed =
-			this.config.blockPolicy?.allowedBlockTypes ??
-			DEFAULT_ALLOWED_BLOCK_TYPES;
-		const denied = this.config.blockPolicy?.deniedBlockTypes ?? [];
-		if (!blockType || denied.includes(blockType)) {
-			return false;
-		}
-		return allowed.includes(blockType);
+export function isEligibleSuggestionBlock(
+	block: BlockHandle,
+	config: AISuggestionsExtensionConfig,
+): boolean {
+	const blockType = block.type;
+	const allowed =
+		config.blockPolicy?.allowedBlockTypes ?? DEFAULT_ALLOWED_BLOCK_TYPES;
+	const denied = config.blockPolicy?.deniedBlockTypes ?? [];
+	if (!blockType || denied.includes(blockType)) {
+		return false;
 	}
+	if (!allowed.includes(blockType)) {
+		return false;
+	}
+	return config.blockPolicy?.isBlockAllowed?.(block) ?? true;
 }
 
 function estimateChangedCharsForBlock(

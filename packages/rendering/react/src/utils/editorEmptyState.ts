@@ -1,5 +1,5 @@
 export {
 	computeDocumentEmpty,
-	computeDocumentPlaceholderVisible,
+	getDocumentPlaceholderTargetBlockId,
 	isInlineContentEmpty,
 } from "@input/pen-dom/utils/editorEmptyState";

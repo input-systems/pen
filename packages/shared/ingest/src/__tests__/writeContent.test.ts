@@ -30,7 +30,9 @@ describe("@input/pen-ingest", () => {
 			"heading",
 			"bulletListItem",
 		]);
-		expect(result.ops.filter((op) => op.type === "insert-block")).toHaveLength(2);
+		expect(
+			result.ops.filter((op) => op.type === "insert-block"),
+		).toHaveLength(2);
 	});
 
 	it("keeps flow-delegated table blocks during markdown normalization", () => {
@@ -48,6 +50,24 @@ describe("@input/pen-ingest", () => {
 			"table",
 			"heading",
 		]);
+	});
+
+	it("preserves consecutive empty paragraph blocks from markdown", () => {
+		expect(
+			parseMarkdownToBlocks("Before\n\nAfter", { schema }).map(
+				(block) => block.content,
+			),
+		).toEqual(["Before", "After"]);
+		expect(
+			parseMarkdownToBlocks("Before\n\n\n\nAfter", { schema }).map(
+				(block) => block.content,
+			),
+		).toEqual(["Before", "", "After"]);
+		expect(
+			parseMarkdownToBlocks("Before\n\n\n\n\n\nAfter", { schema }).map(
+				(block) => block.content,
+			),
+		).toEqual(["Before", "", "", "After"]);
 	});
 
 	it("lifts image-only paragraphs into image blocks", () => {
@@ -88,7 +108,9 @@ describe("@input/pen-ingest", () => {
 			}),
 		]);
 		expect(
-			result.ops.filter((op) => op.type === "splice-text").map((op) => op.insert),
+			result.ops
+				.filter((op) => op.type === "splice-text")
+				.map((op) => op.insert),
 		).toEqual(["Heading", "Item"]);
 	});
 
@@ -109,6 +131,24 @@ describe("@input/pen-ingest", () => {
 					{ type: "bold", start: 0, end: 4 },
 					{ type: "italic", start: 9, end: 15 },
 				],
+			}),
+		]);
+	});
+
+	it("keeps underline marks from Pen markdown", () => {
+		const editor = createEditorStub("structured");
+
+		const result = buildDocumentWriteOps(editor, {
+			format: "markdown",
+			content: "plain <u>underlined</u> plain",
+			position: "last",
+		});
+
+		expect(result.blocks).toEqual([
+			expect.objectContaining({
+				type: "paragraph",
+				content: "plain underlined plain",
+				marks: [{ type: "underline", start: 6, end: 16 }],
 			}),
 		]);
 	});
@@ -174,6 +214,28 @@ describe("@input/pen-ingest", () => {
 		);
 	});
 
+	it.each([
+		["bullet", "- First\n\n\n\n- Second", "bulletListItem"],
+		["numbered", "1. First\n\n\n\n2. Second", "numberedListItem"],
+		["check", "- [ ] First\n\n\n\n- [x] Second", "checkListItem"],
+	] as const)(
+		"preserves an empty paragraph between %s list items",
+		(_name, markdown, listItemType) => {
+			const blocks = parseMarkdownToBlocks(markdown, { schema });
+
+			expect(blocks.map((block) => block.type)).toEqual([
+				listItemType,
+				"paragraph",
+				listItemType,
+			]);
+			expect(blocks.map((block) => block.content)).toEqual([
+				"First",
+				"",
+				"Second",
+			]);
+		},
+	);
+
 	it("returns no ops when an unknown type is mixed with an allowed sibling", () => {
 		const editor = createEditorStub("structured");
 
@@ -181,7 +243,10 @@ describe("@input/pen-ingest", () => {
 			format: "blocks",
 			blocks: [
 				{ blockType: "paragraph", content: "Allowed sibling" },
-				{ blockType: "not-a-real-type", content: "Dropped by normalize" },
+				{
+					blockType: "not-a-real-type",
+					content: "Dropped by normalize",
+				},
 			],
 			position: "last",
 		});

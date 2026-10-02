@@ -27,6 +27,7 @@
 - handleEditorDocumentKeyDown
 - handleEscapeSelectionTransition
 - handleFieldEditorPointerActivate
+- handleFieldEditorRootFocus
 - handleTableCellSelectionKeyDown
 - intersectRegionSelectionRect
 - isFieldEditorTextEditingKey
@@ -35,6 +36,7 @@
 - mountEditor
 - registerInlineAtomInteractionRoot
 - registerVerticalCaretMeasure
+- resolveBlockTextAlignment
 - resolveEditorUrl
 - resolveRegionRect
 - resolveShiftClickInlineAtomSelection
@@ -93,10 +95,12 @@
 - BidiRun
 - BidiRunGeometry
 - BindEditorDocumentKeyDownOptions
+- BlockTextAlignment
 - ContentGestureRegionGesture
 - ContentGestureState
 - FieldEditorPointerActivateOptions
 - FieldEditorPointerTarget
+- FieldEditorRootFocusOptions
 - GeometryMeasureAdapter
 - GeometryReader
 - GeometryReaderHost
@@ -475,6 +479,7 @@ _no exports_
 
 - executeTransfer
 - resolveTransferKind
+- tryPasteClipboardUrlAsLink
 
 ### value
 
@@ -654,7 +659,7 @@ _no exports_
 ### function
 
 - computeDocumentEmpty
-- computeDocumentPlaceholderVisible
+- getDocumentPlaceholderTargetBlockId
 - isInlineContentEmpty
 
 ## ./utils/environment

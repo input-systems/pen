@@ -1,5 +1,133 @@
 # @input/pen-vue
 
+## 0.2.14
+
+### Patch Changes
+
+- Updated dependencies [b416b6d]
+  - @input/pen-interop@0.2.14
+  - @input/pen-core@0.2.14
+  - @input/pen-dom@0.2.14
+  - @input/pen-schema@0.2.14
+  - @input/pen-types@0.2.14
+
+## 0.2.13
+
+### Patch Changes
+
+- Updated dependencies [bbf8fe9]
+- Updated dependencies [8e2654b]
+- Updated dependencies [9032a68]
+  - @input/pen-dom@0.2.13
+  - @input/pen-core@0.2.13
+  - @input/pen-interop@0.2.13
+  - @input/pen-schema@0.2.13
+  - @input/pen-types@0.2.13
+
+## 0.2.12
+
+### Patch Changes
+
+- 859910e: Preserve HTML block structure, blank-line spacing, inline marks, lists, and text alignment when pasting formatted HTML.
+- Updated dependencies [859910e]
+  - @input/pen-interop@0.2.12
+  - @input/pen-schema@0.2.12
+  - @input/pen-dom@0.2.12
+  - @input/pen-core@0.2.12
+  - @input/pen-types@0.2.12
+
+## 0.2.11
+
+### Patch Changes
+
+- 22f354e: Make editor roots a single tab stop that transfers keyboard focus into the active text or selection surface, and keep nested toggle controls at an accessible target size.
+- Updated dependencies [22f354e]
+  - @input/pen-dom@0.2.11
+  - @input/pen-core@0.2.11
+  - @input/pen-interop@0.2.11
+  - @input/pen-schema@0.2.11
+  - @input/pen-types@0.2.11
+
+## 0.2.10
+
+### Patch Changes
+
+- @input/pen-core@0.2.10
+  - @input/pen-interop@0.2.10
+  - @input/pen-dom@0.2.10
+  - @input/pen-schema@0.2.10
+  - @input/pen-types@0.2.10
+
+## 0.2.9
+
+### Patch Changes
+
+- @input/pen-core@0.2.9
+  - @input/pen-interop@0.2.9
+  - @input/pen-dom@0.2.9
+  - @input/pen-schema@0.2.9
+  - @input/pen-types@0.2.9
+
+## 0.2.8
+
+### Patch Changes
+
+- @input/pen-core@0.2.8
+  - @input/pen-interop@0.2.8
+  - @input/pen-dom@0.2.8
+  - @input/pen-schema@0.2.8
+  - @input/pen-types@0.2.8
+
+## 0.2.7
+
+### Patch Changes
+
+- @input/pen-core@0.2.7
+  - @input/pen-interop@0.2.7
+  - @input/pen-dom@0.2.7
+  - @input/pen-schema@0.2.7
+  - @input/pen-types@0.2.7
+
+## 0.2.6
+
+### Patch Changes
+
+- dcd1573: Republish the 0.2.4 train. Those tarballs shipped leftover 0.2.3 `dist/` (no rebuild before `pnpm release`), so `contentRole`, `getBlockContentRole`, and `getDocumentPlaceholderTargetBlockId` were in source and the changelog but not in the packages.
+- Updated dependencies [ba82d14]
+- Updated dependencies [a2e17a8]
+- Updated dependencies [dcd1573]
+  - @input/pen-dom@0.2.6
+  - @input/pen-core@0.2.6
+  - @input/pen-interop@0.2.6
+  - @input/pen-schema@0.2.6
+  - @input/pen-types@0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- Updated dependencies [f792d89]
+  - @input/pen-dom@0.2.5
+  - @input/pen-core@0.2.5
+  - @input/pen-interop@0.2.5
+  - @input/pen-schema@0.2.5
+  - @input/pen-types@0.2.5
+
+## 0.2.4
+
+### Patch Changes
+
+- 4ea7542: Count content blocks, not root blocks, when deciding document placeholder eligibility (RI8). A block schema can now declare `authoring.contentRole: "chrome"` for furniture the host puts in the document — an email signature, a quoted message — and such a block no longer suppresses the empty-document placeholder or pulls a click below the blocks into itself. `getBlockContentRole` (`@input/pen-core`) is the canonical reader; `contentRole` defaults to `"content"`, so existing hosts are unaffected.
+
+  Eligibility names its block. `getDocumentPlaceholderTargetBlockId` (`@input/pen-dom`) returns the one block the hint paints on and the click-below caret lands in, or null when there is no target. The React and Vue bindings paint on the target instead of on the first root block, so a document that opens with chrome now shows the hint on its body. `InlinePlaceholderVisibilityOptions` replaces its `isFirstBlock` and `isDocumentEmpty` fields with a single `isDocumentPlaceholderTarget`.
+
+- Updated dependencies [4ea7542]
+  - @input/pen-types@0.2.4
+  - @input/pen-core@0.2.4
+  - @input/pen-dom@0.2.4
+  - @input/pen-interop@0.2.4
+  - @input/pen-schema@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes

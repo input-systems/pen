@@ -28,6 +28,7 @@ export type {
 	AISuggestionGroup,
 	AISuggestionKind,
 	AISuggestionScope,
+	AISuggestionScopeSegment,
 	AISuggestionsAnalyzer,
 	AISuggestionsAnalyzerResult,
 	AISuggestionsBlockPolicy,

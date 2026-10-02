@@ -67,6 +67,7 @@ describe("@input/pen-react editor root a11y", () => {
 		expect(host.getAttribute("role")).toBe("textbox");
 		expect(host.getAttribute("aria-multiline")).toBe("true");
 		expect(host.getAttribute("aria-label")).toBe("Editor");
+		expect(host.tabIndex).toBe(0);
 		expect(host.hasAttribute("aria-readonly")).toBe(false);
 		expect(host.hasAttribute("data-readonly")).toBe(false);
 

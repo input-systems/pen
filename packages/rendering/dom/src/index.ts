@@ -9,6 +9,10 @@ export {
 	type FieldEditorPointerActivateOptions,
 	type FieldEditorPointerTarget,
 } from "./host/pointerActivation";
+export {
+	handleFieldEditorRootFocus,
+	type FieldEditorRootFocusOptions,
+} from "./host/rootFocus";
 export type {
 	FieldEditorFocusReason,
 	FieldEditorFocusRequest,
@@ -84,6 +88,10 @@ export {
 	type EditorSelectAllBehavior,
 } from "./constants/selectAll";
 export type { PasteImporters } from "./types/paste";
+export {
+	resolveBlockTextAlignment,
+	type BlockTextAlignment,
+} from "./utils/blockTextAlignment";
 export {
 	urlPolicy,
 	type UrlContext,

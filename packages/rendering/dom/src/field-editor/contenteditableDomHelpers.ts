@@ -6,6 +6,26 @@ import { findLogicalDOMPoint } from "./inlineAtomDom";
 import { domPointToOffset, getSelectionOffsets } from "./selectionBridge";
 import { findInlineContentElement } from "./selectionDomQueries";
 
+const LINE_EDGE_SEAM = Symbol.for("pen.lineEdgeSeam");
+
+type LineEdgeMeasure = (
+	editor: Editor,
+	current: { blockId: string; offset: number },
+	edge: "start" | "end",
+) => { blockId: string; offset: number } | null;
+
+export function ensureLineEdgeMeasure(editor: Editor): void {
+	const host = editor as unknown as Record<
+		symbol,
+		LineEdgeMeasure | undefined
+	>;
+	if (host[LINE_EDGE_SEAM]) {
+		return;
+	}
+	host[LINE_EDGE_SEAM] = (_ed, current, edge) =>
+		measureVisualLineEdge(current, edge);
+}
+
 export function requiresResolvedInputRange(inputType: string): boolean {
 	return (
 		inputType === "insertText" ||

@@ -14,6 +14,7 @@ import { buildDataAttributes, DATA_ATTRS } from "../utils/dataAttributes";
 import { computeDocumentEmpty } from "../utils/editorEmptyState";
 import { createDocumentTree } from "./documentTree";
 import { handleFieldEditorPointerActivate } from "./pointerActivation";
+import { handleFieldEditorRootFocus } from "./rootFocus";
 import { adoptEditorChrome } from "../styles/editorChrome";
 
 export interface MountEditorOptions {
@@ -62,11 +63,18 @@ export function mountEditor(
 
 	const unsubscribers: Unsubscribe[] = [];
 
-	const handleFocusIn = (): void => {
+	const handleFocusIn = (event: FocusEvent): void => {
 		fieldEditor.setFocused(true);
 		applyEditorRootAttrs(root, editor, {
 			readonly,
 			focused: true,
+		});
+		handleFieldEditorRootFocus({
+			event,
+			editor,
+			fieldEditor,
+			root,
+			readonly,
 		});
 	};
 
@@ -135,7 +143,7 @@ function applyEditorRootAttrs(
 	root.setAttribute(DATA_ATTRS.viewId, editor.internals.viewId);
 	root.setAttribute("role", "textbox");
 	root.setAttribute("aria-multiline", "true");
-	root.tabIndex = -1;
+	root.tabIndex = state.focused ? -1 : 0;
 
 	const label = resolveEditorA11yLabel(editor);
 	if (label["aria-label"]) {

@@ -36,11 +36,10 @@ export function normalizeCompletionText(
 		context,
 		withoutFence,
 	);
-	const trimmedLeading =
-		withoutWrappedQuotes.startsWith("\n\n") ||
-		startsWithStructuredBlockContinuation(withoutWrappedQuotes)
-			? withoutWrappedQuotes
-			: withoutWrappedQuotes.replace(/^\s*\n/, "");
+	const trimmedLeading = normalizeLeadingNewline(
+		context,
+		withoutWrappedQuotes,
+	);
 	if (!trimmedLeading) {
 		return "";
 	}
@@ -65,6 +64,38 @@ export function normalizeCompletionText(
 		return "";
 	}
 	return candidate;
+}
+
+// A leading blank line or block opener is structure and stays. A single leading newline is
+// usually a model artifact and goes — except in prose right after a closed line ("Best,",
+// "Thanks for your time."), where it is the one signal that the continuation is a new block;
+// stripping it there splices the text onto the closing punctuation ("Best,Krijn").
+function normalizeLeadingNewline(
+	context: AutocompleteRequestContext,
+	completion: string,
+): string {
+	if (
+		completion.startsWith("\n\n") ||
+		startsWithStructuredBlockContinuation(completion)
+	) {
+		return completion;
+	}
+	if (startsNewProseBlock(context, completion)) {
+		return completion.replace(/^[ \t]*\n/, "\n");
+	}
+	return completion.replace(/^\s*\n/, "");
+}
+
+function startsNewProseBlock(
+	context: AutocompleteRequestContext,
+	completion: string,
+): boolean {
+	return (
+		PROSE_BLOCK_TYPES.has(context.blockType ?? "") &&
+		context.suffixText.length === 0 &&
+		/^[ \t]*\n[^\n]*\S/.test(completion) &&
+		/[.!?,:;]["')\]]*[ \t]*$/.test(context.prefixText)
+	);
 }
 
 function startsWithStructuredBlockContinuation(text: string): boolean {

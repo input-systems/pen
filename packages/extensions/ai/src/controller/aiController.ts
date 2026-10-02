@@ -50,6 +50,7 @@ import type {
 	GenerationState,
 	PersistentSuggestion,
 } from "../types";
+import type { AISelectionWorkingSetScope } from "../types/controller";
 import {
 	AI_UNDO_HISTORY_METADATA_KEY,
 	MAX_STREAM_EVENTS,
@@ -864,6 +865,7 @@ export class AIControllerImpl
 		blockId: string,
 		prompt: string,
 		scope?: "document" | "block",
+		selectionScope?: AISelectionWorkingSetScope,
 	): Promise<AIWorkingSetEnvelope | null> {
 		return workingSetMethods._buildWorkingSet.call(
 			this,
@@ -873,6 +875,7 @@ export class AIControllerImpl
 			blockId,
 			prompt,
 			scope,
+			selectionScope,
 		);
 	}
 

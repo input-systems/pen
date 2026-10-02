@@ -1,6 +1,4 @@
-import type {
-  Editor,
-} from "@input/pen-types";
+import type { Editor } from "@input/pen-types";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { gfm } from "micromark-extension-gfm";
@@ -14,7 +12,7 @@ export function parseMarkdownToBlocks(
   const tree = fromMarkdown(input, {
     extensions: [gfm()],
     mdastExtensions: [gfmFromMarkdown()],
-  });
+  }) as MdastRoot;
 
-  return astToBlocks(tree as MdastRoot, editor.schema);
+  return astToBlocks(tree, editor.schema, input);
 }

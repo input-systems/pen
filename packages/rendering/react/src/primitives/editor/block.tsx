@@ -20,6 +20,7 @@ import {
 	buildDataAttributes,
 	DATA_ATTRS,
 } from "@input/pen-dom/utils/dataAttributes";
+import { resolveBlockTextAlignment } from "@input/pen-dom";
 import { useBlockDropPreview } from "./dropPreviewContext";
 
 export interface EditorBlockProps extends AsChildProps {
@@ -99,7 +100,10 @@ export function EditorBlock(props: EditorBlockProps) {
 		[DATA_ATTRS.blockId]: blockId,
 		[DATA_ATTRS.blockType]: blockType,
 		dir,
-		style: { unicodeBidi: "isolate" },
+		style: {
+			unicodeBidi: "isolate",
+			textAlign: resolveBlockTextAlignment(block),
+		},
 		"data-level": headingLevel,
 		[DATA_ATTRS.surfaceRole]: surfaceRole ?? undefined,
 		[DATA_ATTRS.dropPosition]: externalDropPosition,

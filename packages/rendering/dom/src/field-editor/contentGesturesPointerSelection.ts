@@ -8,6 +8,7 @@ import { getRootGeometry, measureWithRoot } from "../geometry/rootGeometry";
 import { getEditorBlockSelectionRole } from "../utils/blockSelectionSemantics";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import { getPreorderBlockIds } from "../utils/documentPreorder";
+import { getDocumentPlaceholderTargetBlockId } from "../utils/editorEmptyState";
 import {
 	isRepeatedCellSelection,
 	resolveBlockPointerIntent,
@@ -46,7 +47,6 @@ export function createPointerSelectionGestures<
 		interactionModelRef,
 		clearPointerSelectionState,
 		blockSelectionEnabled,
-		isDocumentPlaceholderVisible,
 	} = ctx;
 
 	const handleClickOutsideBlocks = (event: MouseEvent): boolean => {
@@ -81,15 +81,11 @@ export function createPointerSelectionGestures<
 			return true;
 		}
 
-		if (isDocumentPlaceholderVisible) {
-			const firstBlock = editor.firstBlock();
-			if (firstBlock) {
-				const schema = editor.schema.resolve(firstBlock.type);
-				if (usesInlineTextSelection(schema)) {
-					fieldEditor.activateTextSelection?.(firstBlock.id, 0, 0);
-					return true;
-				}
-			}
+		const placeholderTargetBlockId =
+			getDocumentPlaceholderTargetBlockId(editor);
+		if (placeholderTargetBlockId) {
+			fieldEditor.activateTextSelection?.(placeholderTargetBlockId, 0, 0);
+			return true;
 		}
 
 		const firstBlockId = firstBlockEl.getAttribute("data-block-id");

@@ -46,6 +46,8 @@ Important rules:
 
 - Pending blocks are intermediate structures, not final editor truth.
 - Schema and document-profile policy still decide what survives normalization.
+- Markdown inline parsing reconstructs Pen's `<u>text</u>` underline syntax alongside standard GFM marks.
+- Markdown parsing restores internal empty paragraphs from the extra two-newline separators emitted by Pen's serializer; an ordinary two-newline block separator does not create an empty paragraph.
 - This package prepares operations and diagnostics, but a higher-level package still decides when to call `editor.apply(...)`.
 
 ## Integration Notes
@@ -58,7 +60,7 @@ Important rules:
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.2.3`; intended usage is current-state but still evolving. It is already a high-leverage package because many higher-level features depend on its normalization and write-op rules staying stable.
+Workspace package at version `0.2.14`; intended usage is current-state but still evolving. It is already a high-leverage package because many higher-level features depend on its normalization and write-op rules staying stable.
 
 ## Non-goals
 

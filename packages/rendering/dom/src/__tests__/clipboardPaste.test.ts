@@ -473,6 +473,127 @@ describe("clipboard JSON-flavor paste", () => {
 		editor.destroy();
 	});
 
+	it("pasting a URL onto a text selection applies a link mark and keeps the text", async () => {
+		const editor = createBareEditor();
+		const blockId = editor.firstBlock()!.id;
+		const href = "http://localhost:5173/";
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: "selected text",
+			},
+		]);
+		editor.selectText(blockId, 0, 13);
+
+		const handled = await executePasteTransfer({
+			source: "paste",
+			editor,
+			fieldEditor: createFieldEditorStub(),
+			dataTransfer: createClipboardData({
+				"text/plain": href,
+			}),
+		});
+
+		expect(handled).toBe(true);
+		const block = editor.getBlock(blockId)!;
+		expect(block.textContent()).toBe("selected text");
+		const link = block.textDeltas().find((delta) => delta.attributes?.link);
+		expect(
+			(link?.attributes?.link as { href?: string } | undefined)?.href,
+		).toBe(href);
+
+		editor.destroy();
+	});
+
+	it("pasting a URL with Chrome HTML wrapper still links the selection", async () => {
+		const editor = createBareEditor();
+		const blockId = editor.firstBlock()!.id;
+		const href = "http://localhost:5173/";
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: "selected text",
+			},
+		]);
+		editor.selectText(blockId, 0, 13);
+
+		const handled = await executePasteTransfer({
+			source: "paste",
+			editor,
+			fieldEditor: createFieldEditorStub(),
+			dataTransfer: createClipboardData({
+				"text/plain": href,
+				"text/html": `<meta charset='utf-8'>${href}`,
+			}),
+		});
+
+		expect(handled).toBe(true);
+		const block = editor.getBlock(blockId)!;
+		expect(block.textContent()).toBe("selected text");
+		const link = block.textDeltas().find((delta) => delta.attributes?.link);
+		expect(
+			(link?.attributes?.link as { href?: string } | undefined)?.href,
+		).toBe(href);
+
+		editor.destroy();
+	});
+
+	it("does not treat javascript: clipboard text as a pasteable link", async () => {
+		const editor = createBareEditor();
+		const blockId = editor.firstBlock()!.id;
+		editor.selectText(blockId, 0, 0);
+
+		const handled = await executePasteTransfer({
+			source: "paste",
+			editor,
+			fieldEditor: createFieldEditorStub(),
+			dataTransfer: createClipboardData({
+				"text/plain": "javascript:alert(1)",
+			}),
+		});
+
+		expect(handled).toBe(true);
+		const block = editor.getBlock(blockId)!;
+		expect(block.textContent()).toBe("javascript:alert(1)");
+		expect(
+			block.textDeltas().some((delta) => Boolean(delta.attributes?.link)),
+		).toBe(false);
+
+		editor.destroy();
+	});
+
+	it("pasting a URL on a collapsed caret inserts the URL as a hyperlink", async () => {
+		const editor = createBareEditor();
+		const blockId = editor.firstBlock()!.id;
+		const href = "http://localhost:5173/";
+		editor.selectText(blockId, 0, 0);
+
+		const handled = await executePasteTransfer({
+			source: "paste",
+			editor,
+			fieldEditor: createFieldEditorStub(),
+			dataTransfer: createClipboardData({
+				"text/plain": href,
+			}),
+		});
+
+		expect(handled).toBe(true);
+		const block = editor.getBlock(blockId)!;
+		expect(block.textContent()).toBe(href);
+		const link = block.textDeltas().find((delta) => delta.attributes?.link);
+		expect(
+			(link?.attributes?.link as { href?: string } | undefined)?.href,
+		).toBe(href);
+
+		editor.destroy();
+	});
+
 	it("SEC4: JSON-flavor paste does not pre-launder javascript: URLs", async () => {
 		const editor = createBareEditor();
 		editor.selectText(editor.firstBlock()!.id, 0, 0);

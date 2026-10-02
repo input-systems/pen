@@ -38,6 +38,145 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		});
 	});
 
+	it("IOP2 imports a placeholder break as one empty paragraph", () => {
+		const blocks = convert(
+			"<p>hello there</p><p><br></p><p>this is a test</p>",
+		);
+
+		expect(blocks).toMatchObject([
+			{ type: "paragraph", content: "hello there" },
+			{ type: "paragraph", content: "" },
+			{ type: "paragraph", content: "this is a test" },
+		]);
+	});
+
+	it("EM8 imports a container break wrapped in inline formatting as one empty paragraph", () => {
+		const blocks = convert(
+			"<div>hello there</div><div><b><br></b></div><div>this is a test</div>",
+		);
+
+		expect(blocks).toMatchObject([
+			{ type: "paragraph", content: "hello there" },
+			{ type: "paragraph", content: "" },
+			{ type: "paragraph", content: "this is a test" },
+		]);
+	});
+
+	it("IOP10 keeps marks on a block container's inline content", () => {
+		const blocks = convert("<div>Hello <b>world</b> again</div>");
+
+		expect(blocks).toMatchObject([
+			{
+				type: "paragraph",
+				content: "Hello world again",
+				marks: [{ type: "bold", start: 6, end: 11 }],
+			},
+		]);
+	});
+
+	it("EM8 drops the line-terminating break of a block container and clamps its mark", () => {
+		const blocks = convert("<div><b>hello<br></b></div><div>there</div>");
+
+		expect(blocks).toMatchObject([
+			{
+				type: "paragraph",
+				content: "hello",
+				marks: [{ type: "bold", start: 0, end: 5 }],
+			},
+			{ type: "paragraph", content: "there" },
+		]);
+	});
+
+	it("IOP10 imports a Gmail draft's enters, blank lines and shift-enters", () => {
+		const blocks = convert(
+			'<div dir="ltr"><div>one enter</div><div>two enter</div><div><br></div>' +
+				"<div>three enter</div><div><br></div><div><br></div><div><br></div>" +
+				"<div>one shift enter<br>two shift enter<br><br>three shift enter<br><br><br>end</div></div>",
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"one enter",
+			"two enter",
+			"",
+			"three enter",
+			"",
+			"",
+			"",
+			"one shift enter\ntwo shift enter\n\nthree shift enter\n\n\nend",
+		]);
+	});
+
+	it("IOP10 keeps blocks nested in an inline wrapper as separate blocks", () => {
+		const blocks = convert(
+			'<div><a href="https://a.test"><div>card one</div></a><a href="https://b.test"><div>card two</div></a></div>',
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"card one",
+			"card two",
+		]);
+	});
+
+	it("IOP10 collapses source formatting whitespace in a block container", () => {
+		const blocks = convert(
+			"<div>\n  <span>Label</span>\n  <span>Value</span>\n</div>" +
+				"<div>line one<br>\nline two </div>" +
+				"<div><b> </b></div>",
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"Label Value",
+			"line one\nline two",
+		]);
+	});
+
+	it("EM8 drops the line-terminating break of a paragraph like a container's", () => {
+		const blocks = convert("<p>hello<br></p><p>there<br><br></p>");
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"hello",
+			"there\n",
+		]);
+	});
+
+	it("IOP10 keeps spaces that are not source formatting, such as code indentation", () => {
+		const blocks = convert(
+			"<div><span>    </span><span>return  1;</span></div>",
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"    return  1;",
+		]);
+	});
+
+	it("IOP10 does not turn a break between top-level blocks into a paragraph", () => {
+		const blocks = convert(
+			'<p>one</p><br><p>two</p><br class="Apple-interchange-newline">',
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual(["one", "two"]);
+	});
+
+	it("IOP10 drops a top-level run of several breaks", () => {
+		const blocks = convert(
+			"<p>one</p><br><br><p>two</p>\n<br>\n<br>\n<br>\n<p>three</p><br><br>",
+		);
+
+		expect(blocks.map((block) => block.content)).toEqual([
+			"one",
+			"two",
+			"three",
+		]);
+	});
+
+	it("IOP2 preserves a break between inline text", () => {
+		const blocks = convert("<p>hello<br>there</p>");
+
+		expect(blocks).toMatchObject([
+			{ type: "paragraph", content: "hello\nthere" },
+		]);
+	});
+
 	it("script tag is stripped (AC 29)", () => {
 		const blocks = convert('<script>alert("xss")</script><p>safe</p>');
 
@@ -50,9 +189,7 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		const blocks = convert('<div onclick="alert(1)">text</div>');
 
 		expect(blocks.length).toBeGreaterThanOrEqual(1);
-		const hasText = blocks.some(
-			(b) => b.content?.includes("text"),
-		);
+		const hasText = blocks.some((b) => b.content?.includes("text"));
 		expect(hasText).toBe(true);
 	});
 
@@ -70,6 +207,56 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].content).toBe("italic");
 		expect(blocks[0].marks?.some((m) => m.type === "italic")).toBe(true);
+	});
+
+	it("IOP2 preserves marks expressed as inline styles", () => {
+		const blocks = convert(
+			'<p><span style="font-weight: 700">Bold</span> <span style="font-style: italic">italic</span> <span style="text-decoration: underline line-through">both</span></p>',
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0]).toMatchObject({
+			type: "paragraph",
+			content: "Bold italic both",
+		});
+		expect(blocks[0].marks).toEqual(
+			expect.arrayContaining([
+				{ type: "bold", start: 0, end: 4 },
+				{ type: "italic", start: 5, end: 11 },
+				{ type: "underline", start: 12, end: 16 },
+				{ type: "strikethrough", start: 12, end: 16 },
+			]),
+		);
+	});
+
+	it("IOP2 preserves marks expressed by pasted stylesheet classes", () => {
+		const blocks = convert(
+			'<style>span.s1 {text-decoration: underline}</style><p>normal, <span class="s1">underline</span></p>',
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0]).toMatchObject({
+			type: "paragraph",
+			content: "normal, underline",
+		});
+		expect(blocks[0].marks).toContainEqual({
+			type: "underline",
+			start: 8,
+			end: 17,
+		});
+	});
+
+	it("IOP2 preserves text alignment on default text blocks", () => {
+		const blocks = convert(
+			'<p style="text-align: center">Centered</p><h2 align="right">Right</h2><blockquote style="text-align: justify">Quoted</blockquote><ul style="text-align: end"><li>Listed</li></ul>',
+		);
+
+		expect(blocks).toMatchObject([
+			{ type: "paragraph", props: { textAlignment: "center" } },
+			{ type: "heading", props: { level: 2, textAlignment: "right" } },
+			{ type: "blockquote", props: { textAlignment: "justify" } },
+			{ type: "bulletListItem", props: { textAlignment: "end" } },
+		]);
 	});
 
 	it("link mark with href (AC 34)", () => {
@@ -111,9 +298,7 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 	});
 
 	it("nested list with indent (AC 37)", () => {
-		const blocks = convert(
-			"<ul><li>a<ul><li>b</li></ul></li></ul>",
-		);
+		const blocks = convert("<ul><li>a<ul><li>b</li></ul></li></ul>");
 
 		expect(blocks).toHaveLength(2);
 		expect(blocks[0]).toMatchObject({
@@ -207,7 +392,12 @@ describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 		const dom = parseHTML("<strong>bold at root</strong>");
 		const blocks = domToBlocks(dom, stubRegistry);
 
-		expect(blocks.some((b) => b.type === "paragraph" && b.content?.includes("bold at root"))).toBe(true);
+		expect(
+			blocks.some(
+				(b) =>
+					b.type === "paragraph" &&
+					b.content?.includes("bold at root"),
+			),
+		).toBe(true);
 	});
-
 });

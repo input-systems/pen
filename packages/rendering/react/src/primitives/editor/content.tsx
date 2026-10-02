@@ -10,7 +10,7 @@ import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect
 import { useBlockList } from "../../hooks/useBlockList";
 import {
 	useDocumentEmptyState,
-	useDocumentPlaceholderState,
+	useDocumentPlaceholderTarget,
 } from "../../hooks/useDocumentEmptyState";
 import { useInlineCompletionState } from "../../hooks/useInlineCompletionState";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
@@ -76,7 +76,8 @@ export function EditorContent(props: EditorContentProps) {
 	} = useEditorContentPointerState(interactionModel);
 
 	const isEmpty = useDocumentEmptyState(editor);
-	const isDocumentPlaceholderVisible = useDocumentPlaceholderState(editor);
+	const documentPlaceholderTargetBlockId =
+		useDocumentPlaceholderTarget(editor);
 	const {
 		isDropActive,
 		dropPreview,
@@ -124,7 +125,6 @@ export function EditorContent(props: EditorContentProps) {
 		contentRef,
 		blocksHostRef,
 		regionSelectionStore,
-		isDocumentPlaceholderVisible,
 		regionGestureRef,
 		pointerGestureRef,
 		pointerGestureVersionRef,
@@ -288,7 +288,7 @@ export function EditorContent(props: EditorContentProps) {
 
 	return (
 		<EditorContentContext.Provider
-			value={{ emptyPlaceholder, isEmpty: isDocumentPlaceholderVisible }}
+			value={{ emptyPlaceholder, documentPlaceholderTargetBlockId }}
 		>
 			<DropPreviewProvider value={dropPreview}>
 				{renderAsChild(

@@ -25,7 +25,7 @@ import {
 	useBlockDecorations,
 	useBlockModel,
 	useBlockTextSnapshot,
-	useDocumentPlaceholderState,
+	useDocumentPlaceholderTarget,
 	useFieldEditorState,
 } from "../internal/editorState";
 import { resolveEditorSchemaPlaceholder } from "../internal/displayCopy";
@@ -66,7 +66,7 @@ export const PenInlineContent = defineComponent({
 		const blockModel = useBlockModel(editor, props.blockId);
 		const blockDecorations = useBlockDecorations(editor, props.blockId);
 		const textSnapshot = useBlockTextSnapshot(editor, props.blockId);
-		const documentPlaceholderVisible = useDocumentPlaceholderState(editor);
+		const documentPlaceholderTarget = useDocumentPlaceholderTarget(editor);
 		const elementRef = ref<HTMLElement | null>(null);
 
 		const isActive = computed(
@@ -80,8 +80,8 @@ export const PenInlineContent = defineComponent({
 		const schemaPlaceholder = computed(() =>
 			resolveEditorSchemaPlaceholder(editor, props.blockId),
 		);
-		const isFirstBlock = computed(
-			() => editor.documentState.blockOrder[0] === props.blockId,
+		const isDocumentPlaceholderTarget = computed(
+			() => documentPlaceholderTarget.value === props.blockId,
 		);
 		const isFocusedBlock = computed(() => {
 			return (
@@ -97,8 +97,7 @@ export const PenInlineContent = defineComponent({
 		const placeholderVisibility = computed(() =>
 			resolveInlinePlaceholderVisibility({
 				blockTextEmpty: blockTextEmpty.value,
-				isDocumentEmpty: documentPlaceholderVisible.value,
-				isFirstBlock: isFirstBlock.value,
+				isDocumentPlaceholderTarget: isDocumentPlaceholderTarget.value,
 				isFocusedBlock: isFocusedBlock.value,
 				hasEmptyPlaceholder: !!emptyPlaceholder.value,
 				hasExplicitPlaceholder: !!props.placeholder,

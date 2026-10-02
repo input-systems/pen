@@ -169,6 +169,20 @@ export function applyListInputRule(
 			offset: range.start,
 		});
 		if (ops) {
+			// Rule ops target the document after the pending input. Apply it
+			// separately because ops in one batch share pre-apply coordinates.
+			editor.apply(
+				[
+					{
+						type: "splice-text",
+						blockId,
+						from: range.start,
+						to: range.end,
+						insert: text,
+					},
+				],
+				{ origin: "input-rule" },
+			);
 			editor.apply(ops, { origin: "input-rule" });
 			return {
 				blockId,

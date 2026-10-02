@@ -30,6 +30,7 @@ export async function runGenerationLoop(
 		context,
 		abortController,
 		workingSet,
+		selectionScope,
 		sessionTurnId,
 	} = state;
 	if (!controller._model) {
@@ -73,6 +74,7 @@ export async function runGenerationLoop(
 					blockId,
 					state.prompt,
 					context?.scope,
+					selectionScope,
 				),
 			onStatusChange: (status) => {
 				controller._setState({ status });
