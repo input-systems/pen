@@ -18,24 +18,6 @@ function isNodeWithinOrEqual(container: HTMLElement, node: Node): boolean {
 	return node === container || container.contains(node);
 }
 
-/**
- * Set DOM selection from editor (blockId, offset) pairs.
- */
-export function editorSelectionToDOM(
-	root: HTMLElement,
-	anchor: SelectionPoint,
-	focus: SelectionPoint,
-): void {
-	const anchorResult = findDOMPoint(root, anchor.blockId, anchor.offset);
-	const focusResult = findDOMPoint(root, focus.blockId, focus.offset);
-	if (!anchorResult || !focusResult) return;
-
-	const sel = window.getSelection();
-	if (!sel) return;
-
-	setDOMSelection(sel, anchorResult, focusResult);
-}
-
 export function getSelectionPointRect(
 	root: HTMLElement,
 	point: SelectionPoint,
@@ -130,7 +112,7 @@ export function getTextSelectionClientRects(
 /**
  * Find the DOM text node and offset for a given (blockId, characterOffset).
  */
-function findDOMPoint(
+export function findDOMPoint(
 	root: HTMLElement,
 	blockId: string,
 	charOffset: number,
@@ -213,125 +195,6 @@ export function getSelectionOffsets(
 export function getCaretOffset(inlineElement: HTMLElement): number {
 	const offsets = getSelectionOffsets(inlineElement);
 	return offsets?.start ?? 0;
-}
-
-function resolveWritableDOMPoint(point: { node: Node; offset: number }): {
-	node: Node;
-	offset: number;
-} {
-	if (point.node.nodeType !== Node.ELEMENT_NODE) {
-		return point;
-	}
-
-	const childAtOffset = point.node.childNodes[point.offset];
-	if (childAtOffset?.nodeType === Node.TEXT_NODE) {
-		return { node: childAtOffset, offset: 0 };
-	}
-
-	if (point.offset > 0) {
-		const previousChild = point.node.childNodes[point.offset - 1];
-		if (previousChild?.nodeType === Node.TEXT_NODE) {
-			return {
-				node: previousChild,
-				offset: previousChild.textContent?.length ?? 0,
-			};
-		}
-	}
-
-	return point;
-}
-
-function selectionHasEndpoints(
-	selection: Selection,
-	anchor: { node: Node; offset: number },
-	focus: { node: Node; offset: number },
-): boolean {
-	return (
-		selection.rangeCount > 0 &&
-		selection.anchorNode === anchor.node &&
-		selection.anchorOffset === anchor.offset &&
-		selection.focusNode === focus.node &&
-		selection.focusOffset === focus.offset
-	);
-}
-
-function setDOMSelection(
-	selection: Selection,
-	rawAnchor: { node: Node; offset: number },
-	rawFocus: { node: Node; offset: number },
-): void {
-	const anchor = resolveWritableDOMPoint(rawAnchor);
-	const focus = resolveWritableDOMPoint(rawFocus);
-	const intendedRange =
-		anchor.node !== focus.node || anchor.offset !== focus.offset;
-
-	const setBaseAndExtent = (
-		selection as Selection & {
-			setBaseAndExtent?: (
-				anchorNode: Node,
-				anchorOffset: number,
-				focusNode: Node,
-				focusOffset: number,
-			) => void;
-		}
-	).setBaseAndExtent;
-	if (typeof setBaseAndExtent === "function") {
-		try {
-			setBaseAndExtent.call(
-				selection,
-				anchor.node,
-				anchor.offset,
-				focus.node,
-				focus.offset,
-			);
-			// Firefox accepts the call for mixed element/text points but
-			// leaves a caret; only trust the write when the endpoints stuck
-			if (
-				!intendedRange ||
-				selectionHasEndpoints(selection, anchor, focus)
-			) {
-				return;
-			}
-		} catch {
-			// Fall back to the range-based path in test environments like jsdom.
-		}
-	}
-
-	selection.removeAllRanges();
-
-	const collapseRange = document.createRange();
-	collapseRange.setStart(anchor.node, anchor.offset);
-	collapseRange.collapse(true);
-	selection.addRange(collapseRange);
-
-	if (intendedRange && typeof selection.extend === "function") {
-		try {
-			selection.extend(focus.node, focus.offset);
-			if (
-				selectionHasEndpoints(selection, anchor, focus) ||
-				!selection.isCollapsed
-			) {
-				return;
-			}
-		} catch {
-			// Fall through to an ordered addRange.
-		}
-	}
-
-	if (!intendedRange) {
-		return;
-	}
-
-	selection.removeAllRanges();
-	const orderedRange = document.createRange();
-	if (compareDOMPoints(anchor, focus) <= 0) {
-		orderedRange.setStart(anchor.node, anchor.offset);
-		orderedRange.setEnd(focus.node, focus.offset);
-	} else {
-		orderedRange.setStart(focus.node, focus.offset);
-		orderedRange.setEnd(anchor.node, anchor.offset);
-	}
-	selection.addRange(orderedRange);
 }
 
 const WRAPPED_LINE_HYSTERESIS_PX = 6;
@@ -555,23 +418,4 @@ export function approximateInlineOffsetFromPoint(
 		clientY,
 		previousOffset,
 	);
-}
-
-function compareDOMPoints(
-	left: { node: Node; offset: number },
-	right: { node: Node; offset: number },
-): number {
-	if (left.node === right.node) {
-		return left.offset - right.offset;
-	}
-
-	const leftRange = document.createRange();
-	leftRange.setStart(left.node, left.offset);
-	leftRange.collapse(true);
-
-	const rightRange = document.createRange();
-	rightRange.setStart(right.node, right.offset);
-	rightRange.collapse(true);
-
-	return leftRange.compareBoundaryPoints(Range.START_TO_START, rightRange);
 }

@@ -7,7 +7,7 @@
 			"reason": "browser Selection.isCollapsed after addRange/extend"
 		},
 		{
-			"file": "packages/rendering/dom/src/field-editor/selectionBridgeOffsets.ts",
+			"file": "packages/rendering/dom/src/field-editor/selectionProjector.ts",
 			"construct": "selection.isCollapsed",
 			"reason": "browser Selection.isCollapsed after addRange/extend"
 		},

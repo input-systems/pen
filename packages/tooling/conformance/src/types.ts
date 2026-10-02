@@ -338,7 +338,7 @@ export type PenConformanceBridge = {
 		anchor: LogicalPoint;
 		focus: LogicalPoint;
 	} | null;
-	/** CS10: call `editorSelectionToDOM` on a page-owned root. */
+	/** CS10: write the native range for `anchor`..`focus` on a page-owned root. */
 	projectSelectionToDom(
 		root: HTMLElement,
 		anchor: LogicalPoint,

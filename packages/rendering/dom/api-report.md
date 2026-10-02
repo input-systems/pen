@@ -143,7 +143,6 @@
 - buildMoveInlineAtomOps
 - computeTextDiff
 - domSelectionToEditor
-- editorSelectionToDOM
 - extractTextFromDOM
 - FieldEditorFocusReason
 - FieldEditorFocusRequest
@@ -453,8 +452,8 @@ _no exports_
 - DirectionalSelectionOffsets
 - domPointToOffset
 - domSelectionToEditor
-- editorSelectionToDOM
 - extractTextFromDOM
+- findDOMPoint
 - getBlockBoundaryPoint
 - getCaretOffset
 - getDirectionalSelectionOffsets

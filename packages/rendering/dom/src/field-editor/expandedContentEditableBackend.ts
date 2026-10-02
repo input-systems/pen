@@ -1,5 +1,5 @@
 import type { Editor } from "@input/pen-types";
-import { editorSelectionToDOM } from "./selectionBridge";
+import { writeNativeRange } from "./selectionProjector";
 import { getPasteImporters, handlePaste } from "./clipboard";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
@@ -88,11 +88,7 @@ export class ExpandedContentEditableBackend {
 				) {
 					return;
 				}
-				editorSelectionToDOM(
-					element,
-					selection.anchor,
-					selection.focus,
-				);
+				writeNativeRange(element, selection.anchor, selection.focus);
 			});
 			return;
 		}
@@ -126,7 +122,7 @@ export class ExpandedContentEditableBackend {
 		const selection = this.editor.selection;
 		if (selection?.type !== "text") return;
 		this.fieldEditor.withBackendSelectionWrite(() => {
-			editorSelectionToDOM(element, selection.anchor, selection.focus);
+			writeNativeRange(element, selection.anchor, selection.focus);
 		});
 	}
 

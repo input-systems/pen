@@ -23,9 +23,9 @@ import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import {
 	domPointToOffset,
 	domSelectionToEditor,
-	editorSelectionToDOM,
 	pointToEditorSelectionPoint,
 } from "@input/pen-dom/field-editor/selectionBridge";
+import { projectSelectionToDom } from "./utils/projectSelectionToDom";
 import { Pen } from "../primitives/index";
 
 (

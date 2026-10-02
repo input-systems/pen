@@ -5,11 +5,8 @@ import { defaultSchema } from "@input/pen-schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
 import { createInlineAtomElement } from "../inlineAtomDom";
-import {
-	getCaretOffset,
-	getSelectionOffsets,
-} from "../selectionBridgeOffsets";
-import { editorSelectionToDOM } from "../selectionBridge";
+import { getCaretOffset, getSelectionOffsets } from "../selectionBridgeOffsets";
+import { writeNativeRange } from "../selectionProjector";
 import { findLogicalDOMPoint } from "../inlineAtomLogicalDom";
 
 const BLOCK_ID = "block-1";
@@ -109,7 +106,7 @@ describe("FE7 offset bridge round-trips", () => {
 
 			const readBack: number[] = [];
 			for (let offset = 0; offset <= length; offset += 1) {
-				editorSelectionToDOM(
+				writeNativeRange(
 					root,
 					{ blockId: BLOCK_ID, offset },
 					{ blockId: BLOCK_ID, offset },
@@ -127,7 +124,7 @@ describe("FE7 offset bridge round-trips", () => {
 
 			for (let offset = 0; offset <= length; offset += 1) {
 				const first = findLogicalDOMPoint(inline, offset);
-				editorSelectionToDOM(
+				writeNativeRange(
 					root,
 					{ blockId: BLOCK_ID, offset },
 					{ blockId: BLOCK_ID, offset },
@@ -152,7 +149,7 @@ describe("FE7 offset bridge round-trips", () => {
 			"after",
 		]);
 
-		editorSelectionToDOM(
+		writeNativeRange(
 			root,
 			{ blockId: BLOCK_ID, offset: 2 },
 			{ blockId: BLOCK_ID, offset: 9 },
@@ -166,7 +163,7 @@ describe("FE7 offset bridge round-trips", () => {
 	it("clamps an offset past the end to the end", () => {
 		const { root, inline, length } = mount(["Hello"]);
 
-		editorSelectionToDOM(
+		writeNativeRange(
 			root,
 			{ blockId: BLOCK_ID, offset: length + 5 },
 			{ blockId: BLOCK_ID, offset: length + 5 },

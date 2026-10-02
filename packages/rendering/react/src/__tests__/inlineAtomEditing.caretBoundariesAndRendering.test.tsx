@@ -28,10 +28,10 @@ import { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
 import {
 	domPointToOffset,
 	domSelectionToEditor,
-	editorSelectionToDOM,
 	getSelectionOffsets,
 	pointToEditorSelectionPoint,
 } from "@input/pen-dom/field-editor/selectionBridge";
+import { projectSelectionToDom } from "./utils/projectSelectionToDom";
 import { handleFieldEditorKeyDown } from "@input/pen-dom/field-editor/keyHandling";
 import { Pen } from "../primitives/index";
 

@@ -28,10 +28,10 @@ import { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
 import {
 	domPointToOffset,
 	domSelectionToEditor,
-	editorSelectionToDOM,
 	getSelectionOffsets,
 	pointToEditorSelectionPoint,
 } from "@input/pen-dom/field-editor/selectionBridge";
+import { projectSelectionToDom } from "./utils/projectSelectionToDom";
 import { handleFieldEditorKeyDown } from "@input/pen-dom/field-editor/keyHandling";
 import { Pen } from "../primitives/index";
 
@@ -305,7 +305,7 @@ describe("Pen inline atom editing: focus policy and selection projection", () =>
 
 		try {
 			fieldEditor.activate(blockId);
-			editorSelectionToDOM(
+			projectSelectionToDom(
 				root,
 				{ blockId, offset: 0 },
 				{ blockId, offset: 0 },
@@ -399,7 +399,7 @@ describe("Pen inline atom editing: focus policy and selection projection", () =>
 
 		try {
 			await fieldEditor.focusTextSelection(blockId, 2, 2);
-			editorSelectionToDOM(
+			projectSelectionToDom(
 				root,
 				{ blockId, offset: 0 },
 				{ blockId, offset: 0 },

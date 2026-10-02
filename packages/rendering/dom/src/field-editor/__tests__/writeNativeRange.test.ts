@@ -22,7 +22,7 @@ function mountParagraph(text: string): {
 	return { root, inline };
 }
 
-describe("editorSelectionToDOM point resolution", () => {
+describe("writeNativeRange point resolution", () => {
 	it("resolves offset 0 to a text node, not the inline element", () => {
 		const { root, inline } = mountParagraph(
 			"Alpha bravo charlie delta echo",

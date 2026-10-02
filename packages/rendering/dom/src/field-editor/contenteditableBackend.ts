@@ -9,10 +9,10 @@ import {
 import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
 import {
 	computeTextDiff,
-	editorSelectionToDOM,
 	extractTextFromDOM,
 	getSelectionOffsets,
 } from "./selectionBridge";
+import { writeNativeRange } from "./selectionProjector";
 import { applyListInputRule } from "./commands";
 import {
 	isCollaboratorTransaction,
@@ -343,7 +343,7 @@ export class ContentEditableBackend {
 		if (!root) return;
 
 		this.fieldEditor.withBackendSelectionWrite(() => {
-			editorSelectionToDOM(root, anchor, focus);
+			writeNativeRange(root, anchor, focus);
 		});
 	}
 
@@ -599,9 +599,12 @@ export class ContentEditableBackend {
 		blockId: string | null,
 		inlineDecorations: readonly InlineDecoration[],
 	): boolean {
-		const isActiveCell = blockId ? !!this._getActiveCellCoord(blockId) : false;
+		const isActiveCell = blockId
+			? !!this._getActiveCellCoord(blockId)
+			: false;
 		return (
-			isActiveCell || inlineDecorationsRequireFullReconcile(inlineDecorations)
+			isActiveCell ||
+			inlineDecorationsRequireFullReconcile(inlineDecorations)
 		);
 	}
 

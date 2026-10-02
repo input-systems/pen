@@ -11,10 +11,8 @@ import {
 import { defaultPreset } from "@input/pen";
 import type { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
 import { Pen } from "../primitives/index";
-import {
-	domSelectionToEditor,
-	editorSelectionToDOM,
-} from "@input/pen-dom/field-editor/selectionBridge";
+import { domSelectionToEditor } from "@input/pen-dom/field-editor/selectionBridge";
+import { projectSelectionToDom } from "./utils/projectSelectionToDom";
 import { defaultSchema } from "@input/pen-schema";
 
 (
@@ -110,7 +108,7 @@ describe("@input/pen-react Escape: the selection ladder", () => {
 					editor.internals.doc,
 				).toTextSelection(),
 			);
-			editorSelectionToDOM(
+			projectSelectionToDom(
 				rootElement!,
 				{ blockId, offset: 5 },
 				{ blockId, offset: 2 },

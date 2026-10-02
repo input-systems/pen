@@ -44,62 +44,6 @@
       "closedBy": "W3.R3"
     },
     {
-      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "flushDeferredRemoteDeltas",
-      "api": "updateSelection",
-      "reason": "EditContext selection write after deferred remote deltas; moves behind the projector (W3 step 3a).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "handleKeyDown",
-      "api": "updateSelection",
-      "reason": "EditContext selection write from a key path; moves behind the projector (W3 step 3a).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "handleSelectionChange",
-      "api": "updateSelection",
-      "reason": "EditContext selection write from the backend's selectionchange listener; moves behind the projector (W3 step 3a).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "handleYTextChange",
-      "api": "updateSelection",
-      "reason": "EditContext selection write after a Y.Text change; moves behind the projector (W3 step 3a).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "restoreDOMCaret",
-      "api": "addRange",
-      "reason": "Native range written from EditContext selectionStart/End, not from the authority; moves behind the projector (W3 step 3a).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "restoreDOMCaret",
-      "api": "removeAllRanges",
-      "reason": "Native range written from EditContext selectionStart/End, not from the authority; moves behind the projector (W3 step 3a).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "setEditContextSelection",
-      "api": "updateSelection",
-      "reason": "EditContext selection write; moves behind the projector (W3 step 3a).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "updateSelection",
-      "api": "updateSelection",
-      "reason": "The EditContext backend's selection sync; moves behind the projector (W3 step 3a).",
-      "closedBy": "W3.R3"
-    },
-    {
       "file": "packages/rendering/dom/src/field-editor/fieldEditorImpl.ts",
       "symbol": "focus",
       "api": "addRange",
@@ -118,27 +62,6 @@
       "symbol": "restoreSelection",
       "api": "setBaseAndExtent",
       "reason": "Reconcile restores a saved range; deleted with reconcilerSelection.ts, reconciles project instead (W3 step 3b).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/selectionBridgeOffsets.ts",
-      "symbol": "setDOMSelection",
-      "api": "addRange",
-      "reason": "editorSelectionToDOM, the shared bridge writer; moves into the projector and leaves the public exports (W3 step 3a).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/selectionBridgeOffsets.ts",
-      "symbol": "setDOMSelection",
-      "api": "extend",
-      "reason": "editorSelectionToDOM, the shared bridge writer; moves into the projector and leaves the public exports (W3 step 3a).",
-      "closedBy": "W3.R3"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/selectionBridgeOffsets.ts",
-      "symbol": "setDOMSelection",
-      "api": "removeAllRanges",
-      "reason": "editorSelectionToDOM, the shared bridge writer; moves into the projector and leaves the public exports (W3 step 3a).",
       "closedBy": "W3.R3"
     }
   ]

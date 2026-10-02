@@ -23,9 +23,9 @@ import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import {
 	domPointToOffset,
 	domSelectionToEditor,
-	editorSelectionToDOM,
 	pointToEditorSelectionPoint,
 } from "@input/pen-dom/field-editor/selectionBridge";
+import { projectSelectionToDom } from "./utils/projectSelectionToDom";
 import { Pen } from "../primitives/index";
 
 (
@@ -153,7 +153,7 @@ describe("Pen inline atom DOM operations: metadata and selection offsets", () =>
 			expect(domPointToOffset(inlineElement!, inlineElement!, 1)).toBe(1);
 			expect(domPointToOffset(inlineElement!, inlineElement!, 2)).toBe(2);
 
-			editorSelectionToDOM(
+			projectSelectionToDom(
 				rootElement!,
 				{ blockId, offset: 2 },
 				{ blockId, offset: 2 },

@@ -203,11 +203,7 @@ export function pointToEditorSelectionPoint(
 	// the browser's native drag clamps its extent (the editing host's first
 	// or last position), so a Pen-owned drag leaving the root writes the
 	// same range as the browser and the two stop overwriting each other.
-	const documentEdge = resolveDocumentEdgeSide(
-		root,
-		hoveredBlockEl,
-		clientY,
-	);
+	const documentEdge = resolveDocumentEdgeSide(root, hoveredBlockEl, clientY);
 	if (documentEdge) {
 		return getBoundaryPointForBlockElement(hoveredBlockEl, documentEdge);
 	}
@@ -324,7 +320,7 @@ function isInlineBoundaryFallbackPoint(
 }
 
 export {
-	editorSelectionToDOM,
+	findDOMPoint,
 	getCaretOffset,
 	getDirectionalSelectionOffsets,
 	getSelectionOffsets,

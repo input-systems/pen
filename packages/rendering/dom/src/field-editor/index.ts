@@ -10,7 +10,6 @@ export {
 	computeTextDiff,
 	extractTextFromDOM,
 	domSelectionToEditor,
-	editorSelectionToDOM,
 	getSelectionOffsets,
 	getCaretOffset,
 	type SelectionPoint,

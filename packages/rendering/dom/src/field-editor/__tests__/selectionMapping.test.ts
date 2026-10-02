@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
 import * as selectionBridge from "../selectionBridge";
 import { pointToEditorSelectionPoint } from "../selectionBridge";
+import { writeNativeRange } from "../selectionProjector";
 import {
 	domPointToOffset,
 	domSelectionToEditor,
@@ -15,9 +16,9 @@ const BRIDGE_VALUE_EXPORTS = [
 	"computeTextDiff",
 	"domPointToOffset",
 	"domSelectionToEditor",
-	"editorSelectionToDOM",
 	"extractTextFromDOM",
 	"findBlockElement",
+	"findDOMPoint",
 	"findInlineContentElement",
 	"getBlockBoundaryPoint",
 	"getCaretOffset",
@@ -316,7 +317,7 @@ describe("pointToEditorSelectionPoint", () => {
 	});
 });
 
-describe("editorSelectionToDOM", () => {
+describe("writeNativeRange", () => {
 	function mountParagraphThenStructural(): {
 		root: HTMLElement;
 		paragraphText: Text;
@@ -346,7 +347,7 @@ describe("editorSelectionToDOM", () => {
 		const { root, paragraphText, structural } =
 			mountParagraphThenStructural();
 		try {
-			selectionBridge.editorSelectionToDOM(
+			writeNativeRange(
 				root,
 				{ blockId: "p1", offset: 0 },
 				{ blockId: "d1", offset: 1 },
@@ -367,7 +368,7 @@ describe("editorSelectionToDOM", () => {
 	it("stops before a structural block selected from its start", () => {
 		const { root, structural } = mountParagraphThenStructural();
 		try {
-			selectionBridge.editorSelectionToDOM(
+			writeNativeRange(
 				root,
 				{ blockId: "p1", offset: 0 },
 				{ blockId: "d1", offset: 0 },
@@ -429,7 +430,7 @@ describe("editorSelectionToDOM", () => {
 				selectionBridge.findInlineContentElement(container),
 			).toBeNull();
 
-			selectionBridge.editorSelectionToDOM(
+			writeNativeRange(
 				root,
 				{ blockId: "p1", offset: 0 },
 				{ blockId: "quote", offset: 1 },
@@ -455,7 +456,7 @@ describe("editorSelectionToDOM", () => {
 				nestedInline,
 			);
 
-			selectionBridge.editorSelectionToDOM(
+			writeNativeRange(
 				root,
 				{ blockId: "q1", offset: 0 },
 				{ blockId: "q1", offset: 6 },

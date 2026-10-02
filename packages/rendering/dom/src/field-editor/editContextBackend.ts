@@ -5,10 +5,12 @@ import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
 import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
+import { getDirectionalSelectionOffsets } from "./selectionBridge";
 import {
-	editorSelectionToDOM,
-	getDirectionalSelectionOffsets,
-} from "./selectionBridge";
+	replaceNativeRange,
+	writeEditContextSelection,
+	writeNativeRange,
+} from "./selectionProjector";
 import {
 	rangesEqual,
 	resolveEditContextKeyDownRange,
@@ -262,7 +264,7 @@ export class EditContextBackend {
 		}
 
 		const len = this.ytext.length;
-		this.editContext.updateSelection(len, len);
+		writeEditContextSelection(this.editContext, len, len);
 		this.fieldEditor.setEditContextSelectionSnapshot(
 			blockId
 				? {
@@ -284,7 +286,7 @@ export class EditContextBackend {
 			"[data-pen-editor-root]",
 		) as HTMLElement | null;
 		if (!root) return;
-		editorSelectionToDOM(
+		writeNativeRange(
 			root,
 			{ blockId, offset: anchorOffset },
 			{ blockId, offset: focusOffset },
@@ -442,20 +444,7 @@ export class EditContextBackend {
 		if (!this.editContext || !this.element || !this.ytext) {
 			return;
 		}
-		const nextText = this.ytext.toString();
-		this.editContext.updateText(0, this.editContext.text.length, nextText);
-		const clampedSelectionStart = Math.min(
-			this.editContext.selectionStart,
-			nextText.length,
-		);
-		const clampedSelectionEnd = Math.min(
-			this.editContext.selectionEnd,
-			nextText.length,
-		);
-		this.editContext.updateSelection(
-			clampedSelectionStart,
-			clampedSelectionEnd,
-		);
+		replaceEditContextText(this.editContext, this.ytext.toString());
 		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 			urlPolicy: urlPolicyFromEditor(this.editor),
 			preserveSelection: true,
@@ -669,7 +658,9 @@ export class EditContextBackend {
 				resolvedSelection,
 			);
 		}
-		this.editContext?.updateSelection(
+		if (!this.editContext) return;
+		writeEditContextSelection(
+			this.editContext,
 			resolvedSelection.anchorOffset,
 			resolvedSelection.focusOffset,
 		);
@@ -892,7 +883,7 @@ export class EditContextBackend {
 			return;
 		}
 
-		this.editContext.updateSelection(offsets.start, offsets.end);
+		writeEditContextSelection(this.editContext, offsets.start, offsets.end);
 		const nextSelection = {
 			blockId: normalizedSelection.anchor.blockId,
 			anchorOffset: offsets.anchor,
@@ -938,24 +929,11 @@ export class EditContextBackend {
 			this.fieldEditor.clearBackendSelectionAuthority(
 				"edit-context-textupdate",
 			);
-			const nextText = this.ytext?.toString?.() ?? "";
-			this.editContext.updateText(
-				0,
-				this.editContext.text.length,
-				nextText,
-			);
-			const clampedSelectionStart = Math.min(
-				this.editContext.selectionStart,
-				nextText.length,
-			);
-			const clampedSelectionEnd = Math.min(
-				this.editContext.selectionEnd,
-				nextText.length,
-			);
-			this.editContext.updateSelection(
-				clampedSelectionStart,
-				clampedSelectionEnd,
-			);
+			const { start: clampedSelectionStart, end: clampedSelectionEnd } =
+				replaceEditContextText(
+					this.editContext,
+					this.ytext?.toString?.() ?? "",
+				);
 			const blockId = this.fieldEditor.focusBlockId;
 			this.fieldEditor.setEditContextSelectionSnapshot(
 				blockId
@@ -1129,7 +1107,7 @@ export class EditContextBackend {
 			null;
 		if (root && blockId && anchorOffset != null && focusOffset != null) {
 			this.fieldEditor.withBackendSelectionWrite(() => {
-				editorSelectionToDOM(
+				writeNativeRange(
 					root,
 					{ blockId, offset: anchorOffset },
 					{ blockId, offset: focusOffset },
@@ -1150,11 +1128,10 @@ export class EditContextBackend {
 		if (!sel) return;
 
 		this.fieldEditor.withBackendSelectionWrite(() => {
-			sel.removeAllRanges();
 			const range = document.createRange();
 			range.setStart(anchorPoint.node, anchorPoint.offset);
 			range.setEnd(focusPoint.node, focusPoint.offset);
-			sel.addRange(range);
+			replaceNativeRange(sel, range);
 		});
 	}
 
@@ -1186,7 +1163,7 @@ export class EditContextBackend {
 			this.resolveKeyDownRange(blockId, event, liveDomOffsets);
 
 		if (shouldSyncEditContextSelection) {
-			this.editContext.updateSelection(range.start, range.end);
+			writeEditContextSelection(this.editContext, range.start, range.end);
 			this.fieldEditor.setEditContextSelectionSnapshot(nextSelection);
 		}
 
@@ -1350,4 +1327,19 @@ export class EditContextBackend {
 			focusOffset: selection.focusOffset,
 		};
 	}
+}
+
+/**
+ * Replaces an EditContext's text with `nextText` and clamps its selection to
+ * the new length. Returns the clamped selection.
+ */
+function replaceEditContextText(
+	editContext: EditContext,
+	nextText: string,
+): { start: number; end: number } {
+	editContext.updateText(0, editContext.text.length, nextText);
+	const start = Math.min(editContext.selectionStart, nextText.length);
+	const end = Math.min(editContext.selectionEnd, nextText.length);
+	writeEditContextSelection(editContext, start, end);
+	return { start, end };
 }

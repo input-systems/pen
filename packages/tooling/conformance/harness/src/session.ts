@@ -18,10 +18,7 @@ import {
 	BEFOREINPUT_MAP,
 	mapBeforeInput,
 } from "@input/pen-dom/field-editor/beforeinputMap";
-import {
-	domSelectionToEditor,
-	editorSelectionToDOM,
-} from "@input/pen-dom/field-editor";
+import { domSelectionToEditor } from "@input/pen-dom/field-editor";
 import { applyValidatedOps } from "@input/pen-tools";
 import { parsePenClipboardPayload } from "@input/pen-dom/utils/clipboardPayload";
 import {
@@ -91,6 +88,9 @@ import {
 	isLogicallyEquivalent,
 	readNormalizedDomProposal,
 } from "../../../../rendering/dom/src/field-editor/selectionReader";
+// The public `editorSelectionToDOM` is gone (S1); the harness writes through
+// the projector's native-range primitive as its test-side writer.
+import { writeNativeRange } from "../../../../rendering/dom/src/field-editor/selectionProjector";
 import {
 	serializeDiagnostic,
 	serializeSelection,
@@ -503,7 +503,7 @@ function installBrokenProjector(): void {
 	const length = block?.length() ?? 0;
 	const offset = misplacedOffset(authority.anchor.offset, length);
 	const wrong = { blockId: authority.anchor.blockId, offset };
-	editorSelectionToDOM(root, wrong, wrong);
+	writeNativeRange(root, wrong, wrong);
 
 	const mapped = domSelectionToEditor(root);
 	const mismatch: DomAuthorityCheck = {
@@ -589,7 +589,7 @@ function forceUnwindowedDomDivergence(): ForcedDomDivergence {
 	};
 	root.ownerDocument.addEventListener("selectionchange", onChange, true);
 	try {
-		editorSelectionToDOM(root, wrong, wrong);
+		writeNativeRange(root, wrong, wrong);
 	} finally {
 		root.ownerDocument.removeEventListener(
 			"selectionchange",
@@ -1141,7 +1141,7 @@ function installBridge(): void {
 		domMatchesAuthority: checkDomMatchesAuthority,
 		mapDomSelection: (root) => domSelectionToEditor(root),
 		projectSelectionToDom: (root, anchor, focus) => {
-			editorSelectionToDOM(root, anchor, focus);
+			writeNativeRange(root, anchor, focus);
 		},
 		mountSelectionProbe,
 		applyAiRangeReplacement,

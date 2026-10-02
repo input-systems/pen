@@ -12,10 +12,8 @@ import {
 import { defaultPreset } from "@input/pen";
 import type { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
 import { Pen } from "../primitives/index";
-import {
-	domSelectionToEditor,
-	editorSelectionToDOM,
-} from "@input/pen-dom/field-editor/selectionBridge";
+import { domSelectionToEditor } from "@input/pen-dom/field-editor/selectionBridge";
+import { projectSelectionToDom } from "./utils/projectSelectionToDom";
 import { FakeEditContext } from "./utils/fakeEditContext";
 import { defaultSchema } from "@input/pen-schema";
 
