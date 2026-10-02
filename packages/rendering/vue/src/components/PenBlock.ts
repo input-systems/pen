@@ -23,15 +23,7 @@ import {
 	type VNode,
 	type VNodeChild,
 } from "vue";
-import { useSelection } from "../composables/useSelection";
-import {
-	isBlockSelected,
-	resolveExpandedSurfaceRole,
-	resolveNumberedListValue,
-	useBlockModel,
-	useChildBlockIds,
-	useFieldEditorState,
-} from "../internal/editorState";
+import { useBlockSnapshot } from "../internal/blockNotifier";
 import { useEditorContext } from "../internal/editorContext";
 import { useFieldEditorContext } from "../internal/fieldEditorContext";
 import type { PenBlockRenderContext } from "../types";
@@ -57,10 +49,9 @@ export const PenBlock = defineComponent({
 	setup(props) {
 		const { editor, readonly, renderers } = useEditorContext();
 		const fieldEditor = useFieldEditorContext();
-		const selection = useSelection(editor);
-		const fieldEditorState = useFieldEditorState(fieldEditor);
-		const blockModel = useBlockModel(editor, props.blockId);
-		const childBlockIds = useChildBlockIds(editor, props.blockId);
+		// This block's notifier slices only (SCALE6): a keystroke or caret move
+		// elsewhere re-renders nothing here.
+		const slices = useBlockSnapshot(props.blockId);
 		const blockElement = ref<HTMLElement | null>(null);
 
 		const ackMounted = () => {
@@ -74,7 +65,7 @@ export const PenBlock = defineComponent({
 		onUpdated(ackMounted);
 
 		return (): VNode | null => {
-			if (!blockModel.value.exists) {
+			if (!slices.commit.value.exists) {
 				return null;
 			}
 
@@ -83,19 +74,10 @@ export const PenBlock = defineComponent({
 				return null;
 			}
 
-			const isSelected = isBlockSelected(
-				editor,
-				selection.value,
-				props.blockId,
-			);
-			const isFocused =
-				fieldEditorState.value.focusBlockId === props.blockId;
-			const surfaceRole = resolveExpandedSurfaceRole(
-				editor,
-				fieldEditorState.value,
-				props.blockId,
-			);
-			const childNodes: VNode[] = childBlockIds.value.map(
+			const isSelected = slices.selection.value.inSelection;
+			const isFocused = slices.field.value.isFieldFocus;
+			const surfaceRole = slices.field.value.expandedRole;
+			const childNodes: VNode[] = slices.childIds.value.map(
 				(childBlockId) =>
 					h(PenBlock, {
 						key: childBlockId,
@@ -126,7 +108,9 @@ export const PenBlock = defineComponent({
 						childNodes,
 						toggleFieldEditor: fieldEditor,
 						editor,
-						selection: selection.value,
+						isSelected,
+						cellSelection: slices.selection.value.cell,
+						listOrdinal: slices.list.value?.ordinal ?? 1,
 						renderInlineContent,
 					});
 
@@ -139,24 +123,11 @@ export const PenBlock = defineComponent({
 						blockElement.value =
 							element instanceof HTMLElement ? element : null;
 					},
-					[DATA_ATTRS.editorBlock]: "",
-					[DATA_ATTRS.blockId]: props.blockId,
-					[DATA_ATTRS.blockType]: block.type,
-					...buildDataAttributes({
-						selected: isSelected,
-						focused: isFocused,
+					...blockHostAttributes(editor, block, {
+						isSelected,
+						isFocused,
+						surfaceRole,
 					}),
-					[DATA_ATTRS.surfaceRole]: surfaceRole ?? undefined,
-					dir: resolvedContentDir(editor, block),
-					style: {
-						unicodeBidi: "isolate",
-						textAlign: resolveBlockTextAlignment(block),
-					},
-					tabIndex: -1,
-					contentEditable:
-						surfaceRole != null && surfaceRole !== "editable-inline"
-							? false
-							: undefined,
 				},
 				[blockBody],
 			);
@@ -164,13 +135,49 @@ export const PenBlock = defineComponent({
 	},
 });
 
+/** The block host's data, direction and editing attributes. */
+function blockHostAttributes(
+	editor: ReturnType<typeof useEditorContext>["editor"],
+	block: BlockHandle,
+	state: {
+		isSelected: boolean;
+		isFocused: boolean;
+		surfaceRole: "editable-inline" | "structural" | "delegated" | null;
+	},
+): Record<string, unknown> {
+	const { surfaceRole } = state;
+	return {
+		[DATA_ATTRS.editorBlock]: "",
+		[DATA_ATTRS.blockId]: block.id,
+		[DATA_ATTRS.blockType]: block.type,
+		...buildDataAttributes({
+			selected: state.isSelected,
+			focused: state.isFocused,
+		}),
+		[DATA_ATTRS.surfaceRole]: surfaceRole ?? undefined,
+		dir: resolvedContentDir(editor, block),
+		style: {
+			unicodeBidi: "isolate",
+			textAlign: resolveBlockTextAlignment(block),
+		},
+		tabIndex: -1,
+		contentEditable:
+			surfaceRole != null && surfaceRole !== "editable-inline"
+				? false
+				: undefined,
+	};
+}
+
 function renderBlockBody(args: {
 	block: BlockHandle;
 	readonly: boolean;
 	childNodes: PenBlockRenderContext["childNodes"];
 	toggleFieldEditor: ReturnType<typeof useFieldEditorContext>;
 	editor: ReturnType<typeof useEditorContext>["editor"];
-	selection: ReturnType<typeof useSelection>["value"];
+	isSelected: boolean;
+	cellSelection: CellSelection | null;
+	/** The numbered item's value from its notifier `list` slice. */
+	listOrdinal: number;
 	renderInlineContent: PenBlockRenderContext["renderInlineContent"];
 }) {
 	const {
@@ -179,7 +186,9 @@ function renderBlockBody(args: {
 		childNodes,
 		toggleFieldEditor,
 		editor,
-		selection,
+		isSelected,
+		cellSelection,
+		listOrdinal,
 		renderInlineContent,
 	} = args;
 
@@ -220,7 +229,7 @@ function renderBlockBody(args: {
 		}
 		case "numberedListItem": {
 			const indent = resolveIndent(block);
-			const value = resolveNumberedListValue(editor, block.id);
+			const value = listOrdinal;
 			return h(
 				"div",
 				{
@@ -443,7 +452,7 @@ function renderBlockBody(args: {
 				editor,
 				readonly,
 				toggleFieldEditor,
-				selection,
+				cellSelection,
 			);
 		default:
 			return h(
@@ -451,9 +460,7 @@ function renderBlockBody(args: {
 				{
 					"data-block-type": block.type,
 					"data-unknown-block": "",
-					"data-selected": isBlockSelected(editor, selection, block.id)
-						? ""
-						: undefined,
+					"data-selected": isSelected ? "" : undefined,
 					contentEditable: false,
 				},
 				[h("span", { "data-pen-unknown-type": "" }, block.type)],
@@ -466,16 +473,13 @@ function renderTable(
 	editor: ReturnType<typeof useEditorContext>["editor"],
 	readonly: boolean,
 	fieldEditor: ReturnType<typeof useFieldEditorContext>,
-	selection: ReturnType<typeof useSelection>["value"],
+	tableCellSelection: CellSelection | null,
 ) {
 	const table = block.as("table");
 	const rowCount = table?.tableRowCount() ?? 0;
 	const columnCount = table?.tableColumnCount() ?? 0;
 	const hasHeaderRow = Boolean(block.props.hasHeaderRow);
-	const cellSelection =
-		selection?.type === "cell" && selection.blockId === block.id
-			? selection
-			: null;
+	const cellSelection = tableCellSelection;
 
 	const bodyRows: VNode[] = [];
 	for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {

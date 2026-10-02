@@ -1,5 +1,7 @@
 import type { Editor } from "@input/pen-types";
 import { getRootBlockIds } from "@input/pen-dom/utils/parentIdTree";
+import { computed, type Ref } from "vue";
+import { useBlockNotifier, useDocumentSnapshot } from "../internal/blockNotifier";
 import { useEditorContext } from "../internal/editorContext";
 import { useExternalStore } from "../internal/useExternalStore";
 
@@ -10,8 +12,15 @@ import { useExternalStore } from "../internal/useExternalStore";
  * id sequence actually changes, so editing text inside a block does not
  * re-render the list.
  */
-export function useBlockList(editor?: Editor) {
+export function useBlockList(editor?: Editor): Readonly<Ref<readonly string[]>> {
   const resolvedEditor = editor ?? useEditorContext().editor;
+  // Inside a root and for its own editor, the notifier's root ids:
+  // recomputed only on structural commits, so a text-only commit does not
+  // spread the order (SCALE6).
+  if (!editor && useBlockNotifier()) {
+    const documentSnapshot = useDocumentSnapshot();
+    return computed(() => documentSnapshot.value.rootIds);
+  }
 
   return useExternalStore(
     (callback) => resolvedEditor.on("commit", () => callback()),

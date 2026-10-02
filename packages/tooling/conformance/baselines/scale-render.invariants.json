@@ -466,7 +466,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -482,7 +482,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -498,7 +498,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -514,7 +514,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -530,7 +530,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -544,7 +544,7 @@
 			"fixture": "scale-5k",
 			"value": 1
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -558,7 +558,7 @@
 			"fixture": "scale-5k",
 			"value": 1
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -572,7 +572,7 @@
 			"fixture": "scale-5k",
 			"value": 2
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -586,7 +586,7 @@
 			"fixture": "scale-5k",
 			"value": 2
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -600,7 +600,7 @@
 			"fixture": "scale-5k",
 			"value": 1
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R11"
 	},
 	{
@@ -616,7 +616,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -632,7 +632,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -648,7 +648,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -664,7 +664,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -680,7 +680,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -696,7 +696,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -712,7 +712,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -728,7 +728,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -744,7 +744,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -760,7 +760,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -776,7 +776,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -792,7 +792,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -808,7 +808,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -824,7 +824,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -840,7 +840,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -856,7 +856,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -872,7 +872,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -888,7 +888,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R7"
 	},
 	{
@@ -904,7 +904,7 @@
 				"scale-5k"
 			]
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R12"
 	},
 	{
@@ -1512,7 +1512,7 @@
 			"fixture": "scale-5k",
 			"value": 1
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -1526,7 +1526,7 @@
 			"fixture": "scale-5k",
 			"value": 1
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -1540,7 +1540,7 @@
 			"fixture": "scale-5k",
 			"value": 2
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -1554,7 +1554,7 @@
 			"fixture": "scale-5k",
 			"value": 2
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -1568,7 +1568,7 @@
 			"fixture": "scale-5k",
 			"value": 3
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -1582,7 +1582,7 @@
 			"fixture": "scale-5k",
 			"value": 5
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -1596,7 +1596,7 @@
 			"fixture": "scale-5k",
 			"value": 2
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R11"
 	},
 	{
@@ -1610,7 +1610,7 @@
 			"fixture": "scale-5k",
 			"value": 0
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -1624,7 +1624,7 @@
 			"fixture": "scale-5k",
 			"value": 0
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{
@@ -1638,7 +1638,7 @@
 			"fixture": "scale-5k",
 			"value": 0
 		},
-		"status": "pending",
+		"status": "enforced",
 		"closedBy": "W2.R5"
 	},
 	{

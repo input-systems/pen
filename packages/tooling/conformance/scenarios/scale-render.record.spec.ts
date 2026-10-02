@@ -185,24 +185,14 @@ function checkAgainstBaseline(
 	];
 }
 
-/**
- * Vue at 5k exceeds a 600s test today: every caret move is O(M²) across its
- * per-block selection reads (W2-S6's subject). Until that lands it runs only
- * under SCALE_RENDER_5K=1 (nightly), with a longer budget. React moved to the
- * block notifier in W2-S5 and runs at 5k on every run.
- */
-const SLOW_UNTIL_W2 = new Set(["vue/scale-5k"]);
-const RUN_SLOW = process.env.SCALE_RENDER_5K === "1";
 
 for (const surface of SURFACES) {
 	for (const fixture of FIXTURES) {
-		const slow = SLOW_UNTIL_W2.has(`${surface}/${fixture}`);
-		if (slow && !RUN_SLOW) continue;
 		scenario(
 			`SCALE6: ${surface} ${fixture} renderer counts match the committed baseline`,
 			async (_s, page) => {
 				test.skip(test.info().project.name !== "chromium", "scale-render counts are Chromium-only");
-				test.setTimeout(slow ? 3_600_000 : 600_000);
+				test.setTimeout(600_000);
 				const counts = await measureFixture(page, surface, fixture);
 				expect(counts.mount?.["mount.blocksMounted"]).toBe(
 					mixedFixtureIdentity(SCALE_RENDER_ROOT_COUNTS[fixture]).totalBlocks,

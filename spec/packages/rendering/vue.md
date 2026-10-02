@@ -44,6 +44,7 @@ flowchart TD
 
 Important responsibilities:
 
+- `PenBlock` and `PenInlineContent` read their block's slices from the field editor's block notifier rather than the editor selection or the full field-editor store, the document placeholder target and root ids come from the notifier's document snapshot, and `useBlockList` changes only when the root ids change (SCALE6). A numbered item's marker comes from its `list` slice, so it updates when an item is inserted above it. `PenBlock` acknowledges its own mount; `PenContent` does not acknowledge every block.
 - Mount the editor and shared field-editor engine in a Vue host
 - Expose key editor-derived state through composables instead of duplicating state inside components
 - Register the field editor and paste assets with `internals.assignSlot`. When the host omits `importers`, `PenEditor` still defaults `paste:importers.html` to `htmlImporter` from `@input/pen-interop/html`. Also wires focused/read-only/empty root attributes and `bindEditorDocumentKeyDown()` from `@input/pen-dom` (HOST7/HOST8: Escape and Enter bubble; other document shortcuts stay in capture).

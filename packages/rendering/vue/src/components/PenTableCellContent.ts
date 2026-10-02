@@ -12,10 +12,8 @@ import {
 	type ComponentPublicInstance,
 	type PropType,
 } from "vue";
-import {
-	useCellTextSnapshot,
-	useFieldEditorState,
-} from "../internal/editorState";
+import { useBlockSnapshot } from "../internal/blockNotifier";
+import { readCellTextSnapshot } from "../internal/editorState";
 import { useEditorContext } from "../internal/editorContext";
 import { useFieldEditorContext } from "../internal/fieldEditorContext";
 
@@ -44,22 +42,18 @@ export const PenTableCellContent = defineComponent({
 	setup(props) {
 		const { editor } = useEditorContext();
 		const fieldEditor = useFieldEditorContext();
-		const fieldEditorState = useFieldEditorState(fieldEditor);
-		const textSnapshot = useCellTextSnapshot(
-			editor,
-			props.tableBlockId,
-			props.row,
-			props.col,
-		);
+		// The table block's notifier slices (SCALE6): the cell re-reads its text
+		// when the table's commit slice moves.
+		const tableSlices = useBlockSnapshot(props.tableBlockId);
+		const textSnapshot = computed(() => {
+			void tableSlices.commit.value;
+			return readCellTextSnapshot(editor, props.tableBlockId, props.row, props.col);
+		});
 		const elementRef = ref<HTMLElement | null>(null);
 
 		const isActiveCell = computed(() => {
-			const activeCell = fieldEditorState.value.activeCellCoord;
-			return (
-				activeCell?.blockId === props.tableBlockId &&
-				activeCell.row === props.row &&
-				activeCell.col === props.col
-			);
+			const activeCell = tableSlices.field.value.activeCell;
+			return activeCell?.row === props.row && activeCell.col === props.col;
 		});
 		const showPlaceholder = computed(() => {
 			return (

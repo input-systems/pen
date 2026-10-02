@@ -4,21 +4,19 @@ import {
 } from "@input/pen-dom/utils/dataAttributes";
 import { fieldEditorTextEntryAttrs } from "@input/pen-dom/utils/fieldEditorTextEntryAttrs";
 import {
+  computed,
   defineComponent,
   h,
-  onMounted,
-  onUpdated,
   ref,
   watch,
   type ComponentPublicInstance,
   type PropType,
 } from "vue";
-import { useBlockList } from "../composables/useBlockList";
-import { useEditorContext } from "../internal/editorContext";
 import {
-  useDocumentEmptyState,
-  useFieldEditorState,
-} from "../internal/editorState";
+  useDocumentSnapshot,
+  useSurfaceSnapshot,
+} from "../internal/blockNotifier";
+import { useEditorContext } from "../internal/editorContext";
 import { useFieldEditorContext } from "../internal/fieldEditorContext";
 import { PenBlock } from "./PenBlock";
 
@@ -38,44 +36,27 @@ export const PenContent = defineComponent({
   setup(props) {
     const { editor } = useEditorContext();
     const fieldEditor = useFieldEditorContext();
-    const fieldEditorState = useFieldEditorState(fieldEditor);
-    const blockIds = useBlockList(editor);
-    const isEmpty = useDocumentEmptyState(editor);
+    // List-level state only (SCALE6): root ids, emptiness, and whether the
+    // surface is expanded. Each PenBlock acknowledges its own mount.
+    const documentSnapshot = useDocumentSnapshot();
+    const surface = useSurfaceSnapshot();
+    const blockIds = computed(() => documentSnapshot.value.rootIds);
+    const isEmpty = computed(() => documentSnapshot.value.isEmpty);
+    const isExpanded = computed(() => surface.value.mode === "expanded");
+    const expandedBlockIds = computed(() =>
+      isExpanded.value ? surface.value.activeBlockIds : null,
+    );
     const blocksHostElement = ref<HTMLElement | null>(null);
 
     watch(
-      [blocksHostElement, fieldEditorState],
-      ([nextElement, nextFieldEditorState]) => {
-        if (
-          nextElement &&
-          fieldEditor &&
-          nextFieldEditorState.mode === "expanded"
-        ) {
+      [blocksHostElement, isExpanded, expandedBlockIds],
+      ([nextElement, nextIsExpanded]) => {
+        if (nextElement && fieldEditor && nextIsExpanded) {
           fieldEditor.attachElement(nextElement);
         }
       },
       { immediate: true },
     );
-
-    const ackMountedBlocks = () => {
-      const host = blocksHostElement.value;
-      if (!host || !fieldEditor) {
-        return;
-      }
-      for (const element of host.querySelectorAll(
-        `[${DATA_ATTRS.editorBlock}]`,
-      )) {
-        if (!(element instanceof HTMLElement)) {
-          continue;
-        }
-        const blockId = element.getAttribute(DATA_ATTRS.blockId);
-        if (blockId) {
-          fieldEditor.ackBlockMounted(blockId, element);
-        }
-      }
-    };
-    onMounted(ackMountedBlocks);
-    onUpdated(ackMountedBlocks);
 
     return () => {
       const blockNodes = blockIds.value.map((blockId) =>
@@ -102,7 +83,7 @@ export const PenContent = defineComponent({
                   element instanceof HTMLElement ? element : null;
               },
               "data-pen-editor-blocks-host": "",
-              ...(fieldEditorState.value.mode === "expanded"
+              ...(isExpanded.value
                 ? {
                     [DATA_ATTRS.fieldEditorSurface]: "",
                     ...fieldEditorTextEntryAttrs(true, editor),

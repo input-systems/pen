@@ -1,4 +1,3 @@
-import { isCollapsed } from "@input/pen-core";
 import { fullReconcileDeltasToDOM } from "@input/pen-dom/field-editor/reconciler";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import { isInlineContentEmpty } from "@input/pen-dom/utils/editorEmptyState";
@@ -19,15 +18,8 @@ import {
 	type ComponentPublicInstance,
 	type PropType,
 } from "vue";
-import { useSelection } from "../composables/useSelection";
-import {
-	isBlockSelected,
-	useBlockDecorations,
-	useBlockModel,
-	useBlockTextSnapshot,
-	useDocumentPlaceholderTarget,
-	useFieldEditorState,
-} from "../internal/editorState";
+import { useBlockSnapshot } from "../internal/blockNotifier";
+import { readBlockTextSnapshot } from "../internal/editorState";
 import { resolveEditorSchemaPlaceholder } from "../internal/displayCopy";
 import { useEditorContext } from "../internal/editorContext";
 import { useFieldEditorContext } from "../internal/fieldEditorContext";
@@ -61,36 +53,28 @@ export const PenInlineContent = defineComponent({
 	setup(props) {
 		const { editor, emptyPlaceholder } = useEditorContext();
 		const fieldEditor = useFieldEditorContext();
-		const selection = useSelection(editor);
-		const fieldEditorState = useFieldEditorState(fieldEditor);
-		const blockModel = useBlockModel(editor, props.blockId);
-		const blockDecorations = useBlockDecorations(editor, props.blockId);
-		const textSnapshot = useBlockTextSnapshot(editor, props.blockId);
-		const documentPlaceholderTarget = useDocumentPlaceholderTarget(editor);
+		// This block's notifier slices only (SCALE6).
+		const slices = useBlockSnapshot(props.blockId);
+		const blockDecorations = slices.decorations;
+		// Text is re-read only when the block's commit slice moves.
+		const textSnapshot = computed(() => {
+			void slices.commit.value;
+			return readBlockTextSnapshot(editor, props.blockId);
+		});
 		const elementRef = ref<HTMLElement | null>(null);
 
-		const isActive = computed(
-			() => fieldEditorState.value.focusBlockId === props.blockId,
-		);
+		const isActive = computed(() => slices.field.value.isFieldFocus);
+		// Expanded mode and this block among its active blocks.
 		const isExpandedOwnedBlock = computed(
-			() =>
-				fieldEditorState.value.mode === "expanded" &&
-				fieldEditorState.value.activeBlockIds.includes(props.blockId),
+			() => slices.field.value.expandedRole !== null,
 		);
 		const schemaPlaceholder = computed(() =>
 			resolveEditorSchemaPlaceholder(editor, props.blockId),
 		);
-		const isDocumentPlaceholderTarget = computed(
-			() => documentPlaceholderTarget.value === props.blockId,
+		const isDocumentPlaceholderTarget = slices.isPlaceholderTarget;
+		const isFocusedBlock = computed(
+			() => isActive.value || slices.selection.value.caretHere,
 		);
-		const isFocusedBlock = computed(() => {
-			return (
-				isActive.value ||
-				(selection.value?.type === "text" &&
-					isCollapsed(selection.value) &&
-					selection.value.focus.blockId === props.blockId)
-			);
-		});
 		const blockTextEmpty = computed(() =>
 			isInlineContentEmpty(textSnapshot.value.deltas),
 		);
@@ -135,13 +119,13 @@ export const PenInlineContent = defineComponent({
 		});
 
 		watch(
-			[elementRef, isActive, fieldEditorState],
-			([nextElement, nextIsActive, nextFieldEditorState]) => {
+			[elementRef, isActive, isExpandedOwnedBlock],
+			([nextElement, nextIsActive, nextIsExpandedOwnedBlock]) => {
 				if (
 					nextElement &&
 					nextIsActive &&
 					fieldEditor &&
-					nextFieldEditorState.mode !== "expanded"
+					!nextIsExpandedOwnedBlock
 				) {
 					fieldEditor.attachElement(nextElement);
 				}
@@ -211,8 +195,7 @@ export const PenInlineContent = defineComponent({
 					[DATA_ATTRS.inlineContent]: "",
 					[DATA_ATTRS.fieldEditorSurface]: "",
 					...fieldEditorTextEntryAttrs(
-						isActive.value &&
-							fieldEditorState.value.mode !== "expanded",
+						isActive.value && !isExpandedOwnedBlock.value,
 						editor,
 					),
 					[DATA_ATTRS.placeholderVisible]: placeholder.value
@@ -220,7 +203,7 @@ export const PenInlineContent = defineComponent({
 						: undefined,
 					"data-placeholder": placeholder.value,
 					dir: resolveInlineContentDir(
-						props.direction ?? blockModel.value.props?.direction,
+						props.direction ?? slices.commit.value.props?.direction,
 					),
 					// RI1: unicode-bidi does not inherit, so the block host's isolate does
 					// not reach this surface and it needs its own.
@@ -231,11 +214,7 @@ export const PenInlineContent = defineComponent({
 						unicodeBidi: "isolate",
 						whiteSpace: "pre-wrap",
 					},
-					"data-selected": isBlockSelected(
-						editor,
-						selection.value,
-						props.blockId,
-					)
+					"data-selected": slices.selection.value.inSelection
 						? ""
 						: undefined,
 				},
