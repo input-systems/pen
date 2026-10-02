@@ -27,6 +27,14 @@
  * a comment, a rename, or a pure refactor — and it keeps the decision in the
  * diff where a reviewer can disagree with it.
  *
+ * Every non-empty changeset also records whether it is breaking, on its own
+ * body line (by convention the last, so the summary heads the CHANGELOG): `Breaking: yes — <what a host must change>` or `Breaking: no`
+ * (API7). The gate refuses the pairs that contradict the bump: `yes` with
+ * `patch`, and `no` with `minor` while the train is 0.x, where `minor` means
+ * breaking. A change that is breaking for one package and additive for
+ * another uses two changesets. The line cannot stop an author who flips both
+ * the word and the bump; it makes the grading a recorded, reviewable decision.
+ *
  * Fails closed on a git invocation that does not work. A gate that silently
  * reports "no changed packages" because it could not find the base ref is a
  * gate that passes everything.
@@ -108,6 +116,23 @@ export function changedPublishedPackages({ files, packages }) {
 	return [...names].sort();
 }
 
+const BREAKING_LINE_RE = /^Breaking:\s*(yes|no)\b(?:\s*[—-]\s*(.+))?$/;
+
+/**
+ * Reads the `Breaking:` decision out of a changeset body. Returns `null` for
+ * the decision when no line matches, so a missing line and a malformed one
+ * report the same way.
+ */
+export function parseBreakingLine(bodyLines) {
+	const match = bodyLines
+		.map((line) => BREAKING_LINE_RE.exec(line.trim()))
+		.find((candidate) => candidate != null);
+	return {
+		breaking: match?.[1] ?? null,
+		breakingReason: match?.[2]?.trim() || null,
+	};
+}
+
 /**
  * Reads the package names out of a changeset's frontmatter. An empty
  * frontmatter block is the explicit "no release" marker, not a parse failure.
@@ -148,6 +173,7 @@ export function parseChangeset(markdown) {
 		bumps,
 		isEmpty: packages.length === 0,
 		malformed: false,
+		...parseBreakingLine(lines.slice(close + 1)),
 	};
 }
 
@@ -165,6 +191,10 @@ export function evaluateCoverage({
 	let hasEmpty = false;
 	const malformed = [];
 	const majorBumps = [];
+	const breakingMissing = [];
+	const breakingNoReason = [];
+	const breakingPatch = [];
+	const breakingMinor = [];
 	for (const changeset of changesets) {
 		if (changeset.malformed) {
 			malformed.push(changeset.file);
@@ -176,6 +206,26 @@ export function evaluateCoverage({
 		}
 		for (const name of changeset.packages) {
 			declared.add(name);
+		}
+		if (changeset.breaking == null) {
+			breakingMissing.push(changeset.file);
+		} else if (
+			changeset.breaking === "yes" &&
+			changeset.breakingReason == null
+		) {
+			breakingNoReason.push(changeset.file);
+		}
+		for (const bump of changeset.bumps ?? []) {
+			if (changeset.breaking === "yes" && bump.bump === "patch") {
+				breakingPatch.push({ file: changeset.file, package: bump.name });
+			}
+			if (
+				trainIsZeroX &&
+				changeset.breaking === "no" &&
+				bump.bump === "minor"
+			) {
+				breakingMinor.push({ file: changeset.file, package: bump.name });
+			}
 		}
 		if (trainIsZeroX) {
 			for (const bump of changeset.bumps ?? []) {
@@ -201,8 +251,62 @@ export function evaluateCoverage({
 		malformed,
 		missing,
 		majorBumps,
+		breakingMissing,
+		breakingNoReason,
+		breakingPatch,
+		breakingMinor,
 		trainIsZeroX,
 	};
+}
+
+const BREAKING_FAILURES = [
+	{
+		key: "breakingMissing",
+		title: "FAIL: changeset has no `Breaking:` line (API7):",
+		help: [
+			"  End the body with one line:",
+			"    Breaking: yes — <what a host must change>",
+			"    Breaking: no",
+		],
+	},
+	{
+		key: "breakingNoReason",
+		title: "FAIL: `Breaking: yes` names no host action:",
+		help: ["  Write `Breaking: yes — <what a host must change>`."],
+	},
+	{
+		key: "breakingPatch",
+		title: "FAIL: `Breaking: yes` with a `patch` bump (API7):",
+		help: [
+			"  A breaking change is `minor` on 0.x. If only some packages",
+			"  break, split the changeset in two.",
+		],
+	},
+	{
+		key: "breakingMinor",
+		title: "FAIL: `Breaking: no` with a `minor` bump on a 0.x train (API7):",
+		help: [
+			"  On 0.x `minor` means breaking. Use `patch`, or say what breaks.",
+		],
+	},
+];
+
+function describeEntry(entry) {
+	return typeof entry === "string"
+		? `  ${entry}`
+		: `  ${entry.file}  ${entry.package}`;
+}
+
+function formatBreakingFailures(result) {
+	return BREAKING_FAILURES.filter(
+		({ key }) => result[key].length > 0,
+	).flatMap(({ key, title, help }) => [
+		"",
+		title,
+		...result[key].map(describeEntry),
+		"",
+		...help,
+	]);
 }
 
 export function formatReport({ base, files, result }) {
@@ -252,6 +356,8 @@ export function formatReport({ base, files, result }) {
 		lines.push("  it until the project means to leave 0.x.");
 	}
 
+	lines.push(...formatBreakingFailures(result));
+
 	if (result.missing.length > 0) {
 		lines.push("");
 		lines.push("FAIL: published packages changed with no changeset:");
@@ -276,11 +382,7 @@ export function formatReport({ base, files, result }) {
 		lines.push("  `pnpm changeset --empty` instead of widening this gate.");
 	}
 
-	if (
-		result.missing.length === 0 &&
-		result.malformed.length === 0 &&
-		result.majorBumps.length === 0
-	) {
+	if (!hasFailures(result)) {
 		lines.push("");
 		if (result.relevant.length === 0) {
 			lines.push("OK: no published package changed shipped source.");
@@ -296,12 +398,15 @@ export function formatReport({ base, files, result }) {
 	return lines.join("\n");
 }
 
+const FAILURE_KEYS = [
+	"missing",
+	"malformed",
+	"majorBumps",
+	...BREAKING_FAILURES.map(({ key }) => key),
+];
+
 export function hasFailures(result) {
-	return (
-		result.missing.length > 0 ||
-		result.malformed.length > 0 ||
-		(result.majorBumps?.length ?? 0) > 0
-	);
+	return FAILURE_KEYS.some((key) => (result[key]?.length ?? 0) > 0);
 }
 
 function assert(condition, message) {
@@ -439,6 +544,8 @@ export function runSelfTests() {
 				packages: ["@input/pen-core"],
 				isEmpty: false,
 				malformed: false,
+				breaking: "no",
+				breakingReason: null,
 			},
 		],
 	});
@@ -495,6 +602,8 @@ export function runSelfTests() {
 				bumps: [{ name: "@input/pen-core", bump: "major" }],
 				isEmpty: false,
 				malformed: false,
+				breaking: "yes",
+				breakingReason: "hosts rename the option",
 			},
 		],
 	});
@@ -516,12 +625,87 @@ export function runSelfTests() {
 				bumps: [{ name: "@input/pen-core", bump: "major" }],
 				isEmpty: false,
 				malformed: false,
+				breaking: "yes",
+				breakingReason: "hosts rename the option",
 			},
 		],
 	});
 	assert(
 		!hasFailures(majorOnOne),
 		"self-test: major is allowed once the train leaves 0.x",
+	);
+
+	const breakingCase = (body, bump, trainIsZeroX = true) =>
+		evaluateCoverage({
+			changed: ["@input/pen-core"],
+			trainIsZeroX,
+			changesets: [
+				{
+					file: ".changeset/case.md",
+					...parseChangeset(
+						`---\n"@input/pen-core": ${bump}\n---\n\n${body}\n`,
+					),
+				},
+			],
+		});
+
+	const noLine = breakingCase("Summary only.", "patch");
+	assert(
+		hasFailures(noLine) && noLine.breakingMissing.length === 1,
+		"self-test: a non-empty changeset without a Breaking line fails",
+	);
+	const yesPatch = breakingCase(
+		"Breaking: yes — hosts pass `origin` explicitly\n\nSummary.",
+		"patch",
+	);
+	assert(
+		hasFailures(yesPatch) && yesPatch.breakingPatch.length === 1,
+		"self-test: Breaking: yes with a patch bump fails",
+	);
+	const noMinor = breakingCase("Breaking: no\n\nSummary.", "minor");
+	assert(
+		hasFailures(noMinor) && noMinor.breakingMinor.length === 1,
+		"self-test: Breaking: no with a minor bump fails on 0.x",
+	);
+	assert(
+		!hasFailures(breakingCase("Breaking: no\n\nSummary.", "minor", false)),
+		"self-test: Breaking: no with a minor bump passes after 0.x",
+	);
+	const yesNoReason = breakingCase("Breaking: yes\n\nSummary.", "minor");
+	assert(
+		hasFailures(yesNoReason) && yesNoReason.breakingNoReason.length === 1,
+		"self-test: Breaking: yes without a reason fails",
+	);
+	assert(
+		!hasFailures(
+			breakingCase(
+				"Breaking: yes — hosts pass `origin` explicitly\n\nSummary.",
+				"minor",
+			),
+		) &&
+			!hasFailures(breakingCase("Summary.\n\nBreaking: no", "patch")) &&
+			!hasFailures(
+				breakingCase("Breaking: yes - hosts rename `x`", "minor"),
+			),
+		"self-test: valid Breaking lines pass",
+	);
+	const emptyWithoutLine = evaluateCoverage({
+		changed: ["@input/pen-core"],
+		trainIsZeroX: true,
+		changesets: [
+			{ file: ".changeset/empty.md", ...parseChangeset("---\n---\n") },
+		],
+	});
+	assert(
+		!hasFailures(emptyWithoutLine),
+		"self-test: an empty changeset needs no Breaking line",
+	);
+	const frontmatterOnlyLine = parseChangeset(
+		'---\n"@input/pen-core": patch\n---\n\nNot Breaking: no inline.\n',
+	);
+	assert(
+		frontmatterOnlyLine.breaking == null,
+		"self-test: the Breaking line must stand on its own line",
 	);
 }
 
@@ -736,7 +920,7 @@ function main() {
 	const args = parseArgs(process.argv.slice(2));
 	runSelfTests();
 	console.log(
-		"changeset-check self-test ok (an uncovered published package, a malformed frontmatter, a major bump on 0.x, a lost base ref, and a drifted private ignore list all fail closed)",
+		"changeset-check self-test ok (an uncovered published package, a malformed frontmatter, a major bump on 0.x, a missing or contradictory Breaking line, a lost base ref, and a drifted private ignore list all fail closed)",
 	);
 	if (args.selfTestOnly) {
 		return;

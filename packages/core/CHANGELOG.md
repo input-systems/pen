@@ -158,6 +158,15 @@
 
 ## 0.1.5
 
+### Erratum (2026-10)
+
+Two changes below were breaking under API7 and should have shipped as `minor`, not `patch`. Commit `9e83fed1` downgraded their changesets to keep the 0.1.x train on 0.1.5.
+
+- 67bf230: inline-atom schema registration now throws on a prop named `type`. Host action: rename that prop.
+- c926c5e (vertical caret): a geometry-path vertical caret that lands on a non-text block now writes a `BlockSelection` instead of a collapsed text caret. Host action: handle `BlockSelection` on that path, and drop any window-level Enter workaround that relied on focus resting on `document.body`.
+
+The `BlockSchema` `Content` widening (c926c5e) is types-only and stays graded `patch`.
+
 ### Patch Changes
 
 - c926c5e: Widen `BlockSchema`'s `Content` default from `"inline"` to `ContentType` so nested, `none`, `table`, and `subdocument` blocks are bare `BlockSchema` values and belong in `SchemaRegistry.extend` without a cast (API10). `DefinedBlockSchema.a11y` is now the resolved spec intersected with the AX4 fluent attach, so `defineBlock()` is assignable to `BlockSchema`. Serialize/normalize callbacks on `BlockSchema` use method syntax so a specific `Type` remains assignable to the wide schema.

@@ -203,6 +203,12 @@
 
 ## 0.1.5
 
+### Erratum (2026-10)
+
+The clipboard change below was breaking under API7 and should have shipped as `minor`, not `patch`. Commit `9e83fed1` downgraded its changeset to keep the 0.1.x train on 0.1.5.
+
+- c926c5e (clipboard): the Pen JSON clipboard flavor now carries inline-atom embed inserts, and paste rebuilds them. Host action: a host that reads or writes that flavor must accept embed inserts in its deltas.
+
 ### Patch Changes
 
 - c926c5e: Keep inline atoms in sliced Pen JSON clipboard deltas and rebuild them on paste (IOP7). Add optional `InlineSchema.serialize.toText` and emit atom interchange text through the existing `toMarkdown` / `toHTML` hooks, defaulting to skip when none are set (IOP8).
@@ -218,6 +224,13 @@
   - @input/pen-shortcuts@0.1.5
 
 ## 0.1.4
+
+### Erratum (2026-10)
+
+Both changes below changed host-visible behaviour and should have shipped as `minor`, not `patch` (API7).
+
+- 9fdb74d (HOST8/HOST9): block-selection Enter now bubbles instead of being handled on document capture, and DOM focus moves to the editor sink while a block or cell is selected. Host action: a host that relied on capture-phase Enter, or on focus staying on `document.body`, must listen on the editor element instead.
+- 9fdb74d (FE10): a drag that starts in host chrome beside the column now creates a text selection. Host action: a host that expected a background drag to leave the selection unchanged must update that expectation.
 
 ### Patch Changes
 
