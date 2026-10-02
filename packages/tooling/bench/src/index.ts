@@ -20,6 +20,15 @@ export type {
 // off the barrel. createBenchSuites is the public suite entry.
 export { createLargeDocument } from "./fixtures/largeDoc";
 export { createScale3Editor } from "./fixtures/scale3Stack";
+export {
+	SCALE3_REALISTIC_BLOCK_COUNTS,
+	createScale3RealisticEditor,
+	observeScale3Realistic,
+} from "./fixtures/scale3Realistic";
+export type {
+	Scale3RealisticBlockCount,
+	Scale3RealisticOptions,
+} from "./fixtures/scale3Realistic";
 export { createEnvelopeEditor } from "./fixtures/envelope";
 export {
 	ENVELOPE_DRIFT_FLOOR_MS,

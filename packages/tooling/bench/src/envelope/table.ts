@@ -136,16 +136,22 @@ function renderLadderRow(
 function renderTrust(row: FixtureAuditRow, record: EnvelopeRecord): string {
 	const count =
 		row.countTrust === "trusted" ? "count-trusted" : "count-untrusted";
-	if (row.clockTrust === "not-a-clock") {
-		return count;
+	switch (row.clockTrust) {
+		case "not-a-clock":
+			return count;
+		case "not-gated":
+			return `${count}; clock recorded, not gated`;
+		case "untrustworthy":
+			return `${count}; clock untrustworthy`;
+		case "record":
+			return record.loadTaken ? `${count}; clock load-taken` : `${count}; clock quiet`;
+		case "load-taken":
+			return `${count}; clock load-taken`;
+		default: {
+			const unhandled: never = row.clockTrust;
+			return unhandled;
+		}
 	}
-	if (row.clockTrust === "untrustworthy") {
-		return `${count}; clock untrustworthy`;
-	}
-	if (row.clockTrust === "record" && !record.loadTaken) {
-		return `${count}; clock quiet`;
-	}
-	return `${count}; clock load-taken`;
 }
 
 function renderAuditRow(row: FixtureAuditRow, record: EnvelopeRecord): string {

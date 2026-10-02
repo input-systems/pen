@@ -57,17 +57,19 @@
     "bench:envelope:drift": "tsx src/envelope/checkDrift.cli.ts",
     "bench:anchors": "tsx src/anchors/run.cli.ts",
     "bench:anchors:compare": "tsx src/anchors/run.cli.ts --compare",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "bench:scale3:realistic": "tsx src/fixtures/scale3Realistic.cli.ts"
   },
   "devDependencies": {
     "@input/pen-ai": "workspace:*",
     "@input/pen-core": "workspace:*",
-    "@input/pen-yjs": "workspace:*",
-    "@input/pen-tools": "workspace:*",
     "@input/pen-schema": "workspace:*",
+    "@input/pen-search": "workspace:*",
     "@input/pen-test": "workspace:*",
+    "@input/pen-tools": "workspace:*",
     "@input/pen-types": "workspace:*",
     "@input/pen-undo": "workspace:*",
+    "@input/pen-yjs": "workspace:*",
     "@types/node": "^25.4.0",
     "tsup": "^8.4.0",
     "tsx": "^4.23.12",

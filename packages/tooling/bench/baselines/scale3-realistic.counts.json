@@ -1,0 +1,84 @@
+{
+	"schemaVersion": 1,
+	"rule": "SCALE3",
+	"producedOn": "2026-10-02",
+	"points": [
+		{
+			"id": "scale3.realistic.keystroke.100",
+			"blockCount": 100,
+			"stagedSuggestions": 8,
+			"searchMatches": 1,
+			"counts": {
+				"blockOrderReads": 1,
+				"blocksMapReads": 1415,
+				"blocksMapIterations": 200,
+				"textFullReads": 403,
+				"orderArrayReads": 0,
+				"documentWalks": 4
+			}
+		},
+		{
+			"id": "scale3.realistic.keystroke.1000",
+			"blockCount": 1000,
+			"stagedSuggestions": 8,
+			"searchMatches": 1,
+			"counts": {
+				"blockOrderReads": 1,
+				"blocksMapReads": 14015,
+				"blocksMapIterations": 2000,
+				"textFullReads": 4003,
+				"orderArrayReads": 0,
+				"documentWalks": 4
+			}
+		},
+		{
+			"id": "scale3.realistic.keystroke.5000",
+			"blockCount": 5000,
+			"stagedSuggestions": 8,
+			"searchMatches": 1,
+			"counts": {
+				"blockOrderReads": 1,
+				"blocksMapReads": 70015,
+				"blocksMapIterations": 10000,
+				"textFullReads": 20003,
+				"orderArrayReads": 0,
+				"documentWalks": 4
+			}
+		}
+	],
+	"history": [
+		{
+			"date": "2026-10-02",
+			"reason": "Initial record (W1-S7). The AI review provider walks every block and reads each Y.Text per keystroke, and the active search query rescans every block; W2.G4 owns the fix.",
+			"moved": [
+				"initial record"
+			]
+		}
+	],
+	"clocks": {
+		"producedOn": "2026-10-02",
+		"machine": "macos-arm64 (darwin 27, Apple Silicon). Not the CI runner (github-actions-ubuntu-latest).",
+		"load": {
+			"load1": 7.177734375,
+			"ncpu": 14,
+			"busy": true
+		},
+		"points": [
+			{
+				"id": "scale3.realistic.keystroke.100",
+				"samples": 50,
+				"p50Ms": 0.38
+			},
+			{
+				"id": "scale3.realistic.keystroke.1000",
+				"samples": 50,
+				"p50Ms": 2.26
+			},
+			{
+				"id": "scale3.realistic.keystroke.5000",
+				"samples": 50,
+				"p50Ms": 13.87
+			}
+		]
+	}
+}

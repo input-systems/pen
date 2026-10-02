@@ -117,6 +117,16 @@ export const ENFORCEMENT_INVENTORY: readonly EnforcementRow[] = [
 			"critical:true; flat 2ms gate on 0.04–0.06ms medians, below the pre-SCALE2-fix 3.76ms so per-document commit work fails",
 	},
 	{
+		id: "scale3.realistic",
+		subject: "SCALE3 keystroke with the real AI and search providers",
+		unit: "enforced",
+		unitFailsOn:
+			"any ScanCounts drift by point id and counter; fewer than 8 staged suggestions or not exactly 1 search match",
+		isolatedClock: "record-only",
+		clockNote:
+			"clocks written to scale3-realistic.counts.json by bench:scale3:realistic and never compared",
+	},
+	{
 		id: "createLargeDocument",
 		subject: "n-block SCALE3/CRDT fixture",
 		unit: "enforced",

@@ -14,9 +14,9 @@ Support development, testing, benchmarking, or local integration workflows aroun
 - Runner: `bench()`, `runSuite()`, `runAllSuites()`, `createBenchSuites()`
 - Gating: `evaluateBenchResult()`, `isCriticalBench()`, `getBenchTarget()`, `BENCH_GATE_SAMPLE_SIZE`
 - Envelope and scale baselines: `buildEnvelopeRecord()`, `compareEnvelopeDrift()`, and their tolerance helpers
-- Fixtures: `createLargeDocument()`, `createScale3Editor()`, `createEnvelopeEditor()`
+- Fixtures: `createLargeDocument()`, `createScale3Editor()`, `createEnvelopeEditor()`, `createScale3RealisticEditor()` and `observeScale3Realistic()` (SCALE3 realistic variant: real `aiExtension` with staged suggestions and real `searchExtension` with an active query, gated on `baselines/scale3-realistic.counts.json`)
 - Reporters: `reportConsole()`, `reportJSON()`
-- Workspace scripts: `bench`, `bench:ci`, `bench:envelope`, `bench:anchors`, `build`, `clean`, `dev`, `lint`, `test`, `typecheck`
+- Workspace scripts: `bench`, `bench:ci`, `bench:envelope`, `bench:anchors`, `bench:scale3:realistic`, `build`, `clean`, `dev`, `lint`, `test`, `typecheck`
 
 ## Dependencies And Boundaries
 

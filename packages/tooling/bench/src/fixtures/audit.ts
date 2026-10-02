@@ -5,10 +5,12 @@ export type CountTrust = "trusted" | "untrusted";
 /**
  * `record`: the clock is the envelope record's sample, and its trust follows
  * the record's load state (`loadTaken`), so no date or load claim is
- * hard-coded here.
+ * hard-coded here. `not-gated`: a clock is recorded beside a count gate and
+ * never compared.
  */
 export type ClockTrust =
 	| "record"
+	| "not-gated"
 	| "load-taken"
 	| "untrustworthy"
 	| "not-a-clock";
@@ -162,6 +164,19 @@ export const RELATED_FIXTURE_AUDIT: readonly FixtureAuditRow[] = [
 		floorKind: "empty-timer",
 		howMeasured:
 			"count: 8 remote-caret decorations. Clock is a keystroke median on a single editor. N-synced-peer scaling is not a SCALE3 measurement",
+	},
+	{
+		id: "scale3.realistic",
+		fixture: "`createScale3RealisticEditor`",
+		claimedSubject: "keystroke with the real AI and search providers",
+		actualSubject:
+			"Real `aiExtension` with 8 staged suggestions and real `searchExtension` with one match. AI suggestions, autocomplete and multiplayer remain stand-ins.",
+		verdict: "agrees",
+		countTrust: "trusted",
+		clockTrust: "not-gated",
+		floorKind: "unmeasurable",
+		howMeasured:
+			"count: `ScanCounts` per keystroke at 100, 1,000 and 5,000 blocks against `baselines/scale3-realistic.counts.json`; clocks recorded there by `bench:scale3:realistic`",
 	},
 	{
 		id: "createLargeDocument",

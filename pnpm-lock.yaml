@@ -800,6 +800,9 @@ importers:
       '@input/pen-schema':
         specifier: workspace:*
         version: link:../../schema
+      '@input/pen-search':
+        specifier: workspace:*
+        version: link:../../extensions/search
       '@input/pen-test':
         specifier: workspace:*
         version: link:../test
