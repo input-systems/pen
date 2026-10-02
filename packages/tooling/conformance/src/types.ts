@@ -304,6 +304,8 @@ export type PenConformanceBridge = {
 	load(name: string): void;
 	focusText(block?: number): void;
 	selectText(block: number, offset?: number): void;
+	/** Plain text of one block, by id. */
+	blockText(blockId: string): string;
 	/** Select by block id; scale fixtures address blocks by id, not index. */
 	selectTextById(blockId: string, anchorOffset: number, focusOffset?: number): void;
 	/** Disconnect or reconnect the in-page remote peer (`connectPeers`). */
@@ -448,9 +450,18 @@ export type ScenarioApi = {
 	};
 };
 
+/** The `?probe=render` window API (W1 scale-render counts). */
+interface ScaleProbeBridge {
+	begin(): void;
+	end(): Promise<Record<string, number>>;
+	live(): Record<string, number>;
+}
+
 declare global {
 	interface Window {
 		__penConformance: PenConformanceBridge;
+		/** `?probe=render` instruments (harness/src/probes); absent otherwise. */
+		__penScaleProbe: ScaleProbeBridge;
 		__xssProbe: () => void;
 		__xssProbeTripped: boolean;
 	}

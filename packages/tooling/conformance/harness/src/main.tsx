@@ -1,3 +1,6 @@
+// Must load before react-dom: the render probe installs the DevTools hook.
+import "./probes/reactHook";
+import "./probes/index";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { getHarnessSession } from "./session";

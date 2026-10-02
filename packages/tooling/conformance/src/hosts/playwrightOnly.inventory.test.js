@@ -160,7 +160,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// and R1 drag-window close (suites/selection/r1-drag-window.spec.ts), W0.
 	// 72 -> 73 is SCALE1 scale fixtures: scenarios/scale-fixtures.spec.ts.
 	// 73 -> 74 is the harness surfaces: scenarios/harness-surfaces.spec.ts.
-	const expectedPlaywrightSpecs = 74;
+	// 74 -> 75 is SCALE6 renderer counts: scenarios/scale-render.record.spec.ts.
+	const expectedPlaywrightSpecs = 75;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

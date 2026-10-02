@@ -29,7 +29,9 @@
     "fuzz:nightly": "node src/fuzz/nightly.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "check:mirrors": "node ../../../scripts/conformance-mirror-drift.mjs"
+    "check:mirrors": "node ../../../scripts/conformance-mirror-drift.mjs",
+    "test:scale-render": "playwright test scenarios/scale-render.record.spec.ts --project=chromium",
+    "record:scale-render": "node -e \"if(!process.env.SCALE_RENDER_REASON){console.error('record:scale-render needs SCALE_RENDER_REASON');process.exit(1)}\" && RECORD_SCALE_RENDER=1 playwright test scenarios/scale-render.record.spec.ts --project=chromium --workers=1"
   },
   "dependencies": {
     "@input/pen-ai": "workspace:*",

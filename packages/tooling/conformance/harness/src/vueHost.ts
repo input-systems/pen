@@ -1,5 +1,7 @@
 import { PenEditor } from "@input/pen-vue";
 import { createApp } from "vue";
+import { PROBE_ENABLED } from "./probes/counters";
+import { installVueComponentProbe } from "./probes/vueComponents";
 import { getHarnessSession } from "./session";
 import { createSurfaceFrame, mountOnEachSession, readQueryFlag } from "./surfaceFrame";
 
@@ -11,6 +13,7 @@ export function mountVueHost(root: HTMLElement): void {
 			editor: getHarnessSession().editor,
 			chrome: !readQueryFlag("unstyled"),
 		});
+		if (PROBE_ENABLED) installVueComponentProbe(app);
 		app.mount(frame);
 		return () => app.unmount();
 	});

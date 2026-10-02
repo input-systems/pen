@@ -79,6 +79,7 @@ import type {
 	SerializedDiagnostic,
 } from "../../src/types";
 import { connectPeers } from "../../src/connectPeers";
+import { instrumentSessionEditor } from "./probes/index";
 import {
 	misplacedOffset,
 	pointsEqual,
@@ -245,6 +246,7 @@ function createSession(fixtureName: string): Session {
 		messages: readPseudoLocaleMessages(),
 		extensions: sessionExtensions(),
 	});
+	instrumentSessionEditor(editor);
 	const remoteEditor = createHeadlessEditor({
 		documentProfile: "structured",
 		schema: defaultSchema,
@@ -1009,6 +1011,8 @@ function installBridge(): void {
 		},
 		setPeersConnected,
 		selectTextById,
+		blockText: (blockId: string) =>
+			getHarnessSession().editor.getBlock(blockId)?.textContent() ?? "",
 		get blockIds() {
 			return blockIds();
 		},
