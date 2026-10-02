@@ -176,6 +176,11 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 	 */
 	projectAfterRebuild?(blockIds: readonly string[]): void;
 	/**
+	 * W3.R5: run the reader on the live selection now. Input handlers call it
+	 * and then read the authority instead of mapping the DOM themselves.
+	 */
+	syncDomSelectionRead?(): void;
+	/**
 	 * Whether a field rebuild may write the selection back into the DOM.
 	 * False while a native control that is not this field owns focus (HOST9):
 	 * setting a DOM selection inside the field would move focus with it.
@@ -302,6 +307,9 @@ export type FieldEditorSession = FieldEditorStore &
 		}): void;
 		onFocusLifecycle(listener: PenFocusLifecycleListener): () => void;
 		waitForAttachment(blockId?: string | null): Promise<boolean>;
+		/** Whether the live DOM selection maps inside this editor's root. */
+		hasSelectionInRoot(): boolean;
+		syncDomSelectionRead(): void;
 		ackBlockMounted(blockId: string, element: HTMLElement): void;
 		delegate(blockSchema: BlockSchema): boolean;
 	};

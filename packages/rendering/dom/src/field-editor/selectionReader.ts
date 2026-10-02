@@ -282,6 +282,36 @@ export interface SelectionReader {
 	sync(): DomSelectionReadDecision;
 	/** Reader step 2 without deciding; null when no range is inside the root. */
 	peek(): ReaderSelection;
+	/** Whether the live selection maps inside this root. */
+	hasSelectionInRoot(): boolean;
+}
+
+/**
+ * The authority's text selection inside one block, as directional offsets.
+ * Input handlers call `reader.sync()` first and then read this instead of
+ * mapping the live selection (W3.R5). Null when the selection is not a text
+ * selection with both endpoints in `blockId`.
+ */
+export function authorityOffsetsInBlock(
+	editor: Editor,
+	blockId: string,
+): { anchor: number; focus: number; start: number; end: number } | null {
+	const selection = editor.selection;
+	if (
+		selection?.type !== "text" ||
+		selection.anchor.blockId !== blockId ||
+		selection.focus.blockId !== blockId
+	) {
+		return null;
+	}
+	const anchor = selection.anchor.offset;
+	const focus = selection.focus.offset;
+	return {
+		anchor,
+		focus,
+		start: Math.min(anchor, focus),
+		end: Math.max(anchor, focus),
+	};
 }
 
 /**
@@ -342,6 +372,7 @@ export function createSelectionReader(
 		detach,
 		sync,
 		peek,
+		hasSelectionInRoot: () => peek() !== null,
 	};
 }
 

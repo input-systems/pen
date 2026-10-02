@@ -69,8 +69,22 @@ export function clearNativeRangeIn(root: HTMLElement): void {
 	selection.removeAllRanges();
 }
 
+/** Replaces the native selection with the range `anchor`..`focus` inside `element`'s document. */
+export function writeNativeRangeBetween(
+	element: HTMLElement,
+	anchor: { node: Node; offset: number },
+	focus: { node: Node; offset: number },
+): void {
+	const selection = element.ownerDocument.getSelection();
+	if (!selection) return;
+	const range = element.ownerDocument.createRange();
+	range.setStart(anchor.node, anchor.offset);
+	range.setEnd(focus.node, focus.offset);
+	replaceNativeRange(selection, range);
+}
+
 /** Replaces the native selection with `range`. */
-export function replaceNativeRange(selection: Selection, range: Range): void {
+function replaceNativeRange(selection: Selection, range: Range): void {
 	selection.removeAllRanges();
 	selection.addRange(range);
 }

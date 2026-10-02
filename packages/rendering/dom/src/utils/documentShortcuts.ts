@@ -18,7 +18,6 @@ import {
 	handleSelectAllShortcut,
 } from "../field-editor/keyHandling";
 import { dispatchKeymapEvent } from "../field-editor/keymap";
-import { domSelectionToEditor } from "../field-editor/selectionBridge";
 import { DATA_ATTRS } from "./dataAttributes";
 import { handleEscapeSelectionTransition } from "./escapeSelection";
 import { handleTableCellSelectionKeyDown } from "./tableCellNavigation";
@@ -57,8 +56,7 @@ export function bindEditorDocumentKeyDown(
 				root,
 				event,
 				selection: editor.selection,
-				hasMappedDomSelection: () =>
-					domSelectionToEditor(root) !== null,
+				hasMappedDomSelection: () => fieldEditor.hasSelectionInRoot(),
 			})
 		) {
 			return;

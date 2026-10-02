@@ -46,7 +46,10 @@ import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
 import { mapBeforeInput } from "./beforeinputMap";
 import { handleFieldEditorKeyDown } from "./keyHandling";
-import type { ReaderSelection } from "./selectionReader";
+import {
+	authorityOffsetsInBlock,
+	type ReaderSelection,
+} from "./selectionReader";
 import {
 	isCollapsedDomAgainstProjectedOffsets,
 	isFullBlockEchoAgainstCollapsedCaret,
@@ -392,13 +395,14 @@ export class ContentEditableBackend {
 		if (!this.element) {
 			return false;
 		}
-		if (canResolveInputRange(event, this.element)) {
+		const resolve = () => this.resolveLiveInputRange();
+		if (canResolveInputRange(event, this.element, resolve)) {
 			return true;
 		}
 
 		this.restoreDOMSelectionFromEditor();
 
-		return canResolveInputRange(event, this.element);
+		return canResolveInputRange(event, this.element, resolve);
 	}
 
 	// ── Composition handling ──────────────────────────────────
@@ -623,18 +627,22 @@ export class ContentEditableBackend {
 		if (!ytext) return;
 
 		const cellCoord = this._getActiveCellCoord(blockId);
-		const range = this.element ? getSelectionOffsets(this.element) : null;
-		const selection = range
+		// C2: the caret the browser left after its own edit, before the
+		// diff reaches the model; the reader cannot map it yet.
+		const domCaret = this.element
+			? getSelectionOffsets(this.element)
+			: null;
+		const selection = domCaret
 			? {
 					blockId,
 					// The DOM caret predates deferred remote deltas (C2); map it
 					// the same way the diff was rebased.
 					anchorOffset: mapOffsetThroughRemoteDeltas(
-						range.start,
+						domCaret.start,
 						deferredRemoteDeltas,
 					),
 					focusOffset: mapOffsetThroughRemoteDeltas(
-						range.end,
+						domCaret.end,
 						deferredRemoteDeltas,
 					),
 					cell: cellCoord
@@ -735,7 +743,33 @@ export class ContentEditableBackend {
 		}
 	};
 
+	/**
+	 * The range an input edits: the authority after a reader sync (W3.R5).
+	 * Two cases still read the field: an active table cell, whose caret is
+	 * not in the authority until W3.R18, and a field activated without a
+	 * caret in the authority, where the browser's caret is the only one.
+	 */
 	resolveLiveInputRange(): {
+		start: number;
+		end: number;
+	} | null {
+		const blockId = this.fieldEditor.focusBlockId;
+		if (!this.element || !blockId) return null;
+		if (this._getActiveCellCoord(blockId)) {
+			return this.cellCaretOffsets();
+		}
+		this.fieldEditor.syncDomSelectionRead?.();
+		return (
+			authorityOffsetsInBlock(this.editor, blockId) ??
+			this.unclaimedFieldCaretOffsets()
+		);
+	}
+
+	private cellCaretOffsets(): { start: number; end: number } | null {
+		return this.element ? getSelectionOffsets(this.element) : null;
+	}
+
+	private unclaimedFieldCaretOffsets(): {
 		start: number;
 		end: number;
 	} | null {
@@ -766,9 +800,12 @@ export class ContentEditableBackend {
 				this.fieldEditor.selection,
 				(blockId) => this.editor.getBlock(blockId)?.length() ?? null,
 			) ||
-			isCollapsedDomAgainstProjectedOffsets(proposal, (blockId) =>
-				this.projectedOffsets(blockId),
-			)
+			// R3: a collapsed caret inside an open gesture window is the
+			// user's click, not an echo of the offsets projected before it.
+			(!this.fieldEditor.isAdmissibleGestureRead?.() &&
+				isCollapsedDomAgainstProjectedOffsets(proposal, (blockId) =>
+					this.projectedOffsets(blockId),
+				))
 		) {
 			this.restoreDOMSelectionFromEditor();
 			return true;

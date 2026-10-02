@@ -162,7 +162,9 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 73 -> 74 is the harness surfaces: scenarios/harness-surfaces.spec.ts.
 	// 74 -> 75 is SCALE6 renderer counts: scenarios/scale-render.record.spec.ts.
 	// 75 -> 76 is W3.R1 projection read-back: suites/selection/p-projection.spec.ts.
-	const expectedPlaywrightSpecs = 76;
+	// 76 -> 77 is the multi-click guard for W3.R5/W3.R12:
+	// suites/selection/r-multi-click.spec.ts.
+	const expectedPlaywrightSpecs = 77;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

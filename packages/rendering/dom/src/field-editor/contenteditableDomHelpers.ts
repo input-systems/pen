@@ -2,7 +2,7 @@ import type { Editor } from "@input/pen-types";
 import { measureWithRoot } from "../geometry/rootGeometry";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import type { FieldEditorDelta } from "./crdt";
-import { domPointToOffset, getSelectionOffsets } from "./selectionBridge";
+import { domPointToOffset } from "./selectionBridge";
 import { findInlineContentElement } from "./selectionDomQueries";
 
 const LINE_EDGE_SEAM = Symbol.for("pen.lineEdgeSeam");
@@ -42,9 +42,15 @@ export function requiresResolvedInputRange(inputType: string): boolean {
 	);
 }
 
+/**
+ * Whether an input has a range: the event's target range for a replacement,
+ * else whatever `resolveInputRange` reports (the authority after a reader
+ * sync, W3.R5).
+ */
 export function canResolveInputRange(
 	event: InputEvent,
 	element: HTMLElement,
+	resolveInputRange: () => { start: number; end: number } | null,
 ): boolean {
 	if (event.inputType === "insertReplacementText") {
 		const targetRanges = event.getTargetRanges?.();
@@ -53,7 +59,7 @@ export function canResolveInputRange(
 		}
 	}
 
-	return getSelectionOffsets(element) !== null;
+	return resolveInputRange() !== null;
 }
 
 /**

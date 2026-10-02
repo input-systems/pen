@@ -5,49 +5,42 @@
       "file": "packages/rendering/dom/src/field-editor/contentGesturesPointerSelection.ts",
       "symbol": "mappedSelection",
       "api": "domSelectionToEditor",
-      "reason": "mouseup and multi-click map the live DOM selection and write the authority; the pointer path stops mapping",
-      "closedBy": "W3.R5"
+      "reason": "the mouseup path maps the live selection, because a multi-click's word or paragraph expansion reaches selectionchange after pointer-settled closes the pointer window in Chromium, so the reader alone would refuse it (r-multi-click scenario); W3.R12 reads multi-click through the reader with no frame wait (D19) or computes the expansion in core",
+      "closedBy": "W3.R12"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
+      "symbol": "cellCaretOffsets",
+      "api": "getSelectionOffsets",
+      "reason": "an active table cell's input range reads its field, because the cell caret is not in the authority yet",
+      "closedBy": "W3.R18"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
+      "symbol": "domCaret",
+      "api": "getSelectionOffsets",
+      "reason": "applyTextDiffAsOps takes the caret the browser left after its own edit (composition end, mutation diff) before the diff reaches the model, so the reader cannot map it yet; C2 per D3 replaces the path",
+      "closedBy": "W3.R14"
     },
     {
       "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
       "symbol": "range",
       "api": "getSelectionOffsets",
-      "reason": "input ranges from the live selection: applyTextDiffAsOps (CE:646) and the keydown range for handleFieldEditorKeyDown (CE:750; that path is deleted by W35.R18 with keyHandlingInlineAtoms); ranges come from getTargetRanges or reader.sync() + authority",
-      "closedBy": "W3.R5"
+      "reason": "the contenteditable keydown range for handleFieldEditorKeyDown's inline-atom arrow path; W35 deletes that path with keyHandlingInlineAtoms (D11)",
+      "closedBy": "W35.R18"
     },
     {
       "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
-      "symbol": "resolveLiveInputRange",
+      "symbol": "unclaimedFieldCaretOffsets",
       "api": "getSelectionOffsets",
-      "reason": "input range from the live selection; getTargetRanges or reader.sync() + authority",
-      "closedBy": "W3.R5"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/contenteditableDomHelpers.ts",
-      "symbol": "canResolveInputRange",
-      "api": "getSelectionOffsets",
-      "reason": "canResolveInputRange falls back to the live selection; getTargetRanges or reader.sync() + authority",
-      "closedBy": "W3.R5"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "liveDomOffsets",
-      "api": "getDirectionalSelectionOffsets",
-      "reason": "keydown range from the live DOM selection; reader.sync() + authority",
-      "closedBy": "W3.R5"
+      "reason": "a field activated without a caret in the authority (activate() writes none) takes its input range from the browser's caret; the input's own apply then writes the authority. Goes when activation commits a caret like focus() does",
+      "closedBy": "W3.R16"
     },
     {
       "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
       "symbol": "liveFieldOffsets",
       "api": "getDirectionalSelectionOffsets",
       "reason": "the EditContext backend's PH1 read intercept maps the live DOM selection inside its field to sync the EditContext buffer selection; the reader maps",
-      "closedBy": "W3.R4"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
-      "symbol": "sel",
-      "api": "getSelection",
-      "reason": "backend reads the native selection to restore/compare its caret; the reader and projector own it",
       "closedBy": "W3.R4"
     },
     {
@@ -98,13 +91,6 @@
       "api": "getSelection",
       "reason": "the writer obtains the Selection object to write and clear; it takes it from the reader",
       "closedBy": "W3.R4"
-    },
-    {
-      "file": "packages/rendering/dom/src/utils/documentShortcuts.ts",
-      "symbol": "hasMappedDomSelection",
-      "api": "domSelectionToEditor",
-      "reason": "document shortcuts map the live selection; reader.hasSelectionInRoot()",
-      "closedBy": "W3.R5"
     },
     {
       "file": "packages/rendering/react/src/hooks/useSelectionToolbar.ts",

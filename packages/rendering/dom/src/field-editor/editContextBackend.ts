@@ -7,8 +7,8 @@ import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
 import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
 import { getDirectionalSelectionOffsets } from "./selectionBridge";
 import {
-	replaceNativeRange,
 	writeEditContextSelection,
+	writeNativeRangeBetween,
 	writeNativeRange,
 } from "./selectionProjector";
 import {
@@ -34,7 +34,10 @@ import type {
 	EditContextTextFormatUpdateEvent,
 	EditContextTextUpdateEvent,
 } from "./editContextTypes";
-import type { ReaderSelection } from "./selectionReader";
+import {
+	authorityOffsetsInBlock,
+	type ReaderSelection,
+} from "./selectionReader";
 import { normalizeSelectionFormation } from "../utils/selectionFormation";
 import {
 	buildInlineDecorationsRenderSignature,
@@ -1040,14 +1043,9 @@ export class EditContextBackend {
 			start === end ? anchorPoint : findTextPosition(this.element, end);
 		if (!anchorPoint || !focusPoint) return;
 
-		const sel = this.element.ownerDocument?.getSelection();
-		if (!sel) return;
-
+		const element = this.element;
 		this.fieldEditor.withBackendSelectionWrite(() => {
-			const range = document.createRange();
-			range.setStart(anchorPoint.node, anchorPoint.offset);
-			range.setEnd(focusPoint.node, focusPoint.offset);
-			replaceNativeRange(sel, range);
+			writeNativeRangeBetween(element, anchorPoint, focusPoint);
 		});
 	}
 
@@ -1074,7 +1072,11 @@ export class EditContextBackend {
 		}
 
 		const blockId = this.fieldEditor.focusBlockId;
-		const liveDomOffsets = getDirectionalSelectionOffsets(this.element);
+		// W3.R5: the reader catches up first; the key then edits the authority.
+		this.fieldEditor.syncDomSelectionRead?.();
+		const liveDomOffsets = blockId
+			? authorityOffsetsInBlock(this.editor, blockId)
+			: null;
 		const { range, nextSelection, shouldSyncEditContextSelection } =
 			this.resolveKeyDownRange(blockId, event, liveDomOffsets);
 

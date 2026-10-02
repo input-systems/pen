@@ -822,6 +822,23 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._selectionCoordinator.requestDivergenceProjection();
 	}
 
+	/**
+	 * Runs the reader on the live selection now (W3.R5), before an input
+	 * reads the authority. With every gesture window closed a read cannot
+	 * change the authority (R step 4), and the queued `selectionchange`
+	 * already answers divergence, so only an open window needs the sync.
+	 */
+	syncDomSelectionRead(): void {
+		if (!this.isAdmissibleGestureRead()) {
+			return;
+		}
+		this._selectionReader.sync();
+	}
+
+	hasSelectionInRoot(): boolean {
+		return this._selectionReader.hasSelectionInRoot();
+	}
+
 	projectAfterRebuild(blockIds: readonly string[]): void {
 		this._selectionCoordinator.projectAfterRebuild(blockIds);
 	}
