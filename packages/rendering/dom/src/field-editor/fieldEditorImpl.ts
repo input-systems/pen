@@ -69,6 +69,8 @@ import {
 import { syncFocusSink } from "../a11y/syncFocusSink";
 import { getRootGeometry } from "../geometry/rootGeometry";
 import type { DomScheduler } from "../scheduler";
+import { createBlockNotifier } from "./blockNotifier";
+import type { BlockNotifier } from "./blockNotifierTypes";
 import {
 	DATA_ATTRS,
 	OVERLAY_ITEM_ATTR,
@@ -136,9 +138,12 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected _selectAllBehavior: EditorSelectAllBehavior;
 	protected readonly _selectionCoordinator: FieldEditorSelectionCoordinator;
 	protected _scheduler: DomScheduler | null = null;
+	/** Per-block fan-out for renderers (SCALE6); one per field editor. */
+	readonly blockNotifier: BlockNotifier;
 
 	constructor(editor: Editor, options?: FieldEditorOptions) {
 		this._editor = editor;
+		this.blockNotifier = createBlockNotifier(editor, { fieldEditor: this });
 		this._backendLifecycle = new BackendLifecycleController(
 			this._editor,
 			this as unknown as FieldEditorInputController,
@@ -1183,8 +1188,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 		};
 	}
 
-	notifyDomReconciled(_blockId?: string): void {
+	notifyDomReconciled(blockId?: string): void {
+		// The global version stays for host code; renderers read the block's own.
 		this._domSyncVersion += 1;
+		this.blockNotifier.markDomSynced(blockId ?? null);
 		this._emitStateChange();
 	}
 
@@ -1221,6 +1228,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._deactivateListeners.clear();
 		this._storeListeners.clear();
 		this._focusController.destroy();
+		// A later subscribe re-attaches: React Strict Mode re-installs this instance.
+		this.blockNotifier.destroy();
 	}
 
 	// ── Internal ─────────────────────────────────────────────

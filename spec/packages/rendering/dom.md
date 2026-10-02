@@ -53,6 +53,7 @@ flowchart TD
 
 Important rules:
 
+- Per-block state reaches renderers through the field editor's block notifier (`fieldEditor.blockNotifier`, types on `./field-editor/store`): one subscription each to `commit`, `selectionChange`, `decorationsChange`, the field-editor store, and the inline completion controller, fanned out by block id to per-block snapshots whose slices keep their identity while unchanged. `notifyDomReconciled(blockId)` bumps that block's DOM-sync version only; the store's global `domSyncVersion` remains for host code. Bindings subscribe per block to the notifier, never to the editor (SCALE6).
 - DOM selection is a view-layer representation and must stay synchronized with editor selection.
 - Renderer roots should install `bindEditorDocumentKeyDown()` (or the same phase split) so `shouldHandleEditorKeyboardEvent()` gates `handleEditorDocumentKeyDown()`. Escape (HOST7) and block-selection Enter (HOST8) are bubbling defaults so a later-mounted overlay or host element listener can `preventDefault` first. Other document shortcuts stay in capture. While a block or cell selection is active, DOM focus stays on the focus sink when the editor owns focus or focus has fallen to the body (HOST9). Native inputs and other editor roots keep their own keyboard ownership.
 - Clipboard and typing flows resolve back into editor mutations instead of mutating the document model directly.

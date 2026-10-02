@@ -118,6 +118,35 @@ describe("GeometryReader G2 cache (injected measure)", () => {
 		expect(caretRect).toHaveBeenCalledTimes(9);
 	});
 
+	it("G2: invalidation probes only named blocks", () => {
+		let shifted = false;
+		const blockRect = vi.fn((blockId: string) =>
+			rect(0, Number(blockId.slice(1)) * 20 + (shifted && blockId === "b7" ? 5 : 0), 100, 16),
+		);
+		const caretRect = vi.fn((point: Point) => rect(0, Number(point.blockId.slice(1)) * 20, 0, 16));
+		const reader = createGeometryReader({
+			root: document.createElement("div"),
+			commitId: 1,
+			observeResize: false,
+			observeFonts: false,
+			measure: { caretRect, blockRect },
+		});
+		readers.push(reader);
+		for (let index = 0; index < 100; index += 1) {
+			reader.caretRect({ blockId: `b${index}`, offset: 0 }, "downstream");
+		}
+		blockRect.mockClear();
+		caretRect.mockClear();
+
+		reader.invalidateBlocks(["b3"], 2);
+		expect(blockRect).toHaveBeenCalledTimes(0);
+
+		// b7 moved without being named: the next read of it re-measures.
+		shifted = true;
+		reader.caretRect({ blockId: "b7", offset: 0 }, "downstream");
+		expect(caretRect).toHaveBeenCalledTimes(1);
+	});
+
 	it("G2: a scroll that moves the root drops cached viewport-relative rects", () => {
 		const scroller = document.createElement("div");
 		const root = document.createElement("div");

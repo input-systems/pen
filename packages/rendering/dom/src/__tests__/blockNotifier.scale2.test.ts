@@ -1,0 +1,145 @@
+import { createEditor } from "@input/pen-core";
+import { defaultSchema } from "@input/pen-schema";
+import type { DocumentOp, Editor } from "@input/pen-types";
+import { describe, expect, it } from "vitest";
+
+import { createBlockNotifier } from "../field-editor/blockNotifier";
+import type { BlockNotifier } from "../field-editor/blockNotifierTypes";
+
+function createDocument(blockCount: number, typeAt: (index: number) => string = () => "paragraph"): Editor {
+	const editor = createEditor({ schema: defaultSchema });
+	const first = editor.firstBlock()!.id;
+	const ops: DocumentOp[] = [
+		{ type: "set-props", blockId: first, props: { type: typeAt(0) } },
+		{ type: "splice-text", blockId: first, from: 0, to: 0, insert: "block 0" },
+	];
+	for (let index = 1; index < blockCount; index += 1) {
+		ops.push(
+			{ type: "insert-block", blockId: `b${index}`, blockType: typeAt(index), props: {}, position: "last" },
+			{ type: "splice-text", blockId: `b${index}`, from: 0, to: 0, insert: `block ${index}` },
+		);
+	}
+	editor.apply(ops, { origin: "system" });
+	return editor;
+}
+
+/** Subscribes every block and records which were notified. */
+function subscribeAll(editor: Editor, notifier: BlockNotifier) {
+	const notified: string[] = [];
+	const unsubscribes = editor.documentState.blockOrder.map((id) =>
+		notifier.subscribeBlock(id, () => notified.push(id)),
+	);
+	return {
+		notified,
+		reset: () => notified.splice(0),
+		unsubscribeAll: () => unsubscribes.forEach((unsubscribe) => unsubscribe()),
+	};
+}
+
+describe("block notifier (SCALE2 fan-out)", () => {
+	it("SCALE2: a text commit notifies only the edited block", () => {
+		const editor = createDocument(1_000);
+		const notifier = createBlockNotifier(editor);
+		const probe = subscribeAll(editor, notifier);
+		editor.apply([{ type: "splice-text", blockId: "b500", from: 0, to: 0, insert: "x" }], { origin: "user" });
+		expect(probe.notified).toEqual(["b500"]);
+		expect(notifier.diagnostics.lastFanout.commit).toBe(1);
+		expect(notifier.diagnostics.sourceSubscriptions).toBe(3);
+		probe.unsubscribeAll();
+		editor.destroy();
+	});
+
+	it("SCALE2: a caret move across one boundary notifies the two blocks it touched", () => {
+		const editor = createDocument(100);
+		const notifier = createBlockNotifier(editor);
+		const probe = subscribeAll(editor, notifier);
+		editor.selectText("b10", 2, 2);
+		probe.reset();
+		editor.selectText("b11", 0, 0);
+		expect(probe.notified.sort()).toEqual(["b10", "b11"]);
+
+		// A range extension notifies only the blocks whose membership or range changed.
+		editor.selectTextRange?.({ blockId: "b11", offset: 0 }, { blockId: "b13", offset: 2 });
+		probe.reset();
+		editor.selectTextRange?.({ blockId: "b11", offset: 0 }, { blockId: "b14", offset: 2 });
+		expect(probe.notified.sort()).toEqual(["b13", "b14"]);
+		probe.unsubscribeAll();
+		editor.destroy();
+	});
+
+	it("SCALE2: unchanged slices keep identity", () => {
+		const editor = createDocument(10);
+		const notifier = createBlockNotifier(editor);
+		const probe = subscribeAll(editor, notifier);
+		const before = notifier.getBlockSnapshot("b2");
+		const ownBefore = notifier.getBlockSnapshot("b1");
+		editor.apply([{ type: "splice-text", blockId: "b1", from: 0, to: 0, insert: "x" }], { origin: "user" });
+		expect(notifier.getBlockSnapshot("b2")).toBe(before);
+		const ownAfter = notifier.getBlockSnapshot("b1");
+		expect(ownAfter).not.toBe(ownBefore);
+		expect(ownAfter.selection).toBe(ownBefore.selection);
+		expect(ownAfter.decorations).toBe(ownBefore.decorations);
+		probe.unsubscribeAll();
+		editor.destroy();
+	});
+
+	it("SCALE2: numbered list ordinals update only the touched run", () => {
+		// b1–b4 and b7–b9 are two numbered runs separated by paragraphs.
+		const numbered = new Set([1, 2, 3, 4, 7, 8, 9]);
+		const editor = createDocument(12, (index) => (numbered.has(index) ? "numberedListItem" : "paragraph"));
+		const notifier = createBlockNotifier(editor);
+		const probe = subscribeAll(editor, notifier);
+		expect(notifier.getBlockSnapshot("b4").list?.ordinal).toBe(4);
+		editor.apply(
+			[{ type: "insert-block", blockId: "n", blockType: "numberedListItem", props: {}, position: { after: "b1" } }],
+			{ origin: "user" },
+		);
+		expect(probe.notified.sort()).toEqual(["b2", "b3", "b4"]);
+		expect(notifier.getBlockSnapshot("b4").list?.ordinal).toBe(5);
+		expect(notifier.getBlockSnapshot("b7").list?.ordinal).toBe(1);
+		probe.unsubscribeAll();
+		editor.destroy();
+	});
+
+	it("SCALE2: the root list-segment channel fires once on a structural commit and not on a text commit", () => {
+		const editor = createDocument(10);
+		const notifier = createBlockNotifier(editor);
+		let fired = 0;
+		const unsubscribe = notifier.subscribeListSegments(null, () => {
+			fired += 1;
+		});
+		const before = notifier.getListSegments(null);
+		editor.apply([{ type: "splice-text", blockId: "b3", from: 0, to: 0, insert: "x" }]);
+		expect(fired).toBe(0);
+		expect(notifier.getListSegments(null)).toBe(before);
+		editor.apply([{ type: "insert-block", blockId: "new", blockType: "paragraph", props: {}, position: "last" }]);
+		expect(fired).toBe(1);
+		expect(notifier.getListSegments(null)).toHaveLength(11);
+		unsubscribe();
+		editor.destroy();
+	});
+
+	it("SCALE4: the block notifier releases subscribers and source subscriptions", () => {
+		const editor = createDocument(10);
+		const notifier = createBlockNotifier(editor);
+		const unsubscribe = notifier.subscribeBlock("b1", () => {});
+		expect(notifier.diagnostics.sourceSubscriptions).toBeGreaterThan(0);
+		unsubscribe();
+		expect(notifier.diagnostics).toMatchObject({ sourceSubscriptions: 0, cachedSnapshots: 0 });
+
+		notifier.subscribeBlock("b2", () => {});
+		notifier.destroy();
+		expect(notifier.diagnostics).toMatchObject({ sourceSubscriptions: 0, cachedSnapshots: 0 });
+
+		// A subscribe after destroy re-attaches.
+		const again = notifier.subscribeBlock("b3", () => {});
+		expect(notifier.diagnostics.sourceSubscriptions).toBeGreaterThan(0);
+		// A read without a subscriber is gone after the next event.
+		notifier.getBlockSnapshot("b4");
+		expect(notifier.diagnostics.cachedSnapshots).toBe(2);
+		editor.apply([{ type: "splice-text", blockId: "b5", from: 0, to: 0, insert: "x" }]);
+		expect(notifier.diagnostics.cachedSnapshots).toBe(1);
+		again();
+		editor.destroy();
+	});
+});

@@ -226,19 +226,14 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	}
 
 	invalidateBlocks(blockIds: readonly string[], commitId?: number): void {
-		// Drop named blocks always, and any other cached block whose live
-		// box no longer matches the one recorded at last measure.
-		const named = new Set(blockIds);
-		for (const blockId of named) {
+		// Drop the named blocks only. A block that moved without being named is
+		// caught by the live-box check on the read that finds it (`entryFor`),
+		// so a flush costs no getBoundingClientRect for a block nobody reads (G2).
+		for (const blockId of new Set(blockIds)) {
 			if (commitId !== undefined) {
 				this.blockCommitIds.set(blockId, commitId);
 			}
 			this.cache.delete(blockId);
-		}
-		for (const [blockId, entry] of this.cache) {
-			if (!boxStillValid(entry.blockRect, this.liveBlockRect(blockId))) {
-				this.cache.delete(blockId);
-			}
 		}
 		this._generation += 1;
 	}

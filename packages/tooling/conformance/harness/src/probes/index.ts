@@ -9,6 +9,12 @@ import {
 	resetMetrics,
 } from "./counters";
 import { startMutationProbe, stopMutationProbe } from "./domMutations";
+import {
+	beginNotifierProbe,
+	endNotifierProbe,
+	liveNotifierSubscribers,
+	trackNotifierEditor,
+} from "./notifier";
 import { installEditorListenerProbe, readLiveEditorListeners } from "./editorListeners";
 import { installGeometryProbe } from "./geometry";
 import { beginSchedulerProbe, endSchedulerProbe } from "./scheduler";
@@ -41,6 +47,7 @@ const api: ScaleProbeApi = {
 		resetDistinct();
 		scan?.reset();
 		beginSchedulerProbe();
+		beginNotifierProbe();
 		startMutationProbe();
 	},
 	async end() {
@@ -49,13 +56,18 @@ const api: ScaleProbeApi = {
 		stopMutationProbe();
 		endSchedulerProbe();
 		recordScan();
-		return { ...readMetrics(), ...readDistinct() };
+		return { ...readMetrics(), ...readDistinct(), ...endNotifierProbe() };
 	},
 	live() {
 		const editorListeners = readLiveEditorListeners();
 		const store = readLiveStoreListeners();
 		const total = Object.values(editorListeners).reduce((sum, n) => sum + n, store);
-		return { ...editorListeners, "listeners.live.store": store, "listeners.live.total": total };
+		return {
+			...editorListeners,
+			"listeners.live.store": store,
+			"listeners.live.total": total,
+			...liveNotifierSubscribers(),
+		};
 	},
 };
 
@@ -63,6 +75,7 @@ const api: ScaleProbeApi = {
 export function instrumentSessionEditor(editor: Editor): void {
 	if (!PROBE_ENABLED) return;
 	installEditorListenerProbe(editor);
+	trackNotifierEditor(editor);
 	scan?.dispose();
 	scan = createScanProbe(editor);
 	scan.selfTest();
