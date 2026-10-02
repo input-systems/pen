@@ -139,6 +139,7 @@
 - CRDTDocument
 - CRDTEvent
 - CRDTMap
+- CRDTUndoCaptureKey
 - CRDTUndoManager
 - CRDTUndoStackItem
 - CreateEditorOptions

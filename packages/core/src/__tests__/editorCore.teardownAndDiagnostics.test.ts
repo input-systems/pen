@@ -279,7 +279,7 @@ describe("@input/pen-core createEditor: teardown, undo rebinding, and diagnostic
 			canUndo: () => false,
 			canRedo: () => false,
 			stopCapturing: () => {},
-			syncExplicitUndoGroup: () => {},
+			withCapture: <T>(_origin: unknown, _groupId: unknown, run: () => T) => run(),
 			setGroupTimeout: () => {},
 			registerTrackedOrigins: () => () => {},
 			onStackChange: () => () => {},

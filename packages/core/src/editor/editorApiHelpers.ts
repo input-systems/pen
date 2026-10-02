@@ -206,13 +206,18 @@ export function applyEditorOps(
 	const groupId = getApplyOptionsGroupId(origin, options);
 	const undo = self._slots.get("undo:manager") as UndoManager | undefined;
 
-	undo?.syncExplicitUndoGroup(groupId ?? null);
-
 	if (options?.undoGroup && !groupId) {
 		undo?.stopCapturing();
 	}
 
-	self._pipeline.apply(ops, origin, options?.structural);
+	// AIB4: writes join the undo step of their group id (or of their origin
+	// type when ungrouped); an ungrouped write never closes an open group.
+	const run = () => self._pipeline.apply(ops, origin, options?.structural);
+	if (undo) {
+		undo.withCapture(origin, groupId ?? null, run);
+	} else {
+		run();
+	}
 	self._recordMutationGroupMetadata(origin, groupId);
 }
 

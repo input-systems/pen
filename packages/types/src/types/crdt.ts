@@ -219,13 +219,28 @@ export interface UndoManagerOptions {
 	maxDepth?: number;
 }
 
+/** The undo step a tracked transaction joins (AIB4). */
+export interface CRDTUndoCaptureKey {
+	/** `group:<groupId>` for an explicit group, `origin:<type>` otherwise. */
+	readonly key: string;
+	/** Explicit keys stay open until undo or redo; others close on `stopCapturing()` or after the capture window. */
+	readonly explicit: boolean;
+}
+
 export interface CRDTUndoManager {
 	undo(): boolean;
 	redo(): boolean;
 	canUndo(): boolean;
 	canRedo(): boolean;
+	/** Closes every open non-explicit capture key. Explicit keys stay open. */
 	stopCapturing(): void;
+	/** Capture window, in ms, for non-explicit keys. */
 	setCaptureTimeout?(ms: number): void;
+	/**
+	 * Key for tracked transactions until the next call; returns the previous
+	 * key. `null` derives the key per transaction from its origin.
+	 */
+	setCaptureKey?(key: CRDTUndoCaptureKey | null): CRDTUndoCaptureKey | null;
 	addTrackedOrigin(originType: string): void;
 	removeTrackedOrigin(originType: string): void;
 	destroy(): void;

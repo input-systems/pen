@@ -87,8 +87,14 @@ export interface UndoManager {
 	canUndo(): boolean;
 	canRedo(): boolean;
 
+	/** Closes open non-explicit captures; never closes an explicit group (AIB4). */
 	stopCapturing(): void;
-	syncExplicitUndoGroup(groupId: string | null): void;
+	/**
+	 * Runs `run` with its tracked writes captured under `groupId`, or under the
+	 * origin's type when `groupId` is null. One group id is one undo step while
+	 * its step is on the stack (AIB4). Called by `editor.apply`.
+	 */
+	withCapture<T>(origin: OpOrigin, groupId: string | null, run: () => T): T;
 	setGroupTimeout(ms: number): void;
 
 	registerTrackedOrigins(origins: OpOrigin[]): Unsubscribe;

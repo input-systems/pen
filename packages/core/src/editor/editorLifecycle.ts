@@ -87,7 +87,7 @@ const NOOP_UNDO: UndoManager = {
 	canUndo: () => false,
 	canRedo: () => false,
 	stopCapturing: () => {},
-	syncExplicitUndoGroup: () => {},
+	withCapture: (_origin, _groupId, run) => run(),
 	setGroupTimeout: () => {},
 	registerTrackedOrigins: () => () => {},
 	onStackChange: () => () => {},

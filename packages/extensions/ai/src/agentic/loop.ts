@@ -128,9 +128,6 @@ export async function runAgenticLoop(
 			budget: options.toolBudget,
 			groupId: generationId,
 		});
-	if (turn.groupId) {
-		editor.undoManager.syncExplicitUndoGroup(turn.groupId);
-	}
 	// A confirmation resolver decides whether the edit happens at all, so a
 	// turn that has one gets the decoration-only preview: writing blocks while
 	// the call is still open would put content in the document ahead of the

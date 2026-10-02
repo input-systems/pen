@@ -33,7 +33,7 @@ By default, undo tracks `user`, `ai`, and `import`. `collaborator`, `unknown`, a
 | Option           | Default                        | Effect                                   |
 | ---------------- | ------------------------------ | ---------------------------------------- |
 | `maxDepth`       | `DEFAULT_UNDO_MAX_DEPTH` (500) | Cap on undo/redo stack items             |
-| `groupTimeout`   | `400`                          | Yjs `captureTimeout` in milliseconds     |
+| `groupTimeout`   | `400`                          | Capture window for ungrouped typing (ms) |
 | `trackedOrigins` | `user`, `ai`, `import`         | Origins captured on the local undo stack |
 
 ## Facets and commands

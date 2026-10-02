@@ -175,6 +175,7 @@ export type {
 	LoadDocumentOptions,
 	CRDTDocument,
 	PenDocument,
+	CRDTUndoCaptureKey,
 	CRDTUndoManager,
 	CRDTUndoStackItem,
 	CRDTArray,
