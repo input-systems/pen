@@ -156,7 +156,9 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// only exists if the host-chrome fallback opened it.
 	// 69 -> 70 is G4/G5 in code blocks: scenarios/g5-code-block-lines.spec.ts,
 	// where blank lines own line boxes and clicks map to text offsets.
-	const expectedPlaywrightSpecs = 70;
+	// 70 -> 72 is C2 real composition (suites/ime/c2-real-composition.spec.ts)
+	// and R1 drag-window close (suites/selection/r1-drag-window.spec.ts), W0.
+	const expectedPlaywrightSpecs = 72;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,
