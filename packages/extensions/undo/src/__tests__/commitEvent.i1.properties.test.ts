@@ -28,6 +28,7 @@ const PINNED_SEEDS = [
 	2257784941, 2371651956, 2666731515, 2692182216, 2865217711, 3997860482,
 ] as const;
 const PINNED_STEP_COUNT = 2_000;
+const YIELD_EVERY_STEPS = 100;
 
 const ACTIONS = ["apply", "remote", "undo", "redo", "stream"] as const;
 type Action = (typeof ACTIONS)[number];
@@ -287,8 +288,16 @@ async function runCommitEventProperty(property: PropertyRun): Promise<void> {
 		["apply", "redo", "remote", "stream", "undo"].sort(),
 	);
 
+	// Yield periodically so Vitest can ack the worker: a long synchronous loop
+	// outruns birpc's 60s window on CI and fails the run after the assertions
+	// pass (same fix as the an-fuzz loop).
 	for (let step = 0; step < property.steps; step += 1) {
 		run(rng.pick(ACTIONS));
+		if (step % YIELD_EVERY_STEPS === YIELD_EVERY_STEPS - 1) {
+			await new Promise<void>((resolve) => {
+				setImmediate(resolve);
+			});
+		}
 	}
 
 	stream.writer?.close();
