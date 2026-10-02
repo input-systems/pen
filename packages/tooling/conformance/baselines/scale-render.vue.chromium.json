@@ -88,7 +88,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
 				"scan.textFullReads": 17,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"render.blocksRendered": 1,
@@ -105,7 +104,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 28,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 2
@@ -123,7 +121,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 36,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -143,7 +140,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 9,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -163,7 +159,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
 				"scan.textFullReads": 38,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -183,7 +178,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
 				"scan.textFullReads": 38,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -202,7 +196,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
 				"scan.textFullReads": 12,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"dom.blocksTouched": 1,
@@ -248,7 +241,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
 				"scan.textFullReads": 17,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"render.blocksRendered": 1,
@@ -265,7 +257,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 28,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 2
@@ -283,7 +274,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 36,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -303,7 +293,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 9,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -323,7 +312,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
 				"scan.textFullReads": 38,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -343,7 +331,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
 				"scan.textFullReads": 38,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -362,7 +349,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
 				"scan.textFullReads": 12,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"dom.blocksTouched": 1,
@@ -682,6 +668,32 @@
 				"vue/scale-1k/remoteInsert/scan.orderArrayReads: 1053 !== 5209",
 				"vue/scale-1k/remoteInsert/scan.textFullReads: 12 !== 11",
 				"vue/scale-1k/remoteInsert/notifier.deliveries: 3 !== 0"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe stops counting scheduler flushes (frame-timing dependent, CH9); W2.R6 vanilla tree",
+			"moved": [
+				"vue/scale-1k/keystroke/scheduler.flushes: missing !== 1",
+				"vue/scale-1k/caretRight/scheduler.flushes: missing !== 1",
+				"vue/scale-1k/caretDown/scheduler.flushes: missing !== 1",
+				"vue/scale-1k/shiftDown/scheduler.flushes: missing !== 1",
+				"vue/scale-1k/enterParagraph/scheduler.flushes: missing !== 1",
+				"vue/scale-1k/enterNumbered/scheduler.flushes: missing !== 1",
+				"vue/scale-1k/remoteInsert/scheduler.flushes: missing !== 1"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe stops counting scheduler flushes (frame-timing dependent, CH9); W2.R6 vanilla tree",
+			"moved": [
+				"vue/scale-5k/keystroke/scheduler.flushes: missing !== 1",
+				"vue/scale-5k/caretRight/scheduler.flushes: missing !== 1",
+				"vue/scale-5k/caretDown/scheduler.flushes: missing !== 1",
+				"vue/scale-5k/shiftDown/scheduler.flushes: missing !== 1",
+				"vue/scale-5k/enterParagraph/scheduler.flushes: missing !== 1",
+				"vue/scale-5k/enterNumbered/scheduler.flushes: missing !== 1",
+				"vue/scale-5k/remoteInsert/scheduler.flushes: missing !== 1"
 			]
 		}
 	]

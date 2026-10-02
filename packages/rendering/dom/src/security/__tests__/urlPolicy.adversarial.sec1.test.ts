@@ -186,13 +186,20 @@ describe("SEC1 documentTree render path", () => {
 				],
 			}),
 		} as unknown as Editor;
+		// The tree reads per-block state from the field editor's notifier.
+		const blockSnapshot = {
+			blockId: "p1",
+			commit: { exists: true, type: "paragraph", props: {}, revision: 1, lastOrigin: null, lastCommitId: 0 },
+			field: { isFieldFocus: false, isEditing: false, isComposing: false, expandedRole: null, domSyncVersion: 0, activeCell: null },
+			childIds: [],
+		};
 		const fieldEditor = {
-			getSnapshot: () => ({
-				isEditing: false,
-				focusBlockId: null,
-				mode: "inline",
-				activeBlockIds: [],
-			}),
+			blockNotifier: {
+				subscribeDocument: () => () => {},
+				getDocumentSnapshot: () => ({ rootIds: ["p1"], isEmpty: false, placeholderTargetBlockId: null }),
+				subscribeBlock: () => () => {},
+				getBlockSnapshot: () => blockSnapshot,
+			},
 		};
 		const tree = createDocumentTree(editor, fieldEditor as never, root);
 		cleanups.push(() => {

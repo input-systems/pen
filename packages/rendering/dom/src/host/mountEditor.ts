@@ -104,8 +104,6 @@ export function mountEditor(
 	root.addEventListener("focusout", handleFocusOut);
 	root.addEventListener("mousedown", handlePointerActivate);
 
-	unsubscribers.push(editor.on("commit", () => tree.sync()));
-	unsubscribers.push(fieldEditor.subscribe(() => tree.sync()));
 	unsubscribers.push(
 		bindEditorDocumentKeyDown({
 			editor,
@@ -125,6 +123,7 @@ export function mountEditor(
 		unregisterVerticalCaret();
 		editor.internals.assignSlot(FIELD_EDITOR_SLOT_KEY, undefined);
 		fieldEditor.setRootElement(null);
+		tree.destroy();
 		fieldEditor.destroy();
 		tree.content.remove();
 		clearEditorRootAttrs(root);

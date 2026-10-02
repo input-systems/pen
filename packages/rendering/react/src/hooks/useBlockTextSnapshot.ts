@@ -1,4 +1,3 @@
-import { affectedBlockIdsFromSummary } from "@input/pen-core";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import type { Editor } from "@input/pen-types";
 
@@ -33,14 +32,10 @@ const SSR_SNAPSHOT: BlockTextSnapshot = {
 export function useBlockTextSnapshot(editor: Editor, blockId: string): BlockTextSnapshot {
 	const notifier = useBlockNotifier();
 	const cacheRef = useRef<{ revision: number; exists: boolean; snapshot: BlockTextSnapshot } | null>(null);
+	// Inside a root only: outside one there is no notifier and nothing renders.
 	const subscribe = useCallback(
-		(onChange: () => void) =>
-			notifier
-				? notifier.subscribeBlock(blockId, onChange)
-				: editor.on("commit", (event) => {
-						if (affectedBlockIdsFromSummary(event.summary).includes(blockId)) onChange();
-					}),
-		[editor, notifier, blockId],
+		(onChange: () => void) => notifier?.subscribeBlock(blockId, onChange) ?? (() => {}),
+		[notifier, blockId],
 	);
 	const getSnapshot = useCallback(() => {
 		const revision = editor.getBlockRevision(blockId);

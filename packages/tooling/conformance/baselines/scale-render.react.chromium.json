@@ -90,7 +90,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
 				"scan.textFullReads": 17,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"render.blocksRendered": 1,
@@ -108,7 +107,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 28,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 13
@@ -127,7 +125,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 36,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -148,7 +145,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 9,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -169,7 +165,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
 				"scan.textFullReads": 36,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -190,7 +185,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
 				"scan.textFullReads": 36,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -210,7 +204,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
 				"scan.textFullReads": 16,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"dom.blocksTouched": 1,
@@ -258,7 +251,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
 				"scan.textFullReads": 17,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"render.blocksRendered": 1,
@@ -276,7 +268,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 28,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 13
@@ -295,7 +286,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 36,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -316,7 +306,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 9,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -337,7 +326,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
 				"scan.textFullReads": 36,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -358,7 +346,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
 				"scan.textFullReads": 36,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -378,7 +365,6 @@
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
 				"scan.textFullReads": 16,
-				"scheduler.flushes": 1,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"dom.blocksTouched": 1,
@@ -759,6 +745,32 @@
 			"date": "2026-10-02",
 			"reason": "Probe counts commit.affectedBlockIds once per commit",
 			"moved": []
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe stops counting scheduler flushes (frame-timing dependent, CH9); W2.R6 vanilla tree",
+			"moved": [
+				"react/scale-1k/keystroke/scheduler.flushes: missing !== 1",
+				"react/scale-1k/caretRight/scheduler.flushes: missing !== 1",
+				"react/scale-1k/caretDown/scheduler.flushes: missing !== 1",
+				"react/scale-1k/shiftDown/scheduler.flushes: missing !== 1",
+				"react/scale-1k/enterParagraph/scheduler.flushes: missing !== 1",
+				"react/scale-1k/enterNumbered/scheduler.flushes: missing !== 1",
+				"react/scale-1k/remoteInsert/scheduler.flushes: missing !== 1"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe stops counting scheduler flushes (frame-timing dependent, CH9); W2.R6 vanilla tree",
+			"moved": [
+				"react/scale-5k/keystroke/scheduler.flushes: missing !== 1",
+				"react/scale-5k/caretRight/scheduler.flushes: missing !== 1",
+				"react/scale-5k/caretDown/scheduler.flushes: missing !== 1",
+				"react/scale-5k/shiftDown/scheduler.flushes: missing !== 1",
+				"react/scale-5k/enterParagraph/scheduler.flushes: missing !== 1",
+				"react/scale-5k/enterNumbered/scheduler.flushes: missing !== 1",
+				"react/scale-5k/remoteInsert/scheduler.flushes: missing !== 1"
+			]
 		}
 	]
 }

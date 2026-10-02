@@ -2,8 +2,11 @@ import { getRootGeometry } from "@input/pen-dom";
 import { bump } from "./counters";
 
 /**
- * P7: flushes and measureNow calls on the editor root's scheduler, through
- * the same `_phase` accessor patch the typing-budget probe uses.
+ * P7: measureNow calls on the editor root's scheduler, and whether a flush is
+ * running (for the geometry probe's in/out-of-flush split), through the same
+ * `_phase` accessor patch the typing-budget probe uses. Flushes are not
+ * counted: how many land in the probe window depends on frame timing, so the
+ * count was not deterministic (CH8, CH9).
  */
 type Scheduler = { _phase: string; diagnostics: { measureNowCount: number } };
 
@@ -25,7 +28,6 @@ function patchPhase(scheduler: Scheduler): void {
 		configurable: true,
 		get: () => phase,
 		set: (next: string) => {
-			if (phase === "idle" && next === "read") bump("scheduler.flushes");
 			phase = next;
 		},
 	});
