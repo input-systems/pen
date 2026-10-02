@@ -94,3 +94,5 @@ export type {
 	MixedFixtureIdentity,
 	MixedFixtureTargets,
 } from "./fixtures/scale/mixed";
+export { createScanProbe } from "./scanProbe";
+export type { ScanCounts, ScanProbe } from "./scanProbe";

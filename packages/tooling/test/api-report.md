@@ -20,6 +20,7 @@
 - countMemberships
 - createDeterministicYDocFixture
 - createModelDouble
+- createScanProbe
 - createTestCollaboration
 - createTestDocument
 - createTestEditor
@@ -77,6 +78,8 @@
 - ModelDoubleToolCall
 - NormalizedYDocSnapshot
 - NormalizedYjsValue
+- ScanCounts
+- ScanProbe
 - TestBlock
 - TestCollaboration
 - TestEditor
