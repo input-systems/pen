@@ -11,26 +11,19 @@
 
 ### function
 
-- applyYjsAwarenessUpdate
 - compareYjsStateVectorBase64
 - compareYjsStateVectors
 - createRemoteUpdateOrigin
 - createSummarySource
 - createYArrayFieldAdapter
-- createYjsAwareness
 - createYjsProviderSession
-- createYjsSubdocument
 - createYTextFieldAdapter
 - decodeYjsStateVectorBase64
-- encodeYjsAwarenessUpdate
 - encodeYjsStateVector
 - encodeYjsStateVectorBase64
 - ensureExtensionRoot
 - getDocumentLoadReport
-- getDocumentProfile
-- getYjsAwareness
 - getYjsDoc
-- initBlockMap
 - isYjsStateVectorBase64Satisfied
 - isYjsStateVectorSatisfied
 - originToOpOrigin
@@ -38,43 +31,46 @@
 - readFormatStamp
 - recordDocumentLoadMigration
 - refreshFormatStamp
-- setDocumentProfile
-- validateDocument
-- wrapYjsDocument
 - yjsAdapter
-
-### guard
-
-- isYjsCRDTDocument
-- isYjsDoc
-- isYjsMap
 
 ### value
 
+- BlockContentType
+- createYjsSubdocument
 - DOCUMENT_PROFILE
+- DocumentValidationError
+- DocumentValidationResult
+- getDocumentProfile
+- initBlockMap
+- isYjsCRDTDocument
+- isYjsDoc
+- isYjsMap
 - ORIGIN_UNKNOWN_CODE
+- setDocumentProfile
 - STRUCTURAL_ORIGIN_META_KEY
 - SUBDOCUMENT
+- validateDocument
+- wrapYjsDocument
+- YJS_SINGLETON_MISMATCH_CODE
+- YjsCRDTDocument
+- YjsDoc
+- YjsMap
+- YjsPenDocument
 
 ### type
 
-- BlockContentType
 - CRDTDiagnostic
 - CreateYArrayFieldAdapterOptions
 - CreateYTextFieldAdapterOptions
 - DocumentLoadReport
 - DocumentLoadState
-- DocumentValidationError
-- DocumentValidationResult
 - RawCommitDelta
 - StructuralOriginTag
 - YArrayDelta
 - YArrayDeltaOp
 - YArrayFieldAdapter
 - YjsAdapterOptions
-- YjsAwareness
-- YjsCRDTDocument
-- YjsDoc
+- YjsAwarenessFactory
 - YjsExtensionRoot
 - YjsExtensionRootFieldType
 - YjsExtensionRootOptions
@@ -82,8 +78,6 @@
 - YjsExtensionRootShape
 - YjsFieldObserver
 - YjsFieldUnsubscribe
-- YjsMap
-- YjsPenDocument
 - YjsProviderAdapter
 - YjsProviderStatus
 - YjsStateVectorComparison
@@ -91,3 +85,18 @@
 - YTextDelta
 - YTextDeltaOp
 - YTextFieldAdapter
+
+## ./awareness
+
+`./dist/awareness.d.ts`
+
+### function
+
+- applyYjsAwarenessUpdate
+- createYjsAwareness
+- encodeYjsAwarenessUpdate
+- getYjsAwareness
+
+### type
+
+- YjsAwareness

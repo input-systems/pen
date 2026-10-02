@@ -7,12 +7,12 @@ import {
 	getEditorSelectionRecord,
 	isCollapsed as selectionIsCollapsed,
 } from "@input/pen-core";
+import { wrapYjsDocument, yjsAdapter } from "@input/pen-yjs";
 import {
 	applyYjsAwarenessUpdate,
+	createYjsAwareness,
 	encodeYjsAwarenessUpdate,
-	wrapYjsDocument,
-	yjsAdapter,
-} from "@input/pen-yjs";
+} from "@input/pen-yjs/awareness";
 import {
 	BEFOREINPUT_MAP,
 	mapBeforeInput,
@@ -159,7 +159,7 @@ function createLocalDocument(name: string): {
 	if (!isLocalFixtureName(name)) {
 		throw new Error(`Unknown conformance fixture: ${name}`);
 	}
-	const adapter = yjsAdapter();
+	const adapter = yjsAdapter({ awareness: createYjsAwareness });
 	const ydoc = new Y.Doc({ gc: false });
 	populateYDoc(ydoc, [...LOCAL_FIXTURES[name]]);
 	return {
@@ -222,7 +222,7 @@ function sessionExtensions() {
 
 function createSession(fixtureName: string): Session {
 	const local = createLocalDocument(fixtureName);
-	const remoteAdapter = yjsAdapter();
+	const remoteAdapter = yjsAdapter({ awareness: createYjsAwareness });
 	const remoteY = new Y.Doc({ gc: false });
 	Y.applyUpdate(remoteY, Y.encodeStateAsUpdate(local.ydoc));
 	const remoteDoc = wrapYjsDocument(remoteAdapter, remoteY);
@@ -692,7 +692,7 @@ function encodePeerPresence(
 	clientId: number,
 	state: Record<string, unknown>,
 ): Uint8Array {
-	const adapter = yjsAdapter();
+	const adapter = yjsAdapter({ awareness: createYjsAwareness });
 	const ydoc = new Y.Doc({ gc: false });
 	ydoc.clientID = clientId;
 	const document = wrapYjsDocument(adapter, ydoc);

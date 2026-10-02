@@ -21,8 +21,9 @@ This package adds collaboration awareness around the editor without turning itse
 
 ## Dependencies And Boundaries
 
-- Runtime dependencies: `@input/pen-core`, `@input/pen-types`
-- Peer dependencies: No peer dependencies declared.
+- Runtime dependencies: `@input/pen-core`, `@input/pen-types`, `@input/pen-yjs`
+- Peer dependencies: `y-protocols`, `yjs`
+- On activation the extension ensures its scope's awareness with `createYjsAwareness` from `@input/pen-yjs/awareness` through `DocumentSession.ensureAwareness` when the adapter created none, so `createEditor({ extensions: [multiplayerExtension(…)] })` needs no adapter option. A host that wires a provider without this extension passes `yjsAdapter({ awareness: createYjsAwareness })`. A scope whose document is not a Yjs document and has no awareness makes activation throw, naming that remedy.
 - Boundary: This package owns collaboration awareness and renderer-facing remote state, but it does not replace core mutation authority or the underlying CRDT transport.
 
 ## Runtime Model

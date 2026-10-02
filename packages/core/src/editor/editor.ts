@@ -117,6 +117,7 @@ import {
 	syncDocumentProfileFromStorage,
 	wireEditorObservation,
 	teardownEditorObservation,
+	NOOP_UNDO,
 } from "./editorLifecycle";
 import {
 	replaceEditorSelection,
@@ -145,18 +146,6 @@ import {
 import { escalateSelectAll } from "../selection/transitions";
 type CRDTBlockMap = CRDTMap<CRDTMap<unknown>>;
 
-// Stub undo manager for when @input/pen-undo is excluded
-const NOOP_UNDO: UndoManager = {
-	undo: () => false,
-	redo: () => false,
-	canUndo: () => false,
-	canRedo: () => false,
-	stopCapturing: () => {},
-	withCapture: (_origin, _groupId, run) => run(),
-	setGroupTimeout: () => {},
-	registerTrackedOrigins: () => () => {},
-	onStackChange: () => () => {},
-};
 
 class EditorImpl implements Editor {
 	private readonly _adapter: CRDTAdapter;

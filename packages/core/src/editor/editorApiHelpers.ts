@@ -96,17 +96,6 @@ import type { EditorImplInternal } from "./editorImplContext";
 
 type EditorImplRuntime = EditorImplInternal;
 type CRDTBlockMap = CRDTMap<CRDTMap<unknown>>;
-type RawPenDocumentLike = {
-	getArray?(name: "blockOrder"): CRDTArray<string>;
-	getMap?(name: "blocks" | "apps" | "metadata"): CRDTMap<unknown>;
-	blockOrder?: CRDTArray<string>;
-	blocks?: CRDTMap<unknown>;
-	apps?: CRDTMap<unknown>;
-	metadata?: CRDTMap<unknown>;
-};
-function missingPenDocumentRoot(name: string): never {
-	throw new Error(`CRDT document is missing required Pen root "${name}".`);
-}
 
 const FACET_BY_SLOT_KEY: Record<string, Facet<unknown, unknown>> = {
 	[FIELD_EDITOR_SLOT_KEY]: fieldEditorHostFacet,
@@ -165,7 +154,10 @@ export function getEditorInternals(editor: EditorImplRuntime): EditorInternals {
 		crdtDoc: self._crdtDoc,
 		doc: self._doc,
 		engine: self._engine,
-		awareness: self._awareness,
+		// Read live: an extension may ensure the scope's awareness after bind.
+		awareness:
+			self._documentSession?.getAwareness(self._documentScope.id) ??
+			self._awareness,
 		documentSession: self._documentSession,
 		documentScope: self._documentScope,
 		viewId: self._viewId,

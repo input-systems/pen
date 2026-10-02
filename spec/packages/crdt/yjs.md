@@ -10,24 +10,23 @@ Bridge Pen contracts to a specific CRDT implementation.
 
 ## Key Exports / Entrypoints
 
-- Export map: `.`
+- Export map: `.` and `./awareness`
 - CRDT adapter and document helpers such as `yjsAdapter()`, `wrapYjsDocument()`, `initBlockMap()`, and `getYjsDoc()`
 - `PenDocumentUnreadableError`, thrown by `loadDocument` when `minReader` is too new or a shared type has the wrong Yjs constructor
-- Collaboration helpers such as `createYjsProviderSession()`, `createYjsAwareness()`, and `getYjsAwareness()`
+- Collaboration helpers such as `createYjsProviderSession()`; awareness lives on `@input/pen-yjs/awareness` (`createYjsAwareness()`, `getYjsAwareness()`, `encodeYjsAwarenessUpdate()`, `applyYjsAwarenessUpdate()`). `yjsAdapter()` creates no awareness: the multiplayer extension ensures one per scope when it activates, and `yjsAdapter({ awareness: createYjsAwareness })` is the explicit option for a host that wires a provider without it
 - State-vector helpers such as `encodeYjsStateVectorBase64()`, `compareYjsStateVectors()`, and `isYjsStateVectorBase64Satisfied()`
 - Generic field adapters such as `createYTextFieldAdapter()` and `createYArrayFieldAdapter()`
 - Extension-root helpers such as `ensureExtensionRoot()` and `readExtensionRoot()`
 - Anchor methods `createRelativePosition(doc, target, assoc)` and `resolveRelativePosition(doc, encoded, options?)` live on the `CRDTAdapter` object returned by `yjsAdapter()`, not on the package barrel. `editor.anchors` is the host surface; these methods are the CRDT implementation behind it. `loadDocument()` is adapter-scoped the same way.
 - Summary and origin plumbing: `createSummarySource()`, `STRUCTURAL_ORIGIN_META_KEY`, `createRemoteUpdateOrigin()`, `originToOpOrigin()`
 - Document lifecycle: `validateDocument()`, `createYjsSubdocument()`, `getDocumentProfile()` / `setDocumentProfile()`, `getDocumentLoadReport()`, `readFormatStamp()` / `refreshFormatStamp()`
-- Awareness wire helpers `encodeYjsAwarenessUpdate()` and `applyYjsAwarenessUpdate()`
 - Format stamp helpers; new documents stamp `PEN_DOCUMENT_FORMAT` (`3`)
 - Workspace scripts: `build`, `clean`, `dev`, `lint`, `test`, `typecheck`
 
 ## Dependencies And Boundaries
 
 - Runtime dependencies: `@input/pen-types`
-- Peer dependencies: `y-protocols`, `yjs`
+- Peer dependencies: `yjs`; `y-protocols` (optional, needed only by `./awareness`)
 - Boundary: Adapters must respect the editor authority boundary while exposing persistence and sync integration points.
 
 ## Undo Origin Matching

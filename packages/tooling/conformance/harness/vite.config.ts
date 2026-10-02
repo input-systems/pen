@@ -29,6 +29,13 @@ const PEN_SOURCE_ALIASES = {
 	"@input/pen-core": fileURLToPath(
 		new URL("../../../../packages/core/src/index.ts", import.meta.url),
 	),
+	// subpath before the bare specifier (see the @input/pen-ai note above)
+	"@input/pen-yjs/awareness": fileURLToPath(
+		new URL(
+			"../../../../packages/crdt/yjs/src/awareness.ts",
+			import.meta.url,
+		),
+	),
 	"@input/pen-yjs": fileURLToPath(
 		new URL("../../../../packages/crdt/yjs/src/index.ts", import.meta.url),
 	),

@@ -18,10 +18,10 @@ pnpm dev -- --filter=@input/pen-example-react...
 The post-publish consumer command, including peers, will be:
 
 ```bash
-pnpm add @input/pen @input/pen-react react react-dom yjs y-protocols
+pnpm add @input/pen @input/pen-react react react-dom yjs
 ```
 
-`react` and `react-dom` are peers of `@input/pen-react`. `yjs` and `y-protocols` are peers of `@input/pen-yjs`, which `@input/pen-core` depends on, so every Pen install needs both.
+`react` and `react-dom` are peers of `@input/pen-react`. `yjs` is a peer of `@input/pen-yjs`, which `@input/pen-core` depends on, so every Pen install needs it; `y-protocols` is needed only for collaboration (`@input/pen-multiplayer`).
 
 ## Mount
 

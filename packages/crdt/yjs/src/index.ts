@@ -5,14 +5,12 @@ export {
 	createRemoteUpdateOrigin,
 	originToOpOrigin,
 } from "./events";
-export type { YjsAdapterOptions, CRDTDiagnostic } from "./adapter";
-export {
-	applyYjsAwarenessUpdate,
-	createYjsAwareness,
-	encodeYjsAwarenessUpdate,
-	getYjsAwareness,
-} from "./awareness";
-export type { YjsAwareness } from "./awareness";
+export type {
+	YjsAdapterOptions,
+	YjsAwarenessFactory,
+	CRDTDiagnostic,
+} from "./adapter";
+export { YJS_SINGLETON_MISMATCH_CODE } from "./yjsSingleton";
 export {
 	createYjsProviderSession,
 	getYjsDoc,

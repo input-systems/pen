@@ -193,21 +193,6 @@
     },
     {
       "package": "@input/pen-dom",
-      "key": "./utils/placeholderVisibility",
-      "reason": "P.6 relocated placeholderVisibility, not a src/dist escape hatch."
-    },
-    {
-      "package": "@input/pen-dom",
-      "key": "./utils/pointerSelection",
-      "reason": "P.6 relocated pointerSelection, not a src/dist escape hatch."
-    },
-    {
-      "package": "@input/pen-dom",
-      "key": "./utils/remoteCellSelection",
-      "reason": "P.6 first-class remote cell presence mapping, not a src/dist escape hatch."
-    },
-    {
-      "package": "@input/pen-dom",
       "key": "./utils/flowCapabilities",
       "reason": "P.6 relocated flowCapabilities, not a src/dist escape hatch."
     },
@@ -220,6 +205,11 @@
       "package": "@input/pen-dom",
       "key": "./utils/inlineAtomSelection",
       "reason": "P.6 relocated inlineAtomSelection, not a src/dist escape hatch."
+    },
+    {
+      "package": "@input/pen-dom",
+      "key": "./utils/inlineDecorations",
+      "reason": "P.6 first-class decoration helpers, not a src/dist escape hatch."
     },
     {
       "package": "@input/pen-dom",
@@ -238,6 +228,31 @@
     },
     {
       "package": "@input/pen-dom",
+      "key": "./utils/parentIdTree",
+      "reason": "P.6 relocated parentIdTree, not a src/dist escape hatch."
+    },
+    {
+      "package": "@input/pen-dom",
+      "key": "./utils/placeholderVisibility",
+      "reason": "P.6 relocated placeholderVisibility, not a src/dist escape hatch."
+    },
+    {
+      "package": "@input/pen-dom",
+      "key": "./utils/pointerSelection",
+      "reason": "P.6 relocated pointerSelection, not a src/dist escape hatch."
+    },
+    {
+      "package": "@input/pen-dom",
+      "key": "./utils/remoteCellSelection",
+      "reason": "P.6 first-class remote cell presence mapping, not a src/dist escape hatch."
+    },
+    {
+      "package": "@input/pen-dom",
+      "key": "./utils/replaceElementChildren",
+      "reason": "P.6 relocated replaceElementChildren, not a src/dist escape hatch."
+    },
+    {
+      "package": "@input/pen-dom",
       "key": "./utils/selectionFormation",
       "reason": "P.6 relocated selectionFormation, not a src/dist escape hatch."
     },
@@ -245,21 +260,6 @@
       "package": "@input/pen-dom",
       "key": "./utils/selectionPlacement",
       "reason": "P.6 relocated selectionPlacement, not a src/dist escape hatch."
-    },
-    {
-      "package": "@input/pen-dom",
-      "key": "./utils/inlineDecorations",
-      "reason": "P.6 first-class decoration helpers, not a src/dist escape hatch."
-    },
-    {
-      "package": "@input/pen-dom",
-      "key": "./utils/parentIdTree",
-      "reason": "P.6 relocated parentIdTree, not a src/dist escape hatch."
-    },
-    {
-      "package": "@input/pen-dom",
-      "key": "./utils/replaceElementChildren",
-      "reason": "P.6 relocated replaceElementChildren, not a src/dist escape hatch."
     },
     {
       "package": "@input/pen-dom",
@@ -308,17 +308,17 @@
     },
     {
       "package": "@input/pen-react",
-      "key": "./snapshots",
-      "reason": "E.3 App Router entry; first-class feature surface, not a src/dist escape hatch."
-    },
-    {
-      "package": "@input/pen-react",
       "key": "./multiplayer",
       "reason": "E.3 App Router entry; first-class feature surface, not a src/dist escape hatch."
     },
     {
       "package": "@input/pen-react",
       "key": "./search",
+      "reason": "E.3 App Router entry; first-class feature surface, not a src/dist escape hatch."
+    },
+    {
+      "package": "@input/pen-react",
+      "key": "./snapshots",
       "reason": "E.3 App Router entry; first-class feature surface, not a src/dist escape hatch."
     },
     {
@@ -340,6 +340,11 @@
       "package": "@input/pen-vue",
       "key": "./plugin",
       "reason": "Vue plugin entry; first-class public surface, not a src/dist escape hatch."
+    },
+    {
+      "package": "@input/pen-yjs",
+      "key": "./awareness",
+      "reason": "API2: y-protocols is an optional peer; awareness is its only importer, so it is a first-class subpath that installs without y-protocols never load."
     }
   ]
 }

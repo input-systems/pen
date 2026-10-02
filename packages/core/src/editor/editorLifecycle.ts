@@ -81,7 +81,8 @@ type RawPenDocumentLike = {
 function missingPenDocumentRoot(name: string): never {
 	throw new Error(`CRDT document is missing required Pen root "${name}".`);
 }
-const NOOP_UNDO: UndoManager = {
+/** Inert undo manager used when @input/pen-undo is not installed. */
+export const NOOP_UNDO: UndoManager = {
 	undo: () => false,
 	redo: () => false,
 	canUndo: () => false,

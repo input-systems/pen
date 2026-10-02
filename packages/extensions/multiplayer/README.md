@@ -15,10 +15,10 @@ It does **not** own transport, reconnect, auth, or Yjs wire protocol behavior.
 ## Install
 
 ```bash
-pnpm add @input/pen-multiplayer
+pnpm add @input/pen-multiplayer yjs y-protocols
 ```
 
-This package has no peer dependencies. `engines.node` is `>=22`.
+Peers are `yjs` (`^13.6`) and `y-protocols` (`^1.0.7`). On activation the extension creates its scope's awareness (`createYjsAwareness` from `@input/pen-yjs/awareness`), so the editor needs no adapter option. `engines.node` is `>=22`.
 
 ## Presence is host-provided and untrusted
 
@@ -166,7 +166,7 @@ That keeps Pen transport-agnostic and lets the application choose its own provid
 See `@input/pen-yjs` for the canonical `y-websocket` integration example using:
 
 - `getYjsDoc()`
-- `getYjsAwareness()`
+- `getYjsAwareness()` (from `@input/pen-yjs/awareness`)
 - `createYjsProviderSession()`
 
 For a concrete repository reference, see the playground collaboration wiring in

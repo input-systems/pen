@@ -21,6 +21,7 @@
  * keeps the DAG check green and must still fail here.
  */
 
+import { existsSync, readFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,6 +29,15 @@ import {
 	layerForPackageDir,
 	workspaceDependencyNames,
 } from "./dag-check.mjs";
+import {
+	closureThirdPartyPeers,
+	reachableBareSpecifiers,
+	requiredThirdPartyPeers,
+} from "./lib/thirdPartyClosure.mjs";
+
+/** API2: the only third-party peer a core consumer must install. */
+const EXPECTED_CORE_PEERS = ["yjs"];
+const YJS_ROOT_ENTRY = "packages/crdt/yjs/src/index.ts";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = path.resolve(SCRIPT_DIR, "..");
@@ -439,11 +449,89 @@ export async function loadConsumerPackages(repoRoot) {
 			name: packageJson.name,
 			dir,
 			dependencies: consumerDependencyNames(packageJson),
+			thirdPartyPeers: requiredThirdPartyPeers(packageJson),
 		});
 	}
 
 	packages.sort((left, right) => left.name.localeCompare(right.name));
 	return packages;
+}
+
+/**
+ * API2: a core consumer installs `yjs` and nothing else third-party, and the
+ * `@input/pen-yjs` root entry never imports `y-protocols` (awareness lives on
+ * the `./awareness` subpath).
+ */
+function evaluateThirdPartyClosure({ packages, closure, readFile, exists }) {
+	const peers = closureThirdPartyPeers(packages, closure);
+	const rootImports = reachableBareSpecifiers(YJS_ROOT_ENTRY, { readFile, exists });
+	const problems = [];
+	if (peers.join(",") !== EXPECTED_CORE_PEERS.join(",")) {
+		problems.push(
+			`required third-party peers in the core closure are [${peers.join(", ")}], expected [${EXPECTED_CORE_PEERS.join(", ")}]`,
+		);
+	}
+	if ([...rootImports].some((specifier) => specifier.startsWith("y-protocols"))) {
+		problems.push(`${YJS_ROOT_ENTRY} reaches y-protocols through relative imports`);
+	}
+	return problems;
+}
+
+function reportThirdPartyClosure(repoRoot, packages, closure) {
+	const problems = evaluateThirdPartyClosure({
+		packages,
+		closure,
+		readFile: (file) => readFileSync(path.join(repoRoot, file), "utf8"),
+		exists: (file) => existsSync(path.join(repoRoot, file)),
+	});
+	const lines = problems.map((problem) => `FAIL (API2): ${problem}`);
+	console.log(
+		lines.join("\n") ||
+			"OK: the core closure requires only yjs; the pen-yjs root entry never imports y-protocols.",
+	);
+	return problems.length === 0;
+}
+
+function runThirdPartySelfTests() {
+	const packages = [
+		{ name: "@input/pen-core", thirdPartyPeers: [] },
+		{ name: "@input/pen-yjs", thirdPartyPeers: ["yjs"] },
+	];
+	const files = {
+		[YJS_ROOT_ENTRY]: 'export * from "./adapter";',
+		"packages/crdt/yjs/src/adapter.ts": 'import * as Y from "yjs";',
+	};
+	const io = {
+		readFile: (file) => files[file] ?? "",
+		exists: (file) => file in files,
+	};
+	const closure = ["@input/pen-core", "@input/pen-yjs"];
+	assert(
+		evaluateThirdPartyClosure({ packages, closure, ...io }).length === 0,
+		"self-test: a yjs-only closure with a y-protocols-free root passes",
+	);
+	assert(
+		requiredThirdPartyPeers({
+			peerDependencies: { yjs: "^13", "y-protocols": "^1" },
+			peerDependenciesMeta: { "y-protocols": { optional: true } },
+		}).join() === "yjs",
+		"self-test: an optional peer is not required",
+	);
+	const requiredProtocols = [
+		{ name: "@input/pen-core", thirdPartyPeers: [] },
+		{ name: "@input/pen-yjs", thirdPartyPeers: ["y-protocols", "yjs"] },
+	];
+	assert(
+		evaluateThirdPartyClosure({ packages: requiredProtocols, closure, ...io }).length === 1,
+		"self-test: a required y-protocols peer in the closure fails",
+	);
+	files["packages/crdt/yjs/src/adapter.ts"] =
+		'import "./awareness";\nimport * as Y from "yjs";';
+	files["packages/crdt/yjs/src/awareness.ts"] = 'import "y-protocols/awareness";';
+	assert(
+		evaluateThirdPartyClosure({ packages, closure, ...io }).length === 1,
+		"self-test: a root entry that reaches y-protocols fails",
+	);
 }
 
 function parseArgs(argv) {
@@ -468,8 +556,9 @@ function parseArgs(argv) {
 async function main() {
 	const args = parseArgs(process.argv.slice(2));
 	runSelfTests();
+	runThirdPartySelfTests();
 	console.log(
-		"core clean-install self-test ok (in-memory; direct, transitive, and optionalDependency injections fail closed; core's undo devDependency does not)",
+		"core clean-install self-test ok (in-memory; direct, transitive, and optionalDependency injections fail closed; core's undo devDependency does not; a required y-protocols peer or a y-protocols import from the pen-yjs root fails)",
 	);
 	if (args.selfTestOnly) {
 		return;
@@ -479,7 +568,8 @@ async function main() {
 	const result = evaluateCoreCleanInstall({ packages });
 	console.log("");
 	console.log(formatReport(result));
-	if (!result.ok) {
+	const thirdPartyOk = reportThirdPartyClosure(args.repoRoot, packages, result.closure);
+	if (!result.ok || !thirdPartyOk) {
 		process.exitCode = 1;
 	}
 }

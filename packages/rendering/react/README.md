@@ -7,10 +7,10 @@ React renderer, primitives, and hooks for Pen.
 ## Install
 
 ```bash
-pnpm add @input/pen @input/pen-react react react-dom yjs y-protocols
+pnpm add @input/pen @input/pen-react react react-dom yjs
 ```
 
-`react` and `react-dom` are peers of this package. `yjs` and `y-protocols` are peers of `@input/pen-yjs`, which `@input/pen-core` depends on. Add `@input/pen-core` explicitly when you import from it directly.
+`react` and `react-dom` are peers of this package. `yjs` is a peer of `@input/pen-yjs`, which `@input/pen-core` depends on; add `y-protocols` only when you install `@input/pen-multiplayer`. Add `@input/pen-core` explicitly when you import from it directly.
 
 ## Quick Start
 

@@ -10,6 +10,7 @@ import * as Y from "yjs";
 import { BLOCKS, BLOCK_ORDER } from "./document";
 import type { YjsCRDTDocument } from "./document";
 import type { CRDTDiagnostic } from "./loadDocument";
+import { YJS_SINGLETON_MISMATCH, YJS_SINGLETON_MISMATCH_CODE } from "./yjsSingleton";
 
 // Yjs internal types inferred from Yjs APIs to avoid leaking `any`.
 type AnyAbstractType = Parameters<Y.Transaction["changed"]["get"]>[0];
@@ -239,11 +240,29 @@ function extractAffectedBlocks(txn: Y.Transaction): string[] {
 	return Array.from(blockIds);
 }
 
+const foreignCopyReported = new WeakSet<Y.Doc>();
+
 export function createObserver(
 	doc: YjsCRDTDocument,
 	callback: (event: CRDTEvent) => void,
 	onDiagnostic?: (diagnostic: CRDTDiagnostic) => void,
 ): Unsubscribe {
+	// API2: a transaction that is not this module's Y.Transaction was opened
+	// by a second yjs copy — a provider applying updates with its own
+	// applyUpdate, usually its initial sync. Report it once per document
+	// rather than throwing from an observer.
+	const beforeHandler = (txn: unknown) => {
+		if (txn instanceof Y.Transaction || foreignCopyReported.has(doc.ydoc)) {
+			return;
+		}
+		foreignCopyReported.add(doc.ydoc);
+		onDiagnostic?.({
+			code: YJS_SINGLETON_MISMATCH_CODE,
+			message: YJS_SINGLETON_MISMATCH,
+			severity: "error",
+			timestamp: Date.now(),
+		});
+	};
 	const txnHandler = (txn: Y.Transaction) => {
 		if (txn.changed.size === 0) {
 			return;
@@ -263,9 +282,11 @@ export function createObserver(
 		callback(event);
 	};
 
+	doc.ydoc.on("beforeTransaction", beforeHandler);
 	doc.ydoc.on("afterTransaction", txnHandler);
 
 	return () => {
+		doc.ydoc.off("beforeTransaction", beforeHandler);
 		doc.ydoc.off("afterTransaction", txnHandler);
 	};
 }

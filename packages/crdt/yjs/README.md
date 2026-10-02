@@ -16,10 +16,11 @@ It does **not** implement WebSocket transport or a custom Yjs sync provider.
 ## Install
 
 ```bash
-pnpm add @input/pen-yjs yjs y-protocols
+pnpm add @input/pen-yjs yjs
+# collaboration (awareness): also y-protocols
 ```
 
-Required peers are `yjs` (`^13.6`) and `y-protocols` (`^1.0.7`). `engines.node` is `>=22`.
+The required peer is `yjs` (`^13.6`). `y-protocols` (`^1.0.7`) is an optional peer, needed only by the `@input/pen-yjs/awareness` subpath; `yjsAdapter()` creates no awareness unless you pass `yjsAdapter({ awareness: createYjsAwareness })`, and the multiplayer extension ensures one for its scope. `engines.node` is `>=22`.
 
 ## State barriers
 
@@ -101,11 +102,8 @@ When using multiplayer with Yjs, Pen expects the application to choose the provi
 `@input/pen-yjs` exposes the minimal helpers needed for that:
 
 ```ts
-import {
-  createYjsProviderSession,
-  getYjsAwareness,
-  getYjsDoc,
-} from "@input/pen-yjs";
+import { createYjsProviderSession, getYjsDoc } from "@input/pen-yjs";
+import { getYjsAwareness } from "@input/pen-yjs/awareness";
 ```
 
 ## Canonical `y-websocket` setup
@@ -114,11 +112,8 @@ This is the recommended setup when using [`y-websocket`](https://docs.yjs.dev/ec
 
 ```ts
 import { createEditor } from "@input/pen-core";
-import {
-  createYjsProviderSession,
-  getYjsAwareness,
-  getYjsDoc,
-} from "@input/pen-yjs";
+import { createYjsProviderSession, getYjsDoc } from "@input/pen-yjs";
+import { getYjsAwareness } from "@input/pen-yjs/awareness";
 import { multiplayerExtension } from "@input/pen-multiplayer";
 import { WebsocketProvider } from "y-websocket";
 

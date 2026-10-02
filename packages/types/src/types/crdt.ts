@@ -173,6 +173,16 @@ export interface DocumentSession {
 	listScopes(): readonly DocumentScope[];
 
 	getAwareness(scopeId?: string): Awareness | null;
+	/**
+	 * The scope's awareness, created once with `factory` when the scope has
+	 * none. Shared by every editor bound to the scope and destroyed with it.
+	 * Lets an extension (multiplayer) own awareness without the adapter
+	 * creating one for every document (API2).
+	 */
+	ensureAwareness?(
+		scopeId: string,
+		factory: (doc: CRDTDocument) => Awareness,
+	): Awareness;
 
 	observe(scopeId: string, callback: (event: CRDTEvent) => void): Unsubscribe;
 	observeAll(callback: (event: CRDTEvent) => void): Unsubscribe;

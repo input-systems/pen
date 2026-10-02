@@ -360,6 +360,9 @@ importers:
       '@input/pen-types':
         specifier: workspace:^
         version: link:../../types
+      '@input/pen-yjs':
+        specifier: workspace:^
+        version: link:../../crdt/yjs
     devDependencies:
       '@input/pen-schema':
         specifier: workspace:*
@@ -370,9 +373,6 @@ importers:
       '@input/pen-undo':
         specifier: workspace:*
         version: link:../undo
-      '@input/pen-yjs':
-        specifier: workspace:*
-        version: link:../../crdt/yjs
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(postcss@8.5.28)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
@@ -382,6 +382,12 @@ importers:
       vitest:
         specifier: ^3.2.7
         version: 3.2.7(@types/debug@4.1.12)(@types/node@25.4.0)(jsdom@28.1.0)(tsx@4.23.12)(yaml@2.9.0)
+      y-protocols:
+        specifier: ^1.0.7
+        version: 1.0.7(yjs@13.6.32)
+      yjs:
+        specifier: ^13.6.32
+        version: 13.6.32
 
   packages/extensions/search:
     dependencies:
