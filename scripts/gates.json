@@ -20,6 +20,11 @@
     "description": "TSDoc coverage ratchet: the undocumented count may only decrease. Switch to --strict once it reaches zero."
   },
   {
+    "id": "rule-coverage",
+    "command": "pnpm coverage:rules",
+    "description": "CH11: claimed rule IDs keep a claiming test; scope entries name live rules; new claims are recorded."
+  },
+  {
     "id": "capability-matrix",
     "command": "pnpm capability-matrix",
     "description": "Every capability-matrix cell that claims a surface must name a path that exists outside the playground."

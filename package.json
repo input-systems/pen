@@ -33,6 +33,7 @@
     "readme-sections": "node scripts/readme-sections.mjs",
     "api-docs-coverage": "node scripts/api-docs-coverage.mjs",
     "capability-matrix": "node scripts/check-capability-matrix.mjs",
+    "coverage:rules": "node --test scripts/__tests__/ruleCoverage.test.mjs && node scripts/rule-coverage.mjs",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "prettier": {
