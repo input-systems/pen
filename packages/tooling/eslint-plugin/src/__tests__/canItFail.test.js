@@ -211,6 +211,19 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 		);
 	});
 
+	it("no-dom-selection-read errors by name on a selection read outside the reader", () => {
+		expectRuleErrors(
+			tsTester,
+			"no-dom-selection-read",
+			rules["no-dom-selection-read"],
+			{
+				code: "export function seeded() {\n\treturn window.getSelection();\n}\n",
+				filename: "packages/rendering/dom/src/seeded-selection-read.ts",
+				errors: [{ messageId: "read" }],
+			},
+		);
+	});
+
 	it("no-dom-selection-write errors by name on a selection write outside the projector", () => {
 		expectRuleErrors(
 			tsTester,
@@ -218,7 +231,8 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 			rules["no-dom-selection-write"],
 			{
 				code: "export function seeded() {\n\twindow.getSelection()?.removeAllRanges();\n}\n",
-				filename: "packages/rendering/dom/src/seeded-selection-write.ts",
+				filename:
+					"packages/rendering/dom/src/seeded-selection-write.ts",
 				errors: [{ messageId: "write" }],
 			},
 		);
@@ -231,7 +245,8 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 			rules["no-unscoped-decoration-source"],
 			{
 				code: "export function seededExtension() {\n\treturn decorationsFacet.of(() => createDecorationSet([]));\n}\n",
-				filename: "packages/extensions/search/src/seeded-unscoped-decorations.ts",
+				filename:
+					"packages/extensions/search/src/seeded-unscoped-decorations.ts",
 				errors: [{ messageId: "unscoped" }],
 			},
 		);
@@ -244,7 +259,8 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 			rules["no-v1-extension-fields"],
 			{
 				code: 'import { defineExtension } from "@input/pen-core";\nexport const ext = defineExtension({ name: "x", keyBindings: [] });\n',
-				filename: "packages/extensions/snapshots/src/seeded-v1-field.ts",
+				filename:
+					"packages/extensions/snapshots/src/seeded-v1-field.ts",
 				errors: [{ messageId: "v1Field" }],
 			},
 		);
@@ -446,7 +462,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 		);
 	});
 
-	it("plugin ships twenty-two rules and each can-it-fail case is registered", () => {
+	it("plugin ships twenty-three rules and each can-it-fail case is registered", () => {
 		expect(Object.keys(rules).sort()).toEqual([
 			"no-above-floor-api",
 			"no-aria-hidden-visible",
@@ -454,6 +470,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 			"no-bare-case-folding",
 			"no-bare-random-uuid",
 			"no-bidi-override",
+			"no-dom-selection-read",
 			"no-dom-selection-write",
 			"no-framework-free-modules-in-renderers",
 			"no-html-injection-sinks",

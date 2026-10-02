@@ -233,6 +233,17 @@ export default tseslint.config(
 		},
 	},
 	{
+		// S1: one selection reader. Outside selectionReader.ts, every
+		// getSelection(), selectionchange listener and live-selection mapping
+		// call is listed with the requirement that removes it in
+		// scripts/dom-selection-read-allowlist.json; an entry with no live read
+		// fails (I15). The rule self-scopes to the renderer sources.
+		files: ["packages/rendering/**/src/**/*.{ts,tsx}"],
+		rules: {
+			"pen/no-dom-selection-read": "error",
+		},
+	},
+	{
 		// SCALE2: function-form decorationsFacet sources recompute in full on
 		// every commit. Remaining sites are listed with a reason in
 		// scripts/unscoped-decoration-source-allowlist.json; an entry with no

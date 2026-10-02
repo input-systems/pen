@@ -1,0 +1,194 @@
+{
+  "_comment": "S1 selection-read ratchet. Each entry is a DOM selection read outside packages/rendering/dom/src/field-editor/selectionReader.ts, with the requirement that removes it. An entry whose read no longer exists fails (I15); the list only shrinks and W3.G2 closes at entries: [].",
+  "entries": [
+    {
+      "file": "packages/rendering/dom/src/field-editor/contentGesturesPointerSelection.ts",
+      "symbol": "mappedSelection",
+      "api": "domSelectionToEditor",
+      "reason": "mouseup and multi-click map the live DOM selection and write the authority; the pointer path stops mapping",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
+      "symbol": "activate",
+      "api": "selectionchange",
+      "reason": "backend selectionchange listener; the reader binds the only listener per root",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
+      "symbol": "range",
+      "api": "getSelectionOffsets",
+      "reason": "input ranges from the live selection: applyTextDiffAsOps (CE:646) and the keydown range for handleFieldEditorKeyDown (CE:750; that path is deleted by W35.R18 with keyHandlingInlineAtoms); ranges come from getTargetRanges or reader.sync() + authority",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
+      "symbol": "resolveLiveInputRange",
+      "api": "getSelectionOffsets",
+      "reason": "input range from the live selection; getTargetRanges or reader.sync() + authority",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/contenteditableDomHelpers.ts",
+      "symbol": "canResolveInputRange",
+      "api": "getSelectionOffsets",
+      "reason": "canResolveInputRange falls back to the live selection; getTargetRanges or reader.sync() + authority",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
+      "symbol": "_activateEditContext",
+      "api": "selectionchange",
+      "reason": "backend selectionchange listener; the reader binds the only listener per root",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
+      "symbol": "liveDomOffsets",
+      "api": "getDirectionalSelectionOffsets",
+      "reason": "keydown range from the live DOM selection; reader.sync() + authority",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
+      "symbol": "offsets",
+      "api": "getDirectionalSelectionOffsets",
+      "reason": "backend maps the live DOM selection in its selectionchange handler; the reader maps",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
+      "symbol": "sel",
+      "api": "getSelection",
+      "reason": "backend reads the native selection to restore/compare its caret; the reader and projector own it",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/editContextBackend.ts",
+      "symbol": "selection",
+      "api": "getSelection",
+      "reason": "backend reads the native selection in its selectionchange path; the reader owns it",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/expandedContentEditableBackend.ts",
+      "symbol": "activate",
+      "api": "selectionchange",
+      "reason": "backend selectionchange listener; the reader binds the only listener per root",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/selectionBridgeOffsets.ts",
+      "symbol": "offsets",
+      "api": "getDirectionalSelectionOffsets",
+      "reason": "getCaretOffset/getSelectionOffsets helpers read window.getSelection(); mapping helpers take a Selection parameter",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/selectionBridgeOffsets.ts",
+      "symbol": "offsets",
+      "api": "getSelectionOffsets",
+      "reason": "getCaretOffset/getSelectionOffsets helpers read window.getSelection(); mapping helpers take a Selection parameter",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/selectionBridgeOffsets.ts",
+      "symbol": "sel",
+      "api": "getSelection",
+      "reason": "offset helpers call window.getSelection(); mapping helpers take a Selection parameter",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/selectionMapping.ts",
+      "symbol": "sel",
+      "api": "getSelection",
+      "reason": "domSelectionToEditor calls window.getSelection(); mapping helpers take a Selection parameter",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/selectionProjector.ts",
+      "symbol": "sel",
+      "api": "getSelection",
+      "reason": "the writer obtains the Selection object to write; it takes it from the reader",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/selectionProjector.ts",
+      "symbol": "selection",
+      "api": "getSelection",
+      "reason": "the writer obtains the Selection object to write and clear; it takes it from the reader",
+      "closedBy": "W3.R4"
+    },
+    {
+      "file": "packages/rendering/dom/src/utils/documentShortcuts.ts",
+      "symbol": "hasMappedDomSelection",
+      "api": "domSelectionToEditor",
+      "reason": "document shortcuts map the live selection; reader.hasSelectionInRoot()",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useSelectionToolbar.ts",
+      "symbol": "domSelection",
+      "api": "getSelection",
+      "reason": "toolbar positions from the live range; resolveSelectionRect + geometry reader from the authority",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useSelectionToolbar.ts",
+      "symbol": "selection",
+      "api": "getSelection",
+      "reason": "toolbar positions from the live range; resolveSelectionRect + geometry reader from the authority",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/ai/contextualPromptComposer.tsx",
+      "symbol": "AIContextualPromptComposer",
+      "api": "selectionchange",
+      "reason": "prompt composer listens for selectionchange and maps the live range; editor.onSelectionChange + authority",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/ai/contextualPromptComposer.tsx",
+      "symbol": "domSelection",
+      "api": "domSelectionToEditor",
+      "reason": "prompt composer listens for selectionchange and maps the live range; editor.onSelectionChange + authority",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/ai/contextualPromptComposer.tsx",
+      "symbol": "liveSelection",
+      "api": "getSelection",
+      "reason": "prompt composer listens for selectionchange and maps the live range; editor.onSelectionChange + authority",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/ai/contextualPromptGeometry.ts",
+      "symbol": "domSelection",
+      "api": "domSelectionToEditor",
+      "reason": "prompt geometry from the live range; resolveSelectionRect + geometry reader from the authority",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/ai/contextualPromptGeometry.ts",
+      "symbol": "selection",
+      "api": "getSelection",
+      "reason": "prompt geometry from the live range; resolveSelectionRect + geometry reader from the authority",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/slash-menu/content.tsx",
+      "symbol": "SlashMenuContent",
+      "api": "selectionchange",
+      "reason": "slash menu repositions on selectionchange; observe editor.onSelectionChange",
+      "closedBy": "W3.R5"
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/suggestion-menu/content.tsx",
+      "symbol": "SuggestionMenuContent",
+      "api": "selectionchange",
+      "reason": "suggestion menu repositions on selectionchange; observe editor.onSelectionChange",
+      "closedBy": "W3.R5"
+    }
+  ]
+}
