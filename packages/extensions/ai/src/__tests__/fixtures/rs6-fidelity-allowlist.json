@@ -1,0 +1,172 @@
+{
+  "entries": [
+    {
+      "corpusId": "p1",
+      "posture": "direct",
+      "operationIndex": 0,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p1",
+      "posture": "suggestions",
+      "operationIndex": 0,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p2",
+      "posture": "direct",
+      "operationIndex": 2,
+      "reason": "insert_blocks after a block joins the block's last line and keeps the markdown's trailing newline",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p2",
+      "posture": "suggestions",
+      "operationIndex": 2,
+      "reason": "insert_blocks after a block joins the block's last line and keeps the markdown's trailing newline",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p4",
+      "posture": "direct",
+      "operationIndex": 0,
+      "reason": "delete_blocks carries no text, so the preview hides nothing",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p4",
+      "posture": "suggestions",
+      "operationIndex": 0,
+      "reason": "delete_blocks carries no text, so the preview hides nothing",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p5",
+      "posture": "direct",
+      "operationIndex": 0,
+      "reason": "insert_blocks after a block joins the block's last line and keeps the markdown's trailing newline",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p5",
+      "posture": "suggestions",
+      "operationIndex": 0,
+      "reason": "insert_blocks after a block joins the block's last line and keeps the markdown's trailing newline",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p6",
+      "posture": "direct",
+      "operationIndex": 0,
+      "reason": "a three-block replace_blocks previews over its first block only",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p6",
+      "posture": "suggestions",
+      "operationIndex": 0,
+      "reason": "a three-block replace_blocks previews over its first block only",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p8",
+      "posture": "direct",
+      "operationIndex": 0,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p8",
+      "posture": "direct",
+      "operationIndex": 1,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p8",
+      "posture": "direct",
+      "operationIndex": 2,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p8",
+      "posture": "direct",
+      "operationIndex": 3,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p8",
+      "posture": "direct",
+      "operationIndex": 4,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p8",
+      "posture": "suggestions",
+      "operationIndex": 0,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p8",
+      "posture": "suggestions",
+      "operationIndex": 1,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p8",
+      "posture": "suggestions",
+      "operationIndex": 2,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p8",
+      "posture": "suggestions",
+      "operationIndex": 3,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p8",
+      "posture": "suggestions",
+      "operationIndex": 4,
+      "reason": "a finished replace shorter than its block previews as still arriving, so the old tail is never hidden",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p10",
+      "posture": "direct",
+      "operationIndex": 0,
+      "reason": "insert_blocks placed before a block previews after it",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p10",
+      "posture": "direct",
+      "operationIndex": 1,
+      "reason": "operation 0's insert placed before a block still previews after it",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p10",
+      "posture": "suggestions",
+      "operationIndex": 0,
+      "reason": "insert_blocks placed before a block previews after it",
+      "closedBy": "W7.R2"
+    },
+    {
+      "corpusId": "p10",
+      "posture": "suggestions",
+      "operationIndex": 1,
+      "reason": "operation 0's insert placed before a block still previews after it",
+      "closedBy": "W7.R2"
+    }
+  ]
+}
