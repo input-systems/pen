@@ -73,9 +73,9 @@ Re-verify rather than trust: an expected-failure also absorbs a failure for the 
 
 Two things kept it recoverable. The verbatim symptom named `hasBody:false` alongside a populated `blockIds`, which is what made the fixture the suspect rather than the renderer. And the annotation is a marker, not a mute — the scenario kept asserting the spec throughout, so nothing had to be un-weakened to re-check it. The fixture-shape lock now rejects `children:` for this fixture by name, so the shape cannot come back silently.
 
-| Rule | Scenario                                                                                                                                                                                         | Route                                                                     |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| O1   | `O1: clicking either half of a chip puts the caret on that side` (vanilla) — click 2 px left of the `ac-mid` chip midpoint → caret `ac-mid`@7, not @6                                            | pen-dom vanilla pointer activation: chip click resolution (W35.R16)       |
+| Rule | Scenario                                                                                                                                              | Route                                                               |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| O1   | `O1: clicking either half of a chip puts the caret on that side` (vanilla) — click 2 px left of the `ac-mid` chip midpoint → caret `ac-mid`@7, not @6 | pen-dom vanilla pointer activation: chip click resolution (W35.R16) |
 
 Seed 11 closed on 2026-10-03 (W3 step 16). Cross-block reads and drags form through core T2, whose code block is text like the authority's, so the Shift+ArrowDown into `fuzz-code` no longer leaves S2 broken. Its intermittent step-3 failure after `undo` (a `null` restore that projected a mismatch) also closed: a pointer read that moves the session to another block now stops undo capture as `activate()` does, so the click no longer leaves the typing merged into a load-time undo item.
 

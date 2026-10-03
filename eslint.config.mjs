@@ -42,6 +42,8 @@ export default tseslint.config(
 		ignores: [
 			"**/dist/**",
 			"**/.generated/**",
+			// Local agent worktrees (gitignored) carry full repo copies.
+			".claude/**",
 			"**/node_modules/**",
 			"**/coverage/**",
 			"**/.turbo/**",
