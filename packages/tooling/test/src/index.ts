@@ -17,6 +17,15 @@ export type {
 	TwoPeerHarnessOptions,
 	TwoPeerId,
 	TwoPeerInterleaving,
+	Peer,
+	PeerDeliverOptions,
+	PeerDeliveryPath,
+	PeerHarness,
+	PeerHarnessOptions,
+	PeerIndex,
+	PeerSchedule,
+	PeerScheduleName,
+	PeerStep,
 } from "./types";
 export { createTestDocument, populateYDoc } from "./createTestDocument";
 export { createTestEditor } from "./createTestEditor";
@@ -29,6 +38,23 @@ export {
 	runBothInterleavings,
 	TWO_PEER_INTERLEAVINGS,
 } from "./twoPeerHarness";
+export {
+	MAX_QUIESCE_ROUNDS,
+	PEER_HARNESS_MAX_PEERS,
+	PEER_HARNESS_MIN_PEERS,
+	PEER_SCHEDULES,
+	PeerHarnessQuiesceError,
+	createPeerHarness,
+	runPeerSchedules,
+} from "./peerHarness";
+export {
+	assertStructuralInvariants,
+	findStructuralViolations,
+} from "./structuralInvariants";
+export type {
+	StructuralArray,
+	StructuralViolation,
+} from "./structuralInvariants";
 export {
 	collectInlineText,
 	concatenatedInlineText,

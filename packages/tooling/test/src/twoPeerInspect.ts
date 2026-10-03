@@ -1,7 +1,7 @@
 import type { PenDocument } from "@input/pen-types";
-import type { TestEditor, TwoPeer } from "./types";
+import type { Peer, TestEditor, TwoPeer } from "./types";
 
-export type InspectSource = TestEditor | TwoPeer | PenDocument;
+export type InspectSource = TestEditor | TwoPeer | Peer | PenDocument;
 
 type BlockMapLike = {
 	get(key: string): unknown;
@@ -207,8 +207,17 @@ export function countEmptyInlineBlocks(source: InspectSource): number {
 	return count;
 }
 
+/**
+ * The `PenDocument` behind any inspect source. Not on the barrel.
+ *
+ * @internal
+ */
+export function asInspectDocument(source: InspectSource): PenDocument {
+	return asDocument(source);
+}
+
 function asDocument(source: InspectSource): PenDocument {
-	if (isTwoPeer(source)) {
+	if (isPeer(source)) {
 		return source.editor.document;
 	}
 	if (isPenDocument(source)) {
@@ -217,7 +226,7 @@ function asDocument(source: InspectSource): PenDocument {
 	return source.document;
 }
 
-function isTwoPeer(source: InspectSource): source is TwoPeer {
+function isPeer(source: InspectSource): source is TwoPeer | Peer {
 	return "editor" in source && "adapter" in source && "crdtDoc" in source;
 }
 

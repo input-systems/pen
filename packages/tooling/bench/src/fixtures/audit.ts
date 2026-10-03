@@ -1,3 +1,4 @@
+import { SCALE3_SYNCED_PEER_POINTS } from "../constants/scale3";
 import { SCALE1_MEASUREMENTS, type EnvelopeRungId } from "../constants/scale1";
 
 export type FixtureVerdict = "agrees" | "name-overstates" | "wrong-subject";
@@ -157,14 +158,27 @@ export const RELATED_FIXTURE_AUDIT: readonly FixtureAuditRow[] = [
 		fixture: "`createScale3Editor` remote-caret-count axis",
 		claimedSubject: "keystroke with 8 remote-caret decorations",
 		actualSubject:
-			"Eight `data-pen-remote-caret` decorations on the multiplayer stand-in. No second Y.Doc, no sync. N-synced-peer scaling is unmeasured.",
+			"Eight `data-pen-remote-caret` decorations on the multiplayer stand-in. No second Y.Doc, no sync; synced-peer scaling is the `scale3.keystroke.synced-peers.*` axis.",
 		verdict: "agrees",
 		countTrust: "trusted",
 		clockTrust: "untrustworthy",
 		floorKind: "empty-timer",
 		howMeasured:
-			"count: 8 remote-caret decorations. Clock is a keystroke median on a single editor. N-synced-peer scaling is not a SCALE3 measurement",
+			"count: 8 remote-caret decorations. Clock is a keystroke median on a single editor; synced peers are measured on their own axis",
 	},
+	...SCALE3_SYNCED_PEER_POINTS.map(
+		(peers): FixtureAuditRow => ({
+			id: `scale3.keystroke.synced-peers.${peers}`,
+			fixture: "`createScale3PeerSession` synced-peer-count axis",
+			claimedSubject: `one keystroke fanned out to ${peers} synced peers`,
+			actualSubject: `${peers} real forked Y.Docs at 1,000 blocks, each with the real \`multiplayerExtension\`; the typist's keystroke resolves ${peers - 1} remote carets and is delivered to ${peers - 1} peers.`,
+			verdict: "agrees",
+			countTrust: "trusted",
+			clockTrust: "not-gated",
+			floorKind: "empty-sync",
+			howMeasured: `count: deliveries, remote commits, blocks per remote commit, remote carets and observing peers against \`baselines/scale3-peers.json\`; clocks recorded by \`bench:scale3:peers\``,
+		}),
+	),
 	{
 		id: "scale3.realistic",
 		fixture: "`createScale3RealisticEditor`",

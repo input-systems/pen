@@ -12,7 +12,7 @@ Support development, testing, benchmarking, or local integration workflows aroun
 
 - Export map: `.`
 - Editor harness: `createTestEditor()`, `createTestDocument()`, `populateYDoc()`
-- Collaboration harness: `createTestCollaboration()`, `createTwoPeerHarness()`, `runBothInterleavings()`, plus two-peer inspection helpers such as `visibleText()` and `listBlockIds()`
+- Collaboration harness: `createTestCollaboration()`, `createPeerHarness(n)` with `runPeerSchedules()` and `PEER_SCHEDULES`, `createTwoPeerHarness()` and `runBothInterleavings()` as its two-peer form, structural checks `assertStructuralInvariants()` / `findStructuralViolations()`, plus inspection helpers such as `visibleText()` and `listBlockIds()`
 - Assertions: `assertDocEquals()`, `assertPeerEditsSurvive()`, `assertDocumentRoots()`
 - Fixtures: `encodeFixtureUpdate()`, `normalizeDocumentForSnapshot()`, `DEFAULT_PEN_ROOTS`, `PenFixtureError`
 - AI doubles: `createModelDouble()` and its types, used by the AI and transport suites

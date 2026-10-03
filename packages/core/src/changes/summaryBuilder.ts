@@ -54,10 +54,16 @@ export function buildChangeSummary(
 	delta: RawCommitDelta,
 	index: BlockIndexSnapshot,
 	commitId: number,
+	blockExists?: (blockId: string) => boolean,
 ): ChangeSummary {
 	const structuralOrigin = readStructuralOrigin(delta.originTag);
 	const blockText = buildTextChanges(delta, index);
-	const structural = buildStructuralChanges(delta, index, structuralOrigin);
+	const structural = buildStructuralChanges(
+		delta,
+		index,
+		structuralOrigin,
+		blockExists,
+	);
 	return createChangeSummary({
 		commitId,
 		blockText,
@@ -171,6 +177,7 @@ function buildStructuralChanges(
 	delta: RawCommitDelta,
 	index: BlockIndexSnapshot,
 	structuralOrigin: StructuralOriginTag | null,
+	blockExists: ((blockId: string) => boolean) | undefined,
 ): StructuralChange[] {
 	const structural: StructuralChange[] = [];
 	const { inserted, removed } = collectArrayEdits(delta, index);
@@ -247,6 +254,28 @@ function buildStructuralChanges(
 			.map((item) => item.id),
 		...(splitNewId ? [splitNewId] : []),
 	]);
+
+	// COL4: a remote delete against a concurrent move drops the block's map
+	// entry while the move keeps its order entry, so no array edit names it.
+	// The block is gone all the same; report it removed where it sat.
+	if (blockExists) {
+		for (const [blockId, keys] of delta.blockMapChanges) {
+			if (keys.size > 0 || removedIds.has(blockId) || newIds.has(blockId)) {
+				continue;
+			}
+			if (!index.typeById.has(blockId) || blockExists(blockId)) continue;
+			const parentId = index.parentById.get(blockId) ?? null;
+			structural.push({
+				type: "block-removed",
+				blockId,
+				parentId,
+				index: Math.max(
+					0,
+					(index.childrenByParentId.get(parentId) ?? []).indexOf(blockId),
+				),
+			});
+		}
+	}
 
 	for (const [blockId, keys] of delta.blockMapChanges) {
 		if (newIds.has(blockId)) continue;

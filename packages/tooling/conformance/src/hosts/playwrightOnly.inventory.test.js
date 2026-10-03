@@ -167,7 +167,15 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 77 -> 78 is W3.R8 keyed mount ack on three surfaces:
 	// suites/selection/p4-vanilla-ack.spec.ts.
 	// 78 -> 79 is W3.R19 the PR DOM fuzz job: suites/fuzz/dom-fuzz.spec.ts.
-	const expectedPlaywrightSpecs = 79;
+	// 79 -> 81 is W1's scale-render clocks (scenarios/scale-render.clocks.record.spec.ts)
+	// and W3.R11's origins (suites/selection/s3-origins.spec.ts).
+	// 81 -> 82 is W3.R16's focus targets: suites/selection/focus-sink.spec.ts.
+	// 82 -> 83 is W35 step 2's customCaret mode: suites/overlays/custom-caret.spec.ts.
+	// 83 -> 88 is W35 step 3's default overlay: suites/overlays/{o5-readonly,
+	// g3-affinity,ax7-overlay-presentation,o-focus-composition,ov1-paint-counts}.spec.ts.
+	// 88 -> 89 is W35.G7's atom and chip caret set: suites/overlays/o1-atoms.spec.ts.
+	// 89 -> 90 is W5.R10's two-editor relay set: scenarios/col-two-editors.spec.ts.
+	const expectedPlaywrightSpecs = 90;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

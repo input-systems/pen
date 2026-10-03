@@ -50,6 +50,7 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 					delta,
 					host._blockIndex.snapshot(),
 					0,
+					(blockId) => host._doc.blocks.has(blockId),
 				);
 				host._pendingSummary = summary;
 				// A text-only commit moves lengths and nothing else, so the

@@ -20,6 +20,8 @@ function posixGlob(pattern: string): string[] {
 const propertiesInclude = [
 	"packages/core/src/__tests__/unknownContent.dur3.properties.test.ts",
 	"packages/extensions/undo/src/__tests__/commitEvent.i1.properties.test.ts",
+	"packages/rendering/dom/src/field-editor/__tests__/rebaseTextDiffOps.c2.properties.test.ts",
+	"packages/tooling/test/src/__tests__/col4.npeer.properties.test.ts",
 ];
 
 const discoveredProperties = posixGlob("packages/**/*.properties.test.ts");
@@ -57,6 +59,8 @@ export default defineConfig({
 		include,
 		// unknownContent: DUR3 unknown-block passthrough (80 cases).
 		// commitEvent: I1 one commit per state change (2000 steps).
+		// col4.npeer: COL4 structural interleavings at 3 and 5 peers (2000 cases each).
+		// rebaseTextDiffOps.c2: C2 composition rebase against two Y.Docs (20,000 cases).
 		// an-fuzz: AN1–AN5 / AN14, which sets its own budget from its op
 		// count and so is not governed by this default.
 		testTimeout: 1_800_000,

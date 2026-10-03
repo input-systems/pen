@@ -20,7 +20,7 @@ import {
 	SCALE2_PLUS8_TOLERANCE_FLOOR_MS,
 	SCALE2_PLUS8_TOLERANCE_RATIO,
 	SCALE3_AXES,
-	SCALE3_AXIS_BENCH_PAIRS,
+	SCALE3_AXIS_BENCHES,
 	SCALE3_BASELINES,
 	SCALE3_MACHINE_CLASS,
 	SCALE3_DECORATION_COUNT_POINTS,
@@ -70,10 +70,16 @@ describe("SCALE3 realistic-stack keystroke", () => {
 		expect(scale3Benchmarks.every((bench) => bench.name.includes("SCALE3"))).toBe(
 			true,
 		);
-		expect(SCALE3_AXES).toHaveLength(4);
+		expect(SCALE3_AXES.map((spec) => spec.axis)).toEqual([
+			"document-size",
+			"extension-count",
+			"decoration-count",
+			"remote-caret-count",
+			"synced-peer-count",
+		]);
 		for (const spec of SCALE3_AXES) {
-			expect(spec.points).toHaveLength(2);
-			expect(spec.points[0]).not.toBe(spec.points[1]);
+			expect(spec.points.length).toBeGreaterThanOrEqual(2);
+			expect(new Set(spec.points).size).toBe(spec.points.length);
 		}
 
 		const ids = scale3Benchmarks.map((bench) => bench.id);
@@ -85,19 +91,25 @@ describe("SCALE3 realistic-stack keystroke", () => {
 		expect(ids).toContain(SCALE3_KEYSTROKE_REMOTE_CARET_COUNT_8_BENCH.id);
 
 		expect(scale3Benchmarks.every((bench) => bench.axis != null)).toBe(true);
-		expect(SCALE3_AXIS_BENCH_PAIRS["document-size"]).toEqual([
+		expect(SCALE3_AXIS_BENCHES["document-size"]).toEqual([
 			SCALE3_KEYSTROKE_DOCUMENT_SIZE_100_BENCH.id,
 			SCALE3_KEYSTROKE_DOCUMENT_SIZE_1000_BENCH.id,
 		]);
-		expect(SCALE3_AXIS_BENCH_PAIRS["extension-count"][1]).toBe(
+		expect(SCALE3_AXIS_BENCHES["extension-count"][1]).toBe(
 			SCALE3_KEYSTROKE_EXTENSION_COUNT_PLUS8_BENCH.id,
 		);
-		expect(SCALE3_AXIS_BENCH_PAIRS["decoration-count"][1]).toBe(
+		expect(SCALE3_AXIS_BENCHES["decoration-count"][1]).toBe(
 			SCALE3_KEYSTROKE_DECORATION_COUNT_256_BENCH.id,
 		);
-		expect(SCALE3_AXIS_BENCH_PAIRS["remote-caret-count"][1]).toBe(
+		expect(SCALE3_AXIS_BENCHES["remote-caret-count"][1]).toBe(
 			SCALE3_KEYSTROKE_REMOTE_CARET_COUNT_8_BENCH.id,
 		);
+		// The synced-peer axis is count-gated (scale3.peers.test.ts), not a clock bench.
+		expect(SCALE3_AXIS_BENCHES["synced-peer-count"]).toEqual([
+			"scale3.keystroke.synced-peers.2",
+			"scale3.keystroke.synced-peers.4",
+			"scale3.keystroke.synced-peers.8",
+		]);
 	});
 
 	it("SCALE3: older suites do not declare an axis they cannot vary", () => {

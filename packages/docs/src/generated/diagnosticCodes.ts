@@ -121,6 +121,11 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		sources: ["core/src/commands/registry.ts"],
 	},
 	{
+		code: "dangling-block-reference",
+		levels: ["warn"],
+		sources: ["core/src/schema/normalize.ts"],
+	},
+	{
 		code: "decoration-out-of-scope",
 		levels: ["warn"],
 		sources: ["core/src/editor/decorationCollector.ts"],
@@ -194,6 +199,11 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		code: "op-clamped",
 		levels: ["warn"],
 		sources: ["core/src/editor/applyInlineAndMetaOps.ts"],
+	},
+	{
+		code: "overlay-contributor-failed",
+		levels: ["warn"],
+		sources: ["rendering/dom/src/overlay/overlayController.ts"],
 	},
 	{
 		code: "parent-cycle",

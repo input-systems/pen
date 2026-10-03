@@ -1,11 +1,9 @@
-import * as Y from "yjs";
 import { deepEqual } from "@input/pen-core";
-import { createTestEditor } from "./createTestEditor";
-import { normalizeDocumentForSnapshot } from "./fixtures";
+import { createPeerHarness } from "./peerHarness";
 import type {
 	NormalizedYDocSnapshot,
-	TestEditor,
-	TestEditorOptions,
+	Peer,
+	PeerIndex,
 	TwoPeer,
 	TwoPeerHarness,
 	TwoPeerHarnessOptions,
@@ -20,6 +18,7 @@ export const TWO_PEER_INTERLEAVINGS = [
 
 const DEFAULT_CLIENT_ID_A = 1;
 const DEFAULT_CLIENT_ID_B = 2;
+const TWO_PEER_IDS: readonly TwoPeerId[] = ["a", "b"];
 
 export function createTwoPeerHarness(
 	options: TwoPeerHarnessOptions = {},
@@ -27,34 +26,22 @@ export function createTwoPeerHarness(
 	const {
 		clientIdA = DEFAULT_CLIENT_ID_A,
 		clientIdB = DEFAULT_CLIENT_ID_B,
-		prepare,
 		extensionsFor,
 		...seedOptions
 	} = options;
 
-	const seed = createTestEditor(seedOptions);
-	let peerA: TwoPeer;
-	let peerB: TwoPeer;
-	try {
-		prepare?.(seed);
-		const seedUpdate = seed.crdtDoc.adapter.encodeState(seed.crdtDoc);
-		peerA = forkPeer(
-			"a",
-			clientIdA,
-			seedUpdate,
-			seedOptions,
-			extensionsFor,
-		);
-		peerB = forkPeer(
-			"b",
-			clientIdB,
-			seedUpdate,
-			seedOptions,
-			extensionsFor,
-		);
-	} finally {
-		seed.destroy();
-	}
+	const harness = createPeerHarness(2, {
+		...seedOptions,
+		clientIds: [clientIdA, clientIdB],
+		...(extensionsFor
+			? {
+					extensionsFor: (index: PeerIndex) =>
+						extensionsFor(TWO_PEER_IDS[index]!),
+				}
+			: {}),
+	});
+	const peerA = asTwoPeer("a", harness.peer(0));
+	const peerB = asTwoPeer("b", harness.peer(1));
 
 	const peers: Record<TwoPeerId, TwoPeer> = { a: peerA, b: peerB };
 
@@ -70,16 +57,14 @@ export function createTwoPeerHarness(
 		}
 	};
 
-	const encodeUpdateFrom = (from: TwoPeerId): Uint8Array => {
-		const source = peer(from);
-		const target = peer(otherPeer(from));
-		const since = Y.encodeStateVector(target.editor.ydoc);
-		return source.adapter.encodeUpdate(source.crdtDoc, since);
-	};
+	const encodeUpdateFrom = (from: TwoPeerId): Uint8Array =>
+		harness.encodeUpdate(
+			peerIndex(from),
+			harness.stateVector(peerIndex(otherPeer(from))),
+		);
 
 	const applyUpdateTo = (to: TwoPeerId, update: Uint8Array): void => {
-		const target = peer(to);
-		target.adapter.applyUpdate(target.crdtDoc, update);
+		harness.applyUpdateTo(peerIndex(to), update);
 	};
 
 	const captureUpdates = (): { fromA: Uint8Array; fromB: Uint8Array } => ({
@@ -106,7 +91,7 @@ export function createTwoPeerHarness(
 	};
 
 	const snapshot = (id: TwoPeerId = "a"): NormalizedYDocSnapshot =>
-		normalizeDocumentForSnapshot(peer(id).editor.ydoc);
+		harness.snapshot(peerIndex(id));
 
 	return {
 		peerA,
@@ -134,8 +119,7 @@ export function createTwoPeerHarness(
 		},
 		snapshot,
 		destroy() {
-			peerA.editor.destroy();
-			peerB.editor.destroy();
+			harness.destroy();
 		},
 	};
 }
@@ -177,28 +161,24 @@ function otherPeer(id: TwoPeerId): TwoPeerId {
 	}
 }
 
-function forkPeer(
-	id: TwoPeerId,
-	clientId: number,
-	seedUpdate: Uint8Array,
-	editorOptions: TestEditorOptions,
-	extensionsFor?: TwoPeerHarnessOptions["extensionsFor"],
-): TwoPeer {
-	const ydoc = new Y.Doc({ gc: false });
-	(ydoc as unknown as { clientID: number }).clientID = clientId;
-	Y.applyUpdate(ydoc, seedUpdate);
+function peerIndex(id: TwoPeerId): PeerIndex {
+	switch (id) {
+		case "a":
+			return 0;
+		case "b":
+			return 1;
+		default: {
+			const _never: never = id;
+			throw new Error(`Unknown two-peer id: ${String(_never)}`);
+		}
+	}
+}
 
-	const { blocks: _blocks, doc: _doc, ...rest } = editorOptions;
-	const editor: TestEditor = createTestEditor({
-		...rest,
-		...(extensionsFor ? { extensions: extensionsFor(id) } : {}),
-		doc: ydoc,
-	});
-
+function asTwoPeer(id: TwoPeerId, peer: Peer): TwoPeer {
 	return {
 		id,
-		editor,
-		adapter: editor.crdtDoc.adapter,
-		crdtDoc: editor.crdtDoc,
+		editor: peer.editor,
+		adapter: peer.adapter,
+		crdtDoc: peer.crdtDoc,
 	};
 }

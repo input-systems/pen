@@ -558,8 +558,10 @@
   "devDependencies": {
     "@input/pen-schema": "workspace:*",
     "@input/pen-undo": "workspace:*",
+    "@input/pen-yjs": "workspace:*",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "yjs": "^13.6.32"
   }
 }

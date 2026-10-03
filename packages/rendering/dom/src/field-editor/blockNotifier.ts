@@ -87,6 +87,12 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _store: FieldEditorStoreSnapshot | null = null;
 	private _surface: SurfaceSnapshot = buildSurfaceSnapshot(null, undefined);
 	private _document: DocumentSnapshot | null = null;
+	/**
+	 * COL4: ids still in an order array whose block a concurrent delete
+	 * removed. Remote commits do not normalize, and a delete that only drops
+	 * the block map entry names no structural change, so renderers skip these.
+	 */
+	private readonly _deadIds = new Set<string>();
 	private _deliveries = 0;
 	private readonly _fanout = emptyFanout();
 
@@ -286,9 +292,32 @@ class BlockNotifierImpl implements BlockNotifier {
 			this._reselect(ids);
 			this._collectListRuns(summary, ids, context);
 		}
-		this._updateDocument(summary.structural.length > 0, ids);
+		const liveness = this._trackDeadIds(summary);
+		this._updateDocument(summary.structural.length > 0 || liveness, ids);
 		this._deliver("commit", ids, context);
 		if (summary.structural.length > 0) this._refreshSegments(summary);
+	}
+
+	/**
+	 * Whether a block died or came back. Only `block-removed` ids are checked
+	 * for liveness, so a text commit reads nothing (SCALE2).
+	 */
+	private _trackDeadIds(summary: ChangeSummary): boolean {
+		let changed = false;
+		for (const change of summary.structural) {
+			if (change.type === "block-inserted" || change.type === "block-moved") {
+				if (this._deadIds.delete(change.blockId)) changed = true;
+				continue;
+			}
+			if (change.type !== "block-removed" || this._deadIds.has(change.blockId)) continue;
+			// A delete that also removed the order entry leaves nothing to skip.
+			if (this._editor.documentState.indexOf(change.blockId) < 0) continue;
+			if (this._editor.getBlock(change.blockId) === null) {
+				this._deadIds.add(change.blockId);
+				changed = true;
+			}
+		}
+		return changed;
 	}
 
 	private _onSelection(): void {
@@ -410,7 +439,7 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	private _buildDocument(previous: DocumentSnapshot | undefined, structural: boolean): DocumentSnapshot {
-		const rootIds = !previous || structural ? getRootBlockIds(this._editor) : previous.rootIds;
+		const rootIds = !previous || structural ? this._liveRootIds() : previous.rootIds;
 		const next: DocumentSnapshot = {
 			rootIds: previous && arraysEqual(previous.rootIds, rootIds) ? previous.rootIds : rootIds,
 			isEmpty: this._editor.documentState.isEmpty,
@@ -422,6 +451,15 @@ class BlockNotifierImpl implements BlockNotifier {
 			previous.isEmpty === next.isEmpty &&
 			previous.placeholderTargetBlockId === next.placeholderTargetBlockId;
 		return same ? previous : next;
+	}
+
+	private _liveRootIds(): readonly string[] {
+		const rootIds = getRootBlockIds(this._editor);
+		if (this._deadIds.size === 0) return rootIds;
+		for (const id of this._deadIds) {
+			if (this._editor.documentState.indexOf(id) < 0) this._deadIds.delete(id);
+		}
+		return rootIds.filter((id) => !this._deadIds.has(id));
 	}
 
 	/** Until W6's run semantics land, a sibling list is one `block` segment per child. */

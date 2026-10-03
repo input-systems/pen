@@ -3,11 +3,24 @@ import { defaultSchema } from "@input/pen-schema";
 import { createEditor } from "@input/pen-core";
 import { yjsAdapter, wrapYjsDocument } from "@input/pen-yjs";
 import { createTestDocument } from "./createTestDocument";
-import type { SchemaEngine } from "@input/pen-types";
+import type { CRDTAdapter, SchemaEngine } from "@input/pen-types";
 import type { TestEditor, TestEditorOptions } from "./types";
 import { simulateKeypress, simulateTyping } from "./simulation";
 
 export function createTestEditor(options?: TestEditorOptions): TestEditor {
+  return buildTestEditor(options, yjsAdapter());
+}
+
+/**
+ * `createTestEditor` over a caller-built adapter, so the peer harness can
+ * hand each peer an adapter with an awareness factory. Not on the barrel.
+ *
+ * @internal
+ */
+export function buildTestEditor(
+  options: TestEditorOptions | undefined,
+  adapter: CRDTAdapter,
+): TestEditor {
   const {
     blocks,
     doc,
@@ -17,7 +30,6 @@ export function createTestEditor(options?: TestEditorOptions): TestEditor {
     ...editorOptions
   } = options ?? {};
   const schema = providedSchema ?? defaultSchema;
-  const adapter = yjsAdapter();
 
   let ydoc: Y.Doc;
   let crdtDoc: ReturnType<typeof wrapYjsDocument>;

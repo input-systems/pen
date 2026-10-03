@@ -50,6 +50,7 @@ import {
 	measurePeerTokenSurvival,
 	measureNestingDepth,
 	measurePublishedCount,
+	measureSharedSeedPeerCount,
 } from "../fixtures/envelope";
 import { parseBenchCLIArgs } from "../run";
 import {
@@ -453,6 +454,28 @@ describe("SCALE1 envelope ladder", () => {
 		expect(formatEnvelopeDrift(drift)).toMatch(
 			/blocks-1000 count 10 !== committed 1000/,
 		);
+	});
+
+	it("SCALE1: the concurrent-peer count is measured, not the constant (W5.R7)", () => {
+		expect(measureSharedSeedPeerCount()).toBe(2);
+		expect(measureSharedSeedPeerCount(5)).toBe(5);
+	});
+
+	it("SCALE1: a dropped delivery moves concurrentPeers-2 below 2 and fails drift by name", async () => {
+		// Peer a's update reaches b, but b's never reaches a.
+		const measured = measureSharedSeedPeerCount(2, (harness) =>
+			harness.deliver(0, 1),
+		);
+		expect(measured).toBeLessThan(2);
+
+		const committed = await loadCommittedEnvelope();
+		const fresh = withCount(committed, "concurrentPeers-2", measured);
+		const drift = compareEnvelopeDrift(fresh, committed);
+		expect(drift.ok).toBe(false);
+		expect(drift.failures.map((failure) => failure.id)).toEqual([
+			"concurrentPeers-2",
+		]);
+		expect(drift.failures[0]?.reason).toBe("count");
 	});
 
 	it("SCALE1: a median past the committed same-class gate fails drift", () => {
