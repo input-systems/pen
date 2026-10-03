@@ -9,6 +9,18 @@
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },
+    // The examples read Pen's types from each package's dist/*.d.ts, as a
+    // consumer would, so their typecheck needs the packages built first
+    // (HB3). ^typecheck alone would race the build that writes those files.
+    "@input/pen-example-react#typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "@input/pen-example-vue#typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "@input/pen-example-vanilla#typecheck": {
+      "dependsOn": ["^build"]
+    },
     // ^build is what lets a test read a dependency's dist/. Without it a task
     // that require()s a sibling's built artifact races the build that produces
     // it — HOST2 in the conformance package is the case that surfaced this.

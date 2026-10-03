@@ -37,6 +37,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import { createRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -746,14 +747,18 @@ const EXAMPLE_SNIPPET_SOURCES = [
 	"examples/vanilla/src/main.ts",
 ];
 
+/**
+ * Reads each listed example entry as a DOC2 sample. A listed source that is
+ * missing is returned in `missing`, not skipped: a renamed entry file would
+ * otherwise drop out of the type-check silently (HB3).
+ */
 export async function loadExampleSources(repoRoot) {
 	const sources = [];
+	const missing = [];
 	for (const rel of EXAMPLE_SNIPPET_SOURCES) {
-		const filePath = path.join(repoRoot, rel);
-		let text = "";
-		try {
-			text = await fs.readFile(filePath, "utf8");
-		} catch {
+		const text = await readFileOrNull(path.join(repoRoot, rel));
+		if (text === null) {
+			missing.push(rel);
 			continue;
 		}
 		const ext = path.extname(rel).slice(1);
@@ -765,7 +770,38 @@ export async function loadExampleSources(repoRoot) {
 			kind: "source",
 		});
 	}
-	return sources;
+	return { sources, missing };
+}
+
+async function readFileOrNull(filePath) {
+	try {
+		return await fs.readFile(filePath, "utf8");
+	} catch {
+		return null;
+	}
+}
+
+/** HB3: a repo root without the example entries fails by name. */
+async function runExampleSourceSelfTests() {
+	const empty = await fs.mkdtemp(path.join(os.tmpdir(), "doc-refs-examples-"));
+	try {
+		const { sources, missing } = await loadExampleSources(empty);
+		assert(
+			sources.length === 0 && missing.length === EXAMPLE_SNIPPET_SOURCES.length,
+			"self-test: a missing example source must be reported, not skipped",
+		);
+	} finally {
+		await fs.rm(empty, { recursive: true, force: true });
+	}
+}
+
+function reportMissingExampleSources(missing) {
+	for (const rel of missing) {
+		console.log(`FAIL example source missing: ${rel}`);
+	}
+	if (missing.length > 0) {
+		process.exitCode = 1;
+	}
 }
 
 function typesEntry(manifest, repoRoot, dir, key) {
@@ -1124,8 +1160,9 @@ async function main() {
 	const args = parseArgs(process.argv.slice(2));
 	runSelfTests();
 	await runFreshnessSelfTests();
+	await runExampleSourceSelfTests();
 	console.log(
-		"DOC refs self-test ok (missing package, wrong version, missing subpath, undocumented published package, and stale spec version claim fail closed)",
+		"DOC refs self-test ok (missing package, wrong version, missing subpath, undocumented published package, stale spec version claim, and missing example source fail closed)",
 	);
 	if (args.selfTestOnly) {
 		return;
@@ -1163,9 +1200,10 @@ async function main() {
 			})),
 	);
 
+	const examples = await loadExampleSources(args.repoRoot);
 	const samples = [
 		...docs.flatMap((doc) => extractFencedSamples(doc.text, doc.file)),
-		...(await loadExampleSources(args.repoRoot)),
+		...examples.sources,
 	];
 
 	const typecheck = args.skipTypecheck
@@ -1189,6 +1227,7 @@ async function main() {
 	if (hasFailures(result) || hasInconclusive(result)) {
 		process.exitCode = 1;
 	}
+	reportMissingExampleSources(examples.missing);
 }
 
 const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);
