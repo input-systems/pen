@@ -380,7 +380,7 @@
 		"scale-10k": {
 			"mount": {
 				"commit.affectedBlockIds": 260,
-				"dom.mutationRecords": 3,
+				"dom.mutationRecords": 4,
 				"listeners.invoked.commit": 1,
 				"listeners.invoked.diagnostic": 1,
 				"render.blockRenders": 20530,
@@ -408,7 +408,7 @@
 		"scale-50k": {
 			"mount": {
 				"commit.affectedBlockIds": 1300,
-				"dom.mutationRecords": 3,
+				"dom.mutationRecords": 4,
 				"listeners.invoked.commit": 1,
 				"listeners.invoked.diagnostic": 1,
 				"render.blockRenders": 102650,

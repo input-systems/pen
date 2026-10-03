@@ -336,7 +336,7 @@
 		"scale-10k": {
 			"mount": {
 				"commit.affectedBlockIds": 260,
-				"dom.mutationRecords": 9,
+				"dom.mutationRecords": 10,
 				"listeners.invoked.commit": 1,
 				"listeners.invoked.diagnostic": 1,
 				"scan.blockOrderReads": 84000,
@@ -361,7 +361,7 @@
 		"scale-50k": {
 			"mount": {
 				"commit.affectedBlockIds": 1300,
-				"dom.mutationRecords": 9,
+				"dom.mutationRecords": 10,
 				"listeners.invoked.commit": 1,
 				"listeners.invoked.diagnostic": 1,
 				"scan.blockOrderReads": 1470000,
