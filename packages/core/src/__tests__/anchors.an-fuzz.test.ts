@@ -12,6 +12,7 @@ import { isYjsCRDTDocument } from "@input/pen-yjs";
 import {
 	applyMergeBlocks,
 	applySplitBlock,
+	type ContentMove,
 	deriveContentMoves,
 	repairAnchor,
 } from "../index";
@@ -23,6 +24,28 @@ const SEED_INFO = parseFuzzSeed(process.env.PEN_FUZZ_SEED);
 const SEED = SEED_INFO.numeric;
 const OP_COUNT = resolveOpCount();
 const FORCE_FAIL_AT = Number(process.env.PEN_FUZZ_FORCE_FAIL_AT);
+
+// Seeds that failed this suite, replayed at smoke scale. Every one failed
+// before op 120.
+// - Undo of a merge reports a content move, and the old oracle resolved before
+//   repairing and expected the raw CRDT position (AN14): 2371651956 (run
+//   35052050837), 2692182216 (35814653198), 2471244780 (36374424469),
+//   231507691 (36811450488), 2246478689 (34009110614), 2257784941
+//   (33716069126).
+// - An insert at an assoc 1 anchor whose character was deleted leaves the
+//   anchor in front (AN2): 2095813717 (34802988393), the same for a stream
+//   flush 270714555 (36291707677), and for the fallback insert of an undo,
+//   redo or merge that had nothing to do 66638231 (34433569732), 2865217711
+//   (33833404468), 1976218039 (34735633656).
+// - A dead anchor that a split revived from its last live position (AN14), and
+//   a merge that appends at an assoc 1 anchor on the target's end (AN2), both
+//   from local sweeps: 2077975061, 1517311083.
+const PINNED_SEEDS = [
+	2371651956, 2692182216, 2471244780, 231507691, 2246478689, 2257784941,
+	2095813717, 270714555, 66638231, 2865217711, 1976218039, 2077975061,
+	1517311083,
+] as const;
+const PINNED_OP_COUNT = 300;
 
 // The budget has to track the count, or the two run paths disagree about it:
 // a number chosen for the 200-op smoke kills the nightly soak, and one chosen
@@ -119,6 +142,14 @@ interface Tracked {
 	anchor: Anchor;
 	point: Point | null;
 	assoc: Assoc;
+	/** Bound to a deleted character at the start of the step (AN2). */
+	collapsed: boolean;
+}
+
+interface FuzzRun {
+	seed: number;
+	raw: string;
+	opCount: number;
 }
 
 interface Model {
@@ -217,14 +248,18 @@ function mapSplit(
 	return point;
 }
 
+// The source's text is appended to the target at the join, so a target point
+// on the join is an insertion point like any other (AN2).
 function mapMerge(
 	point: Point,
+	assoc: Assoc,
 	sourceId: string,
 	targetId: string,
 	joinOffset: number,
+	sourceLength: number,
 ): Point {
 	if (point.blockId !== sourceId) {
-		return point;
+		return mapInsert(point, assoc, targetId, joinOffset, sourceLength);
 	}
 	return { blockId: targetId, offset: joinOffset + point.offset };
 }
@@ -234,6 +269,42 @@ function mapRemove(point: Point, removedId: string): Point | null {
 		return point;
 	}
 	return null;
+}
+
+// AN14's moved-range rule, stated for the oracle: a point strictly inside the
+// range moves, and so does one on the edge it is bound to, or on either edge
+// once the commit removed the block the range came from.
+function mapMoves(
+	editor: Editor,
+	point: Point,
+	assoc: Assoc,
+	moves: readonly ContentMove[],
+): Point | null {
+	for (const move of moves) {
+		if (point.blockId !== move.fromBlockId) {
+			continue;
+		}
+		const { from, to } = move.fromRange;
+		const removed = editor.getBlock(move.fromBlockId) === null;
+		const inside =
+			(point.offset > from && point.offset < to) ||
+			(point.offset === from && (assoc === 1 || removed)) ||
+			(point.offset === to && to > from && (assoc === -1 || removed));
+		if (inside) {
+			return {
+				blockId: move.toBlockId,
+				offset: move.toOffset + point.offset - from,
+			};
+		}
+	}
+	return null;
+}
+
+// AN2's exception: an assoc 1 anchor whose character was deleted sits in front
+// of that tombstone, and Yjs integrates text inserted at the same offset after
+// it, so the anchor keeps its place like an assoc -1 anchor would.
+function insertAssoc(item: Tracked): Assoc {
+	return item.collapsed ? -1 : item.assoc;
 }
 
 function yText(
@@ -247,399 +318,450 @@ function yText(
 	return content instanceof Y.Text ? content : null;
 }
 
+// Whether an assoc 1 anchor's character is deleted, after following `redone`
+// the way a local-provenance resolve does (AN13). A position at the end of the
+// text carries no character and never collapses.
+function boundToDeletedText(editor: Editor, anchor: Anchor): boolean {
+	const doc = editor.internals.crdtDoc;
+	if (anchor.assoc !== 1 || !isYjsCRDTDocument(doc)) {
+		return false;
+	}
+	let next = Y.decodeRelativePosition(anchor.position).item;
+	if (!next) {
+		return false;
+	}
+	let diff = 0;
+	let item: Y.Item | null = null;
+	while (next) {
+		const id = diff > 0 ? Y.createID(next.client, next.clock + diff) : next;
+		const found: unknown = Y.getItem(doc.ydoc.store, id);
+		if (!(found instanceof Y.Item)) {
+			return true;
+		}
+		diff = id.clock - found.id.clock;
+		item = found;
+		next = found.redone;
+	}
+	return item?.deleted ?? true;
+}
+
+async function runAnchorFuzz(run: FuzzRun): Promise<void> {
+	const rng = new Rng(run.seed);
+	const editor = createEditor();
+	const adapter = editor.internals.adapter;
+	const undo = adapter.createUndoManager(editor.internals.crdtDoc, {
+		captureTimeout: 0,
+		trackedOriginTypes: ["user"],
+	});
+	const startId = editor.firstBlock()!.id;
+	editor.apply([
+		{
+			type: "splice-text",
+			blockId: startId,
+			from: 0,
+			to: 0,
+			insert: "meadow sage",
+		},
+	]);
+	undo.stopCapturing();
+	const remoteDoc = adapter.fork!(editor.internals.crdtDoc);
+
+	const syncRemote = () => {
+		adapter.applyUpdate(
+			remoteDoc,
+			adapter.encodeState(editor.internals.crdtDoc),
+		);
+	};
+
+	const tracked: Tracked[] = [];
+	const mint = (point: Point, assoc: Assoc) => {
+		const anchor = editor.anchors.create(point, assoc);
+		if (anchor) {
+			tracked.push({ anchor, point, assoc, collapsed: false });
+		}
+	};
+	mint({ blockId: startId, offset: 3 }, 1);
+	mint({ blockId: startId, offset: 6 }, -1);
+	mint({ blockId: startId, offset: 6 }, 1);
+	mint({ blockId: startId, offset: 9 }, 1);
+
+	const histogram: Record<ActionKind, number> = {
+		insert: 0,
+		delete: 0,
+		split: 0,
+		merge: 0,
+		remove: 0,
+		remote: 0,
+		undo: 0,
+		redo: 0,
+		stream: 0,
+	};
+	const sources: Record<CommitEventSource, number> = {
+		apply: 0,
+		remote: 0,
+		undo: 0,
+		redo: 0,
+		stream: 0,
+	};
+	editor.on("commit", (event) => {
+		sources[event.source] += 1;
+	});
+
+	const forced: ActionKind[] = [
+		"insert",
+		"split",
+		"merge",
+		"remove",
+		"remote",
+		"undo",
+		"redo",
+		"stream",
+		"delete",
+	];
+
+	let nextBlock = 0;
+	const newId = () => {
+		nextBlock += 1;
+		return `fuzz-${nextBlock}`;
+	};
+
+	for (let i = 1; i <= run.opCount; i++) {
+		if (i % 100 === 0) {
+			// macrotask, not Promise.resolve: birpc acks on timers/IPC
+			await new Promise<void>((resolve) => {
+				setImmediate(resolve);
+			});
+		}
+		if (Number.isFinite(FORCE_FAIL_AT) && i === FORCE_FAIL_AT) {
+			throw new Error(
+				`forced fuzz failure at op ${i} seed=${run.seed} raw=${run.raw}`,
+			);
+		}
+
+		const model = snapshotModel(editor);
+		const kind =
+			i <= forced.length ? forced[i - 1]! : rng.pick(forced);
+		const living = model.order.filter((id) => editor.getBlock(id));
+		if (living.length === 0) {
+			break;
+		}
+		const blockId = rng.pick(living);
+		const text = model.texts.get(blockId) ?? "";
+		for (const item of tracked) {
+			const prior = editor.anchors.resolve(item.anchor);
+			item.point = prior
+				? { blockId: prior.blockId, offset: prior.offset }
+				: null;
+			item.collapsed = boundToDeletedText(editor, item.anchor);
+		}
+		let settledByUndo = false;
+		// A kind with nothing to act on falls through to the plain insert, so
+		// failures name what ran rather than what was drawn.
+		let performed: string = kind;
+
+		if (kind === "insert") {
+			const at = rng.int(text.length + 1);
+			const insert = rng.pick(["x", "ab", " ", "Δ"]);
+			editor.apply([
+				{
+					type: "splice-text",
+					blockId,
+					from: at,
+					to: at,
+					insert: insert,
+				},
+			]);
+			for (const item of tracked) {
+				if (item.point) {
+					item.point = mapInsert(
+						item.point,
+						insertAssoc(item),
+						blockId,
+						at,
+						insert.length,
+					);
+				}
+			}
+			histogram.insert += 1;
+		} else if (kind === "delete" && text.length > 0) {
+			const from = rng.int(text.length);
+			const to = Math.min(text.length, from + 1 + rng.int(2));
+			editor.apply([
+				{
+					type: "splice-text",
+					blockId,
+					from: from,
+					to: from + to - from,
+					insert: "",
+				},
+			]);
+			for (const item of tracked) {
+				if (item.point) {
+					item.point = mapDelete(
+						item.point,
+						blockId,
+						from,
+						to,
+					);
+				}
+			}
+			histogram.delete += 1;
+		} else if (kind === "split" && text.length > 0) {
+			const offset = 1 + rng.int(Math.max(1, text.length - 1));
+			const dest = newId();
+			applySplitBlock(editor, {
+				blockId,
+				offset,
+				newBlockId: dest,
+			});
+			const splitMove = (
+				editor.lastChangeSummary
+					? deriveContentMoves(
+							editor.lastChangeSummary,
+							undefined,
+						)
+					: []
+			).find((move) => move.fromBlockId === blockId);
+			const splitAt = splitMove?.fromRange.from ?? offset;
+			for (const item of tracked) {
+				if (item.point) {
+					item.point = mapSplit(
+						item.point,
+						item.assoc,
+						blockId,
+						splitAt,
+						splitMove?.toBlockId ?? dest,
+					);
+				}
+			}
+			histogram.split += 1;
+		} else if (kind === "merge" && living.length >= 2) {
+			const index = model.order.indexOf(blockId);
+			const sourceId =
+				model.order[index + 1] ?? model.order[index - 1];
+			if (sourceId && sourceId !== blockId) {
+				const targetId =
+					index + 1 === model.order.indexOf(sourceId)
+						? blockId
+						: sourceId;
+				const fromId =
+					targetId === blockId ? sourceId : blockId;
+				applyMergeBlocks(editor, {
+					targetBlockId: targetId,
+					sourceBlockId: fromId,
+				});
+				const mergeMove = (
+					editor.lastChangeSummary
+						? deriveContentMoves(
+								editor.lastChangeSummary,
+								undefined,
+							)
+						: []
+				).find((move) => move.fromBlockId === fromId);
+				const joinOffset = mergeMove?.toOffset ?? 0;
+				for (const item of tracked) {
+					if (item.point) {
+						item.point = mapMerge(
+							item.point,
+							insertAssoc(item),
+							fromId,
+							targetId,
+							joinOffset,
+							(model.texts.get(fromId) ?? "").length,
+						);
+					}
+				}
+				histogram.merge += 1;
+			}
+		} else if (kind === "remove" && living.length >= 2) {
+			editor.apply([{ type: "delete-block", blockId }]);
+			for (const item of tracked) {
+				if (item.point) {
+					item.point = mapRemove(item.point, blockId);
+				}
+			}
+			histogram.remove += 1;
+		} else if (kind === "remote") {
+			syncRemote();
+			const remoteText = yText(remoteDoc, blockId);
+			if (remoteText) {
+				adapter.transact(
+					remoteDoc,
+					() => {
+						remoteText.insert(0, "R");
+					},
+					"collaborator",
+				);
+				adapter.applyUpdate(
+					editor.internals.crdtDoc,
+					adapter.encodeState(remoteDoc),
+				);
+				for (const item of tracked) {
+					if (item.point) {
+						item.point = mapInsert(
+							item.point,
+							insertAssoc(item),
+							blockId,
+							0,
+							1,
+						);
+					}
+				}
+				histogram.remote += 1;
+			}
+		} else if (kind === "undo" && undo.canUndo()) {
+			undo.undo();
+			settledByUndo = true;
+			histogram.undo += 1;
+		} else if (kind === "redo" && undo.canRedo()) {
+			undo.redo();
+			settledByUndo = true;
+			histogram.redo += 1;
+		} else if (kind === "stream") {
+			const writer = editor.openTextStream(
+				{ blockId },
+				{ origin: { type: "ai", groupId: `fuzz-${i}` } },
+			);
+			writer.append("s");
+			writer.flush();
+			writer.close();
+			for (const item of tracked) {
+				if (item.point) {
+					item.point = mapInsert(
+						item.point,
+						insertAssoc(item),
+						blockId,
+						text.length,
+						1,
+					);
+				}
+			}
+			histogram.stream += 1;
+		} else {
+			performed = `insert (${kind} had nothing to act on)`;
+			const at = rng.int(text.length + 1);
+			editor.apply([
+				{
+					type: "splice-text",
+					blockId,
+					from: at,
+					to: at,
+					insert: "z",
+				},
+			]);
+			for (const item of tracked) {
+				if (item.point) {
+					item.point = mapInsert(
+						item.point,
+						insertAssoc(item),
+						blockId,
+						at,
+						1,
+					);
+				}
+			}
+			histogram.insert += 1;
+		}
+
+		const summary = editor.lastChangeSummary;
+		const moves = summary
+			? deriveContentMoves(summary, undefined)
+			: [];
+		for (const item of tracked) {
+			const unrepaired = item.anchor;
+			item.anchor = repairAnchor(editor, item.anchor, moves);
+			if (settledByUndo) {
+				// No text model covers undo and redo, so their oracle is AN14
+				// itself: a pre-commit point inside a reported content move
+				// lands where that text landed, and any other point sits where
+				// the CRDT put it. Repair runs first so the raw resolve below
+				// cannot stand in for the pre-commit target.
+				const raw = editor.anchors.resolve(unrepaired);
+				item.point =
+					(item.point &&
+						mapMoves(editor, item.point, item.assoc, moves)) ??
+					(raw ? { blockId: raw.blockId, offset: raw.offset } : null);
+			}
+			const resolved = editor.anchors.resolve(item.anchor);
+			if (!item.point) {
+				expect(
+					resolved,
+					`AN1 death seed=${run.seed} op=${i} kind=${performed}`,
+				).toBeNull();
+				continue;
+			}
+			expect(
+				resolved,
+				`AN1 seed=${run.seed} op=${i} kind=${performed}`,
+			).toEqual({
+				blockId: item.point.blockId,
+				offset: clamp(
+					item.point.offset,
+					logicalText(editor, item.point.blockId).length,
+				),
+			});
+		}
+
+		if (i % 1000 === 0) {
+			for (const item of tracked) {
+				const again = editor.anchors.deserialize(
+					editor.anchors.serialize(item.anchor),
+				);
+				expect(
+					again,
+					`AN6 seed=${run.seed} op=${i}`,
+				).not.toBeNull();
+				expect(
+					editor.anchors.resolve(again!),
+					`AN6 seed=${run.seed} op=${i}`,
+				).toEqual(editor.anchors.resolve(item.anchor));
+			}
+		}
+	}
+
+	expect(
+		histogram.split,
+		`split histogram seed=${run.seed}`,
+	).toBeGreaterThan(0);
+	expect(
+		histogram.merge,
+		`merge histogram seed=${run.seed}`,
+	).toBeGreaterThan(0);
+	expect(
+		histogram.remove,
+		`remove histogram seed=${run.seed}`,
+	).toBeGreaterThan(0);
+	for (const source of SOURCES) {
+		expect(
+			sources[source],
+			`source ${source} seed=${run.seed}`,
+		).toBeGreaterThan(0);
+	}
+
+	editor.destroy();
+}
+
 describe("an-fuzz AN1–AN5 AN14", () => {
 	it(
 		"AN1-AN5: repaired anchors match the v2 cross-block oracle after every generated step",
 		{ timeout: TIMEOUT_MS },
 		async () => {
-			const rng = new Rng(SEED);
-			const editor = createEditor();
-			const adapter = editor.internals.adapter;
-			const undo = adapter.createUndoManager(editor.internals.crdtDoc, {
-				captureTimeout: 0,
-				trackedOriginTypes: ["user"],
+			await runAnchorFuzz({
+				seed: SEED,
+				raw: SEED_INFO.raw,
+				opCount: OP_COUNT,
 			});
-			const startId = editor.firstBlock()!.id;
-			editor.apply([
-				{
-					type: "splice-text",
-					blockId: startId,
-					from: 0,
-					to: 0,
-					insert: "meadow sage",
-				},
-			]);
-			undo.stopCapturing();
-			let remoteDoc = adapter.fork!(editor.internals.crdtDoc);
+		},
+	);
 
-			const syncRemote = () => {
-				adapter.applyUpdate(
-					remoteDoc,
-					adapter.encodeState(editor.internals.crdtDoc),
-				);
-			};
-
-			const tracked: Tracked[] = [];
-			const mint = (point: Point, assoc: Assoc) => {
-				const anchor = editor.anchors.create(point, assoc);
-				if (anchor) {
-					tracked.push({ anchor, point, assoc });
-				}
-			};
-			mint({ blockId: startId, offset: 3 }, 1);
-			mint({ blockId: startId, offset: 6 }, -1);
-			mint({ blockId: startId, offset: 6 }, 1);
-			mint({ blockId: startId, offset: 9 }, 1);
-
-			const histogram: Record<ActionKind, number> = {
-				insert: 0,
-				delete: 0,
-				split: 0,
-				merge: 0,
-				remove: 0,
-				remote: 0,
-				undo: 0,
-				redo: 0,
-				stream: 0,
-			};
-			const sources: Record<CommitEventSource, number> = {
-				apply: 0,
-				remote: 0,
-				undo: 0,
-				redo: 0,
-				stream: 0,
-			};
-			editor.on("commit", (event) => {
-				sources[event.source] += 1;
+	it.each(PINNED_SEEDS)(
+		"AN1-AN5 AN14: pinned seed %i replays clean at smoke scale",
+		async (seed) => {
+			await runAnchorFuzz({
+				seed,
+				raw: `pinned-${seed}`,
+				opCount: PINNED_OP_COUNT,
 			});
-
-			const forced: ActionKind[] = [
-				"insert",
-				"split",
-				"merge",
-				"remove",
-				"remote",
-				"undo",
-				"redo",
-				"stream",
-				"delete",
-			];
-
-			let nextBlock = 0;
-			const newId = () => {
-				nextBlock += 1;
-				return `fuzz-${nextBlock}`;
-			};
-
-			for (let i = 1; i <= OP_COUNT; i++) {
-				if (i % 100 === 0) {
-					// macrotask, not Promise.resolve: birpc acks on timers/IPC
-					await new Promise<void>((resolve) => {
-						setImmediate(resolve);
-					});
-				}
-				if (Number.isFinite(FORCE_FAIL_AT) && i === FORCE_FAIL_AT) {
-					throw new Error(
-						`forced fuzz failure at op ${i} seed=${SEED} raw=${SEED_INFO.raw}`,
-					);
-				}
-
-				const model = snapshotModel(editor);
-				const kind =
-					i <= forced.length ? forced[i - 1]! : rng.pick(forced);
-				const living = model.order.filter((id) => editor.getBlock(id));
-				if (living.length === 0) {
-					break;
-				}
-				const blockId = rng.pick(living);
-				const text = model.texts.get(blockId) ?? "";
-				for (const item of tracked) {
-					const prior = editor.anchors.resolve(item.anchor);
-					item.point = prior
-						? { blockId: prior.blockId, offset: prior.offset }
-						: null;
-				}
-
-				if (kind === "insert") {
-					const at = rng.int(text.length + 1);
-					const insert = rng.pick(["x", "ab", " ", "Δ"]);
-					editor.apply([
-						{
-							type: "splice-text",
-							blockId,
-							from: at,
-							to: at,
-							insert: insert,
-						},
-					]);
-					for (const item of tracked) {
-						if (item.point) {
-							item.point = mapInsert(
-								item.point,
-								item.assoc,
-								blockId,
-								at,
-								insert.length,
-							);
-						}
-					}
-					histogram.insert += 1;
-				} else if (kind === "delete" && text.length > 0) {
-					const from = rng.int(text.length);
-					const to = Math.min(text.length, from + 1 + rng.int(2));
-					editor.apply([
-						{
-							type: "splice-text",
-							blockId,
-							from: from,
-							to: from + to - from,
-							insert: "",
-						},
-					]);
-					for (const item of tracked) {
-						if (item.point) {
-							item.point = mapDelete(
-								item.point,
-								blockId,
-								from,
-								to,
-							);
-						}
-					}
-					histogram.delete += 1;
-				} else if (kind === "split" && text.length > 0) {
-					const offset = 1 + rng.int(Math.max(1, text.length - 1));
-					const dest = newId();
-					applySplitBlock(editor, {
-						blockId,
-						offset,
-						newBlockId: dest,
-					});
-					const splitMove = (
-						editor.lastChangeSummary
-							? deriveContentMoves(
-									editor.lastChangeSummary,
-									undefined,
-								)
-							: []
-					).find((move) => move.fromBlockId === blockId);
-					const splitAt = splitMove?.fromRange.from ?? offset;
-					for (const item of tracked) {
-						if (item.point) {
-							item.point = mapSplit(
-								item.point,
-								item.assoc,
-								blockId,
-								splitAt,
-								splitMove?.toBlockId ?? dest,
-							);
-						}
-					}
-					histogram.split += 1;
-				} else if (kind === "merge" && living.length >= 2) {
-					const index = model.order.indexOf(blockId);
-					const sourceId =
-						model.order[index + 1] ?? model.order[index - 1];
-					if (sourceId && sourceId !== blockId) {
-						const targetId =
-							index + 1 === model.order.indexOf(sourceId)
-								? blockId
-								: sourceId;
-						const fromId =
-							targetId === blockId ? sourceId : blockId;
-						applyMergeBlocks(editor, {
-							targetBlockId: targetId,
-							sourceBlockId: fromId,
-						});
-						const mergeMove = (
-							editor.lastChangeSummary
-								? deriveContentMoves(
-										editor.lastChangeSummary,
-										undefined,
-									)
-								: []
-						).find((move) => move.fromBlockId === fromId);
-						const joinOffset = mergeMove?.toOffset ?? 0;
-						for (const item of tracked) {
-							if (item.point) {
-								item.point = mapMerge(
-									item.point,
-									fromId,
-									targetId,
-									joinOffset,
-								);
-							}
-						}
-						histogram.merge += 1;
-					}
-				} else if (kind === "remove" && living.length >= 2) {
-					editor.apply([{ type: "delete-block", blockId }]);
-					for (const item of tracked) {
-						if (item.point) {
-							item.point = mapRemove(item.point, blockId);
-						}
-					}
-					histogram.remove += 1;
-				} else if (kind === "remote") {
-					syncRemote();
-					const remoteText = yText(remoteDoc, blockId);
-					if (remoteText) {
-						adapter.transact(
-							remoteDoc,
-							() => {
-								remoteText.insert(0, "R");
-							},
-							"collaborator",
-						);
-						adapter.applyUpdate(
-							editor.internals.crdtDoc,
-							adapter.encodeState(remoteDoc),
-						);
-						for (const item of tracked) {
-							if (item.point) {
-								item.point = mapInsert(
-									item.point,
-									item.assoc,
-									blockId,
-									0,
-									1,
-								);
-							}
-						}
-						histogram.remote += 1;
-					}
-				} else if (kind === "undo" && undo.canUndo()) {
-					undo.undo();
-					for (const item of tracked) {
-						const resolved = editor.anchors.resolve(item.anchor);
-						item.point = resolved
-							? {
-									blockId: resolved.blockId,
-									offset: resolved.offset,
-								}
-							: null;
-					}
-					histogram.undo += 1;
-				} else if (kind === "redo" && undo.canRedo()) {
-					undo.redo();
-					for (const item of tracked) {
-						const resolved = editor.anchors.resolve(item.anchor);
-						item.point = resolved
-							? {
-									blockId: resolved.blockId,
-									offset: resolved.offset,
-								}
-							: null;
-					}
-					histogram.redo += 1;
-				} else if (kind === "stream") {
-					const writer = editor.openTextStream(
-						{ blockId },
-						{ origin: { type: "ai", groupId: `fuzz-${i}` } },
-					);
-					writer.append("s");
-					writer.flush();
-					writer.close();
-					for (const item of tracked) {
-						if (item.point) {
-							item.point = mapInsert(
-								item.point,
-								item.assoc,
-								blockId,
-								text.length,
-								1,
-							);
-						}
-					}
-					histogram.stream += 1;
-				} else {
-					const at = rng.int(text.length + 1);
-					editor.apply([
-						{
-							type: "splice-text",
-							blockId,
-							from: at,
-							to: at,
-							insert: "z",
-						},
-					]);
-					for (const item of tracked) {
-						if (item.point) {
-							item.point = mapInsert(
-								item.point,
-								item.assoc,
-								blockId,
-								at,
-								1,
-							);
-						}
-					}
-					histogram.insert += 1;
-				}
-
-				const summary = editor.lastChangeSummary;
-				const moves = summary
-					? deriveContentMoves(summary, undefined)
-					: [];
-				for (const item of tracked) {
-					item.anchor = repairAnchor(editor, item.anchor, moves);
-					const resolved = editor.anchors.resolve(item.anchor);
-					if (!item.point) {
-						expect(
-							resolved,
-							`AN1 death seed=${SEED} op=${i}`,
-						).toBeNull();
-						continue;
-					}
-					expect(
-						resolved,
-						`AN1 seed=${SEED} op=${i} kind=${kind}`,
-					).toEqual({
-						blockId: item.point.blockId,
-						offset: clamp(
-							item.point.offset,
-							logicalText(editor, item.point.blockId).length,
-						),
-					});
-				}
-
-				if (i % 1000 === 0) {
-					for (const item of tracked) {
-						const again = editor.anchors.deserialize(
-							editor.anchors.serialize(item.anchor),
-						);
-						expect(
-							again,
-							`AN6 seed=${SEED} op=${i}`,
-						).not.toBeNull();
-						expect(
-							editor.anchors.resolve(again!),
-							`AN6 seed=${SEED} op=${i}`,
-						).toEqual(editor.anchors.resolve(item.anchor));
-					}
-				}
-			}
-
-			expect(
-				histogram.split,
-				`split histogram seed=${SEED}`,
-			).toBeGreaterThan(0);
-			expect(
-				histogram.merge,
-				`merge histogram seed=${SEED}`,
-			).toBeGreaterThan(0);
-			expect(
-				histogram.remove,
-				`remove histogram seed=${SEED}`,
-			).toBeGreaterThan(0);
-			for (const source of SOURCES) {
-				expect(
-					sources[source],
-					`source ${source} seed=${SEED}`,
-				).toBeGreaterThan(0);
-			}
-
-			editor.destroy();
 		},
 	);
 

@@ -124,6 +124,51 @@ describe("anchors AN2 insertion-side stability", () => {
 			offset: 4,
 		});
 	});
+
+	it("AN2: an assoc 1 anchor whose character was deleted stays before an insert at its collapsed index", () => {
+		const adapter = yjsAdapter();
+		const doc = createYjsDocument(adapter);
+		seedParagraph(doc, "b1", "hello");
+		const onDeleted = adapter.createRelativePosition(
+			doc,
+			{ blockId: "b1", offset: 2 },
+			1,
+		)!;
+		const onLive = adapter.createRelativePosition(
+			doc,
+			{ blockId: "b1", offset: 3 },
+			1,
+		)!;
+		const ytext = doc.penDocument.blocks
+			.get("b1")!
+			.get("content") as Y.Text;
+		doc.ydoc.transact(() => {
+			ytext.delete(2, 1);
+		});
+		expect(adapter.resolveRelativePosition(doc, onDeleted)).toEqual({
+			blockId: "b1",
+			offset: 2,
+		});
+		expect(adapter.resolveRelativePosition(doc, onLive)).toEqual({
+			blockId: "b1",
+			offset: 2,
+		});
+
+		doc.ydoc.transact(() => {
+			ytext.insert(2, "XX");
+		});
+		// the insert lands after the tombstone the first anchor is bound to
+		// and before the live character the second one is bound to
+		expect(ytext.toString()).toBe("heXXlo");
+		expect(adapter.resolveRelativePosition(doc, onDeleted)).toEqual({
+			blockId: "b1",
+			offset: 2,
+		});
+		expect(adapter.resolveRelativePosition(doc, onLive)).toEqual({
+			blockId: "b1",
+			offset: 4,
+		});
+	});
 });
 
 describe("anchors AN3 ordinary convergence", () => {
