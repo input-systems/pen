@@ -16,6 +16,7 @@
 - attachRemoteCarets
 - bindEditorDocumentKeyDown
 - canDestructure
+- captureFocusReturn
 - createGeometryReader
 - createReducedMotionSignal
 - createRegionSelectionRect
@@ -45,6 +46,7 @@
 - resolveEditorUrl
 - resolveRegionRect
 - resolveShiftClickInlineAtomSelection
+- restoreFocusReturn
 - selectInlineAtomRangeFromShiftClick
 - shouldHandleEditorKeyboardEvent
 - subscribeInlineAtomDragSnapshot
@@ -129,6 +131,11 @@
 - FieldEditorPointerActivateOptions
 - FieldEditorPointerTarget
 - FieldEditorRootFocusOptions
+- FocusReturnFieldEditor
+- FocusReturnOptions
+- FocusReturnPreference
+- FocusReturnResult
+- FocusReturnToken
 - GeometryMeasureAdapter
 - GeometryReaderHost
 - GeometryReaderOptions
@@ -816,6 +823,7 @@ _no exports_
 - queryEditorBlockElement
 - querySuggestionAnchorElements
 - resolveAIRootElement
+- resolveChromeEditorRoot
 - resolveEditorContentElement
 - resolveEditorRootElement
 
@@ -834,6 +842,7 @@ _no exports_
 ### function
 
 - getAttachedFieldEditor
+- getAttachedFieldEditorSession
 - getAttachedFieldEditorStore
 
 ## ./utils/inlineAtomDragPreview
