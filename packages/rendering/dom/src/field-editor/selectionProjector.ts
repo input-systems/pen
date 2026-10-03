@@ -366,11 +366,20 @@ export class SelectionProjector {
 		return this._parked?.version ?? null;
 	}
 
-	ackBlockMounted(_blockId: string, _element: HTMLElement): void {
-		if (
-			this._parked == null ||
-			this.isFocusHeldByNativeControlOutsideRoot()
-		) {
+	/**
+	 * P4 (W3.R8): an ack resolves only a projection parked on `blockId`, in
+	 * the ack's turn, while the parked version is still the record's. Every
+	 * other ack is an O(1) no-op.
+	 */
+	ackBlockMounted(blockId: string, _element: HTMLElement): void {
+		const parked = this._parked;
+		if (parked === null || parked.blockId !== blockId) {
+			return;
+		}
+		if (parked.version !== (this._options.getRecord?.()?.version ?? 0)) {
+			return;
+		}
+		if (this.isFocusHeldByNativeControlOutsideRoot()) {
 			return;
 		}
 		this.project("mount-ack");

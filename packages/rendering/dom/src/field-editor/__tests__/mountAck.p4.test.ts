@@ -161,6 +161,64 @@ describe("mount ack and parked projections", () => {
 		);
 	});
 
+	it("P4: an ack for the parked block projects in the ack's turn", () => {
+		const editor = createEditor({ schema: defaultSchema });
+		const fieldEditor = new ProbeFieldEditor(editor);
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		fixtures.push({ editor, fieldEditor, root });
+		fieldEditor.setRootElement(root);
+
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hi" },
+		]);
+		fieldEditor.activate(blockId);
+		editor.selectText(blockId, 1, 1);
+		expect(fieldEditor.parkedProjectionVersion).not.toBeNull();
+
+		// No flush: the ack itself projects.
+		const block = mountBlock(root, blockId, "Hi");
+		fieldEditor.ackBlockMounted(blockId, block);
+		expect(fieldEditor.parkedProjectionVersion).toBeNull();
+		expect(fieldEditor.lastProjectedVersion).toBe(
+			getEditorSelectionRecord(editor)!.version,
+		);
+	});
+
+	it("P4: an ack for any other block is a no-op", () => {
+		const editor = createEditor({ schema: defaultSchema });
+		const fieldEditor = new ProbeFieldEditor(editor);
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		fixtures.push({ editor, fieldEditor, root });
+		fieldEditor.setRootElement(root);
+
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hi" },
+			{
+				type: "insert-block",
+				blockId: "other",
+				blockType: "paragraph",
+				props: {},
+				position: "last",
+			},
+		]);
+		fieldEditor.activate(blockId);
+		editor.selectText(blockId, 1, 1);
+		const parked = fieldEditor.parkedProjectionVersion;
+		expect(parked).not.toBeNull();
+
+		// The parked block's element exists but has not acked; an ack for a
+		// different block must not resolve the park through it.
+		mountBlock(root, blockId, "Hi");
+		const other = mountBlock(root, "other", "");
+		fieldEditor.ackBlockMounted("other", other);
+		expect(fieldEditor.parkedProjectionVersion).toBe(parked);
+		expect(fieldEditor.lastProjectedVersion).toBe(0);
+	});
+
 	it("does not write the previous field into a remounted parked target", () => {
 		const editor = createEditor({ schema: defaultSchema });
 		const fieldEditor = new ProbeFieldEditor(editor);

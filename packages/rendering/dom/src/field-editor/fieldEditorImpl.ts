@@ -142,7 +142,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected readonly _selectionCoordinator: FieldEditorSelectionCoordinator;
 	/** S1: the one `selectionchange` listener for this editor's root. */
 	protected readonly _selectionReader: SelectionReader;
-	protected _scheduler: DomScheduler | null = null;
 	/** Per-block fan-out for renderers (SCALE6); one per field editor. */
 	readonly blockNotifier: BlockNotifier;
 
@@ -379,35 +378,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 		if (!root) {
 			return null;
 		}
-		const { scheduler } = getRootGeometry(root);
-		if (this._scheduler !== scheduler) {
-			this._scheduler?.setProjector(null);
-			scheduler.setProjector((record) => {
-				return this._projectFromScheduler(record);
-			});
-			this._scheduler = scheduler;
-		}
-		return scheduler;
-	}
-
-	protected _projectFromScheduler(record: SelectionRecord): void | "parked" {
-		if (record.version <= this._selectionCoordinator.lastProjectedVersion) {
-			return;
-		}
-		if (
-			this._selectionCoordinator.isFocusHeldByNativeControlOutsideRoot()
-		) {
-			return;
-		}
-		this._selectionCoordinator.project("selection-change");
-		if (this._selectionCoordinator.parkedProjectionVersion != null) {
-			return "parked";
-		}
-	}
-
-	protected _unbindSchedulerProjector(): void {
-		this._scheduler?.setProjector(null);
-		this._scheduler = null;
+		return getRootGeometry(root).scheduler;
 	}
 
 	activate(blockId: string): void {
@@ -1277,7 +1248,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	destroy(): void {
 		this._selectionReader.detach();
-		this._unbindSchedulerProjector();
 		this._unbindFocusSink();
 		this._unbindAnnouncer();
 		this._unbindRootPointerGesture();

@@ -48,13 +48,9 @@ describe("DomScheduler CS6 session reconcile", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("CS6: write-phase reconcile runs before the post-flush project and the P1 slot", () => {
+	it("CS6: write-phase reconcile runs before the post-flush project", () => {
 		const order: string[] = [];
-		const scheduler = new DomScheduler("root-a", {
-			onProjectSelection: () => {
-				order.push("p1");
-			},
-		});
+		const scheduler = new DomScheduler("root-a");
 
 		void scheduler.write(() => {
 			order.push("reconcile");
@@ -65,17 +61,13 @@ describe("DomScheduler CS6 session reconcile", () => {
 		expect(order).toEqual([]);
 		expect(rafCalls).toBe(1);
 		flushFrame();
-		expect(order).toEqual(["reconcile", "project-after-flush", "p1"]);
+		expect(order).toEqual(["reconcile", "project-after-flush"]);
 		expect(rafCalls).toBe(1);
 	});
 
 	it("CS6: SessionReconciler history flush shares the scheduler frame and projects after reconcile", () => {
 		const order: string[] = [];
-		const scheduler = new DomScheduler("root-a", {
-			onProjectSelection: () => {
-				order.push("p1");
-			},
-		});
+		const scheduler = new DomScheduler("root-a");
 		const editor = createHeadlessEditor({ schema: defaultSchema });
 		const blockId = editor.firstBlock()!.id;
 		const reconciler = new SessionReconciler(editor, {
@@ -116,7 +108,7 @@ describe("DomScheduler CS6 session reconcile", () => {
 		expect(order).toEqual([]);
 		expect(rafCalls).toBe(1);
 		flushFrame();
-		expect(order).toEqual(["reconcile", "project-after-flush", "p1"]);
+		expect(order).toEqual(["reconcile", "project-after-flush"]);
 		expect(rafCalls).toBe(1);
 
 		reconciler.destroy();

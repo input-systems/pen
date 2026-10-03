@@ -33,7 +33,7 @@ function record(version: number): SelectionRecord {
 	};
 }
 
-describe("DomScheduler P1 slot", () => {
+describe("DomScheduler without a projector slot (W3.R8)", () => {
 	beforeEach(() => {
 		installMockRaf();
 	});
@@ -42,65 +42,32 @@ describe("DomScheduler P1 slot", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("P1: projectSelection is called with version N after queued writes", () => {
-		const projected: number[] = [];
+	it("P4: a flush collects the selection record once and retains nothing for a later flush", () => {
+		const scheduler = new DomScheduler("root-a");
 		const order: string[] = [];
-		const scheduler = new DomScheduler("root-a", {
-			onProjectSelection: (next) => {
-				projected.push(next.version);
-				order.push(`p1:${next.version}`);
-			},
-		});
 
 		void scheduler.write(() => {
-			order.push("write");
+			order.push(
+				`write:${scheduler.collect?.selection?.version ?? "none"}`,
+			);
 		});
 		scheduler.setSelection(record(7));
-
-		expect(projected).toEqual([]);
 		flushFrame();
+		expect(order).toEqual(["write:7"]);
 
-		expect(projected).toEqual([7]);
-		expect(order).toEqual(["write", "p1:7"]);
-		expect(scheduler.projectedThisFlush).toBe(true);
+		void scheduler.write(() => {
+			order.push(
+				`write:${scheduler.collect?.selection?.version ?? "none"}`,
+			);
+		});
+		flushFrame();
+		expect(order).toEqual(["write:7", "write:none"]);
 		expect(scheduler.phase).toBe("idle");
 	});
 
-	it("P1: a parked projection keeps the queued record for the next flush", () => {
-		const projected: number[] = [];
-		let park = true;
-		const scheduler = new DomScheduler("root-a", {
-			onProjectSelection: (next) => {
-				projected.push(next.version);
-				if (park) {
-					return "parked";
-				}
-			},
-		});
-
-		scheduler.setSelection(record(4));
-		flushFrame();
-		expect(projected).toEqual([4]);
-
-		park = false;
-		void scheduler.write(() => {});
-		flushFrame();
-		expect(projected).toEqual([4, 4]);
-		expect(scheduler.projectedThisFlush).toBe(true);
-	});
-
-	it("P1: a flush without setSelection does not run the slot", () => {
-		const projected: number[] = [];
-		const scheduler = new DomScheduler("root-a", {
-			onProjectSelection: (next) => {
-				projected.push(next.version);
-			},
-		});
-
-		void scheduler.write(() => {});
-		flushFrame();
-
-		expect(projected).toEqual([]);
-		expect(scheduler.projectedThisFlush).toBe(false);
+	it("P4: the scheduler exposes no projector seam", () => {
+		const scheduler = new DomScheduler("root-a");
+		expect("setProjector" in scheduler).toBe(false);
+		expect("projectedThisFlush" in scheduler).toBe(false);
 	});
 });

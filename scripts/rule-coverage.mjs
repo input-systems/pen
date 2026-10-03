@@ -56,6 +56,8 @@ const IGNORE_DIR_NAMES = new Set([
 	"playwright-report",
 	".generated",
 	".pnpm-store",
+	// Agent worktrees and tool state: other checkouts' tests, not this one's.
+	".claude",
 ]);
 const IGNORE_DIR_RE = /^test-results/;
 

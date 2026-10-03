@@ -58,6 +58,8 @@ export function createDocumentTree(
 	const notifier = fieldEditor.blockNotifier;
 	const nodesByBlockId = new Map<string, BlockNodes>();
 	let renderedRootIds: readonly string[] = NO_CHILD_IDS;
+	let syncDepth = 0;
+	const pendingAcks: string[] = [];
 
 	const destroyNodes = (blockId: string): void => {
 		const nodes = nodesByBlockId.get(blockId);
@@ -77,10 +79,27 @@ export function createDocumentTree(
 		for (const blockId of previous) {
 			if (!next.has(blockId)) destroyNodes(blockId);
 		}
+		syncDepth += 1;
 		for (const blockId of blockIds) {
-			if (!nodesByBlockId.has(blockId)) mountNodes(blockId);
+			if (!nodesByBlockId.has(blockId)) {
+				mountNodes(blockId);
+				pendingAcks.push(blockId);
+			}
 		}
 		reorderChildren(host, blockIds, nodesByBlockId);
+		syncDepth -= 1;
+		if (syncDepth === 0) flushAcks();
+	};
+
+	// P4 (W3.R8): a new element is acked in this turn, once the outermost
+	// list sync has put it (and any parent mounted with it) in the document.
+	const flushAcks = (): void => {
+		const blockIds = pendingAcks.splice(0);
+		for (const blockId of blockIds) {
+			const element = nodesByBlockId.get(blockId)?.element;
+			if (element?.isConnected)
+				fieldEditor.ackBlockMounted(blockId, element);
+		}
 	};
 
 	const updateBlock = (blockId: string): void => {
@@ -102,7 +121,9 @@ export function createDocumentTree(
 	const mountNodes = (blockId: string): void => {
 		const nodes = createBlockNodes(editor, blockId, ownerDocument);
 		nodesByBlockId.set(blockId, nodes);
-		nodes.unsubscribe = notifier.subscribeBlock(blockId, () => updateBlock(blockId));
+		nodes.unsubscribe = notifier.subscribeBlock(blockId, () =>
+			updateBlock(blockId),
+		);
 		updateBlock(blockId);
 	};
 
@@ -195,7 +216,11 @@ function updateBlockNodes(
 		setAttr(body, DATA_ATTRS.blockType, block.type);
 	}
 	setAttr(nodes.element, "dir", resolvedContentDir(editor, block) ?? null);
-	setStyle(nodes.element, "textAlign", resolveBlockTextAlignment(block) ?? "");
+	setStyle(
+		nodes.element,
+		"textAlign",
+		resolveBlockTextAlignment(block) ?? "",
+	);
 
 	const { field } = snapshot;
 	setBooleanAttr(nodes.element, DATA_ATTRS.focused, field.isFieldFocus);
@@ -238,7 +263,9 @@ function visibleChildBlockIds(
 	block: BlockHandle,
 	snapshot: BlockSnapshot,
 ): readonly string[] {
-	return shouldRenderContainerChildren(editor, block) ? snapshot.childIds : NO_CHILD_IDS;
+	return shouldRenderContainerChildren(editor, block)
+		? snapshot.childIds
+		: NO_CHILD_IDS;
 }
 
 function isFieldEditorOwned(snapshot: BlockSnapshot): boolean {
@@ -264,22 +291,42 @@ function reorderChildren(
 }
 
 function sameIds(left: readonly string[], right: readonly string[]): boolean {
-	return left === right || (left.length === right.length && left.every((id, index) => id === right[index]));
+	return (
+		left === right ||
+		(left.length === right.length &&
+			left.every((id, index) => id === right[index]))
+	);
 }
 
 /** Writes only when the value differs; null removes. */
-function setAttr(element: HTMLElement, name: string, value: string | null): void {
+function setAttr(
+	element: HTMLElement,
+	name: string,
+	value: string | null,
+): void {
 	if (element.getAttribute(name) === value) return;
 	if (value === null) element.removeAttribute(name);
 	else element.setAttribute(name, value);
 }
 
-function setStyle(element: HTMLElement, property: "textAlign", value: string): void {
+function setStyle(
+	element: HTMLElement,
+	property: "textAlign",
+	value: string,
+): void {
 	if (element.style[property] !== value) element.style[property] = value;
 }
 
-function setBooleanAttr(element: HTMLElement, name: string, value: boolean): void {
-	setAttr(element, name, buildDataAttributes({ [name]: value })[name] ?? null);
+function setBooleanAttr(
+	element: HTMLElement,
+	name: string,
+	value: boolean,
+): void {
+	setAttr(
+		element,
+		name,
+		buildDataAttributes({ [name]: value })[name] ?? null,
+	);
 }
 
 function resolvedContentDir(

@@ -139,16 +139,10 @@ function ToggleEmptyState({ parentBlockId }: { parentBlockId: string }) {
 			blockType: "paragraph",
 		});
 
+		// W3.R8: activate in this turn; the new child is not mounted yet, so
+		// the projection parks and its mount ack projects it (P4).
 		const fieldEditor = getAttachedFieldEditor(editor);
-		const activateChild = () => {
-			fieldEditor?.activateTextSelection?.(newBlockId, 0, 0);
-		};
-
-		if (typeof window !== "undefined") {
-			window.requestAnimationFrame(activateChild);
-		} else {
-			activateChild();
-		}
+		fieldEditor?.activateTextSelection?.(newBlockId, 0, 0);
 	};
 
 	return (

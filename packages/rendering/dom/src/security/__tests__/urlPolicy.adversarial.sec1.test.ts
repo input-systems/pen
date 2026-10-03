@@ -200,6 +200,8 @@ describe("SEC1 documentTree render path", () => {
 				subscribeBlock: () => () => {},
 				getBlockSnapshot: () => blockSnapshot,
 			},
+			// P4: the tree acks every block element it mounts.
+			ackBlockMounted: () => {},
 		};
 		const tree = createDocumentTree(editor, fieldEditor as never, root);
 		cleanups.push(() => {

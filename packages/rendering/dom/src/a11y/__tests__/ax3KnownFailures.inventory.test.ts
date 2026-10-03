@@ -24,7 +24,7 @@ describe("AX3 previously-reclassified bugs (rechecked, not trusted)", () => {
 	// behavioral guard lives with the hook, in
 	// `react/src/__tests__/slashMenu.insertionAndFlowFiltering.test.tsx`.
 
-	it("autocomplete caret: updateSelection is no longer a no-op; projector slot runs P1", () => {
+	it("autocomplete caret: updateSelection is no longer a no-op; P1 projects same-turn, not from a scheduler slot", () => {
 		const backend = readFileSync(CONTENT_EDITABLE, "utf8");
 		expect(backend).toMatch(
 			/updateSelection\([^)]*\)\s*:\s*void\s*\{\s*this\.restoreDOMSelectionFromEditor\(\);/,
@@ -34,10 +34,9 @@ describe("AX3 previously-reclassified bugs (rechecked, not trusted)", () => {
 		expect(accept).toContain("controller._editor.selectText(");
 		expect(accept).toContain("commitProgrammaticTextSelection");
 
+		// W3.R8: the scheduler holds no projector; the field editor's
+		// selectionChange listener projects in the same turn (P1).
 		const scheduler = readFileSync(SCHEDULER, "utf8");
-		expect(scheduler).toMatch(/this\.onProjectSelection\?\.\(record\)/);
-		expect(scheduler).not.toMatch(
-			/private projectSelection\(\): void \{\s*\}/,
-		);
+		expect(scheduler).not.toMatch(/onProjectSelection|setProjector/);
 	});
 });

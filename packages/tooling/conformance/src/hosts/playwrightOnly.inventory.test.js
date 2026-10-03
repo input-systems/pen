@@ -164,7 +164,9 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 75 -> 76 is W3.R1 projection read-back: suites/selection/p-projection.spec.ts.
 	// 76 -> 77 is the multi-click guard for W3.R5/W3.R12:
 	// suites/selection/r-multi-click.spec.ts.
-	const expectedPlaywrightSpecs = 77;
+	// 77 -> 78 is W3.R8 keyed mount ack on three surfaces:
+	// suites/selection/p4-vanilla-ack.spec.ts.
+	const expectedPlaywrightSpecs = 78;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

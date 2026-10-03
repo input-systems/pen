@@ -54,6 +54,8 @@ export class FieldEditorSelectionCoordinator {
 		this._projection.recordProjectedVersion(version);
 	}
 
+	/** The parked record version; tests observe P4 parks through it. */
+	// fallow-ignore-next-line unused-class-member
 	get parkedProjectionVersion(): number | null {
 		return this._projection.parkedProjectionVersion;
 	}

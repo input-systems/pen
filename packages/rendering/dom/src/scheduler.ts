@@ -19,13 +19,10 @@ export type FlushCollect = {
 	readonly selection: SelectionRecord | null;
 };
 
-export type SelectionProjector = (record: SelectionRecord) => void | "parked";
-
 export type DomSchedulerOptions = {
 	onDiagnostic?: (event: DiagnosticEvent) => void;
 	onInvalidate?: (blockIds: readonly string[], commitId: number) => void;
 	geometry?: GeometryInvalidator;
-	onProjectSelection?: SelectionProjector;
 };
 
 type ScheduledJob = () => void;
@@ -56,15 +53,12 @@ export class DomScheduler {
 	private activeWrites: ScheduledJob[] | null = null;
 	private rafHandle: number | null = null;
 	private readAfterWriteForced = false;
-	private onProjectSelection: SelectionProjector | null;
-	private _projectedThisFlush = false;
 
 	constructor(owner: DomSchedulerOwner, options?: DomSchedulerOptions) {
 		this.rootId = typeof owner === "string" ? owner : owner.rootId;
 		this.onDiagnostic = options?.onDiagnostic;
 		this.onInvalidate = options?.onInvalidate;
 		this.geometry = options?.geometry ?? null;
-		this.onProjectSelection = options?.onProjectSelection ?? null;
 	}
 
 	get phase(): DomSchedulerPhase {
@@ -77,14 +71,6 @@ export class DomScheduler {
 
 	get collect(): FlushCollect | null {
 		return this._collect;
-	}
-
-	get projectedThisFlush(): boolean {
-		return this._projectedThisFlush;
-	}
-
-	setProjector(projector: SelectionProjector | null): void {
-		this.onProjectSelection = projector;
 	}
 
 	acceptCommit(event: CommitEvent): void {
@@ -194,7 +180,6 @@ export class DomScheduler {
 	}
 
 	private flush(): void {
-		this._projectedThisFlush = false;
 		// Collect: commits since the last flush, the current selection
 		// record, and pending read/write queues. The field editor feeds
 		// acceptCommit for every commit on its editor; this module only
@@ -204,6 +189,9 @@ export class DomScheduler {
 			selection: this.selection,
 		};
 		this.pendingCommits = [];
+		// W3.R8: the scheduler retains no record past the flush that
+		// collected it; a parked projection resolves on its block's ack.
+		this.selection = null;
 		this.activeReads = this.readQueue;
 		this.activeWrites = this.writeQueue;
 		this.readQueue = [];
@@ -218,7 +206,6 @@ export class DomScheduler {
 		// renderer DOM updates already committed by construction — the
 		// flush is scheduled after framework commit (mount-ack).
 		this.drain(this.activeWrites);
-		this.projectSelection();
 		this.paintOverlays();
 
 		this.activeReads = null;
@@ -242,26 +229,6 @@ export class DomScheduler {
 		}
 		this.geometry?.invalidateBlocks(blockIds, last?.commitId);
 		this.onInvalidate?.(blockIds, last?.commitId ?? 0);
-	}
-
-	/**
-	 * Write-phase P1 slot (`spec/rules/dom.md` flush step 3):
-	 * after queued writes, before overlay paints. The field editor
-	 * writes same-turn on `selectionChange`; this slot retries a
-	 * parked record on a later flush. Do not schedule projection
-	 * from timers or rAF retries (S4).
-	 */
-	private projectSelection(): void {
-		const record = this._collect?.selection ?? null;
-		if (record == null) {
-			return;
-		}
-		const queued = this.selection;
-		this._projectedThisFlush = true;
-		const result = this.onProjectSelection?.(record);
-		if (result !== "parked" && this.selection === queued) {
-			this.selection = null;
-		}
 	}
 
 	/**

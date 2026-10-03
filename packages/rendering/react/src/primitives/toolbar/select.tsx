@@ -62,20 +62,14 @@ export function ToolbarSelect(props: ToolbarSelectProps) {
 			);
 
 			if (isTable && tableActivationTarget) {
+				// W3.R8: activate in this turn; the table's mount ack attaches
+				// the cell once it renders (P4).
 				const fieldEditor = getAttachedFieldEditor(editor);
-				const activateTableCell = () => {
-					fieldEditor?.activateCell?.(
-						blockId,
-						tableActivationTarget.row,
-						tableActivationTarget.col,
-					);
-				};
-
-				if (typeof window !== "undefined") {
-					window.requestAnimationFrame(activateTableCell);
-				} else {
-					activateTableCell();
-				}
+				fieldEditor?.activateCell?.(
+					blockId,
+					tableActivationTarget.row,
+					tableActivationTarget.col,
+				);
 			}
 		}
 	};
