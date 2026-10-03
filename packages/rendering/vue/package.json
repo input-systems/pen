@@ -50,7 +50,7 @@
     "STYLING.md"
   ],
   "engines": {
-    "node": ">=22"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "sideEffects": false,
   "scripts": {
@@ -75,11 +75,12 @@
     "@input/pen": "workspace:*",
     "@input/pen-test": "workspace:*",
     "@input/pen-undo": "workspace:*",
-    "@vue/test-utils": "^2.4.11",
+    "@types/node": "^25.4.0",
+    "@vue/test-utils": "^2.5.1",
     "jsdom": "^28.1.0",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
-    "vitest": "^3.2.7",
-    "vue": "^3.5.42"
+    "vitest": "^4.1.11",
+    "vue": "^3.5.43"
   }
 }

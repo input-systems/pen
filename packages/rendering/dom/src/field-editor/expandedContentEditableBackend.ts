@@ -3,6 +3,7 @@ import { editorSelectionToDOM } from "./selectionBridge";
 import { getPasteImporters, handlePaste } from "./clipboard";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
+import { bindSurfaceTabStop } from "./surfaceTabStop";
 import type { FieldEditorInputController } from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
 import {
@@ -55,7 +56,7 @@ export class ExpandedContentEditableBackend {
 	activate(element: HTMLElement): void {
 		this.element = element;
 		element.contentEditable = "true";
-		element.tabIndex = -1;
+		bindSurfaceTabStop(this.attachment, element);
 		this.fieldEditor.resetBackendSelectionAuthority();
 
 		this.attachment.listen(element, "beforeinput", this.handleBeforeInput);

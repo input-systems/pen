@@ -41,6 +41,7 @@ import {
 } from "./selectionAuthority";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
+import { bindSurfaceTabStop } from "./surfaceTabStop";
 import { mapBeforeInput } from "./beforeinputMap";
 import { handleFieldEditorKeyDown } from "./keyHandling";
 import {
@@ -84,7 +85,7 @@ export class ContentEditableBackend {
 		this.ytext = activeYText;
 
 		element.contentEditable = "true";
-		element.tabIndex = -1;
+		bindSurfaceTabStop(this.attachment, element);
 		this.fieldEditor.resetBackendSelectionAuthority();
 		this.fieldEditor.withBackendSelectionWrite(() => {
 			this.isComposing = false;

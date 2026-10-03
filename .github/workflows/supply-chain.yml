@@ -34,131 +34,23 @@ jobs:
           # otherwise cache the pnpm store and fail when that path is absent.
           package-manager-cache: false
 
-      # Blocking (SEC7). Root `pnpm audit --prod` is the wrong question: pnpm
-      # audit has no workspace filter, so a root sweep also flags playground
-      # `ws` and examples/vue `postcss`/`nanoid`, which never ship. This step
-      # keeps only advisories whose install path starts at a published package
-      # (a package.json without `"private": true`).
-      # It ran staged until 2026-08-20, when the sanitizer graph
-      # (import-html → isomorphic-dompurify → jsdom) was pinned to
-      # undici 7.29.0 and dompurify 3.4.14 via root pnpm.overrides, clearing
-      # the five undici highs that were the reason for the stage. The published
-      # graph now reports zero advisories; every remaining hit starts at
-      # playground or examples/vue.
+      # Blocking (SEC7). Root `pnpm audit --prod` has no workspace filter, so
+      # it also flags advisories that reach only private workspaces
+      # (playground, examples, docs, conformance), which never ship. The
+      # script keeps advisories whose install path starts at a published
+      # importer, fails on any of them, and fails closed on a path whose
+      # importer pnpm-lock.yaml does not list, on an audit error, and on an
+      # empty workspace. Until 2026-10 it ran inline here and matched only the
+      # literal `packages/x/y >` path spelling, so pnpm 10's encoded
+      # `packages__x__y>` paths were all filed as out of scope and the gate
+      # passed while undici highs reached @input/pen-interop.
+      # The published sanitizer graph is import-html → isomorphic-dompurify →
+      # dompurify and jsdom 30 → undici 8. Root pnpm.overrides pin dompurify
+      # to 3.4.16, and `undici@<8` to 7.29.1 for the dev-only consumers still
+      # on the undici 7 line (jsdom 28 in renderer tests, miniflare in the
+      # playground).
       - name: Audit published production dependencies
-        run: |
-          node --input-type=module <<'EOF'
-          import { spawnSync } from "node:child_process";
-          import { readdirSync, readFileSync, statSync } from "node:fs";
-          import { join } from "node:path";
-
-          const packagesRoot = "packages";
-          const publishedDirs = [];
-
-          function walk(dir) {
-            for (const name of readdirSync(dir)) {
-              if (name === "node_modules" || name === "dist") continue;
-              const full = join(dir, name);
-              if (statSync(full).isDirectory()) {
-                walk(full);
-                continue;
-              }
-              if (name !== "package.json") continue;
-              const pkg = JSON.parse(readFileSync(full, "utf8"));
-              if (pkg.private === true || typeof pkg.name !== "string") continue;
-              publishedDirs.push(dir);
-            }
-          }
-
-          walk(packagesRoot);
-          publishedDirs.sort();
-          if (publishedDirs.length === 0) {
-            console.error("SEC7: no published packages found under packages/");
-            process.exit(1);
-          }
-
-          function pathStartsAtPublished(path) {
-            return publishedDirs.some(
-              (dir) => path === dir || path.startsWith(`${dir} >`),
-            );
-          }
-
-          const result = spawnSync("pnpm", ["audit", "--prod", "--json"], {
-            encoding: "utf8",
-            maxBuffer: 20 * 1024 * 1024,
-          });
-          if (result.error) {
-            console.error("SEC7: pnpm audit failed to start:", result.error.message);
-            process.exit(1);
-          }
-
-          let report;
-          try {
-            report = JSON.parse(result.stdout);
-          } catch {
-            console.error("SEC7: pnpm audit --json did not return JSON");
-            console.error(result.stderr || result.stdout.slice(0, 2000));
-            process.exit(1);
-          }
-
-          const advisories = Object.values(report.advisories ?? {});
-          const published = [];
-          const privateOnly = [];
-
-          for (const advisory of advisories) {
-            const paths = (advisory.findings ?? []).flatMap(
-              (finding) => finding.paths ?? [],
-            );
-            const publishedPaths = paths.filter(pathStartsAtPublished);
-            const row = {
-              module: advisory.module_name,
-              severity: advisory.severity,
-              title: advisory.title,
-              url: advisory.url,
-              patched: advisory.patched_versions,
-              paths: publishedPaths.length > 0 ? publishedPaths : paths,
-            };
-            if (publishedPaths.length > 0) published.push(row);
-            else if (paths.length > 0) privateOnly.push(row);
-          }
-
-          published.sort(
-            (a, b) => a.module.localeCompare(b.module) || a.url.localeCompare(b.url),
-          );
-          privateOnly.sort(
-            (a, b) => a.module.localeCompare(b.module) || a.url.localeCompare(b.url),
-          );
-
-          console.log(
-            `SEC7: ${publishedDirs.length} published packages. Root production audit reported ${advisories.length} advisories.`,
-          );
-
-          if (privateOnly.length > 0) {
-            console.log(
-              `Out of scope (${privateOnly.length}): install paths start only at private workspaces (playground, examples, docs, conformance).`,
-            );
-            for (const row of privateOnly) {
-              console.log(
-                `  ${row.severity} ${row.module} ${row.url}  (${row.paths[0]})`,
-              );
-            }
-          }
-
-          if (published.length === 0) {
-            console.log("SEC7: no production advisories reach a published package");
-            process.exit(0);
-          }
-
-          console.error(
-            `SEC7: ${published.length} production advisories reach published packages:`,
-          );
-          for (const row of published) {
-            console.error(`  ${row.severity} ${row.module}  ${row.title}`);
-            console.error(`    ${row.url}  patched ${row.patched}`);
-            for (const path of row.paths) console.error(`    ${path}`);
-          }
-          process.exit(1);
-          EOF
+        run: node scripts/prod-audit.mjs
 
   no-install-scripts:
     name: Install scripts

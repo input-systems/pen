@@ -83,7 +83,7 @@ That second list is not a to-do list. Pen's capabilities live in `@input/pen-cor
 
 `readonly` defaults to `false`. The prop declines typing and pointer activation, sets `data-readonly` (match with `[data-readonly]`, not `[data-readonly="true"]`), and sets `aria-readonly="true"`. It does not stop `editor.apply`. `pen.ariaReadOnly` the facet only sets `aria-readonly`.
 
-`engines.node` is `>=22`. The required peer is `vue` (`^3.4.0`).
+`engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`. The required peer is `vue` (`^3.4.0`).
 
 ## Documentation
 

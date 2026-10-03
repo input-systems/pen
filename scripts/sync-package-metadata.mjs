@@ -18,8 +18,11 @@ const licenseValue = "MIT";
 // Array.prototype.at 16.6.0 — and E.5 marks both as trivially replaceable.
 // Claiming 16.9.0 as the floor would be an unverified range (API7). The
 // declared floor is therefore the CI-verified major, not the theoretical
-// API minimum. Matrix endpoints live in .github/workflows/node-matrix.yml.
-const NODE_ENGINE = ">=22";
+// API minimum, narrowed to the range jsdom 30 declares: @input/pen-interop
+// sanitizes through isomorphic-dompurify, which builds its Node window with
+// jsdom, and @input/pen, -react, and -vue depend on interop. Matrix
+// endpoints live in .github/workflows/node-matrix.yml.
+const NODE_ENGINE = "^22.22.2 || ^24.15.0 || >=26.0.0";
 const IGNORE_DIR_NAMES = new Set([
 	"node_modules",
 	"dist",
