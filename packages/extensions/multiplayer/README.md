@@ -151,6 +151,51 @@ multiplayerExtension({
 });
 ```
 
+## Undo with collaborators
+
+Undo is per client. Each editor's undo stack holds only its own client's writes; a collaborator's edits arrive as untracked `collaborator` transactions (COL1), so they neither join nor close a local undo step, and undoing never reverts another person's typing.
+
+A worked example:
+
+1. Ada asks AI to rewrite "world" in "Hello world"; the run writes "Alpha" and then "Beta", so the text reads "Hello AlphaBeta".
+2. Bob types "XX" between "Alpha" and "Beta" on his client.
+3. Ada presses undo once.
+4. The AI change is one step (AIB4): every write of the run carries its group id, so `@input/pen-undo` captures them under one key (`undoManager.withCapture`). Bob's edit is a `collaborator` transaction, so it is not part of that step. Ada's undo reverts only her client's AI writes: "world" comes back, "AlphaBeta" goes, and Bob's "XX" stays where its neighbours put it.
+5. Both clients converge on:
+
+```text
+Hello worldXX
+```
+
+6. Bob's undo stack is untouched. His undo still removes "XX", and both clients read:
+
+```text
+Hello world
+```
+
+The AI writes in this example are applied with a structured origin that names the run, which is what the AI extension does for every write of one run:
+
+```ts
+import type { Editor } from "@input/pen";
+
+const run = { type: "ai" as const, groupId: "rewrite-1" };
+
+export function rewriteWorld(ada: Editor, blockId: string): void {
+  ada.apply(
+    [{ type: "splice-text", blockId, from: 6, to: 11, insert: "Alpha" }],
+    { origin: run },
+  );
+  ada.apply(
+    [{ type: "splice-text", blockId, from: 11, to: 11, insert: "Beta" }],
+    { origin: run },
+  );
+  // One undo reverts both writes, and nothing a collaborator typed.
+  ada.undoManager.undo();
+}
+```
+
+`packages/extensions/ai/src/__tests__/aib4.collaboratorUndo.test.ts` runs this example on two real peers and reads the two results above.
+
 ## Recommended setup
 
 If you are using Yjs, prefer:

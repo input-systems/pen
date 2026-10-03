@@ -64,6 +64,7 @@ Important rules:
 - Install `multiplayerExtension()` when a host app wants collaboration presence, remote cursors, or remote selection rendering
 - Renderers consume controller state and decorations; they should not reimplement peer-tracking logic locally
 - The package is designed to sit above transport or CRDT awareness feeds rather than own networking itself
+- Undo stays per-client (AIB4). Remote edits enter as `collaborator` and are never captured by this client's undo manager, so undoing an AI action reverts this client's ops around a collaborator's edit rather than through it; the README's "Undo with collaborators" section works the case through.
 
 ## Current Maturity / Intended Usage
 

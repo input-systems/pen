@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 function mount(root?: ParentNode): Announcer {
-	const announcer = createAnnouncer(root);
+	const announcer = createAnnouncer({ root });
 	announcers.push(announcer);
 	return announcer;
 }
@@ -180,5 +180,61 @@ describe("createAnnouncer (AX2)", () => {
 		announcer.announce("too late");
 
 		expect(liveRegion()).toBeNull();
+	});
+
+	it("AX2: an injected schedule receives one write job per announcement and the region is untouched until it runs", () => {
+		const jobs: Array<() => void> = [];
+		const announcer = createAnnouncer({ schedule: (write) => jobs.push(write) });
+		announcers.push(announcer);
+		const region = liveRegion()!;
+
+		announcer.announce("Converted to Heading", "assertive");
+
+		expect(jobs).toHaveLength(1);
+		expect(region.textContent).toBe("");
+		expect(region.getAttribute("aria-live")).toBe("polite");
+		jobs[0]!();
+		expect(region.textContent).toBe("Converted to Heading");
+		expect(region.getAttribute("aria-live")).toBe("assertive");
+	});
+
+	it("AX2: the rate limit is stamped at queue time", () => {
+		vi.useFakeTimers();
+		let clock = 1_000;
+		const jobs: Array<() => void> = [];
+		const announcer = createAnnouncer({
+			schedule: (write) => jobs.push(write),
+			now: () => clock,
+		});
+		announcers.push(announcer);
+
+		announcer.announce("first", "polite", "key");
+		clock += 100;
+		// The first job has not run yet; the window opened when it was queued.
+		announcer.announce("second", "polite", "key");
+
+		expect(jobs).toHaveLength(1);
+		for (const job of jobs.splice(0)) job();
+		expect(liveRegion()!.textContent).toBe("first");
+		clock += ANNOUNCE_RATE_LIMIT_MS;
+		vi.advanceTimersByTime(ANNOUNCE_RATE_LIMIT_MS);
+		expect(jobs).toHaveLength(1);
+		jobs[0]!();
+		expect(liveRegion()!.textContent).toBe("second");
+	});
+
+	it("AX2: a disposed announcer drops queued writes", () => {
+		const jobs: Array<() => void> = [];
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		const announcer = createAnnouncer({ root, schedule: (write) => jobs.push(write) });
+		const region = liveRegion(root)!;
+
+		announcer.announce("queued");
+		announcer.dispose();
+		for (const job of jobs) job();
+
+		expect(region.textContent).toBe("");
+		expect(liveRegion(root)).toBeNull();
 	});
 });

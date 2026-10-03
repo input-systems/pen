@@ -15,13 +15,18 @@ import {
 } from "@input/pen-types";
 
 import { createAnnouncer } from "./announcer";
+import { getRootGeometry } from "../geometry/rootGeometry";
 import { getInlineAtomAtOffset } from "../field-editor/inlineAtomModel";
 
 export function bindEditorAnnouncer(
 	editor: Editor,
-	root: ParentNode,
+	root: HTMLElement,
 ): Unsubscribe {
-	const announcer = createAnnouncer(root);
+	// AX2: each announcement is one write in the root's scheduler write phase.
+	const announcer = createAnnouncer({
+		root,
+		schedule: (write) => void getRootGeometry(root).scheduler.write(write),
+	});
 	editor.internals.assignSlot(ANNOUNCER_SLOT_KEY, announcer);
 
 	let previousSelection = editor.selection;
