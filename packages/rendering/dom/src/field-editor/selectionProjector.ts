@@ -67,7 +67,7 @@ export function writeLegacyFieldRange(
 	element: HTMLElement,
 	anchorOffset: number,
 	focusOffset: number,
-	_source: "programmatic" | "edit-context-textupdate" | "cell",
+	_source: "edit-context-textupdate" | "cell",
 ): void {
 	const selection = nativeSelectionForWrite(element);
 	if (!selection) return;

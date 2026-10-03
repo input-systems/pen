@@ -1,7 +1,4 @@
-export type FieldEditorSelectionSource =
-	| "programmatic"
-	| "edit-context-textupdate"
-	| "cell";
+export type FieldEditorSelectionSource = "edit-context-textupdate" | "cell";
 
 export type FieldEditorSelectionCell = {
 	row: number;
@@ -25,11 +22,6 @@ export type FieldEditorTextSelectionLike = {
 export type FieldEditorLiveSelectionLike =
 	| FieldEditorTextSelectionLike
 	| { type: "block" | "app" | "cell" };
-
-export type RestoreTextEndpoints = {
-	anchor: { blockId: string; offset: number };
-	focus: { blockId: string; offset: number };
-};
 
 /**
  * Live `editor.selection`, or null when it cannot address the field being
@@ -57,27 +49,6 @@ export function resolveLiveTextSelection(
 	return selection;
 }
 
-/**
- * Endpoints to restore for a block field. A live editor selection outranks a
- * stamp, which may be left over from a superseded authority write.
- */
-export function resolveRestoreTextEndpoints(
-	blockId: string,
-	liveSelection: FieldEditorTextSelectionLike | null,
-	pending: FieldEditorSelectionSnapshot | null,
-): RestoreTextEndpoints | null {
-	if (liveSelection) {
-		return { anchor: liveSelection.anchor, focus: liveSelection.focus };
-	}
-	if (!pending || pending.blockId !== blockId) {
-		return null;
-	}
-	return {
-		anchor: { blockId: pending.blockId, offset: pending.anchorOffset },
-		focus: { blockId: pending.blockId, offset: pending.focusOffset },
-	};
-}
-
 function stampAddressesCell(
 	stamp: FieldEditorSelectionSnapshot | null,
 	activeCell: FieldEditorSelectionCell,
@@ -90,30 +61,16 @@ function stampAddressesCell(
 }
 
 /**
- * Cell-field restore. Addressability before liveness: a stamp must name
- * the active cell before it is ranked. Among addressable stamps the
- * programmatic one wins. An unaddressable stamp must not fall through to
- * block endpoints — `TextSelection` cannot express a cell caret.
+ * Cell-field restore: the cell stamp, when it names the active cell. An
+ * unaddressable stamp must not fall through to block endpoints —
+ * `TextSelection` cannot express a cell caret.
  */
 export function resolveRestoreCellEndpoints(
-	pending: FieldEditorSelectionSnapshot | null,
 	cellStamp: FieldEditorSelectionSnapshot | null,
 	activeCell: FieldEditorSelectionCell,
 ): FieldEditorSelectionSnapshot | null {
-	const addressablePending = stampAddressesCell(pending, activeCell)
-		? pending
-		: null;
-	const addressableCell = stampAddressesCell(cellStamp, activeCell)
-		? cellStamp
-		: null;
-	return addressablePending ?? addressableCell;
+	return stampAddressesCell(cellStamp, activeCell) ? cellStamp : null;
 }
-
-const DEFAULT_PRECEDENCE: readonly FieldEditorSelectionSource[] = [
-	"programmatic",
-	"edit-context-textupdate",
-	"cell",
-];
 
 export class FieldEditorSelectionAuthority {
 	private readonly selections = new Map<
@@ -146,23 +103,6 @@ export class FieldEditorSelectionAuthority {
 			return null;
 		}
 		return selection;
-	}
-
-	has(source: FieldEditorSelectionSource): boolean {
-		return this.selections.has(source);
-	}
-
-	resolve(
-		blockId: string,
-		sources: readonly FieldEditorSelectionSource[] = DEFAULT_PRECEDENCE,
-	): FieldEditorSelectionSnapshot | null {
-		for (const source of sources) {
-			const selection = this.get(source, blockId);
-			if (selection) {
-				return selection;
-			}
-		}
-		return null;
 	}
 
 	clear(source: FieldEditorSelectionSource): void {

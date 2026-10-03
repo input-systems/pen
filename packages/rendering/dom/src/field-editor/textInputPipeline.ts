@@ -100,14 +100,17 @@ function applyInlineTextOperations(
 	ops: readonly DocumentOp[],
 	selection: InlineTextSelectionTarget,
 ): void {
-	options.fieldEditor.setBackendSelectionAuthority("programmatic", selection);
+	// The cell caret is not in the authority yet (W3.R18): stamp it before
+	// the apply so the rebuild the apply triggers restores it.
+	if (options.cellCoord) {
+		options.fieldEditor.setBackendSelectionAuthority("cell", selection);
+	}
 
 	if (ops.length > 0) {
 		options.editor.apply([...ops], { origin: "user" });
 	}
 
 	if (options.cellCoord) {
-		options.fieldEditor.setBackendSelectionAuthority("cell", selection);
 		return;
 	}
 

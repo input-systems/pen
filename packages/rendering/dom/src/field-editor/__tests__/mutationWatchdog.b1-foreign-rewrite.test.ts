@@ -52,7 +52,6 @@ function createFieldEditor(blockId: string) {
 		syncTextSelection: () => {},
 		setBackendSelectionAuthority: () => {},
 		getBackendSelectionAuthority: () => null,
-		hasBackendSelectionAuthority: () => false,
 		clearBackendSelectionAuthority: () => {},
 		setEditContextSelectionSnapshot: () => {},
 		getEditContextSelectionSnapshot: () => null,

@@ -7,6 +7,7 @@ import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
 import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
 import { getLogicalInlineText } from "./commandsShared";
 import {
+	isNavigationSelectionKey,
 	mapOffsetThroughRemoteDeltas,
 	mapOffsetThroughRemoteDeltasUpstream,
 } from "./contenteditableDomHelpers";
@@ -29,7 +30,6 @@ import {
 	applyEditContextTextFormats,
 	buildEditContextCharacterBounds,
 	findTextPosition,
-	isNavigationSelectionKey,
 	shouldReplaceEditContextText,
 } from "./editContextDom";
 import type {
@@ -555,10 +555,6 @@ export class EditContextBackend {
 				anchorOffset: listInputRuleTarget.anchorOffset,
 				focusOffset: listInputRuleTarget.focusOffset,
 			};
-			this.fieldEditor.setBackendSelectionAuthority(
-				"programmatic",
-				nextSelection,
-			);
 			this.setEditContextSelection(nextSelection, {
 				source: "text-update",
 			});
@@ -568,7 +564,6 @@ export class EditContextBackend {
 				listInputRuleTarget.focusOffset,
 			);
 			this.restoreDOMCaret();
-			this.fieldEditor.clearBackendSelectionAuthority("programmatic");
 			return;
 		}
 
@@ -578,10 +573,6 @@ export class EditContextBackend {
 			text,
 		});
 		if (inlineInputRuleTarget) {
-			this.fieldEditor.setBackendSelectionAuthority(
-				"programmatic",
-				inlineInputRuleTarget,
-			);
 			this.setEditContextSelection(inlineInputRuleTarget, {
 				source: "text-update",
 			});
@@ -591,10 +582,20 @@ export class EditContextBackend {
 				inlineInputRuleTarget.focusOffset,
 			);
 			this.restoreDOMCaret();
-			this.fieldEditor.clearBackendSelectionAuthority("programmatic");
 			return;
 		}
 
+		// A buffer that already holds the edit takes its caret before the
+		// apply, so the projection the apply triggers finds it agreeing
+		// (W3.R6); every buffer takes it again once `updateText` has run.
+		const caret = pending.selection;
+		if (
+			caret &&
+			Math.max(caret.anchorOffset, caret.focusOffset) <=
+				(this.editContext?.text.length ?? 0)
+		) {
+			this.setEditContextSelection(caret, { source: "text-update" });
+		}
 		const selection = applyInlineTextInput({
 			editor: this.editor,
 			fieldEditor: this.fieldEditor,
@@ -617,8 +618,6 @@ export class EditContextBackend {
 			);
 			this.restoreDOMCaret();
 		}
-
-		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
 	}
 
 	/**
@@ -1021,17 +1020,6 @@ export class EditContextBackend {
 			}
 		}
 
-		const pendingSelection = this.fieldEditor.focusBlockId
-			? this.fieldEditor.getBackendSelectionAuthority(
-					"programmatic",
-					this.fieldEditor.focusBlockId,
-				)
-			: null;
-		if (pendingSelection) {
-			this.setEditContextSelection(pendingSelection, {
-				source: "text-update",
-			});
-		}
 		this.restoreDOMCaret();
 	};
 
@@ -1071,13 +1059,6 @@ export class EditContextBackend {
 		) as HTMLElement | null;
 		const selection = this.fieldEditor.selection;
 		const blockId = this.fieldEditor.focusBlockId;
-		const pendingSelection =
-			blockId != null
-				? this.fieldEditor.getBackendSelectionAuthority(
-						"programmatic",
-						blockId,
-					)
-				: null;
 		const authoritativeInputSelection =
 			blockId != null
 				? this.fieldEditor.getBackendSelectionAuthority(
@@ -1095,13 +1076,11 @@ export class EditContextBackend {
 				? selection
 				: null;
 		const anchorOffset =
-			pendingSelection?.anchorOffset ??
 			authoritativeInputSelection?.anchorOffset ??
 			editorSelection?.anchor.offset ??
 			editContextSelection?.anchorOffset ??
 			null;
 		const focusOffset =
-			pendingSelection?.focusOffset ??
 			authoritativeInputSelection?.focusOffset ??
 			editorSelection?.focus.offset ??
 			editContextSelection?.focusOffset ??

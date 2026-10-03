@@ -155,7 +155,6 @@ function stubController(blockId: string) {
 		notifyGestureEvent: () => {},
 		setBackendSelectionAuthority: () => {},
 		getBackendSelectionAuthority: () => null,
-		hasBackendSelectionAuthority: () => false,
 		clearBackendSelectionAuthority: () => {},
 		setEditContextSelectionSnapshot: () => {},
 		getEditContextSelectionSnapshot: () => null,

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
 	FieldEditorSelectionAuthority,
 	resolveLiveTextSelection,
-	resolveRestoreTextEndpoints,
 } from "../selectionAuthority";
 
 const BLOCK_ID = "block-1";
@@ -58,90 +57,6 @@ describe("resolveLiveTextSelection", () => {
 				{ row: 0, col: 0 },
 			),
 		).toBeNull();
-	});
-});
-
-describe("resolveRestoreTextEndpoints", () => {
-	it("prefers a live authority range over a leftover collapsed stamp", () => {
-		const restored = resolveRestoreTextEndpoints(
-			BLOCK_ID,
-			{
-				type: "text",
-				anchor: { blockId: BLOCK_ID, offset: 0 },
-				focus: { blockId: BLOCK_ID, offset: 30 },
-			},
-			{
-				blockId: BLOCK_ID,
-				anchorOffset: 30,
-				focusOffset: 30,
-			},
-		);
-
-		expect(restored).toEqual({
-			anchor: { blockId: BLOCK_ID, offset: 0 },
-			focus: { blockId: BLOCK_ID, offset: 30 },
-		});
-	});
-
-	it("prefers a live collapsed caret over a leftover range stamp", () => {
-		const restored = resolveRestoreTextEndpoints(
-			BLOCK_ID,
-			{
-				type: "text",
-				anchor: { blockId: BLOCK_ID, offset: 3 },
-				focus: { blockId: BLOCK_ID, offset: 3 },
-			},
-			{
-				blockId: BLOCK_ID,
-				anchorOffset: 1,
-				focusOffset: 5,
-			},
-		);
-
-		expect(restored).toEqual({
-			anchor: { blockId: BLOCK_ID, offset: 3 },
-			focus: { blockId: BLOCK_ID, offset: 3 },
-		});
-	});
-
-	it("falls back to the programmatic stamp when no live selection addresses the field", () => {
-		const restored = resolveRestoreTextEndpoints(BLOCK_ID, null, {
-			blockId: BLOCK_ID,
-			anchorOffset: 4,
-			focusOffset: 9,
-		});
-
-		expect(restored).toEqual({
-			anchor: { blockId: BLOCK_ID, offset: 4 },
-			focus: { blockId: BLOCK_ID, offset: 9 },
-		});
-	});
-
-	it("keeps the cell-scoped stamp when a cell gates the live selection out", () => {
-		const cellCaret = {
-			blockId: BLOCK_ID,
-			anchorOffset: 1,
-			focusOffset: 1,
-		};
-		const blockLevelSelection = {
-			type: "text",
-			anchor: { blockId: BLOCK_ID, offset: 0 },
-			focus: { blockId: BLOCK_ID, offset: 0 },
-		} as const;
-
-		const restored = resolveRestoreTextEndpoints(
-			BLOCK_ID,
-			resolveLiveTextSelection(blockLevelSelection, BLOCK_ID, {
-				row: 0,
-				col: 0,
-			}),
-			cellCaret,
-		);
-
-		expect(restored).toEqual({
-			anchor: { blockId: BLOCK_ID, offset: 1 },
-			focus: { blockId: BLOCK_ID, offset: 1 },
-		});
 	});
 });
 

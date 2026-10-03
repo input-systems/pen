@@ -996,10 +996,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 		);
 	}
 
-	hasBackendSelectionAuthority(source: FieldEditorSelectionSource): boolean {
-		return this._selectionCoordinator.hasAuthoritySelection(source);
-	}
-
 	clearBackendSelectionAuthority(source: FieldEditorSelectionSource): void {
 		this._selectionCoordinator.clearAuthoritySelection(source);
 	}

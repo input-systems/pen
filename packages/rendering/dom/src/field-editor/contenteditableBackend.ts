@@ -30,7 +30,6 @@ import type {
 import { DIRECT_HANDLERS } from "./contenteditableDirectHandlers";
 import {
 	canResolveInputRange,
-	isNavigationSelectionKey,
 	mapOffsetThroughRemoteDeltas,
 	rebaseTextDiffOps,
 	caretAfterRebasedDiff,
@@ -39,7 +38,6 @@ import {
 import {
 	resolveLiveTextSelection,
 	resolveRestoreCellEndpoints,
-	resolveRestoreTextEndpoints,
 } from "./selectionAuthority";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
@@ -49,10 +47,7 @@ import {
 	authorityOffsetsInBlock,
 	type ReaderSelection,
 } from "./selectionReader";
-import {
-	isCollapsedDomAgainstProjectedOffsets,
-	isFullBlockEchoAgainstCollapsedCaret,
-} from "./contenteditableEchoRestore";
+import { isFullBlockEchoAgainstCollapsedCaret } from "./contenteditableEchoRestore";
 
 export class ContentEditableBackend {
 	protected element: HTMLElement | null = null;
@@ -226,7 +221,6 @@ export class ContentEditableBackend {
 		});
 		this.ensureActiveDOMMatchesYText();
 		this.restoreDOMSelectionFromEditor();
-		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
 	}
 
 	commitDispatchedEdit(): void {
@@ -238,11 +232,6 @@ export class ContentEditableBackend {
 			selection.anchor.blockId === blockId &&
 			selection.focus.blockId === blockId
 		) {
-			this.fieldEditor.setBackendSelectionAuthority("programmatic", {
-				blockId,
-				anchorOffset: selection.anchor.offset,
-				focusOffset: selection.focus.offset,
-			});
 			this.fieldEditor.syncTextSelection(
 				blockId,
 				selection.anchor.offset,
@@ -251,7 +240,6 @@ export class ContentEditableBackend {
 		}
 		this.ensureActiveDOMMatchesYText();
 		this.restoreDOMSelectionFromEditor();
-		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
 	}
 
 	applyListInputRule(options: {
@@ -262,19 +250,12 @@ export class ContentEditableBackend {
 		const target = applyListInputRule(this.editor, options);
 		if (!target) return false;
 
-		this.fieldEditor.setBackendSelectionAuthority("programmatic", {
-			blockId: target.blockId,
-			anchorOffset: target.anchorOffset,
-			focusOffset: target.focusOffset,
-		});
-
 		this.fieldEditor.syncTextSelection(
 			target.blockId,
 			target.anchorOffset,
 			target.focusOffset,
 		);
 		this.restoreDOMSelectionFromEditor();
-		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
 		return true;
 	}
 
@@ -284,16 +265,9 @@ export class ContentEditableBackend {
 
 		const blockId = this.fieldEditor.focusBlockId;
 		if (!blockId) return;
-		const selection = this.editor.selection;
-
-		const pendingSelection = this.fieldEditor.getBackendSelectionAuthority(
-			"programmatic",
-			blockId,
-		);
 		const activeCell = this._getActiveCellCoord(blockId);
 		if (activeCell) {
 			const activeSelection = resolveRestoreCellEndpoints(
-				pendingSelection,
 				this.fieldEditor.getBackendSelectionAuthority("cell", blockId),
 				activeCell,
 			);
@@ -305,23 +279,13 @@ export class ContentEditableBackend {
 			});
 			return;
 		}
-		const restored = resolveRestoreTextEndpoints(
+		const restored = resolveLiveTextSelection(
+			this.editor.selection,
 			blockId,
-			resolveLiveTextSelection(selection, blockId, activeCell),
-			pendingSelection,
+			activeCell,
 		);
-		const anchor = restored?.anchor ?? null;
-		const focus = restored?.focus ?? null;
-
-		if (!anchor || !focus) return;
-		if (anchor.blockId !== blockId || focus.blockId !== blockId) {
-			return;
-		}
-		this.fieldEditor.setBackendSelectionAuthority("programmatic", {
-			blockId,
-			anchorOffset: anchor.offset,
-			focusOffset: focus.offset,
-		});
+		if (!restored) return;
+		const { anchor, focus } = restored;
 
 		const root = element.closest(
 			"[data-pen-editor-root]",
@@ -562,13 +526,13 @@ export class ContentEditableBackend {
 		this.discardObservedMutations();
 	};
 
-	/** A programmatic stamp restores the caret; otherwise a full rebuild projects (P3). */
+	/** A full rebuild projects the record (P3). */
 	protected reconcileDeltaAndProject(
 		blockId: string | null,
 		delta: FieldEditorDelta[],
 	): void {
 		const rebuilt = this.reconcileDelta(blockId, delta);
-		if (this.restoreProgrammaticSelection() || !rebuilt || !blockId) {
+		if (!rebuilt || !blockId) {
 			return;
 		}
 		this.fieldEditor.projectAfterRebuild?.([blockId]);
@@ -601,14 +565,6 @@ export class ContentEditableBackend {
 			this.fullReconcileActiveField(blockId);
 		}
 		return !applied;
-	}
-
-	protected restoreProgrammaticSelection(): boolean {
-		if (!this.fieldEditor.hasBackendSelectionAuthority("programmatic")) {
-			return false;
-		}
-		this.restoreDOMSelectionFromEditor();
-		return true;
 	}
 
 	/** Table cells and decorations that split text runs cannot take a delta patch. */
@@ -690,7 +646,6 @@ export class ContentEditableBackend {
 		if (!result.applied) return;
 		this.ensureActiveDOMMatchesYText();
 		this.restoreDOMSelectionFromEditor();
-		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
 	}
 
 	protected ensureActiveDOMMatchesYText(): boolean {
@@ -753,9 +708,6 @@ export class ContentEditableBackend {
 
 	protected handleKeyDown = (event: KeyboardEvent): void => {
 		if (!this.ytext) return;
-		if (isNavigationSelectionKey(event)) {
-			this.fieldEditor.clearBackendSelectionAuthority("programmatic");
-		}
 
 		const handled = handleFieldEditorKeyDown({
 			event,
@@ -822,10 +774,9 @@ export class ContentEditableBackend {
 	}
 
 	/**
-	 * PH1 echo restores (W3.R4 removes them one engine-gated change at a
-	 * time): a full-block echo against a collapsed caret, and a collapsed DOM
-	 * caret that disagrees with the offsets this backend projected, are put
-	 * back from the editor instead of read.
+	 * PH1 echo restore (W3.R4 removes it in an engine-gated change): a
+	 * full-block echo against a collapsed caret is put back from the editor
+	 * instead of read. Any other closed-window caret diverges (P2).
 	 */
 	interceptDomSelectionRead(
 		proposal: Exclude<ReaderSelection, null>,
@@ -837,13 +788,7 @@ export class ContentEditableBackend {
 				proposal,
 				this.fieldEditor.selection,
 				(blockId) => this.editor.getBlock(blockId)?.length() ?? null,
-			) ||
-			// R3: a collapsed caret inside an open gesture window is the
-			// user's click, not an echo of the offsets projected before it.
-			(!this.fieldEditor.isAdmissibleGestureRead?.() &&
-				isCollapsedDomAgainstProjectedOffsets(proposal, (blockId) =>
-					this.projectedOffsets(blockId),
-				))
+			)
 		) {
 			this.restoreDOMSelectionFromEditor();
 			return true;
@@ -851,17 +796,9 @@ export class ContentEditableBackend {
 		return false;
 	}
 
-	private projectedOffsets(blockId: string) {
-		return this.fieldEditor.getBackendSelectionAuthority(
-			"programmatic",
-			blockId,
-		);
-	}
-
 	// ── Clipboard events ──────────────────────────────────────
 
 	protected handlePointerDown = (): void => {
 		this.fieldEditor.notifyGestureEvent?.("pointerdown");
-		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
 	};
 }

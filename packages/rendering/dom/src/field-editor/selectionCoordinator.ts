@@ -96,10 +96,6 @@ export class FieldEditorSelectionCoordinator {
 		return this._authority.get(source, blockId);
 	}
 
-	hasAuthoritySelection(source: FieldEditorSelectionSource): boolean {
-		return this._authority.has(source);
-	}
-
 	clearAuthoritySelection(source: FieldEditorSelectionSource): void {
 		this._authority.clear(source);
 	}

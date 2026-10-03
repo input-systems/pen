@@ -164,7 +164,6 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 		source: FieldEditorSelectionSource,
 		blockId?: string | null,
 	): FieldEditorSelectionSnapshot | null;
-	hasBackendSelectionAuthority(source: FieldEditorSelectionSource): boolean;
 	clearBackendSelectionAuthority(source: FieldEditorSelectionSource): void;
 	withBackendSelectionWrite<T>(write: () => T): T;
 	getBackendSelectionApplicationDepth(): number;
