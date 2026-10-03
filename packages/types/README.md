@@ -14,7 +14,7 @@ This package has no peer dependencies. Hosts should install `@input/pen-core` in
 pnpm add @input/pen-types
 ```
 
-`engines.node` is `>=22`.
+`engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`.
 
 ## Usage
 

@@ -80,7 +80,7 @@ In Next.js App Router, import `PenEditor` from a Client Component. `defaultPrese
 
 ## HOST3 — Node floor
 
-`engines.node` is `>=22`. The workspace Node and browser floor is the browser-and-Node-support table in the repository root README.
+`engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`. The workspace Node and browser floor is the browser-and-Node-support table in the repository root README.
 
 ## HOST6 — no required stylesheet
 

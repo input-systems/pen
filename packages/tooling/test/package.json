@@ -39,7 +39,7 @@
     "LICENSE.md"
   ],
   "engines": {
-    "node": ">=22"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "sideEffects": false,
   "scripts": {
@@ -56,11 +56,12 @@
     "@input/pen-interop": "workspace:^",
     "@input/pen-schema": "workspace:^",
     "@input/pen-types": "workspace:^",
-    "yjs": "^13.6.32"
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
+    "@types/node": "^25.4.0",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.11"
   }
 }

@@ -1,7 +1,7 @@
-# HOST3 / API7: Node versions at the endpoints of engines.node (>=22)
+# HOST3 / API7: Node versions at the endpoints of engines.node (^22.22.2 || ^24.15.0 || >=26.0.0)
 # plus one non-Linux runner. Kept out of ci.yml so it can be edited
 # independently. Floor 22 is the setup-node pin in ci/release/docs;
-# 26 is Node Current as of 2026-08 (the open upper end of >=22).
+# 26 is Node Current as of 2026-08 (the open upper end of >=26.0.0).
 name: Node
 
 on:

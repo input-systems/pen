@@ -58,7 +58,7 @@ export function GettingStartedPage() {
 				<code>min-width</code>.
 			</p>
 			<p>
-				Runtime floor (HOST3): Node <code>&gt;=22</code>, Chromium 93,
+				Runtime floor (HOST3): Node <code>^22.22.2 || ^24.15.0 || &gt;=26.0.0</code>, Chromium 93,
 				Firefox 92, Safari 15.4. The table and the feature-detection
 				fallbacks live on{" "}
 				<a href="#/support">Browser and Node support</a>.
