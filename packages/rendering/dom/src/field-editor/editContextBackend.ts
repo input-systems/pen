@@ -96,6 +96,13 @@ export class EditContextBackend {
 		null;
 	protected editor: Editor;
 	protected fieldEditor: FieldEditorInputController;
+	/**
+	 * FE9: the last caret a `textupdate` resolved. EditContext can report a
+	 * stale range after it, so it is input to `resolveEditContextTextUpdateRange`
+	 * and never projected; a `mapped` `selectionChange`, a pointerdown, a
+	 * navigation key and history clear it.
+	 */
+	protected trustedTypingCaret: EditContextSelection | null = null;
 
 	constructor(editor: Editor, fieldEditor: FieldEditorInputController) {
 		this.editor = editor;
@@ -200,6 +207,7 @@ export class EditContextBackend {
 			this.fieldEditor.focusBlockId ?? undefined,
 		);
 		this.fieldEditor.resetBackendSelectionAuthority();
+		this.trustedTypingCaret = null;
 		this.fieldEditor.withBackendSelectionWrite(() => {
 			this.updateSelection();
 			this.fieldEditor.requestDomFocus(element, "backend-activate", {
@@ -226,6 +234,7 @@ export class EditContextBackend {
 		this.ytext = null;
 		this.observer = null;
 		this.inlineDecorationsSignature = null;
+		this.trustedTypingCaret = null;
 		this.fieldEditor.resetBackendSelectionAuthority();
 		this.fieldEditor.setComposing(false);
 	}
@@ -260,15 +269,6 @@ export class EditContextBackend {
 
 		const len = this.ytext.length;
 		writeEditContextSelection(this.editContext, len, len);
-		this.fieldEditor.setEditContextSelectionSnapshot(
-			blockId
-				? {
-						blockId,
-						anchorOffset: len,
-						focusOffset: len,
-					}
-				: null,
-		);
 	}
 
 	protected projectDOMSelection(
@@ -686,13 +686,7 @@ export class EditContextBackend {
 			editorSelectionRange: this.resolveEditorSelectionRange(
 				input.blockId,
 			),
-			editContextSelection:
-				this.fieldEditor.getEditContextSelectionSnapshot(input.blockId),
-			authoritativeTextInputSelection:
-				this.fieldEditor.getBackendSelectionAuthority(
-					"edit-context-textupdate",
-					input.blockId,
-				),
+			authoritativeTextInputSelection: this.trustedCaretIn(input.blockId),
 			editorCaret,
 		});
 	}
@@ -712,12 +706,8 @@ export class EditContextBackend {
 				options,
 			),
 		};
-		this.fieldEditor.setEditContextSelectionSnapshot(resolvedSelection);
 		if (options?.source === "text-update") {
-			this.fieldEditor.setBackendSelectionAuthority(
-				"edit-context-textupdate",
-				resolvedSelection,
-			);
+			this.trustedTypingCaret = resolvedSelection;
 		}
 		if (!this.editContext) return;
 		writeEditContextSelection(
@@ -737,6 +727,10 @@ export class EditContextBackend {
 		return options?.source !== "text-update" && (this.ytext?.length ?? 0) === 0
 			? 0
 			: offset;
+	}
+
+	selectionMapped(): void {
+		this.trustedTypingCaret = null;
 	}
 
 	/** Whether the EditContext buffer's selection is the authority's (W3.R6). */
@@ -863,12 +857,6 @@ export class EditContextBackend {
 		if (this.restoreStaleCollapsedOffsets(blockId, offsets)) return;
 
 		writeEditContextSelection(editContext, offsets.start, offsets.end);
-		const nextSelection = {
-			blockId,
-			anchorOffset: offsets.anchor,
-			focusOffset: offsets.focus,
-		};
-		this.fieldEditor.setEditContextSelectionSnapshot(nextSelection);
 		this.fieldEditor.readDomSelection?.({
 			type: "text",
 			anchor: { blockId, offset: offsets.anchor },
@@ -930,29 +918,15 @@ export class EditContextBackend {
 			return;
 		}
 		if (isHistory) {
-			this.fieldEditor.clearBackendSelectionAuthority(
-				"edit-context-textupdate",
-			);
-			const { start: clampedSelectionStart, end: clampedSelectionEnd } =
-				replaceEditContextText(
-					this.editContext,
-					this.ytext?.toString?.() ?? "",
-				);
-			const blockId = this.fieldEditor.focusBlockId;
-			this.fieldEditor.setEditContextSelectionSnapshot(
-				blockId
-					? {
-							blockId,
-							anchorOffset: clampedSelectionStart,
-							focusOffset: clampedSelectionEnd,
-						}
-					: null,
-			);
+			this.trustedTypingCaret = null;
+			replaceEditContextText(this.editContext, this.ytext.toString());
 			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 				urlPolicy: urlPolicyFromEditor(this.editor),
 				inlineDecorations: this.getInlineDecorationsForBlock(),
 			});
-			this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
+			this.fieldEditor.notifyDomReconciled(
+				this.fieldEditor.focusBlockId ?? undefined,
+			);
 			this.restoreDOMCaret();
 			return;
 		}
@@ -1020,7 +994,10 @@ export class EditContextBackend {
 			}
 		}
 
-		this.restoreDOMCaret();
+		// Inside the apply the authority still holds the pre-apply caret; the
+		// buffer holds the one this backend wrote for its own edit, and P1
+		// projects the record once the apply returns.
+		this.restoreDOMCaretFromBuffer();
 	};
 
 	protected handleDecorationsChange = (): void => {
@@ -1059,43 +1036,23 @@ export class EditContextBackend {
 		) as HTMLElement | null;
 		const selection = this.fieldEditor.selection;
 		const blockId = this.fieldEditor.focusBlockId;
-		const authoritativeInputSelection =
-			blockId != null
-				? this.fieldEditor.getBackendSelectionAuthority(
-						"edit-context-textupdate",
-						blockId,
-					)
-				: null;
-		const editContextSelection =
-			this.fieldEditor.getEditContextSelectionSnapshot(blockId);
-		const editorSelection =
-			selection?.type === "text" &&
+		if (
+			root &&
 			blockId &&
+			selection?.type === "text" &&
 			selection.anchor.blockId === blockId &&
 			selection.focus.blockId === blockId
-				? selection
-				: null;
-		const anchorOffset =
-			authoritativeInputSelection?.anchorOffset ??
-			editorSelection?.anchor.offset ??
-			editContextSelection?.anchorOffset ??
-			null;
-		const focusOffset =
-			authoritativeInputSelection?.focusOffset ??
-			editorSelection?.focus.offset ??
-			editContextSelection?.focusOffset ??
-			null;
-		if (root && blockId && anchorOffset != null && focusOffset != null) {
+		) {
 			this.fieldEditor.withBackendSelectionWrite(() => {
-				writeNativeRange(
-					root,
-					{ blockId, offset: anchorOffset },
-					{ blockId, offset: focusOffset },
-				);
+				writeNativeRange(root, selection.anchor, selection.focus);
 			});
 			return;
 		}
+		this.restoreDOMCaretFromBuffer();
+	}
 
+	private restoreDOMCaretFromBuffer(): void {
+		if (!this.editContext || !this.element) return;
 		const start = this.editContext.selectionStart;
 		const end = this.editContext.selectionEnd;
 
@@ -1127,9 +1084,7 @@ export class EditContextBackend {
 	protected handleKeyDown = (event: KeyboardEvent): void => {
 		if (!this.editContext || !this.element || !this.ytext) return;
 		if (isNavigationSelectionKey(event)) {
-			this.fieldEditor.clearBackendSelectionAuthority(
-				"edit-context-textupdate",
-			);
+			this.trustedTypingCaret = null;
 		}
 
 		const blockId = this.fieldEditor.focusBlockId;
@@ -1138,12 +1093,11 @@ export class EditContextBackend {
 		const liveDomOffsets = blockId
 			? authorityOffsetsInBlock(this.editor, blockId)
 			: null;
-		const { range, nextSelection, shouldSyncEditContextSelection } =
+		const { range, shouldSyncEditContextSelection } =
 			this.resolveKeyDownRange(blockId, event, liveDomOffsets);
 
 		if (shouldSyncEditContextSelection) {
 			writeEditContextSelection(this.editContext, range.start, range.end);
-			this.fieldEditor.setEditContextSelectionSnapshot(nextSelection);
 		}
 
 		const handled = handleFieldEditorKeyDown({
@@ -1178,9 +1132,6 @@ export class EditContextBackend {
 			collapsedEditorSelectionRange: blockId
 				? this.resolveCollapsedEditorSelectionRange(blockId)
 				: null,
-			projectedTextSelection: blockId
-				? this.getProjectedTextSelection(blockId)
-				: null,
 			synchronizedEditContextRange: blockId
 				? this.resolveSynchronizedEditContextRange(blockId)
 				: null,
@@ -1202,12 +1153,6 @@ export class EditContextBackend {
 				this.editContext.selectionEnd,
 			),
 		};
-	}
-
-	protected getProjectedTextSelection(
-		blockId: string,
-	): EditContextSelection | null {
-		return this.fieldEditor.getEditContextSelectionSnapshot(blockId);
 	}
 
 	protected resolveCollapsedEditorSelectionRange(
@@ -1285,26 +1230,20 @@ export class EditContextBackend {
 
 	protected handlePointerDown = (): void => {
 		this.fieldEditor.notifyGestureEvent?.("pointerdown");
-		this.fieldEditor.clearBackendSelectionAuthority(
-			"edit-context-textupdate",
-		);
+		this.trustedTypingCaret = null;
 	};
 
+	protected trustedCaretIn(blockId: string): EditContextSelection | null {
+		const caret = this.trustedTypingCaret;
+		return caret?.blockId === blockId ? caret : null;
+	}
+
+	/** The trusted typing caret in `blockId`, when it is collapsed. */
 	protected getAuthoritativeTextInputSelection(
 		blockId: string,
 	): EditContextSelection | null {
-		const selection = this.fieldEditor.getBackendSelectionAuthority(
-			"edit-context-textupdate",
-			blockId,
-		);
-		if (!selection || selection.anchorOffset !== selection.focusOffset) {
-			return null;
-		}
-		return {
-			blockId: selection.blockId,
-			anchorOffset: selection.anchorOffset,
-			focusOffset: selection.focusOffset,
-		};
+		const caret = this.trustedCaretIn(blockId);
+		return caret && caret.anchorOffset === caret.focusOffset ? caret : null;
 	}
 }
 
@@ -1332,15 +1271,16 @@ function resyncEditContextSpan(editContext: EditContext, nextText: string): void
 
 /**
  * Replaces an EditContext's text with `nextText` and clamps its selection to
- * the new length. Returns the clamped selection.
+ * the new length.
  */
 function replaceEditContextText(
 	editContext: EditContext,
 	nextText: string,
-): { start: number; end: number } {
+): void {
 	editContext.updateText(0, editContext.text.length, nextText);
-	const start = Math.min(editContext.selectionStart, nextText.length);
-	const end = Math.min(editContext.selectionEnd, nextText.length);
-	writeEditContextSelection(editContext, start, end);
-	return { start, end };
+	writeEditContextSelection(
+		editContext,
+		Math.min(editContext.selectionStart, nextText.length),
+		Math.min(editContext.selectionEnd, nextText.length),
+	);
 }

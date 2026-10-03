@@ -18,7 +18,6 @@ export type DirectionalSelectionOffsets = {
 
 export type KeyDownRangeResolution = {
 	range: EditContextRange;
-	nextSelection: EditContextSelection | null;
 	shouldSyncEditContextSelection: boolean;
 };
 
@@ -36,24 +35,19 @@ export function resolveEditContextTextUpdateRange(input: {
 	selectionEnd?: number;
 	isLogicallyEmpty: boolean;
 	editorSelectionRange: EditContextRange | null;
-	editContextSelection: EditContextSelection | null;
 	authoritativeTextInputSelection: EditContextSelection | null;
 	editorCaret: number | null;
 }): TextUpdateRangeResolution {
 	const isCollapsedInsert =
 		input.text.length > 0 &&
 		input.updateRangeStart === input.updateRangeEnd;
-	const editContextCaret = collapsedSelectionOffset(
-		input.editContextSelection,
-		input.blockId,
-	);
 	const authoritativeInputCaret = collapsedSelectionOffset(
 		input.authoritativeTextInputSelection,
 		input.blockId,
 	);
 	const trustedCaret =
 		authoritativeInputCaret ??
-		(input.isLogicallyEmpty ? 0 : (editContextCaret ?? input.editorCaret));
+		(input.isLogicallyEmpty ? 0 : input.editorCaret);
 	const shouldUseTrustedCaret =
 		isCollapsedInsert &&
 		trustedCaret != null &&
@@ -124,7 +118,6 @@ export function resolveEditContextKeyDownRange(input: {
 	editorSelectionRange: EditContextRange | null;
 	authoritativeTextInputSelection: EditContextSelection | null;
 	collapsedEditorSelectionRange: EditContextRange | null;
-	projectedTextSelection: EditContextSelection | null;
 	synchronizedEditContextRange: EditContextRange | null;
 }): KeyDownRangeResolution {
 	if (!input.blockId) {
@@ -132,7 +125,6 @@ export function resolveEditContextKeyDownRange(input: {
 			range: input.liveDomOffsets
 				? directionalSelectionToRange(input.liveDomOffsets)
 				: input.editContextRange,
-			nextSelection: null,
 			shouldSyncEditContextSelection: false,
 		};
 	}
@@ -141,7 +133,6 @@ export function resolveEditContextKeyDownRange(input: {
 	if (trustedKeyRange) {
 		return {
 			range: trustedKeyRange,
-			nextSelection: rangeToSelection(input.blockId, trustedKeyRange),
 			shouldSyncEditContextSelection: true,
 		};
 	}
@@ -154,10 +145,6 @@ export function resolveEditContextKeyDownRange(input: {
 	) {
 		return {
 			range: input.editorSelectionRange,
-			nextSelection: rangeToSelection(
-				input.blockId,
-				input.editorSelectionRange,
-			),
 			shouldSyncEditContextSelection: true,
 		};
 	}
@@ -171,11 +158,6 @@ export function resolveEditContextKeyDownRange(input: {
 	) {
 		return {
 			range: directionalSelectionToRange(input.liveDomOffsets),
-			nextSelection: {
-				blockId: input.blockId,
-				anchorOffset: input.liveDomOffsets.anchor,
-				focusOffset: input.liveDomOffsets.focus,
-			},
 			shouldSyncEditContextSelection: true,
 		};
 	}
@@ -184,7 +166,6 @@ export function resolveEditContextKeyDownRange(input: {
 		range: input.liveDomOffsets
 			? directionalSelectionToRange(input.liveDomOffsets)
 			: input.editContextRange,
-		nextSelection: null,
 		shouldSyncEditContextSelection: false,
 	};
 }
@@ -220,17 +201,6 @@ function directionalSelectionToRange(
 	};
 }
 
-function rangeToSelection(
-	blockId: string,
-	range: EditContextRange,
-): EditContextSelection {
-	return {
-		blockId,
-		anchorOffset: range.start,
-		focusOffset: range.end,
-	};
-}
-
 export function rangesEqual(
 	left: EditContextRange,
 	right: EditContextRange,
@@ -243,7 +213,6 @@ function resolveTrustedKeyDownRange(input: {
 	editorSelectionRange: EditContextRange | null;
 	authoritativeTextInputSelection: EditContextSelection | null;
 	collapsedEditorSelectionRange: EditContextRange | null;
-	projectedTextSelection: EditContextSelection | null;
 	synchronizedEditContextRange: EditContextRange | null;
 }): EditContextRange | null {
 	if (!input.isTextEditingKey) {
@@ -260,10 +229,6 @@ function resolveTrustedKeyDownRange(input: {
 
 	if (input.collapsedEditorSelectionRange) {
 		return input.collapsedEditorSelectionRange;
-	}
-
-	if (input.projectedTextSelection) {
-		return selectionToRange(input.projectedTextSelection);
 	}
 
 	if (input.synchronizedEditContextRange) {

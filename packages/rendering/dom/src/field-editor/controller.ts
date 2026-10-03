@@ -167,12 +167,6 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 	clearBackendSelectionAuthority(source: FieldEditorSelectionSource): void;
 	withBackendSelectionWrite<T>(write: () => T): T;
 	getBackendSelectionApplicationDepth(): number;
-	setEditContextSelectionSnapshot(
-		selection: FieldEditorSelectionSnapshot | null,
-	): void;
-	getEditContextSelectionSnapshot(
-		blockId?: string | null,
-	): FieldEditorSelectionSnapshot | null;
 	notifyGestureEvent?(eventKind: GestureEventKind): void;
 	getGestureWindows?(): GestureWindowState;
 	isAdmissibleGestureRead?(): boolean;

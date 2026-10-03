@@ -43,6 +43,20 @@ class FakeEditContext implements EditContext {
 	removeEventListener(type: string, handler: (event: Event) => void): void {
 		this.listeners.get(type)?.delete(handler);
 	}
+
+	/** A `textupdate` as the browser reports it, range and caret included. */
+	textUpdate(start: number, end: number, text: string): void {
+		const event = Object.assign(new Event("textupdate"), {
+			updateRangeStart: start,
+			updateRangeEnd: end,
+			text,
+			selectionStart: start + text.length,
+			selectionEnd: start + text.length,
+		});
+		for (const handler of this.listeners.get("textupdate") ?? []) {
+			handler(event);
+		}
+	}
 }
 
 const fixtures: Array<{
@@ -94,77 +108,49 @@ function mountEditContextEditor(text: string) {
 	return { editor, fieldEditor, root, blockId, inline };
 }
 
-describe("FE9 EditContext mapped caret after apply", () => {
-	it("FE9: programmatic splice drops textupdate authority and updates EditContext", () => {
+describe("FE9 EditContext trusted typing caret", () => {
+	it("FE9: a mapped selectionChange clears the backend's trusted typing caret and the next textupdate inserts at the mapped caret", () => {
 		const { editor, fieldEditor, blockId, inline } =
-			mountEditContextEditor("aa :sm bb");
+			mountEditContextEditor("hello world");
 		const editContext = (
 			inline as HTMLElement & { editContext?: FakeEditContext }
-		).editContext;
-		expect(editContext).toBeDefined();
+		).editContext!;
 
-		fieldEditor.activateTextSelection(blockId, 6, 6);
-		fieldEditor.setBackendSelectionAuthority("edit-context-textupdate", {
-			blockId,
-			anchorOffset: 6,
-			focusOffset: 6,
-		});
-		editContext!.updateSelection(6, 6);
+		fieldEditor.activateTextSelection(blockId, 5, 5);
+		editContext.textUpdate(5, 5, "x");
+		expect(editor.getBlock(blockId)?.textContent()).toBe("hellox world");
 
 		editor.apply(
-			[
-				{
-					type: "splice-text",
-					blockId,
-					from: 3,
-					to: 6,
-					insert: "",
-				},
-			],
+			[{ type: "splice-text", blockId, from: 0, to: 3, insert: "" }],
 			{ origin: "user" },
 		);
-
-		expect(editor.getBlock(blockId)?.textContent()).toBe("aa  bb");
 		expect(editor.selection).toMatchObject({
 			type: "text",
 			focus: { blockId, offset: 3 },
 		});
-		expect(
-			fieldEditor.getBackendSelectionAuthority(
-				"edit-context-textupdate",
-				blockId,
-			),
-		).toBeNull();
-		expect(editContext!.selectionStart).toBe(3);
-		expect(editContext!.selectionEnd).toBe(3);
+		expect(editContext.selectionStart).toBe(3);
+		expect(editContext.selectionEnd).toBe(3);
+
+		// a stale range: the pre-apply caret would put "y" at 6
+		editContext.textUpdate(6, 6, "y");
+		expect(editor.getBlock(blockId)?.textContent()).toBe("loxy world");
 	});
 
-	it("FE9: an ordinary selection change keeps textupdate authority", () => {
+	it("FE9: an ordinary selection change keeps the trusted typing caret", () => {
 		const { editor, fieldEditor, blockId, inline } =
-			mountEditContextEditor("aa :sm bb");
+			mountEditContextEditor("hello world");
 		const editContext = (
 			inline as HTMLElement & { editContext?: FakeEditContext }
-		).editContext;
-		expect(editContext).toBeDefined();
+		).editContext!;
 
-		fieldEditor.activateTextSelection(blockId, 6, 6);
-		fieldEditor.setBackendSelectionAuthority("edit-context-textupdate", {
-			blockId,
-			anchorOffset: 6,
-			focusOffset: 6,
-		});
-		editContext!.updateSelection(6, 6);
+		fieldEditor.activateTextSelection(blockId, 5, 5);
+		editContext.textUpdate(5, 5, "x");
 
-		// not a mapped remap, so the stamp is still the last trusted typing
-		// caret that resolveEditContextTextUpdateRange needs when EditContext
-		// reports a stale range. clearing it on every projection loses that.
+		// not a mapped remap, so the caret is still the last trusted typing
+		// caret a stale EditContext range resolves against
 		editor.selectText(blockId, 2, 2);
+		editContext.textUpdate(9, 9, "y");
 
-		expect(
-			fieldEditor.getBackendSelectionAuthority(
-				"edit-context-textupdate",
-				blockId,
-			),
-		).toMatchObject({ anchorOffset: 6, focusOffset: 6 });
+		expect(editor.getBlock(blockId)?.textContent()).toBe("helloxy world");
 	});
 });

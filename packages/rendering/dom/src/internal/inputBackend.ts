@@ -16,4 +16,6 @@ export interface InputBackend {
 	 * outside the DOM (an EditContext buffer) already matches the authority.
 	 */
 	selectionAgreesWithAuthority?(): boolean;
+	/** FE9: an A5 `mapped` `selectionChange`; pre-apply input state is stale. */
+	selectionMapped?(): void;
 }

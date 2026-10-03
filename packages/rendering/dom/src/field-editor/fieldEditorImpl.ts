@@ -291,11 +291,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._unsubscribeSelection = this._editor.onSelectionChange(
 			(record) => {
 				if (record.origin === "mapped") {
-					// FE9: A5 remapped the caret after apply. the last
-					// textupdate stamp is a pre-apply offset.
-					this.clearBackendSelectionAuthority(
-						"edit-context-textupdate",
-					);
+					this._backendLifecycle.current?.selectionMapped?.();
 				}
 				const selection = this._editor.selection;
 				if (
@@ -1006,18 +1002,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	getBackendSelectionApplicationDepth(): number {
 		return this._selectionCoordinator.isApplyingSelection;
-	}
-
-	setEditContextSelectionSnapshot(
-		selection: FieldEditorSelectionSnapshot | null,
-	): void {
-		this._selectionCoordinator.setEditContextSelection(selection);
-	}
-
-	getEditContextSelectionSnapshot(
-		blockId?: string | null,
-	): FieldEditorSelectionSnapshot | null {
-		return this._selectionCoordinator.getEditContextSelection(blockId);
 	}
 
 	private _applyAcceptedDomSelection(

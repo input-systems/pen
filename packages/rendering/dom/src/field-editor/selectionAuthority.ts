@@ -1,4 +1,4 @@
-export type FieldEditorSelectionSource = "edit-context-textupdate" | "cell";
+export type FieldEditorSelectionSource = "cell";
 
 export type FieldEditorSelectionCell = {
 	row: number;

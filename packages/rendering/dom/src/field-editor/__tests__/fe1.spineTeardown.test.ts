@@ -156,8 +156,6 @@ function stubController(blockId: string) {
 		setBackendSelectionAuthority: () => {},
 		getBackendSelectionAuthority: () => null,
 		clearBackendSelectionAuthority: () => {},
-		setEditContextSelectionSnapshot: () => {},
-		getEditContextSelectionSnapshot: () => null,
 		selection: null,
 	} as unknown as FieldEditorInputController;
 }

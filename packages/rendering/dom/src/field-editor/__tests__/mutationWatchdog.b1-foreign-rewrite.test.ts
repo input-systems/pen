@@ -53,8 +53,6 @@ function createFieldEditor(blockId: string) {
 		setBackendSelectionAuthority: () => {},
 		getBackendSelectionAuthority: () => null,
 		clearBackendSelectionAuthority: () => {},
-		setEditContextSelectionSnapshot: () => {},
-		getEditContextSelectionSnapshot: () => null,
 		notifyGestureEvent: () => {},
 	};
 }

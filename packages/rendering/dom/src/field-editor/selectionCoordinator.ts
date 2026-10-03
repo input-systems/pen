@@ -27,7 +27,6 @@ export class FieldEditorSelectionCoordinator {
 	private readonly _authority = new FieldEditorSelectionAuthority();
 	private readonly _projection: SelectionProjector;
 	private readonly _reader: SelectionReader;
-	private _editContextSelection: FieldEditorSelectionSnapshot | null = null;
 
 	constructor(options: SelectionProjectorOptions, reader: SelectionReader) {
 		this._reader = reader;
@@ -43,7 +42,6 @@ export class FieldEditorSelectionCoordinator {
 
 	reset(): void {
 		this._authority.reset();
-		this._editContextSelection = null;
 		this._projection.reset();
 		this._reader.resetGestures();
 	}
@@ -79,7 +77,6 @@ export class FieldEditorSelectionCoordinator {
 
 	resetAuthority(): void {
 		this._authority.reset();
-		this._editContextSelection = null;
 	}
 
 	setAuthoritySelection(
@@ -106,24 +103,6 @@ export class FieldEditorSelectionCoordinator {
 
 	withSelectionWrite<T>(write: () => T): T {
 		return this._authority.withSelectionWrite(write);
-	}
-
-	setEditContextSelection(
-		selection: FieldEditorSelectionSnapshot | null,
-	): void {
-		this._editContextSelection = selection;
-	}
-
-	getEditContextSelection(
-		blockId?: string | null,
-	): FieldEditorSelectionSnapshot | null {
-		if (
-			!this._editContextSelection ||
-			(blockId && this._editContextSelection.blockId !== blockId)
-		) {
-			return null;
-		}
-		return this._editContextSelection;
 	}
 
 	beginPointerSelection(): void {

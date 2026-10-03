@@ -13,11 +13,6 @@ describe("resolveEditContextTextUpdateRange", () => {
 			text: "!",
 			isLogicallyEmpty: false,
 			editorSelectionRange: null,
-			editContextSelection: {
-				blockId: "p1",
-				anchorOffset: 3,
-				focusOffset: 3,
-			},
 			authoritativeTextInputSelection: null,
 			editorCaret: 3,
 		});
@@ -30,7 +25,7 @@ describe("resolveEditContextTextUpdateRange", () => {
 		});
 	});
 
-	it("FE9: leftover textupdate authority wins over a remapped editor caret", () => {
+	it("FE9: the trusted typing caret wins over a different editor caret", () => {
 		const result = resolveEditContextTextUpdateRange({
 			blockId: "p1",
 			updateRangeStart: 6,
@@ -38,11 +33,6 @@ describe("resolveEditContextTextUpdateRange", () => {
 			text: "x",
 			isLogicallyEmpty: false,
 			editorSelectionRange: null,
-			editContextSelection: {
-				blockId: "p1",
-				anchorOffset: 3,
-				focusOffset: 3,
-			},
 			authoritativeTextInputSelection: {
 				blockId: "p1",
 				anchorOffset: 6,
@@ -70,16 +60,10 @@ describe("resolveEditContextKeyDownRange", () => {
 			editorSelectionRange: { start: 3, end: 3 },
 			authoritativeTextInputSelection: null,
 			collapsedEditorSelectionRange: null,
-			projectedTextSelection: null,
 			synchronizedEditContextRange: null,
 		});
 
 		expect(result.range).toEqual({ start: 3, end: 3 });
-		expect(result.nextSelection).toEqual({
-			blockId: "p1",
-			anchorOffset: 3,
-			focusOffset: 3,
-		});
 		expect(result.shouldSyncEditContextSelection).toBe(true);
 	});
 });
