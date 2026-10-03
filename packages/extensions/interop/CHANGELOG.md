@@ -1,5 +1,21 @@
 # @input/pen-interop
 
+## 0.3.0
+
+### Minor Changes
+
+- 55f100d: Raise `engines.node` from `>=22` to `^22.22.2 || ^24.15.0 || >=26.0.0` (HOST3). `@input/pen-interop` sanitizes HTML through `isomorphic-dompurify` 4.3, which builds its Node window with jsdom 30, and jsdom 30 declares that range; `@input/pen`, `@input/pen-react`, and `@input/pen-vue` depend on interop, so the workspace-wide floor moves with it. Node 22 releases before 22.22.2, Node 24 releases before 24.15.0, and Node 23 and 25 are no longer supported.
+
+### Patch Changes
+
+- 55f100d: Update the HTML sanitizer's `isomorphic-dompurify` dependency from `~2.36.0` to `~4.3.0`, still pinned to a patch range (SEC7). The sanitizer's tag and attribute allowlist and its output are unchanged. On Node the wrapper now builds its window with jsdom 30; the matching `engines.node` change is in its own changeset.
+- 0931f55: HTML import no longer drops pasted text. A list nested as a child of the list itself, which is how Slack, Apple Notes and Google Docs write nested bullets, keeps every item at the right indent instead of losing the nested items; an `<li>` that only wraps a nested list adds no empty item, an item's block children import as lines of the one item, and an `<li>` copied without its list imports as a bullet. An inline wrapper around blocks, such as the `<b>` Google Docs puts around a whole copy, is read as a container, so its headings, lists and tables stay separate blocks instead of collapsing into one paragraph. A table caption imports as a paragraph before the table and a `<pre>` keeps text outside its `<code>`. As a backstop, a conversion that would still lose text imports the fragment as plain paragraphs, and a paste whose HTML parses to nothing falls back to literal clipboard text without reinterpreting Markdown or deleting the selection when no replacement exists. Schema containers keep inline body text outside their declared title source. Wrapper formatting respects inner overrides and resets, including table cells, and nested-only items do not consume the parent ordered list's start number.
+- Updated dependencies [55f100d]
+  - @input/pen-core@0.3.0
+  - @input/pen-ingest@0.3.0
+  - @input/pen-markdown@0.3.0
+  - @input/pen-types@0.3.0
+
 ## 0.2.14
 
 ### Patch Changes
