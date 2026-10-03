@@ -1,4 +1,5 @@
 import type { DocumentRange, Editor } from "@input/pen-types";
+import type { EditDocumentPreviewPlacement } from "../runtime/editDocumentPreview";
 import { normalizeFlowMarkdownOutput } from "../runtime/flowMarkdown";
 import { toStreamingPreviewText } from "../runtime/streamingPreviewText";
 import type {
@@ -151,45 +152,141 @@ export function selectionReviewPreviewInput(
 	};
 }
 
-/**
- * Whether the streamed operation adds content rather than replacing it. An
- * insert previewed as a replacement reads as the block being overwritten and
- * then snapping back, which is worse than showing nothing.
- */
-export function isInsertingEditOperation(operation: string | null): boolean {
-	return operation === "insert_blocks";
+export interface EditDocumentReviewPreviewSource {
+	sessionId: string;
+	turnId?: string;
+	operationIndex: number;
+	blockIds: readonly string[];
+	placement: EditDocumentPreviewPlacement | null;
+	operation: string | null;
+	text: string;
+	complete: boolean;
 }
 
+/**
+ * The review preview for one arriving `edit_document` operation, mapped to
+ * what that operation changes (RS6): a replace or delete covers every block
+ * it names, an insert previews on the side its placement names, and an
+ * operation that changes no text — a move, a format, a prop change, or one
+ * not yet named — returns `null` so it previews nothing.
+ *
+ * Offsets are logical (`block.length()`), so a block holding an inline atom
+ * is covered to its end (N6).
+ */
 export function editDocumentReviewPreviewInput(
 	editor: Editor,
-	input: {
-		sessionId: string;
-		turnId?: string;
-		operationIndex: number;
-		blockId: string;
-		operation: string | null;
-		text: string;
-	},
-): AIStreamingReviewPreviewInput {
-	const blockLength = blockTextLength(editor, input.blockId);
+	input: EditDocumentReviewPreviewSource,
+): AIStreamingReviewPreviewInput | null {
+	const blockIds = input.blockIds.filter(
+		(blockId) => editor.getBlock(blockId) != null,
+	);
+	const target = editDocumentPreviewTarget(
+		editor,
+		input.operation,
+		blockIds,
+		input.placement,
+	);
+	if (target == null) {
+		return null;
+	}
+	const isDelete = input.operation === "delete_blocks";
 	return {
 		sessionId: input.sessionId,
 		turnId: input.turnId,
 		operationIndex: input.operationIndex,
-		target: isInsertingEditOperation(input.operation)
-			? {
-					kind: "insertion-point",
-					blockId: input.blockId,
-					offset: blockLength,
-				}
-			: {
-					kind: "text-range",
-					blockId: input.blockId,
-					from: 0,
-					to: blockLength,
-				},
-		text: input.text,
+		target,
+		text: isDelete
+			? ""
+			: editDocumentPreviewText(
+					input.operation,
+					input.text,
+					input.placement,
+				),
+		complete: input.complete,
+		...(isDelete ? { deletesBlocks: true } : {}),
 	};
+}
+
+function editDocumentPreviewTarget(
+	editor: Editor,
+	operation: string | null,
+	blockIds: readonly string[],
+	placement: EditDocumentPreviewPlacement | null,
+): AIStreamingReviewPreviewTarget | null {
+	const first = blockIds[0];
+	if (first == null) {
+		return null;
+	}
+	switch (operation) {
+		case "replace_block_text":
+			return {
+				kind: "text-range",
+				blockId: first,
+				from: 0,
+				to: logicalBlockLength(editor, first),
+			};
+		case "replace_blocks":
+		case "delete_blocks":
+			return namedBlocksRange(editor, blockIds);
+		case "insert_blocks":
+			return {
+				kind: "insertion-point",
+				blockId: first,
+				offset:
+					placement === "before"
+						? 0
+						: logicalBlockLength(editor, first),
+			};
+		default:
+			return null;
+	}
+}
+
+/**
+ * Every named block, first to last in document order. A block-range covers
+ * whole blocks, so the preview hides each one the commit replaces or deletes
+ * rather than only the first.
+ */
+function namedBlocksRange(
+	editor: Editor,
+	blockIds: readonly string[],
+): AIStreamingReviewPreviewTarget {
+	const named = new Set(blockIds);
+	const ordered = editor.documentState.blockOrder.filter((blockId) =>
+		named.has(blockId),
+	);
+	const start = ordered[0] ?? blockIds[0]!;
+	const end = ordered[ordered.length - 1] ?? start;
+	return {
+		kind: "block-range",
+		start: { blockId: start, offset: 0 },
+		end: { blockId: end, offset: logicalBlockLength(editor, end) },
+		blockIds: ordered.length > 0 ? ordered : [start],
+	};
+}
+
+/**
+ * Inserted blocks are lines of their own: one placed before a block ends in a
+ * line break, one placed after starts with one. A trailing line break in the
+ * payload ends the markdown, not a block, so it is not shown.
+ */
+function editDocumentPreviewText(
+	operation: string | null,
+	text: string,
+	placement: EditDocumentPreviewPlacement | null,
+): string {
+	if (operation === "replace_block_text") {
+		return text;
+	}
+	const lines = text.replace(/\n+$/, "");
+	if (operation !== "insert_blocks" || lines.length === 0) {
+		return lines;
+	}
+	return placement === "before" ? `${lines}\n` : `\n${lines}`;
+}
+
+function logicalBlockLength(editor: Editor, blockId: string): number {
+	return editor.getBlock(blockId)?.length() ?? 0;
 }
 
 function blockTextLength(editor: Editor, blockId: string): number {

@@ -271,10 +271,14 @@ describe("EC15: content in an edit payload streams into the blocks it addresses"
 			toolCallId: "call-1",
 			operationIndex: 0,
 			blockId: "closing",
+			blockIds: ["closing"],
+			placement: null,
 			operation: "replace_block_text",
 			text: "Revenue gr",
 			// Plain text, so there is no markdown payload to write from.
 			markdown: null,
+			// The string has not closed: a short prefix is not yet a short edit.
+			complete: false,
 		});
 	});
 
@@ -285,9 +289,12 @@ describe("EC15: content in an edit payload streams into the blocks it addresses"
 			toolCallId: "call-2",
 			operationIndex: 1,
 			blockId: "closing",
+			blockIds: ["closing"],
+			placement: "after",
 			operation: "insert_blocks",
 			text: "Find",
 			markdown: "## Find",
+			complete: false,
 		});
 	});
 

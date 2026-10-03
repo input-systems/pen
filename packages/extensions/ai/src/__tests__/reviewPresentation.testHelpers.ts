@@ -50,6 +50,8 @@ export function createReviewEditorFromBlocks(
 		id: block.id,
 		meta: () => null,
 		textContent: () => block.text,
+		length: () => block.text.length,
+		inlineDeltas: () => [{ insert: block.text }],
 	}));
 	return {
 		documentState: {

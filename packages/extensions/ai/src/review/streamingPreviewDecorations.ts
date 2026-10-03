@@ -29,6 +29,9 @@ export function buildStreamingReviewPreviewDecorations({
 	preview: AIStreamingReviewPreview;
 	suggestionPresentation: SuggestionPresentation;
 }): Decoration[] {
+	if (preview.deletesBlocks === true) {
+		return deletedBlockDecorations(editor, preview.target);
+	}
 	const text = preview.text;
 	if (text.length === 0) {
 		return [];
@@ -61,6 +64,21 @@ export function buildStreamingReviewPreviewDecorations({
 			text,
 		}),
 	];
+}
+
+/**
+ * A delete hides each block it removes whole. Striking only the text would
+ * leave an empty line where accept leaves nothing (RS6).
+ */
+function deletedBlockDecorations(
+	editor: Editor,
+	target: AIStreamingReviewPreview["target"],
+): Decoration[] {
+	const blockIds =
+		target.kind === "block-range" ? target.blockIds : [target.blockId];
+	return blockIds
+		.filter((blockId) => editor.getBlock(blockId) != null)
+		.map((blockId) => createStreamingDeleteBlockDecoration(blockId));
 }
 
 function decorationsForReplacementPlan({

@@ -235,6 +235,18 @@ export interface AIStreamingReviewPreviewInput {
 	operationIndex?: number;
 	target: AIStreamingReviewPreviewTarget;
 	text: string;
+	/**
+	 * The replacement text has finished arriving. Without it a replacement
+	 * shorter than the text it covers previews as still streaming and keeps
+	 * the old tail on screen; with it the preview hides everything accept
+	 * removes (RS6).
+	 */
+	complete?: boolean;
+	/**
+	 * The edit removes every block in the target. The preview hides them whole
+	 * even though no replacement text ever arrives (RS6).
+	 */
+	deletesBlocks?: boolean;
 }
 
 export interface AIStreamingReviewPreview extends AIStreamingReviewPreviewInput {

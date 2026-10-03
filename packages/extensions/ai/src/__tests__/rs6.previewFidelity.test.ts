@@ -137,12 +137,7 @@ async function evaluateFrame(
 	try {
 		return (
 			compareDocument(frame, projectAccepted(fresh.editor), reorders) ??
-			compareTargetBlock(
-				turn,
-				fresh,
-				turn.operations[operationIndex],
-				frame.composed,
-			)
+			compareTargetBlock(turn, fresh, operationIndex, frame.composed)
 		);
 	} finally {
 		fresh.editor.destroy();
@@ -173,9 +168,10 @@ function compareDocument(
 function compareTargetBlock(
 	turn: Rs6Turn,
 	fresh: { editor: Editor; seed: EditChannelCorpusSeed },
-	operation: unknown,
+	operationIndex: number,
 	composed: ComposedPreview,
 ): string | null {
+	const operation = turn.operations[operationIndex];
 	const blockId = readOperationBlockId(operation);
 	if (
 		!SINGLE_BLOCK_OPERATIONS.has(readOperationName(operation)) ||
@@ -188,7 +184,19 @@ function compareTargetBlock(
 	);
 	const expected = freshBlock ? inlineLogicalText(freshBlock) : "";
 	const shown = composed.byBlock.get(blockId) ?? "";
-	return shown === expected
+	// An earlier insert placed beside this block previews inside it as lines
+	// of its own; the block's text is then the line that is not inserted.
+	const hasInsertBeside = turn.operations
+		.slice(0, operationIndex)
+		.some(
+			(earlier) =>
+				readOperationName(earlier) === "insert_blocks" &&
+				readOperationBlockId(earlier) === blockId,
+		);
+	const matches = hasInsertBeside
+		? shown.split("\n").includes(expected)
+		: shown === expected;
+	return matches
 		? null
 		: `block ${blockId} previews ${JSON.stringify(shown)}, accept gives ${JSON.stringify(expected)}`;
 }

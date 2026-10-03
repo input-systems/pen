@@ -2,6 +2,9 @@ import { toStreamingPreviewText } from "./streamingPreviewText";
 
 const TRUNCATED_EDIT_DOCUMENT_MARKER = "truncated";
 
+/** Where `insert_blocks` and `move_block` place content relative to their block. */
+export type EditDocumentPreviewPlacement = "before" | "after";
+
 export interface EditDocumentPreviewUpdate {
 	toolCallId: string;
 	/**
@@ -15,13 +18,32 @@ export interface EditDocumentPreviewUpdate {
 	operationIndex: number;
 	blockId: string | null;
 	/**
+	 * Every block id the arriving operation names — `blockIds`, else
+	 * `[blockId]` — each only once its closing quote has arrived. A replace or
+	 * delete covers all of them, so a preview that read only the first would
+	 * leave the rest looking untouched (RS6).
+	 */
+	blockIds: readonly string[];
+	/**
+	 * `placement` for `insert_blocks` and `move_block`, once terminated. An
+	 * insert placed before its block previews before it (RS6).
+	 */
+	placement: EditDocumentPreviewPlacement | null;
+	/**
 	 * The arriving operation's name, when the fragment has reached it. The host
 	 * needs it to place the preview: text arriving for `insert_blocks` is added
-	 * after the block it names, while a replace op covers that block's text.
+	 * beside the block it names, while a replace op covers that block's text.
 	 */
 	operation: string | null;
 	/** What the preview shows: markdown syntax stripped (EC15). */
 	text: string;
+	/**
+	 * Whether the operation's content has finished arriving: its string closed,
+	 * or the operation object closed without one. A finished replacement that
+	 * is shorter than the text it replaces hides the old tail; one still
+	 * arriving cannot tell a short edit from a slow one (RS6).
+	 */
+	complete: boolean;
 	/**
 	 * The payload as sent, when it is markdown. Display text cannot be written
 	 * back to the document — the syntax is what carries the block structure —
@@ -62,32 +84,57 @@ export function extractEditDocumentPreview(
 	// Ids and operation names only mean something whole: half of `"closing"` is
 	// `"closi"`, which addresses no block — or worse, a different one whose id
 	// it is a prefix of. Content is the opposite: a prefix of it is the point.
-	const operation = extractJsonString(fragment, "operation", {
+	const operation = extractJsonString(fragment.text, "operation", {
 		terminated: true,
 	});
+	const namedBlockId = extractJsonString(fragment.text, "blockId", {
+		terminated: true,
+	});
+	const listedBlockIds = extractJsonArrayStrings(fragment.text, "blockIds");
 	const blockId =
-		extractJsonString(fragment, "blockId", { terminated: true }) ??
-		extractFirstJsonArrayString(fragment, "blockIds") ??
-		extractJsonString(fragment, "referenceBlockId", { terminated: true });
+		namedBlockId ??
+		listedBlockIds[0] ??
+		extractJsonString(fragment.text, "referenceBlockId", {
+			terminated: true,
+		});
 	// Which key the payload came from decides whether it is markdown: only the
 	// block-shaped operations take `markdown`, and `text` is already plain, so
 	// formatting it would eat a leading `#` a person actually typed.
-	const plainText = extractJsonString(fragment, "text");
+	const plainText = readJsonStringField(fragment.text, "text");
 	const markdown =
-		plainText == null ? extractJsonString(fragment, "markdown") : null;
-	const text = plainText ?? markdown;
-	if (text == null && blockId == null && operation == null) {
+		plainText == null
+			? readJsonStringField(fragment.text, "markdown")
+			: null;
+	const content = plainText ?? markdown;
+	if (content == null && blockId == null && operation == null) {
 		return null;
 	}
 	return {
 		toolCallId,
 		operationIndex,
 		blockId,
+		blockIds:
+			listedBlockIds.length > 0
+				? listedBlockIds
+				: namedBlockId == null
+					? []
+					: [namedBlockId],
+		placement: readPlacement(fragment.text),
 		operation,
 		text:
-			markdown == null ? (text ?? "") : toStreamingPreviewText(markdown),
-		markdown,
+			markdown == null
+				? (content?.value ?? "")
+				: toStreamingPreviewText(markdown.value),
+		markdown: markdown?.value ?? null,
+		complete: fragment.isClosed || content?.isTerminated === true,
 	};
+}
+
+function readPlacement(fragment: string): EditDocumentPreviewPlacement | null {
+	const placement = extractJsonString(fragment, "placement", {
+		terminated: true,
+	});
+	return placement === "before" || placement === "after" ? placement : null;
 }
 
 /**
@@ -96,7 +143,7 @@ export function extractEditDocumentPreview(
  * a bracket inside one (`blockIds`) is depth-guarded, and a brace inside a
  * string (markdown content) is skipped with the string.
  */
-function readOperationFragments(json: string): string[] {
+function readOperationFragments(json: string): OperationFragment[] {
 	const keyIndex = indexOfJsonKey(json, "operations");
 	if (keyIndex < 0) {
 		return [];
@@ -105,7 +152,7 @@ function readOperationFragments(json: string): string[] {
 	if (arrayStart < 0) {
 		return [];
 	}
-	const fragments: string[] = [];
+	const fragments: OperationFragment[] = [];
 	let depth = 0;
 	let elementStart = -1;
 	let isInString = false;
@@ -135,7 +182,10 @@ function readOperationFragments(json: string): string[] {
 		if (character === "}") {
 			depth -= 1;
 			if (depth === 0 && elementStart >= 0) {
-				fragments.push(json.slice(elementStart, index + 1));
+				fragments.push({
+					text: json.slice(elementStart, index + 1),
+					isClosed: true,
+				});
 				elementStart = -1;
 			}
 			continue;
@@ -145,9 +195,15 @@ function readOperationFragments(json: string): string[] {
 		}
 	}
 	if (depth > 0 && elementStart >= 0) {
-		fragments.push(json.slice(elementStart));
+		fragments.push({ text: json.slice(elementStart), isClosed: false });
 	}
 	return fragments;
+}
+
+interface OperationFragment {
+	text: string;
+	/** The element's closing brace arrived: nothing more of it is coming. */
+	isClosed: boolean;
 }
 
 export function createEditDocumentPreview(
@@ -158,17 +214,7 @@ export function createEditDocumentPreview(
 	let last: EditDocumentPreviewUpdate | null = null;
 
 	const publish = (next: EditDocumentPreviewUpdate | null): void => {
-		if (
-			last?.toolCallId === next?.toolCallId &&
-			last?.operationIndex === next?.operationIndex &&
-			last?.blockId === next?.blockId &&
-			last?.operation === next?.operation &&
-			last?.text === next?.text &&
-			// Stripping can map two payloads onto one display string (a `**`
-			// that has only opened, say). Whoever writes the payload has to see
-			// the difference even when the reader cannot.
-			last?.markdown === next?.markdown
-		) {
+		if (isSamePreviewUpdate(last, next)) {
 			return;
 		}
 		last = next;
@@ -201,6 +247,37 @@ export function createEditDocumentPreview(
 		},
 	};
 }
+
+function isSamePreviewUpdate(
+	last: EditDocumentPreviewUpdate | null,
+	next: EditDocumentPreviewUpdate | null,
+): boolean {
+	if (last == null || next == null) {
+		return last === next;
+	}
+	return (
+		PREVIEW_UPDATE_SCALAR_FIELDS.every(
+			(field) => last[field] === next[field],
+		) && last.blockIds.join("\0") === next.blockIds.join("\0")
+	);
+}
+
+/**
+ * Every field a subscriber reads. `markdown` is here as well as `text`:
+ * stripping can map two payloads onto one display string (a `**` that has
+ * only opened, say), and whoever writes the payload has to see the
+ * difference even when the reader cannot.
+ */
+const PREVIEW_UPDATE_SCALAR_FIELDS = [
+	"toolCallId",
+	"operationIndex",
+	"blockId",
+	"placement",
+	"operation",
+	"text",
+	"markdown",
+	"complete",
+] as const satisfies readonly (keyof EditDocumentPreviewUpdate)[];
 
 export function isTruncatedEditDocumentInput(input: unknown): boolean {
 	return (
@@ -254,7 +331,11 @@ function extractJsonString(
 	return readJsonStringValue(json, index + 1, options);
 }
 
-function extractFirstJsonArrayString(json: string, key: string): string | null {
+/** A string value and whether its closing quote arrived. */
+function readJsonStringField(
+	json: string,
+	key: string,
+): { value: string; isTerminated: boolean } | null {
 	const keyIndex = indexOfJsonKey(json, key);
 	if (keyIndex < 0) {
 		return null;
@@ -263,19 +344,51 @@ function extractFirstJsonArrayString(json: string, key: string): string | null {
 	if (colon < 0) {
 		return null;
 	}
-	const open = json.indexOf("[", colon);
-	if (open < 0) {
-		return null;
-	}
-	let index = open + 1;
-	while (index < json.length && isJsonWhitespace(json[index]!)) {
-		index += 1;
-	}
+	const index = skipJsonWhitespace(json, colon + 1);
 	if (json[index] !== '"') {
 		return null;
 	}
-	// An id in a list is an id: hold it back until its quote closes.
-	return readJsonStringValue(json, index + 1, { terminated: true });
+	return readJsonString(json, index + 1);
+}
+
+/**
+ * The strings of an array value, in order, stopping at the first one whose
+ * closing quote has not arrived: an id in a list is an id, so a half-arrived
+ * one is held back like any other.
+ */
+function extractJsonArrayStrings(json: string, key: string): string[] {
+	const keyIndex = indexOfJsonKey(json, key);
+	if (keyIndex < 0) {
+		return [];
+	}
+	const colon = json.indexOf(":", keyIndex);
+	const open = colon < 0 ? -1 : json.indexOf("[", colon);
+	if (open < 0) {
+		return [];
+	}
+	const values: string[] = [];
+	let index = skipJsonWhitespace(json, open + 1);
+	while (json[index] === '"') {
+		const read = readJsonString(json, index + 1);
+		if (!read.isTerminated) {
+			break;
+		}
+		values.push(read.value);
+		index = skipJsonWhitespace(json, read.end + 1);
+		if (json[index] !== ",") {
+			break;
+		}
+		index = skipJsonWhitespace(json, index + 1);
+	}
+	return values;
+}
+
+function skipJsonWhitespace(json: string, from: number): number {
+	let index = from;
+	while (index < json.length && isJsonWhitespace(json[index]!)) {
+		index += 1;
+	}
+	return index;
 }
 
 function readJsonStringValue(
@@ -321,14 +434,14 @@ const HEX_QUAD_PATTERN = /^[0-9a-fA-F]{4}$/;
 function readJsonString(
 	json: string,
 	start: number,
-): { value: string; isTerminated: boolean } {
+): { value: string; isTerminated: boolean; end: number } {
 	let output = "";
 	for (let index = start; index < json.length; index += 1) {
 		const character = json[index]!;
 		if (character === "\\") {
 			const escaped = json[index + 1];
 			if (escaped == null) {
-				return { value: output, isTerminated: false };
+				return { value: output, isTerminated: false, end: json.length };
 			}
 			if (escaped === "u") {
 				const hexStart = index + 2;
@@ -337,7 +450,11 @@ function readJsonString(
 					hexStart + JSON_UNICODE_ESCAPE_LENGTH,
 				);
 				if (!HEX_QUAD_PATTERN.test(hex)) {
-					return { value: output, isTerminated: false };
+					return {
+						value: output,
+						isTerminated: false,
+						end: json.length,
+					};
 				}
 				output += String.fromCharCode(Number.parseInt(hex, 16));
 				index = hexStart + JSON_UNICODE_ESCAPE_LENGTH - 1;
@@ -348,11 +465,11 @@ function readJsonString(
 			continue;
 		}
 		if (character === '"') {
-			return { value: output, isTerminated: true };
+			return { value: output, isTerminated: true, end: index };
 		}
 		output += character;
 	}
-	return { value: output, isTerminated: false };
+	return { value: output, isTerminated: false, end: json.length };
 }
 
 function unescapeJson(escaped: string): string {

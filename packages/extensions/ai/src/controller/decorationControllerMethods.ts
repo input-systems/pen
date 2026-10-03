@@ -149,34 +149,20 @@ function mergeStreamingReviewPreview(
 	);
 	// An operation with nothing in it yet withdraws its own preview and only
 	// its own: the operations beside it in the same call are still proposing
-	// text that has not been written.
-	if (text.length === 0) {
-		const remaining = ownsTurn
-			? previews.filter(
-					(preview) => previewOperation(preview) !== operationIndex,
-				)
-			: [];
-		return remaining.length === previews.length ? previews : remaining;
+	// text that has not been written. A delete never has text; its blocks are
+	// the proposal.
+	if (text.length === 0 && input.deletesBlocks !== true) {
+		return withdrawOperationPreview(previews, operationIndex, ownsTurn);
 	}
 	const previous = ownsTurn
 		? (previews.find(
 				(preview) => previewOperation(preview) === operationIndex,
 			) ?? null)
 		: null;
-	const isSamePreview =
-		previous != null &&
-		areStreamingReviewPreviewTargetsEqual(previous.target, input.target);
-	if (isSamePreview && previous.text === text) {
+	const merged = mergeOperationPreview(previous, input, operationIndex);
+	if (merged == null) {
 		return previews;
 	}
-	const merged: AIStreamingReviewPreview = {
-		sessionId: input.sessionId,
-		turnId: input.turnId,
-		operationIndex,
-		target: input.target,
-		text,
-		previousTextLength: isSamePreview ? previous.text.length : 0,
-	};
 	if (!ownsTurn) {
 		return [merged];
 	}
@@ -186,6 +172,49 @@ function mergeStreamingReviewPreview(
 	return previews.map((preview) =>
 		previewOperation(preview) === operationIndex ? merged : preview,
 	);
+}
+
+function withdrawOperationPreview(
+	previews: readonly AIStreamingReviewPreview[],
+	operationIndex: number,
+	ownsTurn: boolean,
+): readonly AIStreamingReviewPreview[] {
+	const remaining = ownsTurn
+		? previews.filter(
+				(preview) => previewOperation(preview) !== operationIndex,
+			)
+		: [];
+	return remaining.length === previews.length ? previews : remaining;
+}
+
+/** The operation's next preview, or `null` when nothing on screen would change. */
+function mergeOperationPreview(
+	previous: AIStreamingReviewPreview | null,
+	input: AIStreamingReviewPreviewInput,
+	operationIndex: number,
+): AIStreamingReviewPreview | null {
+	const text = input.text ?? "";
+	const isSamePreview =
+		previous != null &&
+		areStreamingReviewPreviewTargetsEqual(previous.target, input.target);
+	if (
+		isSamePreview &&
+		previous.text === text &&
+		previous.complete === input.complete &&
+		previous.deletesBlocks === input.deletesBlocks
+	) {
+		return null;
+	}
+	return {
+		sessionId: input.sessionId,
+		turnId: input.turnId,
+		operationIndex,
+		target: input.target,
+		text,
+		previousTextLength: isSamePreview ? previous.text.length : 0,
+		complete: input.complete,
+		deletesBlocks: input.deletesBlocks,
+	};
 }
 
 /** A preview with no stated operation is the call's first and only one. */
