@@ -1,4 +1,5 @@
 import {
+	attachRemoteCarets,
 	createGeometryReader,
 	DomScheduler,
 	getRootGeometry,
@@ -7,7 +8,8 @@ import {
 	type GeometryReaderHost,
 	type OverlayPainter,
 	type OverlayPaintPlan,
-	type OverlayRequest,
+	REMOTE_CARET_CONTRIBUTOR,
+	type RemoteCaretCursor,
 	type RootOverlay,
 } from "@input/pen-dom";
 import { fieldEditorHostFacet, getEditorSelectionRecord } from "@input/pen-core";
@@ -44,8 +46,8 @@ type GeometryHost = {
 	scheduler: DomScheduler;
 };
 
-/** The harness's remote-caret contributor on the production overlay (OV1, OV2). */
-const REMOTE_CARET_CONTRIBUTOR = "conformance-remote-carets";
+/** Client ids of the harness's eight peers, clear of any real session's. */
+const REMOTE_CARET_CLIENT_BASE = 9000;
 
 let host: GeometryHost | null = null;
 let releaseRemoteCarets: (() => void) | null = null;
@@ -268,16 +270,14 @@ export function runVerticalMotion(args: {
 	}
 }
 
-function remoteCaretRequests(
+function remoteCaretCursors(
 	points: readonly GeometryPoint[],
-): OverlayRequest[] {
+): RemoteCaretCursor[] {
 	return points.map((point, index) => ({
-		kind: "caret",
-		key: `remote-caret:${index}`,
-		role: "remote",
-		point,
-		// Remote cursors carry no affinity; downstream is the stated default.
-		affinity: "downstream",
+		clientId: REMOTE_CARET_CLIENT_BASE + index,
+		user: { id: `peer-${index}`, name: `Peer ${index + 1}` },
+		blockId: point.blockId,
+		offset: point.offset,
 	}));
 }
 
@@ -348,17 +348,19 @@ export async function flushEightRemoteCarets(
 	});
 
 	try {
-		// The production overlay resolves these requests in its read phase
-		// and paints them in the write phase of the same flush; the queued
-		// read resolves once that flush has finished.
+		// The production remote-caret contributor (the one
+		// Pen.Multiplayer.CaretOverlay registers) turns these cursors into
+		// requests in the read phase; the overlay paints them in the write
+		// phase of the same flush, and the queued read resolves once that
+		// flush has finished.
 		releaseRemoteCarets?.();
-		const requests = remoteCaretRequests(points);
-		releaseRemoteCarets = overlay.registerContributor({
-			id: REMOTE_CARET_CONTRIBUTOR,
-			requests: () => {
+		const cursors = remoteCaretCursors(points);
+		releaseRemoteCarets = attachRemoteCarets(overlay, {
+			getRemoteCursors: () => {
 				readPhase = current.scheduler.phase;
-				return requests;
+				return cursors;
 			},
+			subscribe: () => () => {},
 		});
 		overlay.requestPaint();
 		await current.scheduler.read(() => {});

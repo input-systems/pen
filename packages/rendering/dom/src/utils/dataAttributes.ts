@@ -70,6 +70,8 @@ export const DATA_ATTRS = {
 	tableCellCol: "data-cell-col",
 	overlayLayer: "data-pen-overlay-layer",
 	overlayItem: "data-pen-overlay-item",
+	overlayLabel: "data-pen-overlay-label",
+	multiplayerCaretLabel: "data-pen-multiplayer-caret-label",
 } as const;
 
 export const OVERLAY_LAYER_ATTR = DATA_ATTRS.overlayLayer;

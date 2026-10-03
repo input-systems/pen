@@ -1,18 +1,40 @@
-import React, { useContext } from "react";
-import { measureWithRoot, type Rect } from "@input/pen-dom";
+import React, { useContext, useEffect } from "react";
+import { createPortal } from "react-dom";
+import {
+	attachRemoteCarets,
+	getRemoteCaretSource,
+	getRootOverlay,
+	overlayItemStyle,
+	overlayLabelStyle,
+	REMOTE_CARET_CONTRIBUTOR,
+	remoteCaretKey,
+	type OverlayPaintItem,
+	type OverlayPaintMode,
+} from "@input/pen-dom";
 import type { PeerState, RemoteCursorState } from "@input/pen-multiplayer";
 import type { Editor } from "@input/pen-types";
 import { EditorContext } from "../../context/editorContext";
 import { useMultiplayer } from "../../hooks/useMultiplayer";
-import { useOverlayLayout } from "../../hooks/useOverlayLayout";
+import { useOverlayPaintPlan } from "../../hooks/useOverlayPaintPlan";
 import { useRemoteCursors } from "../../hooks/useRemoteCursors";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
-type MultiplayerStyle = React.CSSProperties & Record<string, string | number>;
+import {
+	toOverlayReactStyle,
+	type OverlayReactStyle,
+} from "../../utils/overlayStyle";
+import { EditorRegionSelectionContext } from "../editor/regionSelectionState";
+
+type MultiplayerStyle = OverlayReactStyle;
+
+/** `left` and `top` stay with the layer: carets and labels are placed by their transform (OV2). */
+const ITEM_STYLE_OMIT = ["left", "top"];
 
 export interface MultiplayerCaretRenderProps {
 	cursor: RemoteCursorState;
 	peer: PeerState | null;
+	/** Positioned with `transform: translate3d(...)` relative to the overlay layer; no `left` or `top`. */
 	caretStyle: MultiplayerStyle;
+	/** Positioned with `transform` above the caret, relative to the overlay layer; no `left` or `top`. */
 	labelStyle: MultiplayerStyle;
 	attributes: Record<string, string | undefined>;
 }
@@ -24,9 +46,19 @@ export interface MultiplayerCaretOverlayProps extends AsChildProps {
 	ref?: React.Ref<HTMLElement>;
 }
 
+/**
+ * Remote carets as a binding over `@input/pen-dom`'s root overlay (OV3,
+ * W35.R12). While mounted, the multiplayer controller's cursors are a
+ * registered contributor: pen-dom measures them in the read phase and
+ * paints them, with their name labels, into the overlay layer. This
+ * component measures nothing. With `renderCaret` or `renderLabel`, pen-dom
+ * leaves the remote carets to this binding, which renders the host's nodes
+ * into the layer at the plan's positions.
+ */
 export function MultiplayerCaretOverlay(props: MultiplayerCaretOverlayProps) {
 	const { editor: editorProp, renderCaret, renderLabel, ...rest } = props;
 	const editorContext = useContext(EditorContext);
+	const regionSelection = useContext(EditorRegionSelectionContext);
 	const editor = editorProp ?? editorContext?.editor;
 
 	if (!editor) {
@@ -35,34 +67,43 @@ export function MultiplayerCaretOverlay(props: MultiplayerCaretOverlayProps) {
 
 	const multiplayerState = useMultiplayer(editor);
 	const remoteCursors = useRemoteCursors(editor);
-	const { elementRef, rootElement } = useOverlayLayout<HTMLElement>([
-		remoteCursors,
-		multiplayerState.peers,
-	]);
+	const rootElement = regionSelection?.rootElement ?? null;
+	const overlay = rootElement ? getRootOverlay(rootElement) : null;
+	const paint: OverlayPaintMode =
+		renderCaret || renderLabel ? "binding" : "layer";
+	const plan = useOverlayPaintPlan(paint === "binding" ? overlay : null);
 
 	const peerMap = new Map<number, PeerState>();
 	for (const peer of multiplayerState.peers) {
 		peerMap.set(peer.clientId, peer);
 	}
-
-	const overlayItems: React.ReactNode[] = [];
+	const cursorByKey = new Map<string, RemoteCursorState>();
 	for (const cursor of remoteCursors) {
-		if (!rootElement) {
-			continue;
-		}
+		cursorByKey.set(remoteCaretKey(cursor.clientId), cursor);
+	}
 
-		const rect = readCaretRect(rootElement, {
-			blockId: cursor.blockId,
-			offset: cursor.offset,
-		});
-		if (!rect) {
-			continue;
+	useEffect(() => {
+		const source = overlay ? getRemoteCaretSource(editor) : null;
+		if (!overlay || !source) {
+			return;
 		}
+		return attachRemoteCarets(overlay, source, { paint });
+	}, [overlay, editor, paint]);
 
+	if (!overlay) {
+		return null;
+	}
+
+	const bindingItems = (plan?.items ?? []).filter(isBindingRemoteCaret);
+	const overlayItems = bindingItems.map((item) => {
+		const cursor = cursorByKey.get(item.key);
+		if (!cursor) {
+			return null;
+		}
 		const renderProps = createCaretRenderProps(
+			item,
 			cursor,
 			peerMap.get(cursor.clientId) ?? null,
-			rect,
 		);
 		const caretNode = renderCaret ? (
 			renderCaret(renderProps)
@@ -73,28 +114,24 @@ export function MultiplayerCaretOverlay(props: MultiplayerCaretOverlayProps) {
 			renderLabel(renderProps)
 		) : (
 			<div
-				{...renderProps.attributes}
+				data-pen-overlay-label=""
 				data-pen-multiplayer-caret-label=""
 				style={renderProps.labelStyle}
 			>
 				{cursor.user.name}
 			</div>
 		);
-
-		overlayItems.push(
-			<React.Fragment
-				key={`multiplayer-caret-overlay:${cursor.clientId}:${cursor.blockId}:${cursor.offset}:${cursor.clock}`}
-			>
+		return (
+			<React.Fragment key={item.key}>
 				{caretNode}
 				{labelNode}
-			</React.Fragment>,
+			</React.Fragment>
 		);
-	}
+	});
 
-	return renderAsChild(
+	const host = renderAsChild(
 		{
 			...rest,
-			ref: elementRef,
 			children: rest.children ?? overlayItems,
 		},
 		"div",
@@ -104,62 +141,40 @@ export function MultiplayerCaretOverlay(props: MultiplayerCaretOverlayProps) {
 			// AX7 overlay — collaborator caret is presentation
 			"aria-hidden": "true",
 			style: {
+				position: "absolute",
+				top: 0,
+				left: 0,
 				pointerEvents: "none",
 			},
 		},
 	);
+	return createPortal(host, overlay.layer);
 }
 
-function readCaretRect(
-	root: HTMLElement,
-	point: { blockId: string; offset: number },
-): Rect | null {
-	return measureWithRoot(root, ({ reader }) =>
-		reader.caretRect(point, "downstream"),
+function isBindingRemoteCaret(item: OverlayPaintItem): boolean {
+	return (
+		item.kind === "caret" &&
+		item.role === "remote" &&
+		item.paint === "binding" &&
+		item.contributor === REMOTE_CARET_CONTRIBUTOR
 	);
 }
 
 function createCaretRenderProps(
+	item: OverlayPaintItem,
 	cursor: RemoteCursorState,
 	peer: PeerState | null,
-	rect: Rect,
 ): MultiplayerCaretRenderProps {
-	const color = cursor.user.color ?? "currentColor";
-	const caretStyle: MultiplayerStyle = {
-		position: "fixed",
-		left: `${rect.left}px`,
-		top: `${rect.top}px`,
-		height: `${Math.max(rect.height, 16)}px`,
-		width: "var(--pen-caret-width, 2px)",
-		borderRadius: "var(--pen-caret-radius, 999px)",
-		background: "var(--pen-peer-color)",
-		pointerEvents: "none",
-		zIndex: 20,
-		"--pen-peer-color": color,
-		"--pen-caret-height": `${Math.max(rect.height, 16)}px`,
-	};
-	const labelStyle: MultiplayerStyle = {
-		position: "fixed",
-		left: `${rect.left}px`,
-		top: `${Math.max(rect.top - 8, 0)}px`,
-		transform: "translateY(-100%)",
-		padding: "2px 6px",
-		borderRadius: "6px",
-		background: "var(--pen-peer-color)",
-		color: "var(--pen-peer-label-color, #fff)",
-		fontSize: "12px",
-		lineHeight: 1.2,
-		whiteSpace: "nowrap",
-		pointerEvents: "none",
-		zIndex: 20,
-		"--pen-peer-color": color,
-	};
+	const caretStyle = toOverlayReactStyle(
+		overlayItemStyle(item, { variant: "default", solidCaret: true }),
+		ITEM_STYLE_OMIT,
+	);
+	const labelStyle = toOverlayReactStyle(
+		overlayLabelStyle(item),
+		ITEM_STYLE_OMIT,
+	);
 	const attributes = {
-		"data-pen-multiplayer-caret": "",
-		"data-client-id": String(cursor.clientId),
-		"data-user-id": cursor.user.id,
-		"data-user-name": cursor.user.name,
-		"data-user-color": cursor.user.color,
+		...item.attributes,
 		"data-block-id": cursor.blockId,
 	};
 

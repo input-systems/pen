@@ -114,6 +114,7 @@ export const PenEditor = defineComponent({
 			readonly: readonlyRef,
 			emptyPlaceholder: emptyPlaceholderRef,
 			renderers: renderersRef,
+			rootElement,
 		});
 		provideFieldEditorContext(fieldEditor);
 

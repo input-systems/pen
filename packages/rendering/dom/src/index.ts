@@ -120,7 +120,19 @@ export type {
 	OverlayPainter,
 } from "./scheduler";
 export { getRootOverlay } from "./overlay/rootOverlay";
-export { overlayItemStyle } from "./overlay/overlayStyles";
+export { overlayItemStyle, overlayLabelStyle } from "./overlay/overlayStyles";
+export {
+	attachRemoteCarets,
+	getRemoteCaretSource,
+	REMOTE_CARET_CONTRIBUTOR,
+	remoteCaretKey,
+} from "./overlay/remoteCarets";
+export type {
+	AttachRemoteCaretsOptions,
+	RemoteCaretCursor,
+	RemoteCaretSource,
+	RemoteCaretUser,
+} from "./overlay/remoteCarets";
 export type {
 	OverlayCaretVariant,
 	OverlayInlineStyle,

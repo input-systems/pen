@@ -13,6 +13,7 @@
 - adoptEditorChrome
 - attachContentGestures
 - attachInlineAtomWrapperInteractions
+- attachRemoteCarets
 - bindEditorDocumentKeyDown
 - canDestructure
 - createGeometryReader
@@ -22,6 +23,7 @@
 - getClosestEditorRoot
 - getInlineAtomDragSnapshot
 - getInlineAtomRenderInteractionProps
+- getRemoteCaretSource
 - getRootGeometry
 - getRootReducedMotion
 - handleEditorDocumentKeyDown
@@ -35,8 +37,10 @@
 - measureWithRoot
 - mountEditor
 - overlayItemStyle
+- overlayLabelStyle
 - registerInlineAtomInteractionRoot
 - registerVerticalCaretMeasure
+- remoteCaretKey
 - resolveBlockTextAlignment
 - resolveEditorUrl
 - resolveRegionRect
@@ -105,6 +109,7 @@
 - Point
 - Rect
 - REDUCED_MOTION_ATTR
+- REMOTE_CARET_CONTRIBUTOR
 - removeInlineAtom
 - resolveSelectAllBehavior
 - RootOverlay
@@ -116,6 +121,7 @@
 ### type
 
 - AttachContentGesturesOptions
+- AttachRemoteCaretsOptions
 - BindEditorDocumentKeyDownOptions
 - BlockTextAlignment
 - ContentGestureRegionGesture
@@ -140,6 +146,9 @@
 - RegionSelectorActivation
 - RegionSelectorConfig
 - RegionSelectorSelectionMode
+- RemoteCaretCursor
+- RemoteCaretSource
+- RemoteCaretUser
 - RootGeometry
 - VerticalCaretTarget
 - VerticalDirection

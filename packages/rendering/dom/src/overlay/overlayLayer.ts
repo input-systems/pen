@@ -1,6 +1,7 @@
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import {
 	overlayItemStyle,
+	overlayLabelStyle,
 	overlayLayerStyle,
 	type OverlayCaretVariant,
 	type OverlayInlineStyle,
@@ -15,10 +16,18 @@ import type { OverlayPaintItem } from "./types";
 /** Attributes a contributor may add to an item: `data-*` only, so a request cannot add handlers or drop `aria-hidden`. */
 const CONTRIBUTOR_ATTRIBUTE = /^data-[a-z0-9_.:-]+$/i;
 
+type PaintedLabel = {
+	readonly node: HTMLElement;
+	text: string;
+	attributes: Readonly<Record<string, string>>;
+	style: OverlayInlineStyle;
+};
+
 type PaintedNode = {
 	readonly node: HTMLElement;
 	attributes: Readonly<Record<string, string>>;
 	style: OverlayInlineStyle;
+	label: PaintedLabel | null;
 };
 
 export type OverlayPaintOptions = {
@@ -68,14 +77,22 @@ export class OverlayLayerPainter {
 				const node = doc.createElement("div");
 				writeAttributes(node, {}, attributes);
 				writeStyle(node, {}, style);
+				const created: PaintedNode = {
+					node,
+					attributes,
+					style,
+					label: null,
+				};
+				syncLabel(created, item);
 				this.layer.append(node);
-				this.nodes.set(identity, { node, attributes, style });
+				this.nodes.set(identity, created);
 				continue;
 			}
 			writeAttributes(painted.node, painted.attributes, attributes);
 			writeStyle(painted.node, painted.style, style);
 			painted.attributes = attributes;
 			painted.style = style;
+			syncLabel(painted, item);
 		}
 		for (const [identity, painted] of this.nodes) {
 			if (!keep.has(identity)) {
@@ -91,6 +108,53 @@ export class OverlayLayerPainter {
 		}
 		this.nodes.clear();
 	}
+}
+
+/**
+ * A caret's label is a child of the caret element, so it moves with the
+ * caret's transform. Its text is set as text, never parsed (COL2), and it
+ * is `aria-hidden` like every overlay item (AX7).
+ */
+function syncLabel(painted: PaintedNode, item: OverlayPaintItem): void {
+	const text = item.kind === "caret" ? item.label : undefined;
+	if (text === undefined) {
+		painted.label?.node.remove();
+		painted.label = null;
+		return;
+	}
+	const attributes = labelAttributes(item);
+	const style = overlayLabelStyle({ x: 0, y: 0, color: item.color });
+	const label = painted.label;
+	if (!label) {
+		const node = painted.node.ownerDocument.createElement("div");
+		writeAttributes(node, {}, attributes);
+		writeStyle(node, {}, style);
+		node.textContent = text;
+		painted.node.append(node);
+		painted.label = { node, text, attributes, style };
+		return;
+	}
+	writeAttributes(label.node, label.attributes, attributes);
+	writeStyle(label.node, label.style, style);
+	if (label.text !== text) {
+		label.node.textContent = text;
+	}
+	label.text = text;
+	label.attributes = attributes;
+	label.style = style;
+}
+
+function labelAttributes(item: OverlayPaintItem): Record<string, string> {
+	const attributes: Record<string, string> = {
+		[DATA_ATTRS.overlayLabel]: "",
+		// AX7: a caret label is overlay presentation; presence reaches AT
+		// through the collaborator announcements.
+		"aria-hidden": "true",
+	};
+	if (item.role === "remote") {
+		attributes[DATA_ATTRS.multiplayerCaretLabel] = "";
+	}
+	return attributes;
 }
 
 function itemIdentity(item: OverlayPaintItem): string {

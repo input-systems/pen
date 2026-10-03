@@ -18,6 +18,7 @@
 - PenEditor
 - PenFieldEditor
 - PenInlineContent
+- PenMultiplayerCaretOverlay
 - PenVuePlugin
 
 ### type

@@ -37,7 +37,10 @@ export type OverlayRequest =
 			readonly affinity: Affinity;
 			readonly endpoint?: "anchor" | "focus";
 			readonly attributes?: Readonly<Record<string, string>>;
+			/** Text painted beside the caret; remote carets carry the peer's name. */
 			readonly label?: string;
+			/** A remote caret's colour, written as `--pen-peer-color` on the item. */
+			readonly color?: string;
 			readonly paint?: OverlayPaintMode;
 	  }
 	| {
@@ -93,6 +96,8 @@ export interface OverlayPaintItem {
 	readonly headCell?: OverlayCellCoord;
 	readonly attributes?: Readonly<Record<string, string>>;
 	readonly label?: string;
+	/** A remote caret's colour (`--pen-peer-color`). */
+	readonly color?: string;
 	readonly paint: OverlayPaintMode;
 	/** Blink epoch for role "local", 0 otherwise. Part of the caret element's identity. */
 	readonly epoch: number;

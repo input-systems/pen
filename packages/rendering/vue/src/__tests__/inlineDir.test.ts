@@ -26,6 +26,7 @@ function mountInlineContent(args: {
         readonly: ref(false),
         emptyPlaceholder: ref(undefined),
         renderers: ref(undefined),
+        rootElement: ref(null),
       });
       provideFieldEditorContext(null);
       return () =>

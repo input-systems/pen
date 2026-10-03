@@ -89,7 +89,7 @@ twoEditorScenario(
 		await clickAt(a, "hello-p1", 5);
 		await clickAt(b, "hello-p1", 0);
 		const caret = b.page.locator(
-			`[data-pen-multiplayer-caret-overlay] [data-pen-multiplayer-caret][data-user-id="${PEER_A_USER_ID}"]:not([data-pen-multiplayer-caret-label])`,
+			`[data-pen-overlay-layer] [data-pen-multiplayer-caret][data-user-id="${PEER_A_USER_ID}"]`,
 		);
 		await expect
 			.poll(async () => {

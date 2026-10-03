@@ -570,6 +570,7 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 					endpoint: request.endpoint,
 					attributes: request.attributes,
 					label: request.label,
+					color: request.color,
 					paint:
 						local && this.caretPaintHolds > 0
 							? "binding"
@@ -842,6 +843,7 @@ function itemsEqual(left: OverlayPaintItem, right: OverlayPaintItem): boolean {
 		cellEqual(left.anchorCell, right.anchorCell) &&
 		cellEqual(left.headCell, right.headCell) &&
 		left.label === right.label &&
+		left.color === right.color &&
 		left.paint === right.paint &&
 		left.epoch === right.epoch &&
 		recordsEqual(left.attributes, right.attributes)

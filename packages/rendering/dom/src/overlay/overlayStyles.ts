@@ -31,10 +31,16 @@ export const OVERLAY_TOKENS = {
 	blockSelectionRadius: "--pen-block-selection-radius",
 	selectionRangeBackground: "--pen-selection-range-background",
 	selectionRangeOpacity: "--pen-selection-range-opacity",
+	peerColor: "--pen-peer-color",
+	peerLabelColor: "--pen-peer-label-color",
+	remoteCaretHeight: "--pen-caret-height",
 } as const;
 
-/** O2: the local caret is never shorter than this, so an empty line still shows one. */
+/** O2: local and remote carets are never shorter than this, so an empty line still shows one. */
 export const OVERLAY_CARET_MIN_HEIGHT = 16;
+
+/** Gap between a remote caret's top and its name label's bottom edge. */
+const REMOTE_LABEL_GAP = 8;
 
 const CARET_DEFAULTS: Record<
 	OverlayCaretVariant,
@@ -123,6 +129,9 @@ function caretStyle(
 ): OverlayInlineStyle {
 	const defaults = CARET_DEFAULTS[options.variant];
 	const role = item.role ?? "local";
+	if (role === "remote") {
+		return remoteCaretStyle(item);
+	}
 	const height =
 		role === "local"
 			? Math.max(item.height, OVERLAY_CARET_MIN_HEIGHT)
@@ -146,6 +155,54 @@ function caretStyle(
 		opacity: `var(${OVERLAY_TOKENS.caretOpacity}, 1)`,
 		animation,
 		[OVERLAY_TOKENS.caretHeight]: `${height}px`,
+	};
+}
+
+/**
+ * A collaborator's caret: the peer colour, the shared caret tokens, never
+ * blinking (`--pen-peer-*`, `--pen-caret-*`).
+ */
+function remoteCaretStyle(item: OverlayPaintItem): OverlayInlineStyle {
+	const height = Math.max(item.height, OVERLAY_CARET_MIN_HEIGHT);
+	return {
+		width: `var(${OVERLAY_TOKENS.legacyCaretWidth}, 2px)`,
+		height: `${height}px`,
+		"border-radius": `var(${OVERLAY_TOKENS.legacyCaretRadius}, 999px)`,
+		background: `var(${OVERLAY_TOKENS.peerColor})`,
+		// AX6: only the local caret blinks.
+		animation: "none",
+		[OVERLAY_TOKENS.peerColor]: item.color ?? "currentColor",
+		[OVERLAY_TOKENS.remoteCaretHeight]: `${height}px`,
+	};
+}
+
+/**
+ * The inline style of a remote caret's name label, as CSS property names:
+ * placed above the caret at the item's position, its bottom edge 8px above
+ * the caret's top. pen-dom paints the label inside the caret element (at
+ * `x = y = 0` relative to it); a binding that renders the label as the
+ * caret's sibling passes the item itself.
+ *
+ * @param item - A caret item (or its position) from an `OverlayPaintPlan`.
+ * @returns CSS property name to value.
+ */
+export function overlayLabelStyle(
+	item: Pick<OverlayPaintItem, "x" | "y" | "color">,
+): OverlayInlineStyle {
+	return {
+		position: "absolute",
+		top: "0px",
+		left: "0px",
+		transform: `translate3d(${item.x}px, ${item.y - REMOTE_LABEL_GAP}px, 0) translateY(-100%)`,
+		padding: "2px 6px",
+		"border-radius": "6px",
+		background: `var(${OVERLAY_TOKENS.peerColor})`,
+		color: `var(${OVERLAY_TOKENS.peerLabelColor}, #fff)`,
+		"font-size": "12px",
+		"line-height": "1.2",
+		"white-space": "nowrap",
+		"pointer-events": "none",
+		[OVERLAY_TOKENS.peerColor]: item.color ?? "currentColor",
 	};
 }
 
