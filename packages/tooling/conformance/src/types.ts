@@ -283,6 +283,43 @@ export type SelectionEqualsArgs = {
 	focus: PointRef;
 };
 
+/** One block as the DOM fuzzer's generator sees it (W3.R19). */
+export type FuzzBlockView = {
+	id: string;
+	type: string;
+	/** Logical length (an inline atom is one offset). */
+	length: number;
+	/** `"text"` when a caret can sit in it (N2), else `"structural"`. */
+	kind: "text" | "structural";
+};
+
+/** S5 over every text endpoint of the current record. */
+export type FuzzNormalPositionCheck = {
+	ok: boolean;
+	reason?: string;
+};
+
+/** `validateDocument` errors on both peers, and whether they converged. */
+export type FuzzDocumentCheck = {
+	localErrors: string[];
+	remoteErrors: string[];
+	stateVectorsEqual: boolean;
+};
+
+/**
+ * `window.__penConformance.fuzzCheck()` (W3.R19 §3.15): what the page saw
+ * after one fuzz step. `diagnostics` holds only what arrived since the
+ * previous call; the call drains them.
+ */
+export type FuzzCheckReport = {
+	s2: DomAuthorityCheck;
+	s5: FuzzNormalPositionCheck;
+	record: { version: number; commitId: number } | null;
+	diagnostics: SerializedDiagnostic[];
+	documents: FuzzDocumentCheck;
+	blocks: FuzzBlockView[];
+};
+
 export type PenConformanceBridge = {
 	readonly selection: SerializedSelection;
 	/** Official `isCollapsed` from `@input/pen-core` over the live editor selection. */
@@ -389,6 +426,10 @@ export type PenConformanceBridge = {
 	undo(): void;
 	redo(): void;
 	stopCapturing(): void;
+	/** W3.R19: invariants after one fuzz step; drains diagnostics. */
+	fuzzCheck(): FuzzCheckReport;
+	/** Resolves after a scheduler flush that leaves no work queued. Test-side only. */
+	whenIdle(): Promise<void>;
 };
 
 export type LoadOptions = {

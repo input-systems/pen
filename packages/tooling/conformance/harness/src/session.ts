@@ -52,7 +52,9 @@ import {
 } from "../../../../extensions/multiplayer/src";
 import { createReducedMotionSignal } from "../../../../rendering/dom/src/a11y/motion";
 import {
+	FUZZ_FIXTURES,
 	isFixtureName,
+	isFuzzFixtureName,
 	isLocalFixtureName,
 	isScaleFixtureName,
 	SCALE_FIXTURE_ROOT_COUNTS,
@@ -66,6 +68,7 @@ import type {
 	DocumentContentSnapshot,
 	DomAuthorityCheck,
 	ForcedDomDivergence,
+	FuzzCheckReport,
 	HostileDomScan,
 	LogicalPoint,
 	PenConformanceBridge,
@@ -78,6 +81,7 @@ import type {
 } from "../../src/types";
 import { connectPeers } from "../../src/connectPeers";
 import { instrumentSessionEditor } from "./probes/index";
+import { collectFuzzReport, whenSchedulerIdle } from "./fuzzCheck";
 import {
 	misplacedOffset,
 	pointsEqual,
@@ -172,6 +176,10 @@ function createLocalDocument(name: string): {
 	const ydoc = new Y.Doc({ gc: false });
 	if (isScaleFixtureName(name)) {
 		populateYDoc(ydoc, generateMixedBlockSpecs(SCALE_FIXTURE_ROOT_COUNTS[name]));
+		return { adapter, ydoc, document: wrapYjsDocument(adapter, ydoc) };
+	}
+	if (isFuzzFixtureName(name)) {
+		populateYDoc(ydoc, [...FUZZ_FIXTURES[name].blocks]);
 		return { adapter, ydoc, document: wrapYjsDocument(adapter, ydoc) };
 	}
 	if (!isLocalFixtureName(name)) {
@@ -280,6 +288,9 @@ function createSession(fixtureName: string): Session {
 		editor.apply(mixedFixtureOps(SCALE_FIXTURE_ROOT_COUNTS[fixtureName]), {
 			origin: "system",
 		});
+	}
+	if (isFuzzFixtureName(fixtureName)) {
+		editor.apply(FUZZ_FIXTURES[fixtureName].ops(), { origin: "system" });
 	}
 	return next;
 }
@@ -1057,6 +1068,19 @@ function mutateActiveSurfaceText(text: string): void {
 	activeSurface().append(text);
 }
 
+/** W3.R19: one fuzz step's observations; diagnostics are drained so each step sees only its own. */
+function fuzzCheck(): FuzzCheckReport {
+	const current = getHarnessSession();
+	const diagnostics = current.diagnostics.splice(0);
+	return collectFuzzReport({
+		editor: current.editor,
+		localY: current.localY,
+		remoteY: current.remoteY,
+		s2: checkDomMatchesAuthority(),
+		diagnostics,
+	});
+}
+
 function installBridge(): void {
 	installXssProbe();
 	const bridge: PenConformanceBridge = {
@@ -1188,6 +1212,8 @@ function installBridge(): void {
 		stopCapturing() {
 			getHarnessSession().editor.undoManager.stopCapturing();
 		},
+		fuzzCheck,
+		whenIdle: () => whenSchedulerIdle(editorRoot()),
 	};
 	window.__penConformance = bridge;
 }

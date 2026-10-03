@@ -1,5 +1,7 @@
+import type { DocumentOp } from "@input/pen-types";
 import type { TestBlock } from "@input/pen-test";
 import { BIDI_MIXED_BLOCKS } from "./bidi";
+import { FUZZ_MIXED_BLOCKS, fuzzMixedOps } from "./fuzzMixed";
 import { GRAPHEME_CLUSTER_BLOCKS } from "./grapheme";
 
 /** Large mixed fixtures (`@input/pen-test` mixed scale fixture), built on demand. */
@@ -13,8 +15,25 @@ export const SCALE_FIXTURE_ROOT_COUNTS: Readonly<Record<ScaleFixtureName, number
 	"scale-50k": 50_000,
 };
 
+/**
+ * DOM fuzzer fixtures (W3.R19): a `populateYDoc` skeleton plus ops applied
+ * before any surface mounts. Kept out of `FIXTURE_NAMES` like the scale
+ * fixtures, so per-fixture sweeps (AX1, AX8) do not grow with the fuzzer.
+ */
+export type FuzzFixtureName = "fuzz-mixed";
+
+export const FUZZ_FIXTURES: Readonly<
+	Record<FuzzFixtureName, { blocks: readonly TestBlock[]; ops: () => DocumentOp[] }>
+> = {
+	"fuzz-mixed": { blocks: FUZZ_MIXED_BLOCKS, ops: fuzzMixedOps },
+};
+
+/** Fixtures built outside `LOCAL_FIXTURES`; per-fixture sweeps skip them. */
+type BuiltFixtureName = ScaleFixtureName | FuzzFixtureName;
+
 export type FixtureName =
 	| ScaleFixtureName
+	| FuzzFixtureName
 	| "hello-world"
 	| "two-paragraph"
 	| "empty"
@@ -51,14 +70,14 @@ const FIXTURE_PRESENT = {
 	"nested-toggle": true,
 	"grapheme-clusters": true,
 	"code-block": true,
-} as const satisfies Record<Exclude<FixtureName, ScaleFixtureName>, true>;
+} as const satisfies Record<Exclude<FixtureName, BuiltFixtureName>, true>;
 
 /**
  * Every small fixture. Scale fixtures are excluded on purpose: suites that
  * iterate this list (AX1 runs axe per fixture) must not mount 50k blocks.
  */
-export const FIXTURE_NAMES: readonly Exclude<FixtureName, ScaleFixtureName>[] =
-	Object.keys(FIXTURE_PRESENT) as Exclude<FixtureName, ScaleFixtureName>[];
+export const FIXTURE_NAMES: readonly Exclude<FixtureName, BuiltFixtureName>[] =
+	Object.keys(FIXTURE_PRESENT) as Exclude<FixtureName, BuiltFixtureName>[];
 
 export const WINDOWED_LARGE_BLOCK_COUNT = 40;
 export const WINDOWED_WINDOW_SIZE = 8;
@@ -80,7 +99,7 @@ function windowedLargeBlocks(): TestBlock[] {
 }
 
 export const LOCAL_FIXTURES: Record<
-	Exclude<FixtureName, "deterministic" | ScaleFixtureName>,
+	Exclude<FixtureName, "deterministic" | BuiltFixtureName>,
 	readonly TestBlock[]
 > = {
 	"hello-world": [
@@ -187,7 +206,7 @@ export const LOCAL_FIXTURES: Record<
 
 export function isLocalFixtureName(
 	name: string,
-): name is Exclude<FixtureName, "deterministic" | ScaleFixtureName> {
+): name is Exclude<FixtureName, "deterministic" | BuiltFixtureName> {
 	return Object.prototype.hasOwnProperty.call(LOCAL_FIXTURES, name);
 }
 
@@ -195,10 +214,15 @@ export function isScaleFixtureName(name: string): name is ScaleFixtureName {
 	return Object.prototype.hasOwnProperty.call(SCALE_FIXTURE_ROOT_COUNTS, name);
 }
 
+export function isFuzzFixtureName(name: string): name is FuzzFixtureName {
+	return Object.prototype.hasOwnProperty.call(FUZZ_FIXTURES, name);
+}
+
 export function isFixtureName(name: string): name is FixtureName {
 	return (
 		isLocalFixtureName(name) ||
 		isScaleFixtureName(name) ||
-		name === "deterministic"
+		name === "deterministic" ||
+		isFuzzFixtureName(name)
 	);
 }

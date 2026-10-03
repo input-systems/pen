@@ -27,6 +27,7 @@
     "record:op-equality": "node --experimental-strip-types src/opCorpus/record.js",
     "fuzz:node": "node src/fuzz/node.mjs",
     "fuzz:nightly": "node src/fuzz/nightly.mjs",
+    "fuzz:dom": "node src/fuzz/dom/run.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "check:mirrors": "node ../../../scripts/conformance-mirror-drift.mjs",

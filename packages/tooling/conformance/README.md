@@ -27,11 +27,15 @@ pnpm --filter @input/pen-conformance run test:host4
 - `harness/` — Vite app: one v1-preset editor, fixture loader, `window.__penConformance`
 - `src/` — scenario DSL, standing assertions, and lint scripts
 - `scenarios/` — scripted journeys (hello-world, harness self-test, feature suites)
-- `suites/` — selection (live I4/P1/S3/S5/S6), input (K1/K2/K4/B1/B2), ime (C1–C4 plus `MANUAL.md`), bidi (M2/M3/DIR2), overlays (O1/O2), geometry (G2). Other live wiring stays in `scenarios/` and `harness-live.spec.ts`.
+- `suites/` — selection (live I4/P1/S3/S5/S6), input (K1/K2/K4/B1/B2), ime (C1–C4 plus `MANUAL.md`), bidi (M2/M3/DIR2), overlays (O1/O2), geometry (G2), fuzz (the W3.R19 DOM fuzzer: seeded S2/S5/S6 walks over `fuzz-mixed`, `pnpm run fuzz:dom -- --project <engine>`, traces in `test-results/fuzz-dom/`). Other live wiring stays in `scenarios/` and `harness-live.spec.ts`.
 - `fixtures/` — documents plus the diagnostics allowlist
 - `fixtures/hostile/` — attacker corpus (`window.__xssProbe` canary)
 
-## Known defects — the ledger is empty again (2026-08-24)
+## Known defects — four DOM fuzz seeds (2026-10-03)
+
+**The DOM fuzzer's four PR seeds (`suites/fuzz/dom-fuzz.spec.ts`, W3.R19) all find a product defect on their first run, and each is an entry.** One `knownDefect: KNOWN_FUZZ_DEFECTS[seed]` line carries the four, so `rg -c 'knownDefect:' suites/` counts it once. Each symptom is the shrunk trace's (`PEN_FUZZ_SHRINK=1`) first failure, measured on Chromium; WebKit fails the same seeds at other steps. A seed whose defect is fixed reports as unexpectedly passing, and then runs on to its next failure or to step 40.
+
+The ledger was empty from 2026-08-24 until then. N2 mixed-boundary pointer delete was filed and closed the same day; its two scenarios in `suites/selection/n2-mixed-boundary-delete.spec.ts` now pass on Chromium, WebKit and Firefox, and the annotations are deleted as the fix's last step.
 
 N2 mixed-boundary pointer delete was filed and closed the same day; its two scenarios in `suites/selection/n2-mixed-boundary-delete.spec.ts` now pass on Chromium, WebKit and Firefox, and the annotations are deleted as the fix's last step.
 
@@ -69,9 +73,12 @@ Re-verify rather than trust: an expected-failure also absorbs a failure for the 
 
 Two things kept it recoverable. The verbatim symptom named `hasBody:false` alongside a populated `blockIds`, which is what made the fixture the suspect rather than the renderer. And the annotation is a marker, not a mute — the scenario kept asserting the spec throughout, so nothing had to be un-weakened to re-check it. The fixture-shape lock now rejects `children:` for this fixture by name, so the shape cannot come back silently.
 
-| Rule     | Scenario | Route |
-| -------- | -------- | ----- |
-| _(none)_ | —        | —     |
+| Rule | Scenario                                                                                                                                  | Route                                                                                    |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| S2   | `S2/S5/S6: DOM selection fuzz, seed 11` — click `fuzz-list-3`@6, Shift+ArrowDown: authority focus `fuzz-code`@7, DOM `fuzz-code`@1        | pen-dom reader/caret: the code block's structural role against a text authority (W3.R10) |
+| S2   | `… seed 23` — drag `fuzz-zwj`@5 → `fuzz-after-divider`@12 across the divider: two `selection-projection-mismatch` on the expanded surface | pen-dom projector, expanded surface (W3.R1)                                              |
+| S2   | `… seed 37` — drag `fuzz-code`@21 → `fuzz-list-3`@3 upward: DOM focus stays at `fuzz-code`@0                                              | pen-dom pointer path out of a code block (W3.R12)                                        |
+| S2   | `… seed 41` — Mod-z right after load undoes a load-time commit; selection null, focus on `BODY`, `selection-projection-mismatch`          | undo restoring a null selection (W3.R16)                                                 |
 
 **C1 was fixed on 2026-08-24, and the shipped fix is not the candidate this section proposed — the candidate was wrong for a measurable reason worth keeping.** The proposal was "hold `handleTextUpdate`'s apply until the end of the same turn, then resolve on `compositionend`". Measuring Chromium's real CDP order refuted it: `textupdate` arrives in task 1 with composing still closed, microtasks run with composing still closed, and `textformatupdate` only opens the session in task 2. A same-turn hold therefore still commits before composing opens — the original bug, delayed one tick. `compositionend` never fires at all on Escape or on `Input.insertText`, so the proposed resolution point does not exist.
 

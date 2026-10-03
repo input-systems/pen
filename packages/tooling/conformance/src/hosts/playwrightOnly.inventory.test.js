@@ -166,7 +166,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// suites/selection/r-multi-click.spec.ts.
 	// 77 -> 78 is W3.R8 keyed mount ack on three surfaces:
 	// suites/selection/p4-vanilla-ack.spec.ts.
-	const expectedPlaywrightSpecs = 78;
+	// 78 -> 79 is W3.R19 the PR DOM fuzz job: suites/fuzz/dom-fuzz.spec.ts.
+	const expectedPlaywrightSpecs = 79;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

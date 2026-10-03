@@ -298,6 +298,8 @@ test("isFixtureName and windowedBlockId are live predicates, not always-true", a
 		catalog,
 		/isLocalFixtureName\(name\) \|\|\s*isScaleFixtureName\(name\) \|\|\s*name === "deterministic"/,
 	);
+	assert.match(catalog, /hasOwnProperty\.call\(FUZZ_FIXTURES, name\)/);
+	assert.match(catalog, /name === "deterministic" \|\|\s*isFuzzFixtureName\(name\)/);
 	assert.doesNotMatch(
 		catalog,
 		/export function isFixtureName[\s\S]*return true;/,
