@@ -137,6 +137,29 @@ describe("mountEditor", () => {
 		).not.toBeNull();
 	});
 
+	it("AX1: the surface leaves the tab order when focus leaves the editor", async () => {
+		const editor = createBareEditor();
+		const root = document.createElement("div");
+		const outside = document.createElement("button");
+		document.body.append(root, outside);
+		const mounted = mountEditor(editor, root);
+		cleanups.push(() => {
+			mounted.destroy();
+			editor.destroy();
+			outside.remove();
+		});
+
+		root.focus();
+		await mounted.fieldEditor.waitForAttachment();
+		const surface = document.activeElement as HTMLElement;
+		expect(surface.tabIndex).toBe(0);
+
+		outside.focus();
+
+		expect(root.tabIndex).toBe(0);
+		expect(surface.tabIndex).toBe(-1);
+	});
+
 	it("AX1: keeps keyboard focus on a readonly root", () => {
 		const editor = createBareEditor();
 		const root = document.createElement("div");

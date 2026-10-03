@@ -3,6 +3,7 @@ import { editorSelectionToDOM } from "./selectionBridge";
 import { getPasteImporters, handlePaste } from "./clipboard";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
+import { bindSurfaceTabStop } from "./surfaceTabStop";
 import type { FieldEditorInputController } from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
 import {
@@ -55,10 +56,7 @@ export class ExpandedContentEditableBackend {
 	activate(element: HTMLElement): void {
 		this.element = element;
 		element.contentEditable = "true";
-		// 0, not -1: Firefox 155 will not Shift-Tab out of a focused
-		// contenteditable that carries tabindex="-1". The root leaving the tab
-		// order while the editor owns focus keeps traversal to one stop (AX1).
-		element.tabIndex = 0;
+		bindSurfaceTabStop(this.attachment, element);
 		this.fieldEditor.resetBackendSelectionAuthority();
 
 		this.attachment.listen(element, "beforeinput", this.handleBeforeInput);

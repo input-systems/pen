@@ -240,7 +240,7 @@ describe("FE1 spine teardown is total", () => {
 		const ledger = installLedger();
 		try {
 			backend.activate(element, getYText(editor, blockId));
-			expect(element.getAttribute("tabindex")).toBe("0");
+			expect(element.getAttribute("tabindex")).toBe("-1");
 			exercise(element);
 			backend.deactivate();
 
@@ -323,7 +323,7 @@ describe("FE1 spine teardown is total", () => {
 		fixtures.push({ editor, backend, element: host });
 
 		backend.activate(host);
-		expect(host.getAttribute("tabindex")).toBe("0");
+		expect(host.getAttribute("tabindex")).toBe("-1");
 		backend.deactivate();
 
 		expect(host.hasAttribute("tabindex")).toBe(false);
