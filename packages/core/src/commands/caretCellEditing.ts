@@ -1,4 +1,4 @@
-import type { CommandResult, Editor } from "@input/pen-types";
+import type { CellSelection, CommandResult, Editor } from "@input/pen-types";
 
 import {
 	nextGraphemeBoundary,
@@ -19,26 +19,6 @@ import {
 } from "./helpers";
 import type { CaretMotionParam } from "./caretParams";
 
-const CELL_CARET_SEAM = Symbol.for("pen.cellCaretSeam");
-
-export type CellCaretFocus = {
-	readonly blockId: string;
-	readonly row: number;
-	readonly col: number;
-	readonly start: number;
-	readonly end: number;
-};
-
-export type CellCaretWrite = (next: {
-	readonly start: number;
-	readonly end: number;
-}) => void;
-
-type CellCaretSeam = {
-	focus: CellCaretFocus | null;
-	write: CellCaretWrite | null;
-};
-
 type CellMotionKind =
 	| ArrowDirection
 	| "word-left"
@@ -46,64 +26,48 @@ type CellMotionKind =
 	| "line-start"
 	| "line-end";
 
-export function setCellCaretFocus(
+/** The selection while a cell is being edited: a cell selection with `text` (T6). */
+export function editedCellSelection(
 	editor: Editor,
-	focus: CellCaretFocus | null,
-	write: CellCaretWrite | null = null,
-): void {
-	(editor as unknown as Record<symbol, CellCaretSeam>)[CELL_CARET_SEAM] = {
-		focus,
-		write,
-	};
+): (CellSelection & { text: { anchor: number; focus: number } }) | null {
+	const selection = editor.selection;
+	if (selection?.type !== "cell" || !selection.text) {
+		return null;
+	}
+	return { ...selection, text: selection.text };
 }
 
-export function getCellCaretFocus(editor: Editor): CellCaretFocus | null {
-	return (
-		(editor as unknown as Record<symbol, CellCaretSeam | undefined>)[
-			CELL_CARET_SEAM
-		]?.focus ?? null
-	);
-}
-
+/**
+ * T6: caret motion inside an edited cell stays a `CellSelection` and moves
+ * its `text`. Undefined when no cell is being edited.
+ */
 export function handleCellEditingCaret(
 	editor: Editor,
 	param: CaretMotionParam,
 	direction: CellMotionKind,
 ): CommandResult | false | undefined {
-	const host = editor as unknown as Record<symbol, CellCaretSeam | undefined>;
-	const seam = host[CELL_CARET_SEAM];
-	const focus = seam?.focus;
-	if (!seam || !focus) {
+	const selection = editedCellSelection(editor);
+	if (!selection) {
 		return undefined;
 	}
 
 	const cell = editor
-		.getBlock(focus.blockId)
+		.getBlock(selection.blockId)
 		?.as("table")
-		?.tableCell(focus.row, focus.col);
+		?.tableCell(selection.head.row, selection.head.col);
 	const text = cell?.textContent() ?? "";
 	const length = cell?.length() ?? text.length;
-	const locale = getEditorLocale(editor);
-	const start = clampCellOffset(length, focus.start);
-	const end = clampCellOffset(length, focus.end);
-
-	const next = stepCellTextOffset(
+	const next = stepCellText(
 		text,
-		start,
-		end,
+		{
+			anchor: clampCellOffset(length, selection.text.anchor),
+			focus: clampCellOffset(length, selection.text.focus),
+		},
 		direction,
 		param.extend,
-		locale,
+		getEditorLocale(editor),
 	);
-	seam.write?.({ start: next.start, end: next.end });
-	seam.focus = {
-		blockId: focus.blockId,
-		row: focus.row,
-		col: focus.col,
-		start: next.start,
-		end: next.end,
-	};
-	return true;
+	return { selection: { ...selection, text: next } };
 }
 
 export function handleCellSelectionArrow(
@@ -154,24 +118,28 @@ function buildCellTransitionSnapshot(editor: Editor) {
 	return { ...snapshot, blocks };
 }
 
-function stepCellTextOffset(
+/**
+ * Extend moves the focus. A plain motion collapses: a caret steps, and a
+ * range steps from its edge in the motion's direction.
+ */
+function stepCellText(
 	text: string,
-	start: number,
-	end: number,
+	range: { anchor: number; focus: number },
 	direction: CellMotionKind,
 	extend: boolean,
 	locale: string,
-): { start: number; end: number } {
-	const movingStart = isBackwardCellMotion(direction);
-	const from = movingStart ? start : end;
+): { anchor: number; focus: number } {
+	if (extend) {
+		return {
+			anchor: range.anchor,
+			focus: nextCellTextOffset(text, range.focus, direction, locale),
+		};
+	}
+	const from = isBackwardCellMotion(direction)
+		? Math.min(range.anchor, range.focus)
+		: Math.max(range.anchor, range.focus);
 	const to = nextCellTextOffset(text, from, direction, locale);
-	if (!extend || start === end) {
-		return { start: to, end: to };
-	}
-	if (movingStart) {
-		return { start: Math.min(to, end), end };
-	}
-	return { start, end: Math.max(to, start) };
+	return { anchor: to, focus: to };
 }
 
 function nextCellTextOffset(

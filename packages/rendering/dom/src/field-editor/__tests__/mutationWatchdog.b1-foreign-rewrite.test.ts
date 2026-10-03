@@ -50,9 +50,6 @@ function createFieldEditor(blockId: string) {
 		applyDomTextSelection: () => {},
 		applyDocumentTextSelection: () => {},
 		syncTextSelection: () => {},
-		setBackendSelectionAuthority: () => {},
-		getBackendSelectionAuthority: () => null,
-		clearBackendSelectionAuthority: () => {},
 		notifyGestureEvent: () => {},
 	};
 }

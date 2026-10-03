@@ -124,9 +124,30 @@ export function buildSelectionSlice(
 		previous.isAnchor === next.isAnchor &&
 		previous.isFocus === next.isFocus &&
 		previous.caretHere === next.caretHere &&
-		previous.cell === next.cell &&
+		sameCellGrid(previous.cell, next.cell) &&
 		sameRange;
 	return same ? previous : next;
+}
+
+/**
+ * The slice carries grid coordinates; an edited cell's `text` moves with
+ * every caret step and is the field editor's, so it does not re-render
+ * the table.
+ */
+function sameCellGrid(
+	previous: BlockSelectionSlice["cell"],
+	next: BlockSelectionSlice["cell"],
+): boolean {
+	if (previous === null || next === null) {
+		return previous === next;
+	}
+	return (
+		previous.blockId === next.blockId &&
+		previous.anchor.row === next.anchor.row &&
+		previous.anchor.col === next.anchor.col &&
+		previous.head.row === next.head.row &&
+		previous.head.col === next.head.col
+	);
 }
 
 function selectionSliceFor(

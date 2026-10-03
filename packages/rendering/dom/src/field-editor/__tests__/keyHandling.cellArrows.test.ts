@@ -41,17 +41,67 @@ function insertTable(editor: ReturnType<typeof createEditor>, blockId: string) {
 				props: {},
 				position: "last",
 			},
+			{
+				type: "splice-text",
+				blockId,
+				cell: { row: 0, col: 0 },
+				from: 0,
+				to: 0,
+				insert: "cell",
+			},
 		],
 		{ origin: "user" },
 	);
 }
 
+function createCellFieldEditor(editor: ReturnType<typeof createEditor>) {
+	return {
+		focusBlockId: "t",
+		inputMode: "table" as const,
+		activeCellCoord: { blockId: "t", row: 0, col: 0 },
+		activateCell: () => {},
+		activateTextSelection: () => {},
+		syncCellTextSelection: (
+			cell: { blockId: string; row: number; col: number },
+			anchor: number,
+			focus: number,
+		) => {
+			editor.setSelection(
+				{
+					type: "cell",
+					blockId: cell.blockId,
+					anchor: { row: cell.row, col: cell.col },
+					head: { row: cell.row, col: cell.col },
+					text: { anchor, focus },
+				},
+				{ origin: "keyboard" },
+			);
+		},
+		deactivate: () => {},
+		selectAllBehavior: "block-first" as const,
+	};
+}
+
+const CELL_YTEXT = {
+	length: 4,
+	toString: () => "cell",
+	toDelta: () => [{ insert: "cell" }],
+	insert: () => {},
+	delete: () => {},
+};
+
 describe("handleTableCellKey arrows", () => {
-	it("T6: ArrowRight in an edited cell dispatches pen.caretRight and preventDefaults", () => {
+	it("T6: ArrowRight in an edited cell dispatches pen.caretRight, preventDefaults and moves CellSelection.text", () => {
 		const editor = createEditor({ schema: defaultSchema });
 		fixtures.push(editor);
 		insertTable(editor, "t");
-		editor.selectCell("t", 0, 0);
+		editor.setSelection({
+			type: "cell",
+			blockId: "t",
+			anchor: { row: 0, col: 0 },
+			head: { row: 0, col: 0 },
+			text: { anchor: 1, focus: 1 },
+		});
 
 		const registry = getCommandRegistry(editor);
 		if (!registry) {
@@ -64,44 +114,44 @@ describe("handleTableCellKey arrows", () => {
 			return originalDispatch(command, param, context);
 		}) as typeof registry.dispatch;
 
-		const written: Array<{ start: number; end: number }> = [];
-		const fieldEditor = {
-			focusBlockId: "t",
-			inputMode: "table" as const,
-			activeCellCoord: { blockId: "t", row: 0, col: 0 },
-			activateCell: () => {},
-			activateTextSelection: () => {},
-			commitCellTextSelection: (
-				_blockId: string,
-				_row: number,
-				_col: number,
-				start: number,
-				end: number,
-			) => {
-				written.push({ start, end });
-			},
-			deactivate: () => {},
-			selectAllBehavior: "block-first" as const,
-		};
-
 		const event = createArrowEvent("ArrowRight");
 		expect(
 			handleFieldEditorKeyDown({
 				event,
 				editor,
-				fieldEditor,
-				ytext: {
-					length: 4,
-					toString: () => "cell",
-					toDelta: () => [{ insert: "cell" }],
-					insert: () => {},
-					delete: () => {},
-				},
+				fieldEditor: createCellFieldEditor(editor),
+				ytext: CELL_YTEXT,
 				range: { start: 1, end: 1 },
 			}),
 		).toBe(true);
 		expect(event.defaultPrevented).toBe(true);
 		expect(dispatched).toContain("pen.caretRight");
-		expect(written.length).toBe(1);
+		expect(editor.selection).toMatchObject({
+			type: "cell",
+			head: { row: 0, col: 0 },
+			text: { anchor: 2, focus: 2 },
+		});
+	});
+
+	it("T6: a cell with no caret in the record takes the field's range before the motion", () => {
+		const editor = createEditor({ schema: defaultSchema });
+		fixtures.push(editor);
+		insertTable(editor, "t");
+		editor.selectCell("t", 0, 0);
+
+		const event = createArrowEvent("ArrowLeft");
+		expect(
+			handleFieldEditorKeyDown({
+				event,
+				editor,
+				fieldEditor: createCellFieldEditor(editor),
+				ytext: CELL_YTEXT,
+				range: { start: 3, end: 3 },
+			}),
+		).toBe(true);
+		expect(editor.selection).toMatchObject({
+			type: "cell",
+			text: { anchor: 2, focus: 2 },
+		});
 	});
 });

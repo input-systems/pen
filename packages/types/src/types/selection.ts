@@ -58,6 +58,12 @@ export interface CellSelection {
 	head: { row: number; col: number };
 	rowIds?: string[];
 	columnIds?: string[];
+	/**
+	 * The in-cell text range while one cell is being edited, in that cell's
+	 * logical offsets (A1, T6). Present only when `anchor` equals `head`;
+	 * a grid selection has none.
+	 */
+	text?: { anchor: number; focus: number };
 }
 
 export type SelectionState =
@@ -97,6 +103,7 @@ export type ReadonlySelectionState =
 			readonly head: { readonly row: number; readonly col: number };
 			readonly rowIds?: readonly string[];
 			readonly columnIds?: readonly string[];
+			readonly text?: { readonly anchor: number; readonly focus: number };
 	  }
 	| null;
 
@@ -130,6 +137,7 @@ export type SelectionRecordState =
 			readonly blockId: string;
 			readonly anchor: { readonly row: number; readonly col: number };
 			readonly head: { readonly row: number; readonly col: number };
+			readonly text?: { readonly anchor: number; readonly focus: number };
 	  }
 	| null;
 

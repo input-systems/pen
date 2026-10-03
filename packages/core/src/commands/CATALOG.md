@@ -20,10 +20,10 @@ Param `{ extend: boolean }` unless noted.
 
 | Command | Param | Owner | Current name |
 | --- | --- | --- | --- |
-| `pen.caretLeft` | `{ extend }` | core | `handleGraphemeCaret` (`-1`) + atom-adjacent select. T4 at block boundary. T6 from `CellSelection` via `transitionCellSelection`. In-cell editing (field-editor `activeCellCoord`) uses `setCellCaretFocus` and stays inside the cell. |
-| `pen.caretRight` | `{ extend }` | core | `handleGraphemeCaret` (`1`) + atom-adjacent select. T4 at block boundary. Same T6 / in-cell seam as `pen.caretLeft`. |
-| `pen.caretUp` | `{ extend }` | core | G5 via `setVerticalCaretMeasure` (`measureNow` + `verticalCaretTarget`). No measure → logical previous-block landing (field-editor `moveCaretAcrossBlocks`). Document edge stays put. Mid-block without measure is a miss (wrap needs geometry). T6 from `CellSelection`. In-cell editing seam falls back to offset 0 (single-line). |
-| `pen.caretDown` | `{ extend }` | core | Symmetric to `pen.caretUp`. In-cell editing seam falls back to cell text end. |
+| `pen.caretLeft` | `{ extend }` | core | `handleGraphemeCaret` (`-1`) + atom-adjacent select. T4 at block boundary. T6 from `CellSelection` via `transitionCellSelection`. In-cell editing (a `CellSelection` with `text`) moves `text` and stays inside the cell. |
+| `pen.caretRight` | `{ extend }` | core | `handleGraphemeCaret` (`1`) + atom-adjacent select. T4 at block boundary. Same T6 / in-cell `text` motion as `pen.caretLeft`. |
+| `pen.caretUp` | `{ extend }` | core | G5 via `setVerticalCaretMeasure` (`measureNow` + `verticalCaretTarget`). No measure → logical previous-block landing (field-editor `moveCaretAcrossBlocks`). Document edge stays put. Mid-block without measure is a miss (wrap needs geometry). T6 from `CellSelection`. In-cell editing moves `text` to offset 0 (single-line). |
+| `pen.caretDown` | `{ extend }` | core | Symmetric to `pen.caretUp`. In-cell editing moves `text` to the cell text end. |
 | `pen.caretLineStart` | `{ extend }` | core | Visual line-box start (M3). Field-editor injects a DOM measure on `Symbol.for("pen.lineEdgeSeam")`; no measure → logical offset 0. Home is bound on macos and windows/linux. Not keymap-swapped. |
 | `pen.caretLineEnd` | `{ extend }` | core | Visual line-box end (M3). Same seam and logical fallback as `pen.caretLineStart`. |
 | `pen.caretBlockStart` | `{ extend }` | core | Offset 0 of the focus block. |

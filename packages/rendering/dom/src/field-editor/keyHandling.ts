@@ -8,7 +8,6 @@ import {
 	historyUndo,
 	isCollapsed,
 	isMultiBlock,
-	setCellCaretFocus,
 } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
 import type { FieldEditorKeyboardController } from "./controller";
@@ -30,6 +29,7 @@ import {
 	tryHandleHistoryOverrideBinding,
 } from "./keyBindingShortcuts";
 import { dispatchKeymapEvent } from "./keymap";
+import { resolveEditedCellText } from "./selectionAuthority";
 import {
 	ensureLineEdgeMeasure,
 	isNavigationSelectionKey,
@@ -222,32 +222,25 @@ function handleTableCellKey(
 			return true;
 		}
 		const command = caretCommandForCellArrow(event.key);
-		setCellCaretFocus(
-			editor,
-			{
-				blockId: coord.blockId,
-				row: coord.row,
-				col: coord.col,
-				start: range?.start ?? 0,
-				end: range?.end ?? 0,
-			},
-			(next) => {
-				fieldEditor.commitCellTextSelection?.(
-					coord.blockId,
-					coord.row,
-					coord.col,
-					next.start,
-					next.end,
-				);
-			},
-		);
+		// T6 moves `CellSelection.text`; a cell with no caret in the record
+		// takes the field's before the motion.
+		if (
+			range &&
+			!resolveEditedCellText(editor.selection, coord.blockId, coord)
+		) {
+			fieldEditor.syncCellTextSelection?.(
+				coord,
+				range.start,
+				range.end,
+				"keyboard",
+			);
+		}
 		const handled = dispatchEditorCommand(
 			editor,
 			command,
 			{ extend: event.shiftKey },
 			{ origin: "user", fromKeymap: true },
 		);
-		setCellCaretFocus(editor, null);
 		if (!handled) {
 			return false;
 		}

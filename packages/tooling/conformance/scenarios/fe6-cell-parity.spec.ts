@@ -175,6 +175,119 @@ scenario(
 	},
 );
 
+/** The native caret's offset inside the active cell, or null outside it. */
+async function readNativeCellOffset(page: Page): Promise<number | null> {
+	return page.evaluate(() => {
+		const surface = document.querySelector(
+			"[data-pen-field-editor-active-surface][data-cell-row][data-cell-col]",
+		);
+		const selection = surface?.ownerDocument.getSelection();
+		if (!(surface instanceof HTMLElement) || !selection?.rangeCount) {
+			return null;
+		}
+		const range = selection.getRangeAt(0);
+		if (!surface.contains(range.startContainer)) {
+			return null;
+		}
+		const prefix = surface.ownerDocument.createRange();
+		prefix.selectNodeContents(surface);
+		prefix.setEnd(range.startContainer, range.startOffset);
+		return prefix.toString().length;
+	});
+}
+
+async function readCellCaret(page: Page): Promise<{
+	text: { anchor: number; focus: number } | null;
+	native: number | null;
+	mismatches: number;
+}> {
+	const native = await readNativeCellOffset(page);
+	const state = await page.evaluate(() => {
+		const selection = window.__penConformance.selection;
+		return {
+			text: selection?.type === "cell" ? (selection.text ?? null) : null,
+			mismatches: window.__penConformance.diagnostics.filter(
+				(event) => event.code === "selection-projection-mismatch",
+			).length,
+		};
+	});
+	return { ...state, native };
+}
+
+scenario(
+	"FE6: the cell caret is the authority's CellSelection.text and S2 holds while editing",
+	async (s, page) => {
+		await seedTable(s);
+		await editCell(page, 0, 0);
+		const activated = await readCellCaret(page);
+
+		await page.keyboard.press("ArrowLeft");
+		await page.keyboard.press("ArrowLeft");
+		const moved = await readCellCaret(page);
+
+		await page.keyboard.type("Z");
+		const typed = await readCellCaret(page);
+
+		const box = await cellLocator(page, 0, 0).boundingBox();
+		if (!box) {
+			throw new Error("cell has no box");
+		}
+		await page.mouse.click(box.x + 2, box.y + box.height / 2);
+		const clicked = await readCellCaret(page);
+
+		const steps = { activated, moved, typed, clicked };
+		await test.info().attach("fe6-cell-caret-authority", {
+			body: JSON.stringify(steps, null, 2),
+			contentType: "application/json",
+		});
+
+		expect(
+			[activated.text, moved.text, typed.text],
+			formatCheckReport(
+				"FE6: activation, arrows and typing move CellSelection.text",
+				activated.text?.focus === 5 &&
+					moved.text?.focus === 3 &&
+					typed.text?.focus === 4
+					? "passed"
+					: "failed",
+				JSON.stringify(steps),
+			),
+		).toEqual([
+			{ anchor: 5, focus: 5 },
+			{ anchor: 3, focus: 3 },
+			{ anchor: 4, focus: 4 },
+		]);
+		for (const [name, step] of Object.entries(steps)) {
+			expect(
+				step.native,
+				formatCheckReport(
+					`S2: the native caret shows CellSelection.text after ${name}`,
+					step.native !== null && step.native === step.text?.focus
+						? "passed"
+						: "failed",
+					JSON.stringify(step),
+				),
+			).toBe(step.text?.focus);
+		}
+		expect(
+			clicked.text?.focus,
+			formatCheckReport(
+				"FE6: a click inside the edited cell writes CellSelection.text",
+				clicked.text?.focus === 0 ? "passed" : "failed",
+				JSON.stringify(clicked),
+			),
+		).toBe(0);
+		expect(
+			clicked.mismatches,
+			formatCheckReport(
+				"FE6: editing a cell projects without a selection-projection-mismatch",
+				clicked.mismatches === 0 ? "passed" : "failed",
+				`mismatches=${clicked.mismatches}`,
+			),
+		).toBe(0);
+	},
+);
+
 /**
  * Which browsers route the bold accelerator into the page as a `formatBold`
  * `beforeinput`, measured rather than assumed.

@@ -47,7 +47,8 @@ export function serializeSelection(
 				type: "cell",
 				blockId: selection.blockId,
 				anchor: { ...selection.anchor },
-				head: { ...selection.head }
+				head: { ...selection.head },
+				...(selection.text ? { text: { ...selection.text } } : {}),
 			};
 		default: {
 			const _exhaustive: never = selection;
@@ -99,7 +100,8 @@ export function serializeSelectionRecord(
 					type: "cell",
 					blockId: state.blockId,
 					anchor: { ...state.anchor },
-					head: { ...state.head }
+					head: { ...state.head },
+					...(state.text ? { text: { ...state.text } } : {}),
 				};
 				break;
 			default: {

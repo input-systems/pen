@@ -12,9 +12,10 @@ export interface FocusSinkProjection {
 
 /**
  * Reveals or hides the sink for the record and projects focus for
- * non-text records (P, AX1): block and cell selections focus the
+ * non-text records (P, AX1): block and grid cell selections focus the
  * revealed sink; app and `null` focus the editor root, never the sink
- * (D18). Text selections are the field's to focus.
+ * (D18). Text selections and an edited cell's `text` are the field's to
+ * focus.
  */
 export function syncFocusSink(
 	sink: FocusSink,
@@ -34,7 +35,7 @@ export function syncFocusSink(
 		claimFocus(sink.element, sink.element.parentElement, projection, true);
 		return;
 	}
-	if (selection?.type === "cell") {
+	if (selection?.type === "cell" && !selection.text) {
 		const rows = Math.abs(selection.head.row - selection.anchor.row) + 1;
 		const columns = Math.abs(selection.head.col - selection.anchor.col) + 1;
 		sink.reveal({

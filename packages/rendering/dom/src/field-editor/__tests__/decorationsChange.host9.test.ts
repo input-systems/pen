@@ -139,9 +139,6 @@ function stubController(
 		setComposing: () => {},
 		notifyDomReconciled: () => {},
 		notifyGestureEvent: () => {},
-		setBackendSelectionAuthority: () => {},
-		getBackendSelectionAuthority: () => null,
-		clearBackendSelectionAuthority: () => {},
 	} as unknown as FieldEditorInputController;
 	return { controller, withBackendSelectionWrite };
 }

@@ -11,7 +11,7 @@ import {
 
 type TextInputPipelineController = Pick<
 	FieldEditorInputController,
-	"setBackendSelectionAuthority" | "syncTextSelection" | "resolveInsertMarks"
+	"syncCellTextSelection" | "syncTextSelection" | "resolveInsertMarks"
 >;
 
 export interface ApplyInlineTextInputOptions {
@@ -100,17 +100,17 @@ function applyInlineTextOperations(
 	ops: readonly DocumentOp[],
 	selection: InlineTextSelectionTarget,
 ): void {
-	// The cell caret is not in the authority yet (W3.R18): stamp it before
-	// the apply so the rebuild the apply triggers restores it.
-	if (options.cellCoord) {
-		options.fieldEditor.setBackendSelectionAuthority("cell", selection);
-	}
-
 	if (ops.length > 0) {
 		options.editor.apply([...ops], { origin: "user" });
 	}
 
+	// W3.R18: the edited cell's caret is `CellSelection.text`.
 	if (options.cellCoord) {
+		options.fieldEditor.syncCellTextSelection(
+			options.cellCoord,
+			selection.anchorOffset,
+			selection.focusOffset,
+		);
 		return;
 	}
 

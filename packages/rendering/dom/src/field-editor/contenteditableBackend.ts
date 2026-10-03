@@ -10,7 +10,7 @@ import {
 import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
 import { extractTextFromDOM } from "./selectionBridge";
 import { computeAnchoredTextDiff } from "./textDiff";
-import { writeLegacyFieldRange, writeNativeRange } from "./selectionProjector";
+import { writeCellTextRange, writeNativeRange } from "./selectionProjector";
 import { applyListInputRule } from "./commands";
 import {
 	isCollaboratorTransaction,
@@ -36,8 +36,8 @@ import {
 	requiresResolvedInputRange,
 } from "./contenteditableDomHelpers";
 import {
+	resolveEditedCellText,
 	resolveLiveTextSelection,
-	resolveRestoreCellEndpoints,
 } from "./selectionAuthority";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
@@ -267,15 +267,14 @@ export class ContentEditableBackend {
 		if (!blockId) return;
 		const activeCell = this._getActiveCellCoord(blockId);
 		if (activeCell) {
-			const activeSelection = resolveRestoreCellEndpoints(
-				this.fieldEditor.getBackendSelectionAuthority("cell", blockId),
+			const text = resolveEditedCellText(
+				this.editor.selection,
+				blockId,
 				activeCell,
 			);
-			if (!activeSelection) return;
-			const start = activeSelection.anchorOffset;
-			const end = activeSelection.focusOffset;
+			if (!text) return;
 			this.fieldEditor.withBackendSelectionWrite(() => {
-				writeLegacyFieldRange(element, start, end, "cell");
+				writeCellTextRange(element, text);
 			});
 			return;
 		}
@@ -724,10 +723,10 @@ export class ContentEditableBackend {
 	};
 
 	/**
-	 * The range an input edits: the authority after a reader sync (W3.R5).
-	 * Two cases still read the field: an active table cell, whose caret is
-	 * not in the authority until W3.R18, and a field activated without a
-	 * caret in the authority, where the browser's caret is the only one.
+	 * The range an input edits: the authority after a reader sync (W3.R5),
+	 * the edited cell's `CellSelection.text` in a cell (W3.R18). A field
+	 * activated without a caret in the authority still reads the field,
+	 * where the browser's caret is the only one.
 	 */
 	resolveLiveInputRange(): {
 		start: number;
@@ -735,19 +734,14 @@ export class ContentEditableBackend {
 	} | null {
 		const blockId = this.fieldEditor.focusBlockId;
 		if (!this.element || !blockId) return null;
-		if (this._getActiveCellCoord(blockId)) {
-			return this.cellCaretOffsets();
-		}
 		this.fieldEditor.syncDomSelectionRead?.();
 		return (
-			authorityOffsetsInBlock(this.editor, blockId) ??
-			this.unclaimedFieldCaretOffsets()
+			authorityOffsetsInBlock(
+				this.editor,
+				blockId,
+				this._getActiveCellCoord(blockId),
+			) ?? this.unclaimedFieldCaretOffsets()
 		);
-	}
-
-	// The in-cell caret is not in the authority yet (W3.R18).
-	private cellCaretOffsets(): { start: number; end: number } | null {
-		return this.liveFieldOffsets();
 	}
 
 	// A field activated with no caret in the record takes the browser's.

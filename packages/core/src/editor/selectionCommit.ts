@@ -47,11 +47,29 @@ export function mapSelectionState(
 	}
 }
 
-export function mintTextAnchors(
+/**
+ * AS1: anchors for an accepted text selection's endpoints, and for an
+ * edited cell's `text` endpoints as cell-text targets (AN10).
+ */
+export function mintSelectionAnchors(
 	state: SelectionState,
 	anchors: EditorAnchorsImpl,
 	isNonTextBlock: (blockId: string) => boolean,
 ): { from: Anchor | null; to: Anchor | null } {
+	if (state?.type === "cell" && state.text) {
+		const cell = { row: state.head.row, col: state.head.col };
+		const collapsed = state.text.anchor === state.text.focus;
+		return {
+			from: anchors.create(
+				{ blockId: state.blockId, offset: state.text.anchor, cell },
+				collapsed ? 1 : -1,
+			),
+			to: anchors.create(
+				{ blockId: state.blockId, offset: state.text.focus, cell },
+				1,
+			),
+		};
+	}
 	if (!state || state.type !== "text") {
 		return { from: null, to: null };
 	}
@@ -68,14 +86,17 @@ export function mintTextAnchors(
 	};
 }
 
-export function resolveHeldText(
+/** AS2: the held anchors resolved after repair, in the state's own shape. */
+export function resolveHeldSelection(
 	state: SelectionState,
 	fromAnchor: Anchor | null,
 	toAnchor: Anchor | null,
 	anchors: EditorAnchorsImpl,
-	doc: PenDocument,
-): TextSelection | undefined {
-	if (state?.type !== "text" || !fromAnchor || !toAnchor) {
+): TextSelection | CellSelection | undefined {
+	if (!fromAnchor || !toAnchor) {
+		return undefined;
+	}
+	if (state?.type !== "text" && !(state?.type === "cell" && state.text)) {
 		return undefined;
 	}
 	const from = anchors.resolve(fromAnchor);
@@ -83,12 +104,35 @@ export function resolveHeldText(
 	if (!from || !to) {
 		return undefined;
 	}
+	if (state.type === "cell") {
+		return {
+			...state,
+			text: { anchor: from.offset, focus: to.offset },
+		};
+	}
 	return createTextSelection({
 		anchor: from,
 		focus: to,
 		affinity: state.affinity,
 		goalX: state.goalX,
 	});
+}
+
+/** A table structure change or removal re-addresses a cell selection (A5). */
+export function cellStructureChanged(
+	state: SelectionState,
+	summary: ChangeSummary,
+): boolean {
+	if (state?.type !== "cell") {
+		return false;
+	}
+	return (
+		summary.structural.some(
+			(change) =>
+				change.type === "table-changed" &&
+				change.blockId === state.blockId,
+		) || removedBlockIds(summary).has(state.blockId)
+	);
 }
 
 function mapText(
@@ -201,13 +245,20 @@ function mapCell(
 	if (!grid) {
 		return undefined;
 	}
+	const head = clampCellCoord(state.head, grid);
+	// An edited cell that the clamp moved is not the cell `text` addresses.
+	const keepText =
+		state.text !== undefined &&
+		head.row === state.head.row &&
+		head.col === state.head.col;
 	const next: CellSelection = {
 		type: "cell",
 		blockId: state.blockId,
 		anchor: clampCellCoord(state.anchor, grid),
-		head: clampCellCoord(state.head, grid),
+		head,
 		...(state.rowIds ? { rowIds: [...state.rowIds] } : {}),
 		...(state.columnIds ? { columnIds: [...state.columnIds] } : {}),
+		...(keepText && state.text ? { text: { ...state.text } } : {}),
 	};
 	if (selectionEquals(state, next)) {
 		return undefined;

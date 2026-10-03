@@ -12,6 +12,12 @@ import {
 	type SelectionPoint,
 } from "./selectionMapping";
 import { normalizeSelectionFormation } from "../utils/selectionFormation";
+import { resolveCellInlineElement } from "./contentResolution";
+import {
+	resolveEditedCellText,
+	resolveLiveTextSelection,
+	type FieldEditorSelectionCell,
+} from "./selectionAuthority";
 
 export type ReaderPoint = Point;
 
@@ -35,6 +41,7 @@ export type ReaderSelection =
 			readonly blockId: string;
 			readonly anchor: { readonly row: number; readonly col: number };
 			readonly head: { readonly row: number; readonly col: number };
+			readonly text?: { readonly anchor: number; readonly focus: number };
 	  }
 	| null;
 
@@ -146,7 +153,9 @@ export function isLogicallyEquivalent(
 				domRead.anchor.row === authorityState.anchor.row &&
 				domRead.anchor.col === authorityState.anchor.col &&
 				domRead.head.row === authorityState.head.row &&
-				domRead.head.col === authorityState.head.col
+				domRead.head.col === authorityState.head.col &&
+				domRead.text?.anchor === authorityState.text?.anchor &&
+				domRead.text?.focus === authorityState.text?.focus
 			);
 		}
 		default: {
@@ -212,12 +221,40 @@ export function readNormalizedDomProposal(
 	root: HTMLElement,
 	editor: Editor,
 	selection: Selection | null = root.ownerDocument.getSelection(),
-): ReturnType<typeof normalizeSelectionFormation> | null {
+): ReaderSelection {
+	const editedCell = readEditedCellSelection(root, editor, selection);
+	if (editedCell) {
+		return editedCell;
+	}
 	const mapped = domSelectionToEditor(root, selection);
 	if (!mapped) {
 		return null;
 	}
 	return normalizeSelectionFormation(editor, mapped);
+}
+
+/**
+ * A range inside the cell the record is editing reads as that cell's
+ * `CellSelection.text` (W3.R18): a table's text points are the wrong offset
+ * domain for it, so the block mapping never sees it.
+ */
+function readEditedCellSelection(
+	root: HTMLElement,
+	editor: Editor,
+	selection: Selection | null,
+): ReaderSelection {
+	const state = editor.selection;
+	if (state?.type !== "cell" || !state.text) {
+		return null;
+	}
+	const { blockId, head } = state;
+	const element = resolveCellInlineElement(blockId, head.row, head.col, root);
+	const offsets = element
+		? getDirectionalSelectionOffsets(element, selection)
+		: null;
+	return offsets
+		? { ...state, text: { anchor: offsets.anchor, focus: offsets.focus } }
+		: null;
 }
 
 /** What a projection left in the DOM, compared with the record it projected. */
@@ -395,9 +432,8 @@ export interface SelectionReader {
 	 * The live range's directional offsets inside one field element, or null
 	 * unless both endpoints are in it. For the reads the authority cannot
 	 * answer yet: the caret the browser left after its own edit, before the
-	 * diff reaches the model (C2); a field activated with no caret in the
-	 * record; and the in-cell caret until it moves into the authority
-	 * (W3.R18).
+	 * diff reaches the model (C2), and a field activated with no caret in
+	 * the record.
 	 */
 	fieldOffsets(element: HTMLElement): DirectionalSelectionOffsets | null;
 	/** R1–R3 gesture input; the only way window state changes. */
@@ -412,23 +448,23 @@ export interface SelectionReader {
 /**
  * The authority's text selection inside one block, as directional offsets.
  * Input handlers call `reader.sync()` first and then read this instead of
- * mapping the live selection (W3.R5). Null when the selection is not a text
- * selection with both endpoints in `blockId`.
+ * mapping the live selection (W3.R5). With `cell`, the edited cell's
+ * `CellSelection.text` (W3.R18). Null when the record has no such range.
  */
 export function authorityOffsetsInBlock(
 	editor: Editor,
 	blockId: string,
+	cell: FieldEditorSelectionCell | null = null,
 ): { anchor: number; focus: number; start: number; end: number } | null {
 	const selection = editor.selection;
-	if (
-		selection?.type !== "text" ||
-		selection.anchor.blockId !== blockId ||
-		selection.focus.blockId !== blockId
-	) {
+	const text = resolveLiveTextSelection(selection, blockId, cell);
+	const range = cell
+		? resolveEditedCellText(selection, blockId, cell)
+		: text && { anchor: text.anchor.offset, focus: text.focus.offset };
+	if (!range) {
 		return null;
 	}
-	const anchor = selection.anchor.offset;
-	const focus = selection.focus.offset;
+	const { anchor, focus } = range;
 	return {
 		anchor,
 		focus,
@@ -731,6 +767,7 @@ function toReaderSelection(state: SelectionRecordState): ReaderSelection {
 				blockId: state.blockId,
 				anchor: state.anchor,
 				head: state.head,
+				...(state.text ? { text: state.text } : {}),
 			};
 		default: {
 			const _exhaustive: never = state;

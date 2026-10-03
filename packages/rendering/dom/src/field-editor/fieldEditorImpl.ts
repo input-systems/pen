@@ -4,6 +4,7 @@ import type {
 	HistoryAppliedEvent,
 	SelectionOrigin,
 	SelectionRecord,
+	SelectionRecordState,
 	SelectionState,
 	Unsubscribe,
 } from "@input/pen-types";
@@ -28,10 +29,7 @@ import { FocusController } from "./focusController";
 import { HistorySelectionCoordinator } from "./historySelectionCoordinator";
 import { PendingMarkController } from "./pendingMarkController";
 import { FieldEditorSelectionCoordinator } from "./selectionCoordinator";
-import type {
-	FieldEditorSelectionSnapshot,
-	FieldEditorSelectionSource,
-} from "./selectionAuthority";
+import { resolveEditedCellText } from "./selectionAuthority";
 import { SessionReconciler } from "./sessionReconciler";
 import { classifySelectionSurface } from "./crossBlock";
 import type {
@@ -176,6 +174,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 			getYTextForCell: (blockId, row, col) =>
 				this._getYTextForCell(blockId, row, col),
 			attachElement: (element) => this.attachElement(element),
+			claimCaret: (cell) => this._claimCellCaret(cell),
 			requestDomFocus: (target, reason, focusOptions, policyOptions) =>
 				this.requestDomFocus(
 					target,
@@ -292,6 +291,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 			(record) => {
 				if (record.origin === "mapped") {
 					this._backendLifecycle.current?.selectionMapped?.();
+				} else {
+					this._followEditedCell(record.state);
 				}
 				const selection = this._editor.selection;
 				if (
@@ -436,6 +437,25 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._activateCell(blockId, row, col);
 		this.attachElement(element);
 		this._cellEditingController.placeCaretInCell(element);
+	}
+
+	/**
+	 * FE6: a written `CellSelection.text` is cell editing, so a record that
+	 * names a cell other than the active one moves the field editor there.
+	 */
+	protected _followEditedCell(state: SelectionRecordState): void {
+		if (state?.type !== "cell" || !state.text) {
+			return;
+		}
+		const active = this._cellEditingController.activeCellCoord;
+		if (
+			active?.blockId === state.blockId &&
+			active.row === state.head.row &&
+			active.col === state.head.col
+		) {
+			return;
+		}
+		this.activateCell(state.blockId, state.head.row, state.head.col);
 	}
 
 	protected _activateCell(blockId: string, row: number, col: number): void {
@@ -975,27 +995,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._selectionCoordinator.resetAuthority();
 	}
 
-	setBackendSelectionAuthority(
-		source: FieldEditorSelectionSource,
-		selection: FieldEditorSelectionSnapshot | null,
-	): void {
-		this._selectionCoordinator.setAuthoritySelection(source, selection);
-	}
-
-	getBackendSelectionAuthority(
-		source: FieldEditorSelectionSource,
-		blockId?: string | null,
-	): FieldEditorSelectionSnapshot | null {
-		return this._selectionCoordinator.getAuthoritySelection(
-			source,
-			blockId,
-		);
-	}
-
-	clearBackendSelectionAuthority(source: FieldEditorSelectionSource): void {
-		this._selectionCoordinator.clearAuthoritySelection(source);
-	}
-
 	withBackendSelectionWrite<T>(write: () => T): T {
 		return this._selectionCoordinator.withSelectionWrite(write);
 	}
@@ -1074,6 +1073,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 						blockId: normalized.blockId,
 						anchor: normalized.anchor,
 						head: normalized.head,
+						...(normalized.text ? { text: normalized.text } : {}),
 					},
 					{ origin },
 				);
@@ -1171,20 +1171,37 @@ export class FieldEditorImpl implements FieldEditorSession {
 		);
 	}
 
-	commitCellTextSelection(
-		blockId: string,
-		row: number,
-		col: number,
+	syncCellTextSelection(
+		cell: ActiveCellCoord,
 		anchorOffset: number,
 		focusOffset: number,
+		origin: SelectionOrigin = this.inputOrigin(),
 	): void {
-		this.setBackendSelectionAuthority("cell", {
-			blockId,
-			anchorOffset,
-			focusOffset,
-			cell: { row, col },
-		});
-		this._backendLifecycle.updateSelection(null);
+		this._editor.setSelection(
+			{
+				type: "cell",
+				blockId: cell.blockId,
+				anchor: { row: cell.row, col: cell.col },
+				head: { row: cell.row, col: cell.col },
+				text: { anchor: anchorOffset, focus: focusOffset },
+			},
+			{ origin },
+		);
+	}
+
+	/**
+	 * A cell that gains focus shows the record's caret in it (W3.R18): the
+	 * record's `CellSelection.text` when it already names this cell, else a
+	 * caret at the end of the cell's text. The projector writes it.
+	 */
+	protected _claimCellCaret(cell: ActiveCellCoord): void {
+		if (resolveEditedCellText(this._editor.selection, cell.blockId, cell)) {
+			this._selectionCoordinator.project("activation");
+			return;
+		}
+		const ytext = this._getYTextForCell(cell.blockId, cell.row, cell.col);
+		const length = ytext?.length ?? 0;
+		this.syncCellTextSelection(cell, length, length, "programmatic");
 	}
 
 	collapseSelectionToFocus(origin: SelectionOrigin = "programmatic"): void {

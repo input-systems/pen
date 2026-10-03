@@ -66,7 +66,6 @@
 - getBlockContentRole
 - getBlockSelectionRoleFromSchema
 - getBlockSelectionRoleFromType
-- getCellCaretFocus
 - getCommandRegistry
 - getEditorSelectionRecord
 - getFlowCapabilityFromSchema
@@ -131,7 +130,6 @@
 - scopedDecorationSource
 - selectAdjacentInlineAtom
 - selectionToRange
-- setCellCaretFocus
 - setVerticalCaretGoalX
 - setVerticalCaretMeasure
 - shouldAllowDirectBlockPaste
@@ -244,8 +242,6 @@
 - BlockDirectionResolver
 - BlockDirectionSetting
 - CaretMotionParam
-- CellCaretFocus
-- CellCaretWrite
 - ClipboardHandler
 - CommandDispatchContext
 - CommandHandlerTable

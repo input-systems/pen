@@ -356,6 +356,11 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		sources: ["core/src/editor/selection.ts"],
 	},
 	{
+		code: "selection-invalid-cell-text",
+		levels: ["warn"],
+		sources: ["core/src/editor/selection.ts"],
+	},
+	{
 		code: "selection-projection-mismatch",
 		levels: ["warn"],
 		sources: ["rendering/dom/src/field-editor/selectionProjector.ts"],

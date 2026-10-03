@@ -241,17 +241,10 @@ export {
 	caretUp,
 	caretWordLeft,
 	caretWordRight,
-	getCellCaretFocus,
 	selectAll,
 	selectBlock,
-	setCellCaretFocus,
 } from "./commands/caret";
-export type {
-	CaretMotionParam,
-	CellCaretFocus,
-	CellCaretWrite,
-	SelectBlockParam,
-} from "./commands/caret";
+export type { CaretMotionParam, SelectBlockParam } from "./commands/caret";
 export {
 	getVerticalCaretGoalX,
 	getVerticalCaretMeasure,

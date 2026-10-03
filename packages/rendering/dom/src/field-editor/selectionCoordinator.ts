@@ -6,11 +6,7 @@ import type {
 	ReaderSelection,
 	SelectionReader,
 } from "./selectionReader";
-import {
-	FieldEditorSelectionAuthority,
-	type FieldEditorSelectionSnapshot,
-	type FieldEditorSelectionSource,
-} from "./selectionAuthority";
+import { FieldEditorSelectionAuthority } from "./selectionAuthority";
 import type { ProjectionScroll } from "./projectionScroll";
 import {
 	SelectionProjector,
@@ -77,24 +73,6 @@ export class FieldEditorSelectionCoordinator {
 
 	resetAuthority(): void {
 		this._authority.reset();
-	}
-
-	setAuthoritySelection(
-		source: FieldEditorSelectionSource,
-		selection: FieldEditorSelectionSnapshot | null,
-	): void {
-		this._authority.set(source, selection);
-	}
-
-	getAuthoritySelection(
-		source: FieldEditorSelectionSource,
-		blockId?: string | null,
-	): FieldEditorSelectionSnapshot | null {
-		return this._authority.get(source, blockId);
-	}
-
-	clearAuthoritySelection(source: FieldEditorSelectionSource): void {
-		this._authority.clear(source);
 	}
 
 	beginApplyingSelection(): () => void {

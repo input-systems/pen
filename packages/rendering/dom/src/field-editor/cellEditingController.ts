@@ -5,7 +5,6 @@ import type {
 } from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
 import { resolveCellInlineElement } from "./contentResolution";
-import { writeNativeCaretAtEnd } from "./selectionProjector";
 
 type CellEditingControllerOptions = {
 	getRootElement: () => HTMLElement | null;
@@ -15,6 +14,8 @@ type CellEditingControllerOptions = {
 		col: number,
 	) => FieldEditorTextLike | null;
 	attachElement: (element: HTMLElement) => boolean;
+	/** Writes the cell's caret to the authority; the projector shows it (W3.R18). */
+	claimCaret: (cell: ActiveCellCoord) => void;
 	requestDomFocus: (
 		target: HTMLElement,
 		reason: FieldEditorFocusReason,
@@ -67,14 +68,16 @@ export class CellEditingController {
 	}
 
 	placeCaretInCell(cellEl: HTMLElement): void {
+		const coord = this.coord;
 		if (
+			!coord ||
 			!this.options.requestDomFocus(cellEl, "cell", {
 				preventScroll: true,
 			})
 		) {
 			return;
 		}
-		writeNativeCaretAtEnd(cellEl);
+		this.options.claimCaret(coord);
 	}
 
 	resolveInlineElement(blockId: string): HTMLElement | null {

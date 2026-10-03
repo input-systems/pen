@@ -36,6 +36,8 @@ export type SerializedCellSelection = {
 	blockId: string;
 	anchor: { row: number; col: number };
 	head: { row: number; col: number };
+	/** The edited cell's caret (W3.R18). */
+	text?: { anchor: number; focus: number };
 };
 
 export type SerializedSelection =

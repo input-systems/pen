@@ -1,15 +1,6 @@
-export type FieldEditorSelectionSource = "cell";
-
 export type FieldEditorSelectionCell = {
 	row: number;
 	col: number;
-};
-
-export type FieldEditorSelectionSnapshot = {
-	blockId: string;
-	anchorOffset: number;
-	focusOffset: number;
-	cell?: FieldEditorSelectionCell;
 };
 
 export type FieldEditorTextSelectionLike = {
@@ -18,18 +9,22 @@ export type FieldEditorTextSelectionLike = {
 	focus: { blockId: string; offset: number };
 };
 
-/** Structural view of `SelectionState`: only text endpoints are read here. */
+/** Structural view of `SelectionState`: text endpoints and an edited cell's `text`. */
 export type FieldEditorLiveSelectionLike =
 	| FieldEditorTextSelectionLike
-	| { type: "block" | "app" | "cell" };
+	| { type: "block" | "app" }
+	| {
+			type: "cell";
+			blockId?: string;
+			head?: FieldEditorSelectionCell;
+			text?: { anchor: number; focus: number };
+	  };
 
 /**
  * Live `editor.selection`, or null when it cannot address the field being
  * edited. A `TextSelection` carries no cell coordinate, so while a table cell
- * is active it describes the block and its offsets are a different coordinate
- * space than the cell's text. Cell edits deliberately leave `editor.selection`
- * alone for that reason (`textInputPipeline.applyInlineTextOperations`), so a
- * cell caret only ever lives in a cell-scoped stamp.
+ * is active its offsets are a different coordinate space than the cell's
+ * text; the edited cell's caret is `CellSelection.text` instead.
  */
 export function resolveLiveTextSelection(
 	selection: FieldEditorLiveSelectionLike | null | undefined,
@@ -49,68 +44,35 @@ export function resolveLiveTextSelection(
 	return selection;
 }
 
-function stampAddressesCell(
-	stamp: FieldEditorSelectionSnapshot | null,
-	activeCell: FieldEditorSelectionCell,
-): stamp is FieldEditorSelectionSnapshot {
-	return (
-		stamp != null &&
-		stamp.cell?.row === activeCell.row &&
-		stamp.cell?.col === activeCell.col
-	);
-}
-
 /**
- * Cell-field restore: the cell stamp, when it names the active cell. An
- * unaddressable stamp must not fall through to block endpoints —
- * `TextSelection` cannot express a cell caret.
+ * The edited cell's caret (W3.R18): the record's `CellSelection.text` when
+ * it names `activeCell` in `blockId`, else null.
  */
-export function resolveRestoreCellEndpoints(
-	cellStamp: FieldEditorSelectionSnapshot | null,
+export function resolveEditedCellText(
+	selection: FieldEditorLiveSelectionLike | null | undefined,
+	blockId: string,
 	activeCell: FieldEditorSelectionCell,
-): FieldEditorSelectionSnapshot | null {
-	return stampAddressesCell(cellStamp, activeCell) ? cellStamp : null;
+): { anchor: number; focus: number } | null {
+	if (
+		selection?.type !== "cell" ||
+		!selection.text ||
+		selection.blockId !== blockId ||
+		selection.head?.row !== activeCell.row ||
+		selection.head?.col !== activeCell.col
+	) {
+		return null;
+	}
+	return selection.text;
 }
 
 export class FieldEditorSelectionAuthority {
-	private readonly selections = new Map<
-		FieldEditorSelectionSource,
-		FieldEditorSelectionSnapshot
-	>();
 	private applyingSelectionDepth = 0;
 
 	get isApplyingSelection(): number {
 		return this.applyingSelectionDepth;
 	}
 
-	set(
-		source: FieldEditorSelectionSource,
-		selection: FieldEditorSelectionSnapshot | null,
-	): void {
-		if (selection) {
-			this.selections.set(source, selection);
-			return;
-		}
-		this.selections.delete(source);
-	}
-
-	get(
-		source: FieldEditorSelectionSource,
-		blockId?: string | null,
-	): FieldEditorSelectionSnapshot | null {
-		const selection = this.selections.get(source) ?? null;
-		if (!selection || (blockId && selection.blockId !== blockId)) {
-			return null;
-		}
-		return selection;
-	}
-
-	clear(source: FieldEditorSelectionSource): void {
-		this.selections.delete(source);
-	}
-
 	reset(): void {
-		this.selections.clear();
 		this.applyingSelectionDepth = 0;
 	}
 

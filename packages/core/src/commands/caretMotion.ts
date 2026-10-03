@@ -38,7 +38,7 @@ import {
 	toTransitionSelection,
 } from "./helpers";
 import {
-	getCellCaretFocus,
+	editedCellSelection,
 	handleCellEditingCaret,
 	handleCellSelectionArrow,
 } from "./caretCellEditing";
@@ -287,7 +287,7 @@ export function handleDocEdge(
 	param: CaretMotionParam,
 	edge: "start" | "end",
 ): CommandResult | false {
-	if (getCellCaretFocus(editor)) {
+	if (editedCellSelection(editor)) {
 		return true;
 	}
 

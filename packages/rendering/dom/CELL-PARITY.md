@@ -15,7 +15,7 @@ Unless a row says otherwise it describes cell editing.
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Text entry                      | `beforeinput` → `splice-text` carrying `cell: { row, col }`                                                 |
 | IME and composition             | The same event-sequence path a paragraph uses; the fallback in `FIELD-EDITOR-BACKENDS.md` applies unchanged |
-| Caret movement inside the cell  | Arrow keys dispatch the ordinary caret commands against cell text                                           |
+| Caret movement inside the cell  | Arrow keys dispatch the ordinary caret commands; they move the record's `CellSelection.text`                |
 | Cell-to-cell navigation         | Tab, Shift+Tab, and Enter move between cells; Enter is a move, not a block split                            |
 | Undo and redo of a cell edit    | Cell text participates in the shared undo stack                                                             |
 | AI suggestion accept and reject | Resolution ops carry the cell coordinate, so accepting clears the mark in the cell it was staged in         |

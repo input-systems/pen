@@ -15,7 +15,6 @@ import {
 	caretWordRight,
 	selectAll,
 	selectBlock,
-	setCellCaretFocus,
 	setVerticalCaretMeasure,
 	getVerticalCaretGoalX,
 } from "..";
@@ -573,27 +572,33 @@ describe("caret commands", () => {
 		editor.destroy();
 	});
 
-	it("cell-editing seam: caretRight stays in the cell instead of T6", () => {
+	it("T6: caretRight in an edited cell moves CellSelection.text and stays in the cell", () => {
 		const editor = createCommandEditor([{ id: "t", type: "table" }]);
 		const registry = createCommandHarness(editor);
-		editor.selectCell("t", 0, 0);
-
-		const written: Array<{ start: number; end: number }> = [];
-		setCellCaretFocus(
-			editor,
-			{ blockId: "t", row: 0, col: 0, start: 0, end: 0 },
-			(next) => {
-				written.push(next);
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId: "t",
+				cell: { row: 0, col: 0 },
+				from: 0,
+				to: 0,
+				insert: "ab",
 			},
-		);
+		]);
+		editor.setSelection({
+			type: "cell",
+			blockId: "t",
+			anchor: { row: 0, col: 0 },
+			head: { row: 0, col: 0 },
+			text: { anchor: 0, focus: 0 },
+		});
 
 		expect(registry.dispatch(caretRight, { extend: false })).toBe(true);
-		expect(written).toEqual([{ start: 0, end: 0 }]);
 		expect(editor.selection).toMatchObject({
 			type: "cell",
 			head: { row: 0, col: 0 },
+			text: { anchor: 1, focus: 1 },
 		});
-		setCellCaretFocus(editor, null);
 		editor.destroy();
 	});
 });

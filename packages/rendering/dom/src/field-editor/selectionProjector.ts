@@ -58,38 +58,20 @@ export function writeNativeRange(
 }
 
 /**
- * Writes element-local logical offsets into one field (W3.R3, PH1 only). The
- * backends' stamp restores call it with the offsets they resolve today, so
- * the stamp sources can be removed one by one; `source` names the stamp each
- * removal deletes. No read-back. W3.R10 deletes it.
+ * Writes an edited cell's `CellSelection.text` (W3.R18) as the native range
+ * inside the cell's inline element, in the cell's logical offsets.
  */
-export function writeLegacyFieldRange(
+export function writeCellTextRange(
 	element: HTMLElement,
-	anchorOffset: number,
-	focusOffset: number,
-	_source: "cell",
+	text: { readonly anchor: number; readonly focus: number },
 ): void {
 	const selection = nativeSelectionForWrite(element);
 	if (!selection) return;
 	writeNativeRangeAt(
 		selection,
-		findLogicalDOMPoint(element, Math.max(0, anchorOffset)),
-		findLogicalDOMPoint(element, Math.max(0, focusOffset)),
+		findLogicalDOMPoint(element, Math.max(0, text.anchor)),
+		findLogicalDOMPoint(element, Math.max(0, text.focus)),
 	);
-}
-
-/**
- * Collapses the native caret at the end of `element`'s contents. The cell
- * caret is not in the authority yet (W3 step 13), so cell activation writes
- * it here; step 13 projects it from the record instead.
- */
-export function writeNativeCaretAtEnd(element: HTMLElement): void {
-	const selection = nativeSelectionForWrite(element);
-	if (!selection) return;
-	const range = element.ownerDocument.createRange();
-	range.selectNodeContents(element);
-	range.collapse(false);
-	replaceNativeRange(selection, range);
 }
 
 /** Clears the native range when it lies inside `root`. */
@@ -676,16 +658,18 @@ export class SelectionProjector {
 		// write or read back — the text path would compare the still-active
 		// field's range against it and report a mismatch. Clear the range and
 		// finish; the focus projection moves focus to the root or the sink.
-		// A cell record does too unless a cell is being edited: an edited
-		// cell's caret is a native range in it until it moves into the
-		// authority (§3.7), so that one keeps the text path.
+		// A grid cell record does too. An edited cell's `text` is a native
+		// range in the cell element (W3.R18), so that one keeps the text
+		// path while the cell surface is attached.
 		const record = this._options.getRecord?.();
 		if (
 			record &&
 			(record.state === null ||
 				record.state.type === "app" ||
 				record.state.type === "block" ||
-				(record.state.type === "cell" && this._options.getSurface?.() !== "cell"))
+				(record.state.type === "cell" &&
+					(!record.state.text ||
+						this._options.getSurface?.() !== "cell")))
 		) {
 			const root = this._options.getRootElement();
 			if (root) {

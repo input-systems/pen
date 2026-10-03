@@ -22,9 +22,10 @@ import type { EditorAnchorsImpl } from "./anchors";
 import { resolveCellSelectionMatrix } from "./cellSelection";
 import { EventEmitter } from "./events";
 import {
+	cellStructureChanged,
 	mapSelectionState,
-	mintTextAnchors,
-	resolveHeldText,
+	mintSelectionAnchors,
+	resolveHeldSelection,
 } from "./selectionCommit";
 import {
 	clampNonTextPseudoOffset,
@@ -38,6 +39,7 @@ type CRDTBlockMap = CRDTMap<CRDTMap<unknown>>;
 
 const INVALID_BLOCK_CODE = "selection-invalid-block";
 const RESERVED_ORIGIN_CODE = "selection-reserved-origin";
+const INVALID_CELL_TEXT_CODE = "selection-invalid-cell-text";
 
 export interface SelectionAuthority {
 	readonly record: SelectionRecord;
@@ -114,13 +116,16 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 
 	onCommit(summary: ChangeSummary): void {
 		this._repairHeldAnchors(summary);
-		const resolved = resolveHeldText(
-			this._state,
-			this._fromAnchor,
-			this._toAnchor,
-			this._anchors,
-			this._doc,
-		);
+		// A table structure change re-addresses the grid (A5), so an edited
+		// cell's anchors are not resolved through it.
+		const resolved = cellStructureChanged(this._state, summary)
+			? undefined
+			: resolveHeldSelection(
+					this._state,
+					this._fromAnchor,
+					this._toAnchor,
+					this._anchors,
+				);
 		if (resolved !== undefined && !selectionEquals(this._state, resolved)) {
 			this._accept(resolved, "mapped", summary.commitId, { emit: false });
 			return;
@@ -232,6 +237,13 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 			clampOffset: (blockId, offset) =>
 				this._clampOffset(blockId, offset),
 			tableGrid: (blockId) => this._tableGrid(blockId),
+			cellTextLength: (blockId, row, col) =>
+				this._handle(blockId)
+					.as("table")
+					?.tableCell(row, col)
+					?.length() ?? 0,
+			emitInvalidCellText: (blockId) =>
+				this._emitInvalidCellText(blockId),
 			doc: this._doc,
 		});
 		if (validated === undefined) {
@@ -250,8 +262,10 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 		this._version += 1;
 		this._origin = origin;
 		this._commitId = commitId;
-		const minted = mintTextAnchors(validated, this._anchors, (blockId) =>
-			this._isNonTextBlock(blockId),
+		const minted = mintSelectionAnchors(
+			validated,
+			this._anchors,
+			(blockId) => this._isNonTextBlock(blockId),
 		);
 		this._fromAnchor = minted.from;
 		this._toAnchor = minted.to;
@@ -358,6 +372,19 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 				? `selection references missing block "${blockId}"`
 				: "selection references no blocks",
 			remediation: "Pass block ids that exist in the current document.",
+			blockId,
+		});
+	}
+
+	private _emitInvalidCellText(blockId: string): void {
+		this._emitDiagnostic({
+			code: INVALID_CELL_TEXT_CODE,
+			level: "warn",
+			source: "core",
+			message:
+				"a cell selection carries text only when anchor equals head",
+			remediation:
+				"Write `text` on a single-cell selection, or drop it for a cell range.",
 			blockId,
 		});
 	}

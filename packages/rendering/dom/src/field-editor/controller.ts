@@ -8,10 +8,6 @@ import type { FieldEditorStore } from "./store";
 import type { DirectionalSelectionOffsets } from "./selectionMapping";
 import type { EditorSelectAllBehavior } from "../constants/selectAll";
 import type {
-	FieldEditorSelectionSnapshot,
-	FieldEditorSelectionSource,
-} from "./selectionAuthority";
-import type {
 	DomSelectionReadDecision,
 	GestureEventKind,
 	GestureWindowState,
@@ -156,15 +152,6 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 		options?: FocusOptions,
 	): boolean;
 	resetBackendSelectionAuthority(): void;
-	setBackendSelectionAuthority(
-		source: FieldEditorSelectionSource,
-		selection: FieldEditorSelectionSnapshot | null,
-	): void;
-	getBackendSelectionAuthority(
-		source: FieldEditorSelectionSource,
-		blockId?: string | null,
-	): FieldEditorSelectionSnapshot | null;
-	clearBackendSelectionAuthority(source: FieldEditorSelectionSource): void;
 	withBackendSelectionWrite<T>(write: () => T): T;
 	getBackendSelectionApplicationDepth(): number;
 	notifyGestureEvent?(eventKind: GestureEventKind): void;
@@ -223,6 +210,13 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 		focusOffset: number,
 		origin?: SelectionOrigin,
 	): void;
+	/** The edited cell's caret write (W3.R18): `CellSelection.text`, origin as `syncTextSelection`. */
+	syncCellTextSelection(
+		cell: ActiveCellCoord,
+		anchorOffset: number,
+		focusOffset: number,
+		origin?: SelectionOrigin,
+	): void;
 	notifyDomReconciled(blockId?: string): void;
 	activateTextSelection(
 		blockId: string,
@@ -244,6 +238,12 @@ export interface FieldEditorKeyboardController extends Pick<
 	"focusBlockId" | "inputMode"
 > {
 	readonly activeCellCoord: ActiveCellCoord | null;
+	syncCellTextSelection?(
+		cell: ActiveCellCoord,
+		anchorOffset: number,
+		focusOffset: number,
+		origin?: SelectionOrigin,
+	): void;
 	/** Which rung `Mod-a` enters the T1 ladder on, from the interaction model. */
 	readonly selectAllBehavior: EditorSelectAllBehavior;
 	activateCell(blockId: string, row: number, col: number): void;
@@ -258,13 +258,6 @@ export interface FieldEditorKeyboardController extends Pick<
 		anchorOffset: number,
 		focusOffset: number,
 		options?: FieldEditorFocusOptions,
-	): void;
-	commitCellTextSelection?(
-		blockId: string,
-		row: number,
-		col: number,
-		anchorOffset: number,
-		focusOffset: number,
 	): void;
 	deactivate(): void;
 }
