@@ -253,7 +253,14 @@ function reconcileInline(
 	const revision = snapshot.commit.revision;
 	if (revision === nodes.reconciledRevision) return;
 	nodes.reconciledRevision = revision;
-	fullReconcileDeltasToDOM([...block.textDeltas()], inline, editor.schema, {
+	// `inlineDeltas` keeps inline atoms; `textDeltas` maps them to "", which
+	// rendered an inactive block's mentions and inline apps as nothing.
+	const deltas = block.inlineDeltas().map((delta) =>
+		typeof delta.insert === "string"
+			? { ...delta, insert: delta.insert }
+			: { ...delta, insert: { type: delta.insert.type, props: delta.insert.props } },
+	);
+	fullReconcileDeltasToDOM(deltas, inline, editor.schema, {
 		urlPolicy: urlPolicyFromEditor(editor),
 	});
 }

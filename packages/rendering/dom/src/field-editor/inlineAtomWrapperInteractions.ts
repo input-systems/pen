@@ -153,7 +153,7 @@ export function attachInlineAtomWrapperInteractions(
 
 		event.preventDefault();
 		event.stopPropagation();
-		destructureInlineAtom(options);
+		destructureInlineAtom(options, "pointer");
 	};
 
 	options.element.addEventListener("pointerdown", handlePointerDown);

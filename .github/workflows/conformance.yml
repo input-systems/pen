@@ -75,13 +75,62 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  overlay-caret:
+    # W35.G7: the overlay suites (atom and chip carets included) on all three
+    # engines, blocking from the first merge. A scenario an engine cannot pass
+    # yet carries `knownDefect` (rule, route, symptom) instead of a skip, so
+    # this job stays honest and green.
+    name: Overlay caret (${{ matrix.label }})
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: chromium
+            label: chromium
+          - engine: webkit
+            label: webkit
+          - engine: firefox
+            label: firefox
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Pen toolchain
+        uses: ./.github/actions/setup
+        with:
+          turbo-cache-scope: conformance
+
+      - name: Build conformance and dependencies
+        run: pnpm --filter @input/pen-conformance... build
+
+      - name: Install Playwright ${{ matrix.engine }}
+        run: pnpm --filter @input/pen-conformance exec playwright install --with-deps ${{ matrix.engine }}
+
+      - name: Run the overlay suites on ${{ matrix.engine }}
+        run: pnpm --filter @input/pen-conformance run test:overlay:${{ matrix.engine }}
+
+      - name: Upload Playwright artifacts
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: overlay-caret-${{ matrix.engine }}-artifacts
+          path: |
+            packages/tooling/conformance/playwright-report/
+            packages/tooling/conformance/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   conformance:
     # The single required check for this workflow. See
     # .github/actions/require-jobs for why the aggregation exists and why
     # `always()` is load-bearing.
     name: All engines
     if: always()
-    needs: [conformance-engine]
+    needs: [conformance-engine, overlay-caret]
     timeout-minutes: 5
     runs-on: ubuntu-latest
 

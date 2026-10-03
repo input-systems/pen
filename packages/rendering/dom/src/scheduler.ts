@@ -28,6 +28,25 @@ export type DomSchedulerOptions = {
 type ScheduledJob = () => void;
 
 /**
+ * One per root. The overlay controller implements it (OV1): the scheduler
+ * calls `read` as the last step of the read phase and `paint` as the last
+ * step of the write phase, after the selection projector.
+ */
+export interface OverlayPainter {
+	/** Read phase, after queued reads. Measures through the root's GeometryReader. */
+	read(input: { readonly commits: readonly CommitEvent[] }): void;
+	/** Write phase, after projectSelection. `ranWrites` is true when queued write jobs ran this flush. */
+	paint(input: { readonly ranWrites: boolean }): void;
+}
+
+/** Scheduler counters. Both are counts, never clocks. */
+export type DomSchedulerDiagnostics = {
+	readonly measureNowCount: number;
+	readonly flushCount: number;
+	readonly paintCount: number;
+};
+
+/**
  * One scheduler per editor root (SCH3). Construct with that root's id or
  * owner; do not share an instance or its queues across editors.
  *
@@ -38,6 +57,9 @@ export class DomScheduler {
 	readonly rootId: string;
 	private _phase: DomSchedulerPhase = "idle";
 	private measureNowCalls = 0;
+	private flushes = 0;
+	private paints = 0;
+	private overlayPainter: OverlayPainter | null = null;
 	private readonly onDiagnostic?: (event: DiagnosticEvent) => void;
 	private readonly onInvalidate?: (
 		blockIds: readonly string[],
@@ -65,8 +87,12 @@ export class DomScheduler {
 		return this._phase;
 	}
 
-	get diagnostics(): { readonly measureNowCount: number } {
-		return { measureNowCount: this.measureNowCalls };
+	get diagnostics(): DomSchedulerDiagnostics {
+		return {
+			measureNowCount: this.measureNowCalls,
+			flushCount: this.flushes,
+			paintCount: this.paints,
+		};
 	}
 
 	get collect(): FlushCollect | null {
@@ -80,6 +106,19 @@ export class DomScheduler {
 
 	setSelection(record: SelectionRecord | null): void {
 		this.selection = record;
+		this.scheduleFlush();
+	}
+
+	/** Install or clear the root's overlay painter. */
+	setOverlayPainter(painter: OverlayPainter | null): void {
+		this.overlayPainter = painter;
+	}
+
+	/**
+	 * Schedule a flush whose only work may be an overlay read and paint.
+	 * Coalesced per frame with every other pending flush (SCH, OV1).
+	 */
+	requestPaint(): void {
 		this.scheduleFlush();
 	}
 
@@ -198,15 +237,20 @@ export class DomScheduler {
 		this.writeQueue = [];
 		this.readAfterWriteForced = false;
 
+		this.flushes += 1;
+
 		this._phase = "read";
 		this.invalidateFromCollect(this._collect);
 		this.drain(this.activeReads);
+		this.readOverlays(this._collect);
 
 		this._phase = "write";
 		// renderer DOM updates already committed by construction — the
-		// flush is scheduled after framework commit (mount-ack).
+		// flush is scheduled after framework commit (mount-ack). The
+		// selection projector runs as a queued write, so the overlay paint
+		// after the drain sees final layout and the projected selection.
 		this.drain(this.activeWrites);
-		this.paintOverlays();
+		this.paintOverlays(this.activeWrites.length > 0);
 
 		this.activeReads = null;
 		this.activeWrites = null;
@@ -231,11 +275,20 @@ export class DomScheduler {
 		this.onInvalidate?.(blockIds, last?.commitId ?? 0);
 	}
 
-	/**
-	 * Overlay paints run after the projector (OV1). Empty
-	 * until overlays subscribe to flushes.
-	 */
-	private paintOverlays(): void {}
+	/** Last step of the read phase: contributor requests become a paint plan (OV1). */
+	private readOverlays(collect: FlushCollect): void {
+		this.overlayPainter?.read({ commits: collect.commits });
+	}
+
+	/** Last step of the write phase, after the projector (OV1). */
+	private paintOverlays(ranWrites: boolean): void {
+		const painter = this.overlayPainter;
+		if (!painter) {
+			return;
+		}
+		this.paints += 1;
+		painter.paint({ ranWrites });
+	}
 
 	private drain(jobs: ScheduledJob[]): void {
 		for (const job of jobs) {

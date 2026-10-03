@@ -1,5 +1,5 @@
 import { isCollapsed, isMultiBlock } from "@input/pen-core";
-import type { Editor } from "@input/pen-types";
+import type { Editor, SelectionOrigin } from "@input/pen-types";
 import { getAttachedFieldEditor } from "../utils/fieldEditor";
 import type { FieldEditorSession } from "./controller";
 import {
@@ -14,6 +14,7 @@ import type { InlineAtomWrapperInteractionOptions } from "./inlineAtomWrapperInt
 
 export function destructureInlineAtom(
 	options: InlineAtomWrapperInteractionOptions,
+	origin: SelectionOrigin = "programmatic",
 ): boolean {
 	const atom = getInlineAtomAtOffset(options.editor, {
 		blockId: options.blockId,
@@ -37,6 +38,7 @@ export function destructureInlineAtom(
 		},
 		text,
 		selection: "end",
+		origin,
 	});
 	if (!didReplace) {
 		return false;
@@ -149,6 +151,7 @@ export function selectInlineAtomRangeFromShiftClick(
 			target.blockId,
 			target.anchorOffset,
 			target.focusOffset,
+			{ origin: "pointer" },
 		);
 		fieldEditor.focus();
 		return true;
@@ -158,6 +161,7 @@ export function selectInlineAtomRangeFromShiftClick(
 		target.blockId,
 		target.anchorOffset,
 		target.focusOffset,
+		{ origin: "pointer" },
 	);
 	return true;
 }

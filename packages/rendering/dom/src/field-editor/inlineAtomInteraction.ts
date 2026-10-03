@@ -6,6 +6,7 @@ import {
 	type FieldEditor,
 	type InlineDelta,
 	type InlineNodeDeltaInsert,
+	type SelectionOrigin,
 } from "@input/pen-types";
 import {
 	pointToEditorSelectionPoint,
@@ -155,6 +156,8 @@ export interface ReplaceInlineAtomWithTextOptions {
 	text: string;
 	selection?: "all" | "end" | "none";
 	apply?: ApplyOptions;
+	/** The selection write's origin (S3); `"programmatic"` when omitted. */
+	origin?: SelectionOrigin;
 }
 
 export function getInlineAtomAtOffset(
@@ -260,6 +263,7 @@ export function replaceInlineAtomWithText({
 	text,
 	selection = "end",
 	apply,
+	origin = "programmatic",
 }: ReplaceInlineAtomWithTextOptions): boolean {
 	const sourceAtom = getInlineAtomAtOffset(source.editor, source);
 	if (!sourceAtom) {
@@ -290,9 +294,13 @@ export function replaceInlineAtomWithText({
 	const endOffset = source.offset + text.length;
 
 	if (selection === "all") {
-		source.editor.selectText(source.blockId, source.offset, endOffset);
+		source.editor.selectText(source.blockId, source.offset, endOffset, {
+			origin,
+		});
 	} else if (selection === "end") {
-		source.editor.selectText(source.blockId, endOffset, endOffset);
+		source.editor.selectText(source.blockId, endOffset, endOffset, {
+			origin,
+		});
 	}
 
 	const fieldEditor = source.editor.facet(
@@ -305,6 +313,7 @@ export function replaceInlineAtomWithText({
 					source.blockId,
 					source.offset,
 					endOffset,
+					{ origin },
 				);
 			} else {
 				fieldEditor.activate(source.blockId);
@@ -315,6 +324,7 @@ export function replaceInlineAtomWithText({
 					source.blockId,
 					endOffset,
 					endOffset,
+					{ origin },
 				);
 			} else {
 				fieldEditor.activate(source.blockId);
@@ -385,10 +395,12 @@ function moveInlineAtomWithinEditor({
 
 	const targetOffset = getAdjustedTargetOffset(source, target);
 	source.editor.apply(ops, apply ?? DEFAULT_APPLY_OPTIONS);
+	// S3: an atom move is a drag and drop.
 	source.editor.selectText(
 		target.blockId,
 		targetOffset + INLINE_ATOM_LOGICAL_LENGTH,
 		targetOffset + INLINE_ATOM_LOGICAL_LENGTH,
+		{ origin: "pointer" },
 	);
 	return true;
 }
@@ -439,6 +451,7 @@ function moveInlineAtomBetweenEditors({
 		target.blockId,
 		target.offset + INLINE_ATOM_LOGICAL_LENGTH,
 		target.offset + INLINE_ATOM_LOGICAL_LENGTH,
+		{ origin: "pointer" },
 	);
 	return true;
 }

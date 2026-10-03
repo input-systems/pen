@@ -68,20 +68,24 @@ export function App() {
 	const session = getHarnessSession();
 	const showPseudoLocaleChrome = readQueryFlag("pseudoLocale");
 	const showAx3Chrome = readQueryFlag("ax3");
-	const showAx6Caret = readQueryFlag("ax6");
+	const showCustomCaret = readQueryFlag("customCaret");
+	const blinkCaret = readQueryFlag("blink");
+	const readonly = readQueryFlag("readonly");
+	const modal = readQueryFlag("modal");
 	const showCol2Presence = readQueryFlag("col2");
 	const windowed = isWindowedFixture(session.fixtureName);
 
-	return (
+	const editorRoot = (
 		<Pen.Editor.Root
 			key={generation}
 			editor={session.editor}
+			readonly={readonly}
 			blockControls={showAx3Chrome ? Ax3BlockHandle : undefined}
 			chrome={!readQueryFlag("unstyled")}
+			data-blink={blinkCaret ? "" : undefined}
 		>
 			<div
 				data-pen-conformance-harness=""
-				data-ax6={showAx6Caret ? "" : undefined}
 				data-fixture={session.fixtureName}
 				data-generation={String(generation)}
 			>
@@ -90,7 +94,7 @@ export function App() {
 				) : (
 					<Pen.Editor.Content emptyPlaceholder="" />
 				)}
-				{showAx6Caret ? <Pen.Editor.CaretOverlay /> : null}
+				{showCustomCaret ? <Pen.Editor.CaretOverlay /> : null}
 				{showCol2Presence ? (
 					<>
 						<Pen.Multiplayer.PresenceList />
@@ -108,5 +112,18 @@ export function App() {
 				) : null}
 			</div>
 		</Pen.Editor.Root>
+	);
+
+	// ?modal=1: a transformed and filtered ancestor, the containing-block
+	// trap `2bae382d` fixed for the caret (OV2).
+	return modal ? (
+		<div
+			data-pen-conformance-modal=""
+			style={{ transform: "translateX(37px)", filter: "blur(0)" }}
+		>
+			{editorRoot}
+		</div>
+	) : (
+		editorRoot
 	);
 }

@@ -26,7 +26,13 @@ export function createInlineAtomCaretBoundaryElement(
 	const element = document.createElement("span");
 	element.setAttribute(DATA_ATTRS.inlineAtomCaretBoundary, "");
 	element.setAttribute(DATA_ATTRS.inlineAtomCaretSide, side);
-	element.appendChild(document.createElement("br"));
+	// The `<br>` keeps `(boundary, 0)` a selectable DOM position beside the
+	// chip, but a rendered `<br>` inside an inline span is a forced line
+	// break: every atom sat on its own line (G1, D12). Hidden, it adds no
+	// line box, and the overlay draws the visible caret (O1).
+	const lineBreak = document.createElement("br");
+	lineBreak.style.display = "none";
+	element.appendChild(lineBreak);
 	return element;
 }
 

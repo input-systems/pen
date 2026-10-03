@@ -79,7 +79,7 @@ Important responsibilities:
 - `PenEditor` is the simplest integration path for most apps
 - The `Pen` namespace exists for lower-level composition when hosts need toolbar, slash-menu, AI, search, or multiplayer surfaces
 - Optional subpath entrypoints let hosts import AI, AI suggestions, history, multiplayer, and search surfaces without pulling from the root barrel directly.
-- `Pen.Editor.CaretOverlay` renders an optional local caret for collapsed active text selections, exposes `CARET` variants, hides the native caret while the overlay is visible, and positions the caret absolutely against the overlay root so filtered or transformed ancestors do not become its containing block.
+- `Pen.Editor.CaretOverlay` is a binding over `@input/pen-dom`'s overlay: while mounted it switches the root to `customCaret` mode (every collapsed caret is overlay-drawn), applies `variant`, and with `renderCaret` portals the host's caret into the overlay layer at the plan's position. It measures nothing. `EditorSelectionRect` draws only the region-selection marquee; committed block selections are O3 outlines.
 - Markdown ingest stays an optional peer on `@input/pen-interop` because not every React integration needs it. HTML paste ingest is not a React default; it comes from `defaultPreset()`'s `html-clipboard` extension (or a host `importers` prop). The renderer still exports `./ai-suggestions` as a UI subpath; the headless suggestion runtime is `@input/pen-ai/suggestions`.
 
 ## Current Maturity / Intended Usage

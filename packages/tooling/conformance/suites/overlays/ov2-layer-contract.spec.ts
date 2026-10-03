@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
+import { localCarets, readSettledLayer } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
 import type { ScenarioApi } from "../../src/types";
 
@@ -15,7 +16,7 @@ type CaretPaint = {
 	styleLeft: string;
 	styleTop: string;
 	stylePosition: string;
-	siblingOfContent: boolean;
+	lastChildOfRoot: boolean;
 };
 
 function logLoad(label: string): number[] {
@@ -54,11 +55,13 @@ async function paintLayerCaret(
 async function readCaretPaint(page: Page): Promise<CaretPaint> {
 	return page.evaluate(() => {
 		const layer = document.querySelector("[data-pen-overlay-layer]");
-		const content = document.querySelector("[data-pen-editor-content]");
-		const siblingOfContent =
+		const root = document.querySelector("[data-pen-editor-root]");
+		// OV2 (W35.R2): pen-dom appends one layer per root as its last child.
+		const lastChildOfRoot =
 			layer instanceof HTMLElement &&
-			content != null &&
-			layer.parentElement === content.parentElement;
+			root != null &&
+			root.lastElementChild === layer &&
+			root.querySelectorAll("[data-pen-overlay-layer]").length === 1;
 		if (!(layer instanceof HTMLElement)) {
 			return {
 				kind: "unchecked" as const,
@@ -68,7 +71,7 @@ async function readCaretPaint(page: Page): Promise<CaretPaint> {
 				styleLeft: "",
 				styleTop: "",
 				stylePosition: "",
-				siblingOfContent: false,
+				lastChildOfRoot: false,
 			};
 		}
 		const caret = layer.querySelector('[data-pen-overlay-item="caret"]');
@@ -81,7 +84,7 @@ async function readCaretPaint(page: Page): Promise<CaretPaint> {
 				styleLeft: "",
 				styleTop: "",
 				stylePosition: layer.style.position,
-				siblingOfContent,
+				lastChildOfRoot,
 			};
 		}
 		return {
@@ -92,7 +95,7 @@ async function readCaretPaint(page: Page): Promise<CaretPaint> {
 			styleLeft: caret.style.left,
 			styleTop: caret.style.top,
 			stylePosition: caret.style.position,
-			siblingOfContent,
+			lastChildOfRoot,
 		};
 	});
 }
@@ -185,11 +188,58 @@ scenario(
 			),
 		).toBe(true);
 		expect(
-			paint.siblingOfContent,
+			paint.lastChildOfRoot,
 			formatCheckReport(
-				"OV2: overlay host is a sibling of content",
-				paint.siblingOfContent ? "passed" : "failed",
+				"OV2: the overlay layer is the editor root's only layer and its last child",
+				paint.lastChildOfRoot ? "passed" : "failed",
 			),
 		).toBe(true);
 	},
+);
+
+scenario(
+	"OV2: the overlay layer is the editor root's last child",
+	async (s, page) => {
+		await s.load("hello-world");
+		const layer = await readSettledLayer(page);
+		expect(layer.mounted).toBe(true);
+		expect(
+			layer.lastChildOfRoot,
+			formatCheckReport(
+				"OV2: one layer, appended as the root's last child",
+				layer.lastChildOfRoot ? "passed" : "failed",
+			),
+		).toBe(true);
+		expect(await page.locator("[data-pen-overlay-layer]").count()).toBe(1);
+		expect(layer.ariaHidden).toBe("true");
+		expect(layer.pointerEvents).toBe("none");
+	},
+);
+
+scenario(
+	"OV2: a caret inside a transformed and filtered ancestor sits on the text",
+	async (s, page) => {
+		await s.load("hello-world");
+		await expect(page.locator("[data-pen-conformance-modal]")).toBeAttached();
+		await clickOffset(page, HELLO_ID, 2);
+		await expect
+			.poll(async () => localCarets(await readSettledLayer(page)).length)
+			.toBe(1);
+		const caret = localCarets(await readSettledLayer(page))[0]!;
+		// The point is the next character's left edge plus one pixel.
+		const point = await getInlineOffsetPoint(page, { blockId: HELLO_ID, offset: 2 });
+		const onText =
+			Math.abs(caret.box.left - (point.x - 1)) <= 1 &&
+			caret.box.top <= point.y &&
+			caret.box.bottom >= point.y;
+		expect(
+			onText,
+			formatCheckReport(
+				"OV2: the caret is on the text, not offset by the ancestor's transform",
+				onText ? "passed" : "failed",
+				`caret=${JSON.stringify(caret.box)} point=${JSON.stringify(point)}`,
+			),
+		).toBe(true);
+	},
+	{ url: "/?modal=1&customCaret=1" },
 );

@@ -192,6 +192,11 @@ export function EditorRoot(props: EditorRootProps) {
 		fieldEditorRef.current?.setFocusPolicy(focusPolicy);
 	}, [focusPolicy]);
 
+	// O5: the renderer `readonly` prop, not the pen.ariaReadOnly facet (AX1).
+	useEffect(() => {
+		fieldEditorRef.current?.setReadOnly(readonly);
+	}, [readonly]);
+
 	useEffect(() => {
 		if (!onFocusLifecycle) {
 			return;

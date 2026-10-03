@@ -19,7 +19,6 @@ type OverlaySnapshot = {
 	top: number;
 };
 
-const AX6 = "/?ax6=1";
 
 function logLoad(label: string): number[] {
 	const loads = loadavg();
@@ -59,13 +58,11 @@ async function clickOffset(
 
 async function readOverlay(page: Page): Promise<OverlaySnapshot> {
 	return page.evaluate(() => {
-		const overlay = document.querySelector(
-			"[data-pen-editor-caret-overlay]",
-		);
+		const overlay = document.querySelector("[data-pen-overlay-layer]");
 		if (!(overlay instanceof HTMLElement)) {
 			return {
 				kind: "unchecked" as const,
-				reason: "CaretOverlay is not mounted (need ?ax6=1)",
+				reason: "the overlay layer is not mounted",
 				overlayMounted: false,
 				overlayVisible: false,
 				caretCount: 0,
@@ -124,58 +121,6 @@ async function readOverlay(page: Page): Promise<OverlaySnapshot> {
 		};
 	});
 }
-
-scenario(
-	"O1-LIVE: ordinary collapsed caret shows overlay with caret-color transparent (spec O1 is atom-adjacent only)",
-	async (s, page) => {
-		const loads = logLoad("O1-LIVE");
-		await s.load("hello-world");
-		await clickOffset(page, "hello-p1", 2);
-		const overlay = await readOverlay(page);
-		await attachJson("o1-live", { loads, overlay });
-
-		expect(
-			overlay.kind === "unchecked" ? "unchecked" : "checked",
-			formatCheckReport(
-				"O1-LIVE: overlay host was checkable",
-				overlay.kind === "unchecked" ? "skipped" : "passed",
-				overlay.reason,
-			),
-		).toBe("checked");
-		expect(
-			overlay.kind,
-			formatCheckReport(
-				"O1-LIVE: ordinary caret uses the overlay (recorded live divergence)",
-				overlay.kind === "present" ? "passed" : "failed",
-				overlay.reason,
-			),
-		).toBe("present");
-		expect(
-			overlay.overlayVisible,
-			formatCheckReport(
-				"O1-LIVE: data-caret-visible",
-				overlay.overlayVisible ? "passed" : "failed",
-			),
-		).toBe(true);
-		expect(
-			overlay.caretColor,
-			formatCheckReport(
-				"O1-LIVE: native caret-color is transparent",
-				overlay.caretColor === "transparent" ? "passed" : "failed",
-				`caretColor=${overlay.caretColor}`,
-			),
-		).toBe("transparent");
-		expect(
-			overlay.height,
-			formatCheckReport(
-				"O1-LIVE: overlay caret has ink",
-				overlay.height > 0 ? "passed" : "failed",
-				`box=${overlay.width}x${overlay.height} at ${overlay.left},${overlay.top}`,
-			),
-		).toBeGreaterThan(0);
-	},
-	{ url: AX6 },
-);
 
 scenario(
 	"O1: collapsed caret adjacent to an inline atom keeps the overlay at that edge",
@@ -256,8 +201,15 @@ scenario(
 				`overlay.left=${overlay.left} atom=${JSON.stringify(atom)}`,
 			),
 		).toBe(true);
+		expect(
+			overlay.caretColor,
+			formatCheckReport(
+				"O1: the native caret is hidden beside the atom",
+				overlay.caretColor === "transparent" ? "passed" : "failed",
+				`caretColor=${overlay.caretColor}`,
+			),
+		).toBe("transparent");
 	},
-	{ url: AX6 },
 );
 
 scenario(
@@ -309,5 +261,4 @@ scenario(
 			),
 		).toBe("transparent");
 	},
-	{ url: AX6 },
 );

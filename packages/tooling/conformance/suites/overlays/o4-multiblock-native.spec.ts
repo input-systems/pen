@@ -1,10 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
+import {
+	itemsOfKind,
+	localCarets,
+	readSettledLayer,
+} from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
 import type { SerializedSelection } from "../../src/types";
 
-const AX6 = "/?ax6=1";
 
 type NativeSnapshot = {
 	collapsed: boolean | null;
@@ -38,13 +42,11 @@ async function readNative(page: Page): Promise<NativeSnapshot> {
 
 async function readOverlay(page: Page): Promise<OverlaySnapshot> {
 	return page.evaluate(() => {
-		const overlay = document.querySelector(
-			"[data-pen-editor-caret-overlay]",
-		);
+		const overlay = document.querySelector("[data-pen-overlay-layer]");
 		if (!(overlay instanceof HTMLElement)) {
 			return {
 				kind: "unchecked" as const,
-				reason: "CaretOverlay is not mounted (need ?ax6=1)",
+				reason: "the overlay layer is not mounted",
 			};
 		}
 		const caret = document.querySelector("[data-pen-editor-caret]");
@@ -122,5 +124,57 @@ scenario(
 			),
 		).toBe("absent");
 	},
-	{ url: AX6 },
+);
+
+scenario(
+	"O4: an endpoint in an empty block gets an endpoint caret while the native range stays",
+	async (s, page) => {
+		await s.load("two-paragraph");
+		await s.apply([
+			{
+				type: "insert-block",
+				blockId: "o4-empty",
+				blockType: "paragraph",
+				props: {},
+				position: { after: "two-p1" },
+			},
+		]);
+		await s.mouse.dragText({
+			from: { blockId: "two-p1", offset: 2 },
+			to: { blockId: "o4-empty", offset: 0 },
+		});
+		const selection = await readSelection(page);
+		const native = await readNative(page);
+		const layer = await readSettledLayer(page);
+		const endpoints = itemsOfKind(layer, "caret").filter(
+			(item) => item.endpoint !== null,
+		);
+		await test.info().attach("o4-endpoint", {
+			body: JSON.stringify({ selection, native, layer }, null, 2),
+			contentType: "application/json",
+		});
+
+		expect(selection).toMatchObject({
+			type: "text",
+			anchor: { blockId: "two-p1", offset: 2 },
+			focus: { blockId: "o4-empty", offset: 0 },
+		});
+		expect(
+			native.collapsed === false && native.rangeCount > 0,
+			formatCheckReport(
+				"O4: the native range stays visible",
+				native.collapsed === false ? "passed" : "failed",
+				`native=${JSON.stringify(native)}`,
+			),
+		).toBe(true);
+		expect(endpoints.map((item) => [item.endpoint, item.blockId])).toEqual([
+			["focus", "o4-empty"],
+		]);
+		expect(endpoints[0]!.box.height).toBeGreaterThan(0);
+		expect(localCarets(layer), "O4: no local caret over a range").toEqual([]);
+		expect(
+			layer.caretColor,
+			"O4: endpoint carets never hide the native caret",
+		).not.toBe("transparent");
+	},
 );

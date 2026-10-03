@@ -11,6 +11,7 @@ type OverlaySnapshot = {
 	reason: string;
 	overlayVisible: boolean;
 	caretColor: string | null;
+	layerMounted: boolean;
 };
 
 function logLoad(label: string): number[] {
@@ -41,9 +42,7 @@ async function clickOffset(
 
 async function readOverlay(page: Page): Promise<OverlaySnapshot> {
 	return page.evaluate(() => {
-		const overlay = document.querySelector(
-			"[data-pen-editor-caret-overlay]",
-		);
+		const overlay = document.querySelector("[data-pen-overlay-layer]");
 		const caret = document.querySelector("[data-pen-editor-caret]");
 		const surface = document.querySelector(
 			"[data-pen-field-editor-active-surface], [data-pen-inline-content]",
@@ -59,16 +58,18 @@ async function readOverlay(page: Page): Promise<OverlaySnapshot> {
 				reason: "overlay caret is drawn for an ordinary collapsed caret",
 				overlayVisible: true,
 				caretColor,
+				layerMounted: true,
 			};
 		}
 		return {
 			kind: "absent" as const,
 			reason:
 				overlay instanceof HTMLElement
-					? "overlay host mounted, caret not drawn"
-					: "default editor has no CaretOverlay; native caret path",
+					? "overlay layer mounted, caret not drawn"
+					: "no overlay layer; native caret path",
 			overlayVisible: visible,
 			caretColor,
+			layerMounted: overlay instanceof HTMLElement,
 		};
 	});
 }
@@ -76,12 +77,11 @@ async function readOverlay(page: Page): Promise<OverlaySnapshot> {
 scenario(
 	"O1: ordinary collapsed caret keeps the native caret; overlay is reserved for atom edges",
 	async (s, page) => {
-		// Spec O1 (03-selection.md §6): native caret is the display inside the
-		// active field. Do not load ?ax6=1 — that flag mounts
-		// Pen.Editor.CaretOverlay, a host-opt-in primitive that paints every
-		// collapsed caret (pre-OV3). Forcing that primitive on and then
-		// requiring it not to paint tests the wrong overlay. Atom-edge overlay
-		// ink is the ax6 O1 scenario in live-rules.spec.ts.
+		// Spec O1: the native caret is the display inside the active field.
+		// Do not load ?customCaret=1 — that flag mounts Pen.Editor.CaretOverlay,
+		// the host opt-in that paints every collapsed caret. Forcing that mode
+		// on and then requiring it not to paint tests the wrong mode.
+		// Atom-edge overlay ink is the O1 scenario in live-rules.spec.ts.
 		const loads = logLoad("O1-ordinary");
 		await s.load("hello-world");
 		await clickOffset(page, HELLO_ID, 2);
@@ -91,6 +91,13 @@ scenario(
 			contentType: "application/json",
 		});
 
+		expect(
+			overlay.layerMounted,
+			formatCheckReport(
+				"O1: the overlay layer is mounted, so the absence is checkable",
+				overlay.layerMounted ? "passed" : "failed",
+			),
+		).toBe(true);
 		expect(
 			overlay.kind,
 			formatCheckReport(

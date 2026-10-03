@@ -1,0 +1,15 @@
+{
+  "_comment": "OV3 (spec/rules/dom.md, W35.G1). React and Vue overlay bindings that still measure or run their own frame driver. Each entry names the file, why it still measures, and closedBy, the requirement that moves it onto getRootOverlay(root). scripts/overlay-measure-free.mjs fails an entry whose file no longer measures (I15), so the list only shrinks.",
+  "entries": [
+    {
+      "file": "packages/rendering/react/src/primitives/multiplayer/caretOverlay.tsx",
+      "reason": "Remote carets are measured once per cursor during render and positioned fixed. They move onto a registered contributor.",
+      "closedBy": "W35.R12"
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useOverlayLayout.ts",
+      "reason": "The frame driver behind the React overlays: a whole-root MutationObserver, requestAnimationFrame, and scroll and resize listeners. It is deleted when its last consumer, the multiplayer caret overlay, moves onto a contributor.",
+      "closedBy": "W35.R12"
+    }
+  ]
+}

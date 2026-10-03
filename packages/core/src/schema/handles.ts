@@ -341,16 +341,10 @@ class BlockHandleImpl implements TableBlockHandle {
 		}));
 	}
 
+	/** Logical length: each character and each inline embed is one offset (N1). */
 	length(): number {
 		const content = getTextProp(this.blockMap, "content");
-		if (!content) {
-			return 0;
-		}
-		const text = content.toString();
-		if (!text) {
-			return 0;
-		}
-		return content.length;
+		return content ? content.length : 0;
 	}
 
 	as<K extends BlockCapabilityKey>(

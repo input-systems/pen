@@ -53,6 +53,7 @@ Important responsibilities:
 - `useEditor()` with no argument calls `createEditor({ schema: defaultSchema })`. It injects the default schema and still installs no preset. Pass `preset: defaultPreset()` or explicit `extensions` when the host wants undo, shortcuts, tools, or the stream extension.
 - `PenEditor` adopts `PEN_EDITOR_CHROME_STYLESHEET` by default (`chrome`, default `true`). Pass `:chrome="false"` for the unstyled HOST6 path.
 - The `readonly` prop on `PenEditor` is what declines pointer activation and local typing. `pen.ariaReadOnly` is read only for `aria-readonly` and does not set `data-readonly`. The facet does not decline typing, `editor.apply`, or the wire. That split is an open owner decision.
+- `PenEditor` passes `readonly` to `fieldEditor.setReadOnly`; the overlay layer, O1–O4 carets, and block outlines come from `@input/pen-dom` with no Vue component.
 - Boolean `data-*` attributes use the same valueless form as `@input/pen-dom` (`data-readonly=""`). ARIA booleans remain `"true"` / `"false"`.
 - Support renderer overrides so host apps can customize block rendering without forking the runtime
 - Validate that keyboard routing, Escape selection transitions, select-all behavior, clipboard, and table-editing behavior stay portable across frameworks

@@ -261,6 +261,7 @@ describe("Pen inline atom editing: focus policy and selection projection", () =>
 			fieldEditor.applyDomTextSelection(
 				{ blockId, offset: endOffset },
 				{ blockId, offset: endOffset },
+				"pointer",
 			);
 
 			expect(editor.selection).toMatchObject({

@@ -6,7 +6,7 @@ This is the HOST6 styling contract for `@input/pen-vue` (`spec/rules/host.md`).
 
 This package reads no CSS custom properties of its own. Tokens that other Pen packages read (`@input/pen-react`, `@input/pen-dom` overlays and chrome) are documented in the canonical reference: `STYLING.md`, which ships inside the `@input/pen-react` package.
 
-The default chrome sheet sets `outline: none` on the editor surfaces and restores a `:focus-visible` ring (AX5). Selection fill is native `::selection`. Vue does not paint caret overlays or selection rectangles; those belong to `@input/pen-dom` when the shared field-editor is installed.
+The default chrome sheet sets `outline: none` on the editor surfaces and restores a `:focus-visible` ring (AX5). Selection fill is native `::selection`. Caret overlays and block outlines are painted by `@input/pen-dom` into the root's overlay layer; Vue renders none of them and reads no overlay tokens of its own.
 
 ## What Vue applies itself
 
@@ -107,27 +107,27 @@ Default renderers set `data-block-type` on the inner element as well. Values:
 
 Additional body hooks:
 
-| Attribute                         | On                       | Value                                               |
-| --------------------------------- | ------------------------ | --------------------------------------------------- |
-| `data-level`                      | heading                  | `1`–`6`                                             |
-| `data-pen-list-marker`            | list marker span         | present (`aria-hidden`)                             |
-| `data-counter`                    | numbered list item       | resolved ordinal                                    |
-| `data-checked`                    | checklist item           | present when checked                                |
+| Attribute                         | On                       | Value                                                   |
+| --------------------------------- | ------------------------ | ------------------------------------------------------- |
+| `data-level`                      | heading                  | `1`–`6`                                                 |
+| `data-pen-list-marker`            | list marker span         | present (`aria-hidden`)                                 |
+| `data-counter`                    | numbered list item       | resolved ordinal                                        |
+| `data-checked`                    | checklist item           | present when checked                                    |
 | `data-callout-type`               | callout                  | `info` \| `warning` \| `error` (from the severity prop) |
-| `data-pen-callout-icon`           | callout icon             | present (`aria-hidden`)                             |
-| `data-pen-callout-body`           | callout body             | present                                             |
-| `data-pen-callout-children`       | nested callout children  | present when the callout has children               |
-| `data-pen-toggle-header`          | toggle header row        | present                                             |
-| `data-pen-toggle-trigger`         | toggle open/close button | present                                             |
-| `data-pen-ignore-pointer-gesture` | toggle trigger           | present (field-editor ignores this target)          |
-| `data-pen-toggle-title`           | toggle title             | present                                             |
-| `data-pen-toggle-body`            | nested toggle children   | present when open and the toggle has children       |
-| `data-pen-blockquote-children`    | nested quote children    | present when the quote has children                 |
-| `data-language`                   | code block `<pre>`       | language string, if set                             |
-| `data-pen-blocked-url`            | image `<img>`            | present when URL policy rejected `src`              |
-| `data-unknown-block`              | unknown-type fallback    | present                                             |
-| `data-pen-unknown-type`           | unknown-type label       | present                                             |
-| `data-selected`                   | unknown-type fallback    | present when that block is selected                 |
+| `data-pen-callout-icon`           | callout icon             | present (`aria-hidden`)                                 |
+| `data-pen-callout-body`           | callout body             | present                                                 |
+| `data-pen-callout-children`       | nested callout children  | present when the callout has children                   |
+| `data-pen-toggle-header`          | toggle header row        | present                                                 |
+| `data-pen-toggle-trigger`         | toggle open/close button | present                                                 |
+| `data-pen-ignore-pointer-gesture` | toggle trigger           | present (field-editor ignores this target)              |
+| `data-pen-toggle-title`           | toggle title             | present                                                 |
+| `data-pen-toggle-body`            | nested toggle children   | present when open and the toggle has children           |
+| `data-pen-blockquote-children`    | nested quote children    | present when the quote has children                     |
+| `data-language`                   | code block `<pre>`       | language string, if set                                 |
+| `data-pen-blocked-url`            | image `<img>`            | present when URL policy rejected `src`                  |
+| `data-unknown-block`              | unknown-type fallback    | present                                                 |
+| `data-pen-unknown-type`           | unknown-type label       | present                                                 |
+| `data-selected`                   | unknown-type fallback    | present when that block is selected                     |
 
 A host `renderers` override replaces the inner body. The wrapper hooks above still apply.
 

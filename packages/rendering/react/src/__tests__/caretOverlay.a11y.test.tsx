@@ -19,40 +19,17 @@ afterEach(() => {
 });
 
 describe("@input/pen-react caret overlay a11y", () => {
-	it("AX7: editor caret overlay is aria-hidden and pointer-events none", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			preset: defaultPreset({
-				tools: false,
-				deltaStream: false,
-				undo: false,
-			}),
-		});
-		const container = document.createElement("div");
-		document.body.appendChild(container);
-		const root = createRoot(container);
-
+	it("AX7: the editor overlay layer and its caret are aria-hidden and pointer-events none", async () => {
+		stubMatchMedia(false);
+		const { caret, layer, cleanup } = await mountVisibleCaret();
 		try {
-			await act(async () => {
-				root.render(
-					<Pen.Editor.Root editor={editor}>
-						<Pen.Editor.CaretOverlay />
-					</Pen.Editor.Root>,
-				);
-			});
-
-			const overlay = container.querySelector(
-				"[data-pen-editor-caret-overlay]",
-			);
-			expect(overlay).not.toBeNull();
-			expect(overlay?.getAttribute("aria-hidden")).toBe("true");
-			expect((overlay as HTMLElement).style.pointerEvents).toBe("none");
+			expect(layer()?.getAttribute("aria-hidden")).toBe("true");
+			expect(layer()?.style.pointerEvents).toBe("none");
+			expect(caret()?.parentElement).toBe(layer());
+			expect(caret()?.getAttribute("aria-hidden")).toBe("true");
+			expect(caret()?.style.pointerEvents).toBe("none");
 		} finally {
-			await act(async () => {
-				root.unmount();
-			});
-			container.remove();
-			editor.destroy();
+			await cleanup();
 		}
 	});
 
@@ -101,26 +78,20 @@ describe("@input/pen-react caret overlay a11y", () => {
 		expect(typeof createReducedMotionSignal).toBe("function");
 	});
 
-	it("AX6: reduced motion keeps the caret solid after blink resume", async () => {
+	it("AX6: reduced motion keeps the caret solid", async () => {
 		stubMatchMedia(true);
 		const { caret, cleanup } = await mountVisibleCaret();
 		try {
-			await act(async () => {
-				await new Promise((resolve) => setTimeout(resolve, 500));
-			});
 			expect(caret()?.style.animation).toBe("none");
 		} finally {
 			await cleanup();
 		}
 	});
 
-	it("AX6: without reduced motion the caret uses the host animation token after blink resume", async () => {
+	it("AX6: without reduced motion the caret uses the host animation token at once", async () => {
 		stubMatchMedia(false);
 		const { caret, cleanup } = await mountVisibleCaret();
 		try {
-			await act(async () => {
-				await new Promise((resolve) => setTimeout(resolve, 500));
-			});
 			expect(caret()?.style.animation).toBe(
 				"var(--pen-editor-caret-animation, none)",
 			);
@@ -165,10 +136,32 @@ function getFieldEditor(editor: ReturnType<typeof createEditor>) {
 	return fieldEditor;
 }
 
+type RangeMeasure = {
+	getBoundingClientRect?: () => DOMRect;
+	getClientRects?: () => DOMRect[];
+};
+
+async function nextFrames(): Promise<void> {
+	await act(async () => {
+		await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+		await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+	});
+}
+
 async function mountVisibleCaret(): Promise<{
 	caret: () => HTMLElement | null;
+	layer: () => HTMLElement | null;
 	cleanup: () => Promise<void>;
 }> {
+	// jsdom has no layout: every caret Range measures as a 24px line.
+	const rangePrototype = Range.prototype as unknown as RangeMeasure;
+	const original: RangeMeasure = {
+		getBoundingClientRect: rangePrototype.getBoundingClientRect,
+		getClientRects: rangePrototype.getClientRects,
+	};
+	const box = () => new DOMRect(24, 32, 0, 24);
+	rangePrototype.getBoundingClientRect = box;
+	rangePrototype.getClientRects = () => [box()];
 	const editor = createEditor({
 		schema: defaultSchema,
 		preset: defaultPreset({
@@ -209,20 +202,20 @@ async function mountVisibleCaret(): Promise<{
 		throw new Error("Missing inline content element");
 	}
 
-	Object.defineProperty(inlineElement, "getBoundingClientRect", {
-		configurable: true,
-		value: () => new DOMRect(24, 32, 240, 24),
-	});
-
 	await act(async () => {
 		fieldEditor.activateTextSelection(blockId, 2, 2);
 		inlineElement.dispatchEvent(new Event("focusin", { bubbles: true }));
 	});
+	await nextFrames();
 
 	return {
 		caret: () =>
 			container.querySelector<HTMLElement>("[data-pen-editor-caret]"),
+		layer: () =>
+			container.querySelector<HTMLElement>("[data-pen-overlay-layer]"),
 		cleanup: async () => {
+			rangePrototype.getBoundingClientRect = original.getBoundingClientRect;
+			rangePrototype.getClientRects = original.getClientRects;
 			await act(async () => {
 				root.unmount();
 			});

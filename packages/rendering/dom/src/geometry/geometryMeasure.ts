@@ -88,6 +88,27 @@ export function measureCaretRect(
 	return caretFromElementRect(inlineEl, affinity);
 }
 
+/**
+ * Whether `point` resolves into an inline atom's host (a caret on either
+ * side of a chip). Read phase only.
+ */
+export function isPointBesideAtom(root: HTMLElement, point: Point): boolean {
+	const blockEl = queryBlockElement(root, point.blockId);
+	const inlineEl = blockEl
+		? (findInlineContentElement(blockEl) ??
+			queryInlineElement(root, point.blockId))
+		: null;
+	if (!inlineEl) {
+		return false;
+	}
+	const length = getLogicalNodeLength(inlineEl);
+	if (length <= 0) {
+		return false;
+	}
+	const domPoint = findLogicalDOMPoint(inlineEl, clampOffset(point.offset, length));
+	return findAtomHost(domPoint.node) !== null;
+}
+
 export function measureRangeRects(
 	root: HTMLElement,
 	range: { anchor: Point; focus: Point },
@@ -153,6 +174,27 @@ export function measureBlockRect(
 	}
 	const inlineEl = findInlineContentElement(blockEl);
 	return inlineEl ? elementRect(inlineEl) : rect;
+}
+
+/**
+ * O3: the box of one grid cell, `[data-pen-table-cell][data-cell-row][data-cell-col]`
+ * inside the table block. Read phase only. Null when the block or the cell
+ * is not mounted (the vanilla path renders no table cells, RI5).
+ */
+export function measureCellRect(
+	root: HTMLElement,
+	blockId: string,
+	row: number,
+	col: number,
+): Rect | null {
+	const blockEl = queryBlockElement(root, blockId);
+	if (!blockEl) {
+		return null;
+	}
+	const cell = blockEl.querySelector<HTMLElement>(
+		`[${DATA_ATTRS.tableCell}][${DATA_ATTRS.tableCellRow}="${row}"][${DATA_ATTRS.tableCellCol}="${col}"]`,
+	);
+	return cell ? elementRect(cell) : null;
 }
 
 export function characterRect(

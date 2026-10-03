@@ -19,9 +19,11 @@ body {
 }
 
 /*
- * AX6 positive control: ?ax6=1 always supplies a real caret blink.
+ * AX6 positive control: ?blink=1 always supplies a real caret blink.
  * Pen must suppress it via createReducedMotionSignal — this sheet must
- * not add a prefers-reduced-motion media query of its own.
+ * not add a prefers-reduced-motion media query of its own. The token sits
+ * on the editor root: the overlay layer is the root's child, so a token on
+ * a wrapper inside the root would not reach the caret.
  */
 @keyframes pen-ax6-caret-blink {
 	50% {
@@ -29,7 +31,7 @@ body {
 	}
 }
 
-[data-pen-conformance-harness][data-ax6] {
+[data-pen-editor-root][data-blink] {
 	--pen-editor-caret-animation: pen-ax6-caret-blink 1s step-end infinite;
 }
 

@@ -162,14 +162,24 @@ describe("@input/pen-react field editor inline atom navigation: shift selection"
 			},
 		});
 		const blockId = editor.firstBlock()!.id;
+		// An atom-only block in the model: the keymap decides from the
+		// authority, not from the field's text (W35.R18).
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: { nodeType: "mention", props: { id: "user-ada", label: "Ada" } },
+			},
+		]);
 		const fieldEditor = createFieldEditorMock(blockId);
-		const atomText = createAtomText();
 
 		const handled = handleFieldEditorKeyDown({
 			event: createKeyEvent("ArrowLeft"),
 			editor,
 			fieldEditor: fieldEditor.controller,
-			ytext: atomText,
+			ytext: getYText(editor, blockId),
 			range: { start: 1, end: 1 },
 		});
 
@@ -188,13 +198,24 @@ describe("@input/pen-react field editor inline atom navigation: shift selection"
 			},
 		});
 		const blockId = editor.firstBlock()!.id;
+		// An atom-only block in the model: the keymap decides from the
+		// authority, not from the field's text (W35.R18).
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: { nodeType: "mention", props: { id: "user-ada", label: "Ada" } },
+			},
+		]);
 		const fieldEditor = createFieldEditorMock(blockId);
 
 		const handled = handleFieldEditorKeyDown({
 			event: createKeyEvent("ArrowLeft", { shiftKey: true }),
 			editor,
 			fieldEditor: fieldEditor.controller,
-			ytext: createAtomText(),
+			ytext: getYText(editor, blockId),
 			range: { start: 1, end: 1 },
 		});
 

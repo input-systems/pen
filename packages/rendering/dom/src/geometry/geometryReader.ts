@@ -4,6 +4,7 @@ import {
 	rangeRectsFromLineBoxes,
 } from "./bidiRunGeometry";
 import {
+	isPointBesideAtom,
 	measureBlockRect,
 	measureCaretRect,
 	measureRangeRects,
@@ -49,6 +50,12 @@ export type GeometryReaderHost = GeometryReader & {
 	bumpResizeGeneration(): void;
 	bumpFontGeneration(): void;
 	bumpScrollGeneration(): void;
+	/**
+	 * Fires after bumpResizeGeneration, bumpFontGeneration or
+	 * bumpScrollGeneration. Never from invalidateBlocks. The overlay
+	 * requests a paint from it (OV1).
+	 */
+	onGenerationBump(listener: () => void): () => void;
 	blockIds(): readonly string[];
 	dispose(): void;
 };
@@ -84,6 +91,7 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	private readonly measure?: GeometryMeasureAdapter;
 	private readonly cache = new Map<string, BlockCacheEntry>();
 	private readonly blockCommitIds = new Map<string, number>();
+	private readonly bumpListeners = new Set<() => void>();
 	private readonly resizeObserver: ResizeObserver | null = null;
 	private readonly detachScroll: (() => void) | null = null;
 	private commitId: number;
@@ -140,12 +148,15 @@ class GeometryReaderImpl implements GeometryReaderHost {
 			entry.caretRects.set(cacheKey, rect);
 			return rect;
 		}
-		const fromRuns = caretRectAtBidiBoundary(
-			this.lineBoxes(point.blockId),
-			point.offset,
-			affinity,
-		);
-		const rect = fromRuns ?? measureCaretRect(this.root, point, affinity);
+		const lines = this.lineBoxes(point.blockId);
+		const fromRuns = caretRectAtBidiBoundary(lines, point.offset, affinity);
+		const measured = fromRuns ?? measureCaretRect(this.root, point, affinity);
+		// G1: beside a chip the caret is as tall as the text line, not the
+		// chip's own box, which host CSS styles (padding, borders).
+		const rect =
+			measured && isPointBesideAtom(this.root, point)
+				? onLineBox(measured, lines, point.offset)
+				: measured;
 		entry.caretRects.set(cacheKey, rect);
 		return rect;
 	}
@@ -245,20 +256,31 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	bumpResizeGeneration(): void {
 		this.resizeGeneration += 1;
 		this.clearCache();
+		this.notifyBump();
 	}
 
 	bumpFontGeneration(): void {
 		this.fontGeneration += 1;
 		this.clearCache();
+		this.notifyBump();
 	}
 
 	bumpScrollGeneration(): void {
 		this.scrollGeneration += 1;
 		this.clearCache();
+		this.notifyBump();
+	}
+
+	onGenerationBump(listener: () => void): () => void {
+		this.bumpListeners.add(listener);
+		return () => {
+			this.bumpListeners.delete(listener);
+		};
 	}
 
 	dispose(): void {
 		this.disposed = true;
+		this.bumpListeners.clear();
 		this.resizeObserver?.disconnect();
 		this.detachScroll?.();
 		this.cache.clear();
@@ -350,6 +372,12 @@ class GeometryReaderImpl implements GeometryReaderHost {
 		};
 	}
 
+	private notifyBump(): void {
+		for (const listener of [...this.bumpListeners]) {
+			listener();
+		}
+	}
+
 	private clearCache(): void {
 		this.cache.clear();
 		this._generation += 1;
@@ -375,4 +403,22 @@ function boxStillValid(cached: Rect | null, live: Rect | null): boolean {
 		cached.width === live.width &&
 		cached.height === live.height
 	);
+}
+
+/** `rect` with the top and height of the line box that contains it and `offset`. */
+function onLineBox(rect: Rect, lines: readonly LineBox[], offset: number): Rect {
+	const centre = rect.top + rect.height / 2;
+	const line =
+		lines.find(
+			(entry) =>
+				entry.startOffset <= offset &&
+				offset <= entry.endOffset &&
+				entry.top <= centre &&
+				centre <= entry.bottom,
+		) ?? lines.find((entry) => entry.top <= centre && centre <= entry.bottom);
+	if (!line) {
+		return rect;
+	}
+	const height = line.bottom - line.top;
+	return { ...rect, y: line.top, top: line.top, height, bottom: line.top + height };
 }

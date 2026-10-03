@@ -139,6 +139,16 @@ export const PenEditor = defineComponent({
 			{ immediate: true },
 		);
 
+		// O5: the renderer `readonly` prop reaches the overlay; the
+		// pen.ariaReadOnly facet does not (AX1).
+		watch(
+			readonlyRef,
+			(readonly) => {
+				fieldEditor.setReadOnly(readonly === true);
+			},
+			{ immediate: true },
+		);
+
 		watch(
 			() => props.interactionModel,
 			(interactionModel) => {

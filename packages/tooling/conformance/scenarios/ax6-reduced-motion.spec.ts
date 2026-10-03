@@ -20,8 +20,8 @@ const UNSEARCHED_DIRS = new Set([
 	"__tests__",
 ]);
 
-/** Must exceed `CARET_BLINK_RESUME_DELAY_MS` in caretOverlay.tsx. */
-const CARET_BLINK_RESUME_WAIT_MS = 650;
+/** customCaret paints every collapsed caret; blink supplies the host's animation token. */
+const AX6_URL = "/?customCaret=1&blink=1";
 
 const AX6_CARET_BLINK_NAME = "pen-ax6-caret-blink";
 
@@ -77,13 +77,6 @@ type RunningAnimation = {
 	transitionProperty: string | null;
 	target: string | null;
 };
-
-async function waitForCaretBlinkResume(page: Page): Promise<void> {
-	await page.evaluate(
-		(ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
-		CARET_BLINK_RESUME_WAIT_MS,
-	);
-}
 
 async function collectRunningAnimations(
 	page: Page,
@@ -144,7 +137,6 @@ scenario(
 
 		const caret = page.locator("[data-pen-editor-caret]");
 		await expect(caret).toBeVisible();
-		await waitForCaretBlinkResume(page);
 		await expect(
 			caret,
 			"AX6: caret animation-name must be none under reduced motion",
@@ -156,13 +148,13 @@ scenario(
 		);
 	},
 	{
-		url: "/?ax6=1",
+		url: AX6_URL,
 		emulateMedia: { reducedMotion: "reduce" },
 	},
 );
 
 scenario(
-	"AX6: without reduced-motion the ax6 harness caret blinks",
+	"AX6: without reduced-motion the blink token animates the overlay caret",
 	async (s, page) => {
 		const media = await page.evaluate(() =>
 			window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -176,7 +168,6 @@ scenario(
 
 		const caret = page.locator("[data-pen-editor-caret]");
 		await expect(caret).toBeVisible();
-		await waitForCaretBlinkResume(page);
 		await expect(
 			caret,
 			"AX6: caret must blink when reduced motion is off",
@@ -191,7 +182,7 @@ scenario(
 		).not.toEqual([]);
 	},
 	{
-		url: "/?ax6=1",
+		url: AX6_URL,
 		emulateMedia: { reducedMotion: "no-preference" },
 	},
 );
