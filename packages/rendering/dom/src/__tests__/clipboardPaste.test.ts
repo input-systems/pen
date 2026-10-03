@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi } from "vitest";
-import { createEditor } from "@input/pen-core";
+import { createEditor, SchemaRegistryImpl } from "@input/pen-core";
 import {
 	PEN_CLIPBOARD_JSON_MIME,
 	PEN_CLIPBOARD_JSON_MIME_LEGACY,
@@ -505,6 +505,238 @@ describe("clipboard JSON-flavor paste", () => {
 			(link?.attributes?.link as { href?: string } | undefined)?.href,
 		).toBe(href);
 
+		editor.destroy();
+	});
+
+	it("IOP11: html that parses to nothing pastes the plain flavor instead", async () => {
+		const editor = createBareEditor();
+		const blockId = editor.firstBlock()!.id;
+		editor.selectText(blockId, 0, 0);
+		const importHtml = vi.fn();
+
+		const handled = await executePasteTransfer({
+			source: "paste",
+			editor,
+			fieldEditor: createFieldEditorStub(),
+			dataTransfer: createClipboardData({
+				"text/html": "<span data-unparsed></span>",
+				"text/plain": "kept text",
+			}),
+			importers: {
+				html: {
+					name: "html",
+					mimeType: "text/html",
+					parse: () => [],
+					import: importHtml,
+				},
+			},
+		});
+
+		expect(handled).toBe(true);
+		expect(importHtml).not.toHaveBeenCalled();
+		expect(editor.getBlock(blockId)!.textContent()).toBe("kept text");
+
+		editor.destroy();
+	});
+
+	it("IOP11: HTML recovery pastes literal text without invoking Markdown", async () => {
+		const editor = createBareEditor();
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: "original",
+			},
+		]);
+		editor.selectText(blockId, 0, 8);
+		const parseMarkdown = vi.fn(() => []);
+		const importMarkdown = vi.fn();
+		const text = "[keep]: https://example.com\n**literal**";
+		await executePasteTransfer({
+			source: "paste",
+			editor,
+			fieldEditor: createFieldEditorStub(),
+			dataTransfer: createClipboardData({
+				"text/html": "<span></span>",
+				"text/plain": text,
+			}),
+			importers: {
+				html: {
+					name: "html",
+					mimeType: "text/html",
+					parse: () => [],
+					import: vi.fn(),
+				},
+				markdown: {
+					name: "markdown",
+					mimeType: "text/markdown",
+					parse: parseMarkdown,
+					import: importMarkdown,
+				},
+			},
+		});
+		expect(parseMarkdown).not.toHaveBeenCalled();
+		expect(importMarkdown).not.toHaveBeenCalled();
+		expect(
+			[...editor.documentState.allBlocks()]
+				.map((block) => block.textContent())
+				.join("\n"),
+		).toBe(text);
+		editor.destroy();
+	});
+
+	it("IOP11: empty HTML without plain text preserves the existing selection", async () => {
+		const editor = createBareEditor();
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: "original",
+			},
+		]);
+		editor.selectText(blockId, 0, 8);
+		const importHtml = vi.fn();
+		await executePasteTransfer({
+			source: "paste",
+			editor,
+			fieldEditor: createFieldEditorStub(),
+			dataTransfer: createClipboardData({ "text/html": "<span></span>" }),
+			importers: {
+				html: {
+					name: "html",
+					mimeType: "text/html",
+					parse: () => [],
+					import: importHtml,
+				},
+			},
+		});
+		expect(editor.getBlock(blockId)!.textContent()).toBe("original");
+		expect(importHtml).not.toHaveBeenCalled();
+		editor.destroy();
+	});
+
+	it("IOP5: literal HTML recovery reports truncation before replacing the selection", async () => {
+		const editor = createBareEditor();
+		const blockId = editor.firstBlock()!.id;
+		editor.selectText(blockId, 0, 0);
+		const diagnostics: unknown[] = [];
+		editor.on("diagnostic", (event) => diagnostics.push(event));
+		await executePasteTransfer({
+			source: "paste",
+			editor,
+			fieldEditor: createFieldEditorStub(),
+			dataTransfer: createClipboardData({
+				"text/html": "<span></span>",
+				"text/plain":
+					"kept\n" + "x".repeat(CLIPBOARD_INGEST_MAX_TEXT_SIZE),
+			}),
+			importers: {
+				html: {
+					name: "html",
+					mimeType: "text/html",
+					parse: () => [],
+					import: vi.fn(),
+				},
+			},
+		});
+		expect(editor.getBlock(blockId)!.textContent()).toBe("kept");
+		expect(diagnostics).toContainEqual(
+			expect.objectContaining({
+				code: "import-truncated",
+				droppedByReason: [
+					{
+						reason: "text-size-exceeded",
+						count: 1,
+						bound: "CLIPBOARD_INGEST_MAX_TEXT_SIZE",
+					},
+				],
+			}),
+		);
+		editor.destroy();
+	});
+
+	it.each([
+		{ blocks: [] },
+		{ blocks: [{ type: "unknown", props: {}, content: "kept" }] },
+	])(
+		"IOP11: Markdown with no admissible blocks recovers literal text (%j)",
+		async ({ blocks }) => {
+			const editor = createEditor({
+				schema: new SchemaRegistryImpl({
+					blocks: defaultSchema.allBlocks(),
+					inlines: defaultSchema.allInlines(),
+				}),
+				preset: noDefaultExtensionsPreset,
+			});
+			const blockId = editor.firstBlock()!.id;
+			editor.apply([
+				{
+					type: "splice-text",
+					blockId,
+					from: 0,
+					to: 0,
+					insert: "original",
+				},
+			]);
+			editor.selectText(blockId, 0, 8);
+			const importMarkdown = vi.fn();
+			const text = "[keep]: https://example.com";
+			await executePasteTransfer({
+				source: "paste",
+				editor,
+				fieldEditor: createFieldEditorStub(),
+				dataTransfer: createClipboardData({ "text/plain": text }),
+				importers: {
+					markdown: {
+						name: "markdown",
+						mimeType: "text/markdown",
+						parse: () => blocks,
+						import: importMarkdown,
+					},
+				},
+			});
+			expect(importMarkdown).not.toHaveBeenCalled();
+			expect(editor.getBlock(blockId)!.textContent()).toBe(text);
+			editor.destroy();
+		},
+	);
+
+	it("IOP11: HTML rejected by schema normalization uses the plain flavor", async () => {
+		const editor = createEditor({
+			schema: new SchemaRegistryImpl({
+				blocks: defaultSchema.allBlocks(),
+				inlines: defaultSchema.allInlines(),
+			}),
+			preset: noDefaultExtensionsPreset,
+		});
+		const blockId = editor.firstBlock()!.id;
+		editor.selectText(blockId, 0, 0);
+		await executePasteTransfer({
+			source: "paste",
+			editor,
+			fieldEditor: createFieldEditorStub(),
+			dataTransfer: createClipboardData({
+				"text/html": "<p>kept</p>",
+				"text/plain": "kept",
+			}),
+			importers: {
+				html: {
+					name: "html",
+					mimeType: "text/html",
+					parse: () => [
+						{ type: "unknown", props: {}, content: "kept" },
+					],
+					import: vi.fn(),
+				},
+			},
+		});
+		expect(editor.getBlock(blockId)!.textContent()).toBe("kept");
 		editor.destroy();
 	});
 

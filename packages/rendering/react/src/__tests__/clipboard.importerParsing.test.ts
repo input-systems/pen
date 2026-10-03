@@ -241,7 +241,7 @@ describe("@input/pen-react clipboard: importer parsing", () => {
 		editor.destroy();
 	});
 
-	it("keeps an empty block when importer parse yields no blocks", async () => {
+	it("IOP11 keeps an empty block without retrying an importer that parsed no blocks", async () => {
 		const editor = createEditor();
 		const emptyBlockId = editor.firstBlock()!.id;
 		const clipboardData = createClipboardData();
@@ -268,7 +268,7 @@ describe("@input/pen-react clipboard: importer parsing", () => {
 
 		expect(editor.documentState.blockOrder).toEqual([emptyBlockId]);
 		expect(editor.getBlock(emptyBlockId)?.type).toBe("paragraph");
-		expect(importers.html?.import).toHaveBeenCalledTimes(1);
+		expect(importers.html?.import).not.toHaveBeenCalled();
 
 		editor.destroy();
 	});

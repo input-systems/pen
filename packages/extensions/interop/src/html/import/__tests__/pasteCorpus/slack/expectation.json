@@ -1,0 +1,41 @@
+{
+  "id": "slack",
+  "source": "Slack",
+  "provenance": "synthetic-until-capture",
+  "approximates": "Slack message copy: a p-rich_text_section line, p-rich_text_list lists carrying data-indent, and nested lists emitted as a child of the parent <ul> rather than of an <li>. Not a hand-captured dump.",
+  "markers": ["p-rich_text_section", "p-rich_text_list--nested", "data-stringify-indent"],
+  "imageCount": 0,
+  "outcomes": {
+    "headings": "none",
+    "lists": "nested bullets (indent 0/1/2) plus a nested numbered item",
+    "tables": "none",
+    "code": "inline code mark",
+    "links": "kept",
+    "images": "none",
+    "marks": "bold, code, link",
+    "colors": "none"
+  },
+  "intentionalLosses": [
+    "data-indent and data-stringify-* attributes are ignored; indent comes from the list tree only"
+  ],
+  "blocks": [
+    {
+      "type": "paragraph",
+      "text": "Release notes for Desktop and the changelog",
+      "marks": [
+        { "type": "bold", "text": "Desktop" },
+        { "type": "link", "text": "the changelog" }
+      ]
+    },
+    { "type": "bulletListItem", "indent": 0, "text": "Desktop" },
+    { "type": "bulletListItem", "indent": 1, "text": "Open mailto links" },
+    {
+      "type": "bulletListItem",
+      "indent": 2,
+      "text": "Behind a flag",
+      "marks": [{ "type": "code", "text": "flag" }]
+    },
+    { "type": "bulletListItem", "indent": 0, "text": "Agent" },
+    { "type": "numberedListItem", "indent": 1, "text": "Faster replies" }
+  ]
+}
