@@ -29,7 +29,7 @@ import {
 	tryHandleHistoryOverrideBinding,
 } from "./keyBindingShortcuts";
 import { dispatchKeymapEvent } from "./keymap";
-import { resolveEditedCellText } from "./selectionAuthority";
+import { resolveEditedCellText } from "./selectionReader";
 import {
 	ensureLineEdgeMeasure,
 	isNavigationSelectionKey,

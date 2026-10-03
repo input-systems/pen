@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveEditedCellText } from "../selectionAuthority";
+import {
+	resolveEditedCellText,
+	resolveLiveTextSelection,
+} from "../selectionReader";
 
 const BLOCK_ID = "table-1";
 const ACTIVE = { row: 0, col: 0 } as const;
@@ -51,6 +54,62 @@ describe("resolveEditedCellText (W3.R18)", () => {
 				},
 				BLOCK_ID,
 				ACTIVE,
+			),
+		).toBeNull();
+	});
+});
+
+const LIVE_BLOCK_ID = "block-1";
+
+describe("resolveLiveTextSelection", () => {
+	it("accepts a same-block text selection when no cell is active", () => {
+		expect(
+			resolveLiveTextSelection(
+				{
+					type: "text",
+					anchor: { blockId: LIVE_BLOCK_ID, offset: 0 },
+					focus: { blockId: LIVE_BLOCK_ID, offset: 30 },
+				},
+				LIVE_BLOCK_ID,
+				null,
+			),
+		).toEqual({
+			type: "text",
+			anchor: { blockId: LIVE_BLOCK_ID, offset: 0 },
+			focus: { blockId: LIVE_BLOCK_ID, offset: 30 },
+		});
+	});
+
+	it("rejects a selection that ends in another block", () => {
+		expect(
+			resolveLiveTextSelection(
+				{
+					type: "text",
+					anchor: { blockId: LIVE_BLOCK_ID, offset: 0 },
+					focus: { blockId: "block-2", offset: 2 },
+				},
+				LIVE_BLOCK_ID,
+				null,
+			),
+		).toBeNull();
+	});
+
+	it("rejects a non-text selection", () => {
+		expect(
+			resolveLiveTextSelection({ type: "block" }, LIVE_BLOCK_ID, null),
+		).toBeNull();
+	});
+
+	it("rejects a block-level selection while a cell is active", () => {
+		expect(
+			resolveLiveTextSelection(
+				{
+					type: "text",
+					anchor: { blockId: LIVE_BLOCK_ID, offset: 0 },
+					focus: { blockId: LIVE_BLOCK_ID, offset: 0 },
+				},
+				LIVE_BLOCK_ID,
+				{ row: 0, col: 0 },
 			),
 		).toBeNull();
 	});

@@ -2,7 +2,6 @@
 
 import type { SelectionRecord } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
-import { HistorySelectionCoordinator } from "../historySelectionCoordinator";
 import { resolveProjectionScroll, scrollDelta } from "../projectionScroll";
 import { SelectionProjector } from "../selectionProjector";
 import { CLOSED_GESTURE_WINDOWS } from "../selectionReader";
@@ -130,9 +129,6 @@ describe("projection scroll jobs (W3.R15)", () => {
 		document.body.append(element);
 		const jobs: string[] = [];
 		const projector = new SelectionProjector({
-			historySelectionCoordinator: new HistorySelectionCoordinator({
-				facet: () => undefined as never,
-			}),
 			getGestureWindows: () => CLOSED_GESTURE_WINDOWS,
 			isEditing: () => true,
 			getMode: () => "single",

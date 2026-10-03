@@ -35,19 +35,15 @@ import {
 	caretAfterRebasedDiff,
 	requiresResolvedInputRange,
 } from "./contenteditableDomHelpers";
-import {
-	resolveEditedCellText,
-	resolveLiveTextSelection,
-} from "./selectionAuthority";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
 import { mapBeforeInput } from "./beforeinputMap";
 import { handleFieldEditorKeyDown } from "./keyHandling";
 import {
 	authorityOffsetsInBlock,
-	type ReaderSelection,
+	resolveEditedCellText,
+	resolveLiveTextSelection,
 } from "./selectionReader";
-import { isFullBlockEchoAgainstCollapsedCaret } from "./contenteditableEchoRestore";
 
 export class ContentEditableBackend {
 	protected element: HTMLElement | null = null;
@@ -55,10 +51,12 @@ export class ContentEditableBackend {
 	protected observer: FieldEditorObserver | null = null;
 	protected mutationObserver: MutationObserver | null = null;
 	protected isComposing = false;
-	// block-policy beforeinput: do not absorb later browser leftovers as ops
+	/**
+	 * B1 watchdog state, not selection state: after a block-policy
+	 * `beforeinput` the browser's leftovers are restored without a
+	 * `dom-divergence`, and one mismatch is reported once.
+	 */
 	protected ignoreBrowserMutations = false;
-	// watchdog must not observe its own restore writes
-	protected restoringDomFromModel = false;
 	protected lastWatchdogMismatch: string | null = null;
 	protected compositionStartText: string | null = null;
 	/** C2: start of the authority selection at compositionstart, a logical offset. */
@@ -82,75 +80,59 @@ export class ContentEditableBackend {
 
 		element.contentEditable = "true";
 		element.tabIndex = -1;
-		this.fieldEditor.resetBackendSelectionAuthority();
-		this.fieldEditor.withBackendSelectionWrite(() => {
-			this.isComposing = false;
-			this.ignoreBrowserMutations = false;
-			this.restoringDomFromModel = false;
-			this.lastWatchdogMismatch = null;
-			this.compositionStartText = null;
-			this.fieldEditor.setComposing(false);
+		this.isComposing = false;
+		this.ignoreBrowserMutations = false;
+		this.lastWatchdogMismatch = null;
+		this.compositionStartText = null;
+		this.fieldEditor.setComposing(false);
 
-			this.attachment.listen(
-				element,
-				"beforeinput",
-				this.handleBeforeInput,
-			);
-			this.attachment.listen(
-				element,
-				"compositionstart",
-				this.handleCompositionStart,
-			);
-			this.attachment.listen(
-				element,
-				"compositionend",
-				this.handleCompositionEnd,
-			);
-			this.attachment.listen(element, "keydown", this.handleKeyDown);
-			bindBackendTransferEvents(
-				this.attachment,
-				element,
-				this.editor,
-				this.fieldEditor,
-			);
-			this.attachment.listen(
-				element,
-				"pointerdown",
-				this.handlePointerDown,
-			);
+		this.attachment.listen(element, "beforeinput", this.handleBeforeInput);
+		this.attachment.listen(
+			element,
+			"compositionstart",
+			this.handleCompositionStart,
+		);
+		this.attachment.listen(
+			element,
+			"compositionend",
+			this.handleCompositionEnd,
+		);
+		this.attachment.listen(element, "keydown", this.handleKeyDown);
+		bindBackendTransferEvents(
+			this.attachment,
+			element,
+			this.editor,
+			this.fieldEditor,
+		);
+		this.attachment.listen(element, "pointerdown", this.handlePointerDown);
 
-			this.mutationObserver = this.attachment.observeMutations(
-				element,
-				this.handleMutations,
-				{
-					childList: true,
-					subtree: true,
-					characterData: true,
-					characterDataOldValue: true,
-				},
-			);
+		this.mutationObserver = this.attachment.observeMutations(
+			element,
+			this.handleMutations,
+			{
+				childList: true,
+				subtree: true,
+				characterData: true,
+				characterDataOldValue: true,
+			},
+		);
 
-			this.observer = (event) => this.handleYTextChange(event);
-			this.attachment.observeText(activeYText, this.observer);
-			this.attachment.subscribe(
-				this.editor.on(
-					"decorationsChange",
-					this.handleDecorationsChange,
-				),
-			);
-			this.inlineDecorationsSignature =
-				this.getInlineDecorationsSignature();
+		this.observer = (event) => this.handleYTextChange(event);
+		this.attachment.observeText(activeYText, this.observer);
+		this.attachment.subscribe(
+			this.editor.on("decorationsChange", this.handleDecorationsChange),
+		);
+		this.inlineDecorationsSignature = this.getInlineDecorationsSignature();
 
-			fullReconcileToDOM(activeYText, element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.fieldEditor.notifyDomReconciled(
-				this.fieldEditor.focusBlockId ?? undefined,
-			);
-			this.restoreDOMSelectionFromEditor();
-			this.discardObservedMutations();
+		fullReconcileToDOM(activeYText, element, this.editor.schema, {
+			urlPolicy: urlPolicyFromEditor(this.editor),
+			inlineDecorations: this.getInlineDecorationsForBlock(),
 		});
+		this.fieldEditor.notifyDomReconciled(
+			this.fieldEditor.focusBlockId ?? undefined,
+		);
+		this.updateSelection();
+		this.discardObservedMutations();
 	}
 
 	protected discardObservedMutations(): void {
@@ -177,17 +159,11 @@ export class ContentEditableBackend {
 		this.observer = null;
 		this.inlineDecorationsSignature = null;
 		this.deferredRemoteDeltas = [];
-		this.fieldEditor.resetBackendSelectionAuthority();
 		this.isComposing = false;
 		this.ignoreBrowserMutations = false;
-		this.restoringDomFromModel = false;
 		this.lastWatchdogMismatch = null;
 		this.compositionStartText = null;
 		this.fieldEditor.setComposing(false);
-	}
-
-	updateSelection(_relPos: unknown): void {
-		this.restoreDOMSelectionFromEditor();
 	}
 
 	protected _getActiveCellCoord(blockId: string): {
@@ -220,7 +196,7 @@ export class ContentEditableBackend {
 			cellCoord,
 		});
 		this.ensureActiveDOMMatchesYText();
-		this.restoreDOMSelectionFromEditor();
+		this.updateSelection();
 	}
 
 	commitDispatchedEdit(): void {
@@ -239,7 +215,7 @@ export class ContentEditableBackend {
 			);
 		}
 		this.ensureActiveDOMMatchesYText();
-		this.restoreDOMSelectionFromEditor();
+		this.updateSelection();
 	}
 
 	applyListInputRule(options: {
@@ -255,11 +231,16 @@ export class ContentEditableBackend {
 			target.anchorOffset,
 			target.focusOffset,
 		);
-		this.restoreDOMSelectionFromEditor();
+		this.updateSelection();
 		return true;
 	}
 
-	restoreDOMSelectionFromEditor(): void {
+	/**
+	 * Writes the authority's record into this field: the edited cell's
+	 * `CellSelection.text`, else a text selection inside the focused block.
+	 * The projector calls it; so do this backend's own rebuilds.
+	 */
+	updateSelection(_relPos?: unknown): void {
 		const element = this.element;
 		if (!element) return;
 
@@ -273,9 +254,7 @@ export class ContentEditableBackend {
 				activeCell,
 			);
 			if (!text) return;
-			this.fieldEditor.withBackendSelectionWrite(() => {
-				writeCellTextRange(element, text);
-			});
+			writeCellTextRange(element, text);
 			return;
 		}
 		const restored = resolveLiveTextSelection(
@@ -291,9 +270,7 @@ export class ContentEditableBackend {
 		) as HTMLElement | null;
 		if (!root) return;
 
-		this.fieldEditor.withBackendSelectionWrite(() => {
-			writeNativeRange(root, anchor, focus);
-		});
+		writeNativeRange(root, anchor, focus);
 	}
 
 	protected handleBeforeInput = (event: InputEvent): void => {
@@ -364,7 +341,7 @@ export class ContentEditableBackend {
 			return true;
 		}
 
-		this.restoreDOMSelectionFromEditor();
+		this.updateSelection();
 
 		return canResolveInputRange(event, this.element, resolve);
 	}
@@ -440,7 +417,7 @@ export class ContentEditableBackend {
 		}
 
 		this.compositionStartText = null;
-		this.restoreDOMSelectionFromEditor();
+		this.updateSelection();
 		this.discardObservedMutations();
 	}
 
@@ -459,7 +436,6 @@ export class ContentEditableBackend {
 	// ── Mutation observer watchdog ────────────────────────────
 
 	protected handleMutations = (_mutations: MutationRecord[]): void => {
-		if (this.restoringDomFromModel) return;
 		if (!this.isComposing && this.compositionStartText != null) {
 			this.reconcileAfterComposition();
 			this.fieldEditor.notifyGestureEvent?.("compositionend-completed");
@@ -493,17 +469,13 @@ export class ContentEditableBackend {
 		}
 
 		// do not put a foreign caret back — that re-dirties WebKit/Firefox
-		// contenteditable and the observer re-enters on its own write.
-		this.restoringDomFromModel = true;
-		try {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.discardObservedMutations();
-		} finally {
-			this.restoringDomFromModel = false;
-		}
+		// contenteditable. The rebuild's own records are taken here, so the
+		// observer never sees them.
+		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
+			urlPolicy: urlPolicyFromEditor(this.editor),
+			inlineDecorations: this.getInlineDecorationsForBlock(),
+		});
+		this.discardObservedMutations();
 		this.fieldEditor.notifyDomReconciled(blockId);
 	};
 
@@ -518,7 +490,7 @@ export class ContentEditableBackend {
 		const blockId = this.fieldEditor.focusBlockId;
 		if (isHistoryTransactionOrigin(event.transaction?.origin)) {
 			this.fullReconcileActiveField(blockId);
-			this.restoreDOMSelectionFromEditor();
+			this.updateSelection();
 		} else {
 			this.reconcileDeltaAndProject(blockId, event.delta);
 		}
@@ -644,7 +616,7 @@ export class ContentEditableBackend {
 		});
 		if (!result.applied) return;
 		this.ensureActiveDOMMatchesYText();
-		this.restoreDOMSelectionFromEditor();
+		this.updateSelection();
 	}
 
 	protected ensureActiveDOMMatchesYText(): boolean {
@@ -685,7 +657,7 @@ export class ContentEditableBackend {
 		const projectSelection =
 			this.fieldEditor.shouldProjectSelectionAfterReconcile?.() ?? true;
 		if (this.ensureActiveDOMMatchesYText() && projectSelection) {
-			this.restoreDOMSelectionFromEditor();
+			this.updateSelection();
 		}
 	};
 
@@ -765,29 +737,6 @@ export class ContentEditableBackend {
 		end: number;
 	} | null {
 		return this.resolveLiveInputRange();
-	}
-
-	/**
-	 * PH1 echo restore (W3.R4 removes it in an engine-gated change): a
-	 * full-block echo against a collapsed caret is put back from the editor
-	 * instead of read. Any other closed-window caret diverges (P2).
-	 */
-	interceptDomSelectionRead(
-		proposal: Exclude<ReaderSelection, null>,
-	): boolean {
-		if (!this.element) return false;
-		if (proposal.type !== "text") return false;
-		if (
-			isFullBlockEchoAgainstCollapsedCaret(
-				proposal,
-				this.fieldEditor.selection,
-				(blockId) => this.editor.getBlock(blockId)?.length() ?? null,
-			)
-		) {
-			this.restoreDOMSelectionFromEditor();
-			return true;
-		}
-		return false;
 	}
 
 	// ── Clipboard events ──────────────────────────────────────

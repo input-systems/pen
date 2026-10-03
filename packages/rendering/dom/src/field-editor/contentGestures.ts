@@ -31,7 +31,6 @@ export interface ContentGestureState<
 	regionGesture: GestureSlot<ContentGestureRegionGesture | null>;
 	pointerGesture: GestureSlot<PointerSelectionGesture | null>;
 	pointerGestureVersion: GestureSlot<number>;
-	skipNextClick: GestureSlot<boolean>;
 	interactionModel: GestureSlot<InteractionModel>;
 	clearPointerSelectionState(): void;
 }
@@ -66,7 +65,6 @@ export function attachContentGestures<
 		regionGesture: regionGestureRef,
 		pointerGesture: pointerGestureRef,
 		pointerGestureVersion: pointerGestureVersionRef,
-		skipNextClick: skipNextClickRef,
 		interactionModel: interactionModelRef,
 		clearPointerSelectionState,
 	} = state;
@@ -85,7 +83,6 @@ export function attachContentGestures<
 		regionGestureRef,
 		pointerGestureRef,
 		pointerGestureVersionRef,
-		skipNextClickRef,
 		interactionModelRef,
 		clearPointerSelectionState,
 		blockSelectionEnabled,
@@ -96,7 +93,12 @@ export function attachContentGestures<
 	const region = createRegionGestures(ctx);
 	const drag = createDragGestures(ctx);
 
+	// The gesture the next `click` belongs to: the one its mouseup released.
+	// A region gesture committed once it started selecting.
+	let releasedGesture: { readonly committed: boolean } | null = null;
+
 	const handleMouseDown = (event: MouseEvent) => {
+		releasedGesture = null;
 		if (event.button !== 0) return;
 		if (pointerSelection.handleMouseDown(event)) return;
 		if (region.handleMouseDown(event)) return;
@@ -113,13 +115,24 @@ export function attachContentGestures<
 	};
 
 	const handleMouseUp = (event: MouseEvent) => {
+		const regionGesture = regionGestureRef.current;
+		releasedGesture = regionGesture
+			? { committed: regionGesture.isSelecting }
+			: pointerGestureRef.current;
 		if (region.handleMouseUp(event)) return;
 		pointerSelection.handleMouseUp(event);
 	};
 
 	gestureEl.addEventListener("mousedown", handleMouseDown, true);
 	currentEditorRoot?.addEventListener("mousedown", handleRootMouseDown);
-	gestureEl.addEventListener("click", pointerSelection.handleClick);
+	const handleClick = (event: MouseEvent) => {
+		const gesture = releasedGesture;
+		releasedGesture = null;
+		if (gesture?.committed) return;
+		pointerSelection.handleClick(event);
+	};
+
+	gestureEl.addEventListener("click", handleClick);
 	gestureEl.ownerDocument?.addEventListener("mousemove", handleMouseMove);
 	gestureEl.ownerDocument?.addEventListener("mouseup", handleMouseUp);
 
@@ -129,7 +142,7 @@ export function attachContentGestures<
 			"mousedown",
 			handleRootMouseDown,
 		);
-		gestureEl.removeEventListener("click", pointerSelection.handleClick);
+		gestureEl.removeEventListener("click", handleClick);
 		gestureEl.ownerDocument?.removeEventListener(
 			"mousemove",
 			handleMouseMove,

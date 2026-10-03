@@ -13,11 +13,6 @@ import {
 } from "./selectionMapping";
 import { normalizeSelectionFormation } from "../utils/selectionFormation";
 import { resolveCellInlineElement } from "./contentResolution";
-import {
-	resolveEditedCellText,
-	resolveLiveTextSelection,
-	type FieldEditorSelectionCell,
-} from "./selectionAuthority";
 
 export type ReaderPoint = Point;
 
@@ -96,7 +91,7 @@ export type GestureEventKind =
 	| "keyup";
 
 export type DomSelectionReadDecision =
-	"ignore-inflight" | "no-proposal" | "equivalent" | "diverge" | "accept";
+	"no-proposal" | "equivalent" | "diverge" | "accept";
 
 export type GestureSelectionOrigin = "pointer" | "ime";
 
@@ -166,19 +161,17 @@ export function isLogicallyEquivalent(
 }
 
 /**
- * §4.2 steps 1–5. A proposal is accepted only inside an open gesture
+ * §4.2 steps 2–5. A proposal is accepted only inside an open gesture
  * window. Closed-window divergence does not write the authority (I4).
+ * Step 1 (ignore a read while a projection is in flight) is gone:
+ * projection is synchronous, so no read lands inside one.
  */
 export function classifyDomSelectionRead(input: {
-	projectionInFlight: boolean;
 	proposal: ReaderSelection | null;
 	authorityState: ReaderSelection;
 	snapshot: ReaderSnapshot;
 	gestureWindows: GestureWindowState;
 }): DomSelectionReadDecision {
-	if (input.projectionInFlight) {
-		return "ignore-inflight";
-	}
 	if (input.proposal === null) {
 		return "no-proposal";
 	}
@@ -208,7 +201,6 @@ function isEquivalentToAuthority(
 	}
 	return (
 		classifyDomSelectionRead({
-			projectionInFlight: false,
 			proposal,
 			authorityState: toReaderSelection(record.state),
 			snapshot: buildLazyNormalPositionSnapshot(editor),
@@ -407,12 +399,6 @@ export interface SelectionReaderOptions {
 	readonly editor: Editor;
 	/** Steps 3–5 on a mapped proposal: equivalent, diverge (P2) or accept. */
 	readonly read: (proposal: ReaderSelection) => DomSelectionReadDecision;
-	/**
-	 * PH1 only: the attached backend's echo restores (CE echo predicates, EC
-	 * stale caret and EditContext sync). True when the backend handled the
-	 * read. Each is removed in its own engine-gated change (W3.R4).
-	 */
-	readonly intercept?: (proposal: Exclude<ReaderSelection, null>) => boolean;
 	readonly dom?: SelectionReaderDomPort;
 	/** After every gesture input, once the windows reflect it. */
 	readonly onGesture?: (kind: GestureEventKind) => void;
@@ -443,6 +429,73 @@ export interface SelectionReader {
 	isAdmissibleRead(): boolean;
 	/** Closes every window, as a session reset does. */
 	resetGestures(): void;
+}
+
+export type FieldEditorSelectionCell = {
+	row: number;
+	col: number;
+};
+
+export type FieldEditorTextSelectionLike = {
+	type: "text";
+	anchor: { blockId: string; offset: number };
+	focus: { blockId: string; offset: number };
+};
+
+/** Structural view of `SelectionState`: text endpoints and an edited cell's `text`. */
+export type FieldEditorLiveSelectionLike =
+	| FieldEditorTextSelectionLike
+	| { type: "block" | "app" }
+	| {
+			type: "cell";
+			blockId?: string;
+			head?: FieldEditorSelectionCell;
+			text?: { anchor: number; focus: number };
+	  };
+
+/**
+ * Live `editor.selection`, or null when it cannot address the field being
+ * edited. A `TextSelection` carries no cell coordinate, so while a table cell
+ * is active its offsets are a different coordinate space than the cell's
+ * text; the edited cell's caret is `CellSelection.text` instead.
+ */
+export function resolveLiveTextSelection(
+	selection: FieldEditorLiveSelectionLike | null | undefined,
+	blockId: string,
+	activeCell: FieldEditorSelectionCell | null,
+): FieldEditorTextSelectionLike | null {
+	if (activeCell) {
+		return null;
+	}
+	if (
+		selection?.type !== "text" ||
+		selection.anchor.blockId !== blockId ||
+		selection.focus.blockId !== blockId
+	) {
+		return null;
+	}
+	return selection;
+}
+
+/**
+ * The edited cell's caret (W3.R18): the record's `CellSelection.text` when
+ * it names `activeCell` in `blockId`, else null.
+ */
+export function resolveEditedCellText(
+	selection: FieldEditorLiveSelectionLike | null | undefined,
+	blockId: string,
+	activeCell: FieldEditorSelectionCell,
+): { anchor: number; focus: number } | null {
+	if (
+		selection?.type !== "cell" ||
+		!selection.text ||
+		selection.blockId !== blockId ||
+		selection.head?.row !== activeCell.row ||
+		selection.head?.col !== activeCell.col
+	) {
+		return null;
+	}
+	return selection.text;
 }
 
 /**
@@ -477,8 +530,8 @@ export function authorityOffsetsInBlock(
  * The single reader (S1, W3.R4): one `selectionchange` listener per editor
  * root, bound from `setRootElement` whether or not a field is attached.
  * Backends no longer listen; a read that maps inside the root goes through
- * the reader's equivalence check, the backend's transitional intercept, and
- * then the R decision.
+ * the reader's equivalence check and then the R decision. No backend
+ * pre-filters a read.
  */
 export function createSelectionReader(
 	options: SelectionReaderOptions,
@@ -562,13 +615,9 @@ export function createSelectionReader(
 		if (proposal === null) {
 			return "no-proposal";
 		}
-		// Step 3 first: an echo of the record changes nothing, and is not
-		// offered to the backend's echo restores.
+		// Step 3 first: an echo of the record changes nothing.
 		if (isEquivalentToAuthority(options.editor, proposal)) {
 			return "equivalent";
-		}
-		if (options.intercept?.(proposal)) {
-			return "no-proposal";
 		}
 		return options.read(proposal);
 	};
@@ -620,7 +669,6 @@ export function decideDomSelectionRead(input: {
 	editor: Editor;
 	proposal: ReaderSelection;
 	gestureWindows: GestureWindowState;
-	projectionInFlight: boolean;
 }): {
 	decision: DomSelectionReadDecision;
 	normalized: ReaderSelection | null;
@@ -629,7 +677,6 @@ export function decideDomSelectionRead(input: {
 	const record = getEditorSelectionRecord(input.editor);
 	const snapshot = buildLazyNormalPositionSnapshot(input.editor);
 	const decision = classifyDomSelectionRead({
-		projectionInFlight: input.projectionInFlight,
 		proposal: input.proposal,
 		authorityState:
 			record === null ? null : toReaderSelection(record.state),

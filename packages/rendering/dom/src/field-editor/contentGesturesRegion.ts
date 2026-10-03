@@ -29,7 +29,6 @@ export function createRegionGestures<
 		getBlocksHost,
 		regionSelectionStore,
 		regionGestureRef,
-		skipNextClickRef,
 		blockSelectionEnabled,
 	} = ctx;
 
@@ -93,7 +92,6 @@ export function createRegionGestures<
 				clientY: event.clientY,
 				isSelecting: false,
 			};
-			skipNextClickRef.current = false;
 			return true;
 		}
 		return false;
@@ -115,10 +113,7 @@ export function createRegionGestures<
 		if (!gesture.isSelecting && !moved) {
 			return true;
 		}
-		if (!gesture.isSelecting) {
-			gesture.isSelecting = true;
-			skipNextClickRef.current = true;
-		}
+		gesture.isSelecting = true;
 		event.preventDefault();
 		const boundedRect = intersectRegionSelectionRect(
 			createRegionSelectionRect(
@@ -153,7 +148,6 @@ export function createRegionGestures<
 		) as HTMLElement | null;
 		if (wasSelecting) {
 			if (!blockSelectionEnabled) {
-				skipNextClickRef.current = true;
 				clearRegionSelectionState();
 				return true;
 			}
@@ -178,7 +172,6 @@ export function createRegionGestures<
 			} else {
 				editor.setSelection(null, { origin: "pointer" });
 			}
-			skipNextClickRef.current = true;
 		}
 		clearRegionSelectionState();
 		return wasSelecting;

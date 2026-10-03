@@ -26,8 +26,14 @@ describe("AX3 previously-reclassified bugs (rechecked, not trusted)", () => {
 
 	it("autocomplete caret: updateSelection is no longer a no-op; P1 projects same-turn, not from a scheduler slot", () => {
 		const backend = readFileSync(CONTENT_EDITABLE, "utf8");
-		expect(backend).toMatch(
-			/updateSelection\([^)]*\)\s*:\s*void\s*\{\s*this\.restoreDOMSelectionFromEditor\(\);/,
+		// The body writes the record: the edited cell's text range, else
+		// the native range in the field (W3.R10 folded the restore into it).
+		const body = backend.slice(
+			backend.indexOf("updateSelection(_relPos?: unknown): void {"),
+		);
+		expect(body).toMatch(/^updateSelection\(_relPos\?: unknown\): void \{/);
+		expect(body.slice(0, 1200)).toMatch(
+			/writeNativeRange\(root, anchor, focus\)/,
 		);
 
 		const accept = readFileSync(AUTOCOMPLETE_ACCEPT, "utf8");

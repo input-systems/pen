@@ -42,7 +42,6 @@ export function createPointerSelectionGestures<
 		getBlocksHost,
 		pointerGestureRef,
 		pointerGestureVersionRef,
-		skipNextClickRef,
 		interactionModelRef,
 		clearPointerSelectionState,
 		blockSelectionEnabled,
@@ -159,10 +158,6 @@ export function createPointerSelectionGestures<
 		if (shouldIgnorePointerGesture(ctx, event)) {
 			return;
 		}
-		if (skipNextClickRef.current) {
-			skipNextClickRef.current = false;
-			return;
-		}
 		const blockId = resolveClickedBlockId(ctx, event);
 		if (!blockId) {
 			if (handleClickOutsideBlocks(event)) {
@@ -223,7 +218,7 @@ export function createPointerSelectionGestures<
 			if (root) {
 				ensureEditorFocus(ctx, root);
 			}
-			skipNextClickRef.current = true;
+			gesture.committed = true;
 		};
 
 		const isExpandedSingleBlockTextSelection = (
@@ -367,7 +362,7 @@ export function createPointerSelectionGestures<
 				});
 				fieldEditor.deactivate();
 				ensureEditorFocus(ctx, root);
-				skipNextClickRef.current = true;
+				gesture.committed = true;
 				return true;
 			}
 			if (resolvedSelection.mode === "mapped-text") {
@@ -394,7 +389,7 @@ export function createPointerSelectionGestures<
 					cellCoord.row,
 					cellCoord.col,
 				);
-				skipNextClickRef.current = true;
+				gesture.committed = true;
 				return true;
 			}
 			if (
@@ -409,20 +404,20 @@ export function createPointerSelectionGestures<
 					editor.selectCell(blockId, cellCoord.row, cellCoord.col, {
 						origin: "pointer",
 					});
-					skipNextClickRef.current = true;
+					gesture.committed = true;
 					return true;
 				}
 				editor.selectBlock(blockId, { origin: "pointer" });
 				if (root) {
 					ensureEditorFocus(ctx, root);
 				}
-				skipNextClickRef.current = true;
+				gesture.committed = true;
 				return true;
 			}
 			editor.selectCell(blockId, cellCoord.row, cellCoord.col, {
 				origin: "pointer",
 			});
-			skipNextClickRef.current = true;
+			gesture.committed = true;
 			return true;
 		};
 
@@ -462,14 +457,14 @@ export function createPointerSelectionGestures<
 					} else {
 						fieldEditor.activate(blockId);
 					}
-					skipNextClickRef.current = true;
+					gesture.committed = true;
 					return true;
 				}
 				if (!blockSelectionEnabled) {
 					return false;
 				}
 				selectClickedBlock(ctx, blockId);
-				skipNextClickRef.current = true;
+				gesture.committed = true;
 				return true;
 			}
 			if (blockPointerIntent === "select-block") {
@@ -481,12 +476,12 @@ export function createPointerSelectionGestures<
 				if (root) {
 					ensureEditorFocus(ctx, root);
 				}
-				skipNextClickRef.current = true;
+				gesture.committed = true;
 				return true;
 			}
 			if (!root) {
 				fieldEditor.activate(blockId);
-				skipNextClickRef.current = true;
+				gesture.committed = true;
 				return true;
 			}
 			const pointerPoint = pointToEditorSelectionPoint(
@@ -496,11 +491,11 @@ export function createPointerSelectionGestures<
 			);
 			if (!pointerPoint) {
 				fieldEditor.activate(blockId);
-				skipNextClickRef.current = true;
+				gesture.committed = true;
 				return true;
 			}
 			activateCanonicalSelection(ctx, pointerPoint, pointerPoint);
-			skipNextClickRef.current = true;
+			gesture.committed = true;
 			return true;
 		};
 
@@ -512,7 +507,7 @@ export function createPointerSelectionGestures<
 				if (root) {
 					ensureEditorFocus(ctx, root);
 				}
-				skipNextClickRef.current = true;
+				gesture.committed = true;
 				return;
 			}
 			if (tryHandleDraggedPointerSelection()) {

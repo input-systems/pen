@@ -151,13 +151,9 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 		reason: FieldEditorFocusReason,
 		options?: FocusOptions,
 	): boolean;
-	resetBackendSelectionAuthority(): void;
-	withBackendSelectionWrite<T>(write: () => T): T;
-	getBackendSelectionApplicationDepth(): number;
 	notifyGestureEvent?(eventKind: GestureEventKind): void;
 	getGestureWindows?(): GestureWindowState;
 	isAdmissibleGestureRead?(): boolean;
-	isProjectionInFlight?(): boolean;
 	requestDivergenceProjection?(read?: ReaderSelection): void;
 	/**
 	 * P3: a reconcile rebuilt these blocks' DOM; project the authority now

@@ -3,7 +3,6 @@
 import { describe, expect, it } from "vitest";
 import type { SelectionRecord } from "@input/pen-types";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
-import { HistorySelectionCoordinator } from "../historySelectionCoordinator";
 import { SelectionProjector } from "../selectionProjector";
 import { CLOSED_GESTURE_WINDOWS } from "../selectionReader";
 
@@ -50,9 +49,6 @@ function createController(
 	let record = initialRecord;
 	const controller = new SelectionProjector({
 		getGestureWindows: () => CLOSED_GESTURE_WINDOWS,
-		historySelectionCoordinator: new HistorySelectionCoordinator({
-			facet: () => undefined as never,
-		}),
 		isEditing: overrides.isEditing ?? (() => true),
 		getMode: overrides.getMode ?? (() => "single"),
 		getFocusBlockId: () => "first",

@@ -15,11 +15,11 @@ function installMockRaf(): void {
 
 class ProbeFieldEditor extends FieldEditorImpl {
 	get lastProjectedVersion(): number {
-		return this._selectionCoordinator.lastProjectedVersion;
+		return this._projector.lastProjectedVersion;
 	}
 
 	get parkedProjectionVersion(): number | null {
-		return this._selectionCoordinator.parkedProjectionVersion;
+		return this._projector.parkedProjectionVersion;
 	}
 }
 

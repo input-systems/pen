@@ -41,7 +41,6 @@ export interface ContentGesturesContext<
 	regionGestureRef: GestureSlot<ContentGestureRegionGesture | null>;
 	pointerGestureRef: GestureSlot<PointerSelectionGesture | null>;
 	pointerGestureVersionRef: GestureSlot<number>;
-	skipNextClickRef: GestureSlot<boolean>;
 	interactionModelRef: GestureSlot<InteractionModel>;
 	clearPointerSelectionState(): void;
 	blockSelectionEnabled: boolean;

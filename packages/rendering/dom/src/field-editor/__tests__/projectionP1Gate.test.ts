@@ -31,11 +31,11 @@ class ProbeFieldEditor extends FieldEditorImpl {
 	}
 
 	get lastProjectedVersion(): number {
-		return this._selectionCoordinator.lastProjectedVersion;
+		return this._projector.lastProjectedVersion;
 	}
 
 	setLastProjectedVersion(version: number): void {
-		this._selectionCoordinator.recordProjectedVersion(version);
+		this._projector.recordProjectedVersion(version);
 	}
 }
 

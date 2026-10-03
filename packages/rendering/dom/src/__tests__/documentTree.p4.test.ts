@@ -50,7 +50,7 @@ describe("vanilla document tree mount acks (W3.R8)", () => {
 	it("P4: a selection written to a block before it mounts is projected by that block's ack", () => {
 		const { editor, mounted } = mount();
 		const fieldEditor = mounted.fieldEditor as unknown as {
-			_selectionCoordinator: { lastProjectedVersion: number };
+			_projector: { lastProjectedVersion: number };
 		};
 
 		editor.apply([
@@ -75,8 +75,6 @@ describe("vanilla document tree mount acks (W3.R8)", () => {
 			type: "text",
 			anchor: { blockId: "added", offset: 2 },
 		});
-		expect(
-			fieldEditor._selectionCoordinator.lastProjectedVersion,
-		).toBeGreaterThan(0);
+		expect(fieldEditor._projector.lastProjectedVersion).toBeGreaterThan(0);
 	});
 });

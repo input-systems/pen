@@ -68,7 +68,6 @@ export function EditorContent(props: EditorContentProps) {
 		regionGestureRef,
 		pointerGestureRef,
 		pointerGestureVersionRef,
-		skipNextClickRef,
 		interactionModelRef,
 		clearPointerSelectionState,
 	} = useEditorContentPointerState(interactionModel);
@@ -117,7 +116,6 @@ export function EditorContent(props: EditorContentProps) {
 		regionGestureRef,
 		pointerGestureRef,
 		pointerGestureVersionRef,
-		skipNextClickRef,
 		interactionModelRef,
 		clearPointerSelectionState,
 	});

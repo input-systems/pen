@@ -3,7 +3,10 @@ import { writeNativeRange } from "./selectionProjector";
 import { getPasteImporters, handlePaste } from "./clipboard";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
-import type { FieldEditorInputController } from "./controller";
+import type {
+	FieldEditorInputController,
+	PenFieldEditorFocusOptions,
+} from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
 import {
 	deleteBackward,
@@ -47,11 +50,14 @@ export class ExpandedContentEditableBackend {
 		this.fieldEditor = fieldEditor;
 	}
 
-	activate(element: HTMLElement): void {
+	activate(
+		element: HTMLElement,
+		_ytext?: unknown,
+		focusOptions?: PenFieldEditorFocusOptions,
+	): void {
 		this.element = element;
 		element.contentEditable = "true";
 		element.tabIndex = -1;
-		this.fieldEditor.resetBackendSelectionAuthority();
 
 		this.attachment.listen(element, "beforeinput", this.handleBeforeInput);
 		this.attachment.listen(element, "keydown", this.handleKeyDown);
@@ -64,26 +70,25 @@ export class ExpandedContentEditableBackend {
 
 		const selection = this.editor.selection;
 		if (selection?.type === "text") {
-			this.fieldEditor.withBackendSelectionWrite(() => {
-				if (
-					!this.fieldEditor.requestDomFocus(
-						element,
-						"backend-activate",
-						{
-							preventScroll: true,
-						},
-					)
-				) {
-					return;
-				}
+			if (
+				this.fieldEditor.requestDomFocus(
+					element,
+					"backend-activate",
+					{ preventScroll: true },
+					focusOptions,
+				)
+			) {
 				writeNativeRange(element, selection.anchor, selection.focus);
-			});
+			}
 			return;
 		}
 
-		this.fieldEditor.requestDomFocus(element, "backend-activate", {
-			preventScroll: true,
-		});
+		this.fieldEditor.requestDomFocus(
+			element,
+			"backend-activate",
+			{ preventScroll: true },
+			focusOptions,
+		);
 	}
 
 	deactivate(): void {
@@ -109,9 +114,7 @@ export class ExpandedContentEditableBackend {
 		if (!element) return;
 		const selection = this.editor.selection;
 		if (selection?.type !== "text") return;
-		this.fieldEditor.withBackendSelectionWrite(() => {
-			writeNativeRange(element, selection.anchor, selection.focus);
-		});
+		writeNativeRange(element, selection.anchor, selection.focus);
 	}
 
 	private handleBeforeInput = (event: InputEvent): void => {

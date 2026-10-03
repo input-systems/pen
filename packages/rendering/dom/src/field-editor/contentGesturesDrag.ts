@@ -24,7 +24,6 @@ export function createDragGestures<
 		gestureEl,
 		pointerGestureRef,
 		pointerGestureVersionRef,
-		skipNextClickRef,
 		interactionModelRef,
 		blockSelectionEnabled,
 		runSync,
@@ -64,7 +63,6 @@ export function createDragGestures<
 			pointerGestureRef.current.anchorPoint = hostChromePoint;
 		}
 		fieldEditor.notifyGestureEvent?.("pointerdown");
-		skipNextClickRef.current = false;
 
 		const clickedBlock = editor.getBlock(blockId);
 		const clickedSchema = clickedBlock
@@ -170,7 +168,7 @@ export function createDragGestures<
 			pointerGesture.anchorPoint = resolvedSelection.anchorPoint;
 		}
 		pointerGesture.promotedDuringDrag = true;
-		skipNextClickRef.current = true;
+		pointerGesture.committed = true;
 
 		if (resolvedSelection.mode === "block") {
 			if (!blockSelectionEnabled) return;

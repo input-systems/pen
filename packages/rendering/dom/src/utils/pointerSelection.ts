@@ -19,6 +19,11 @@ export interface PointerSelectionGesture {
 	startSelectionVersion: number;
 	promotedDuringDrag: boolean;
 	/**
+	 * This gesture committed a selection (mouseup or a drag), so the
+	 * `click` that follows it has nothing left to do.
+	 */
+	committed: boolean;
+	/**
 	 * `blockId` came from the nearest block edge (G4) rather than a block
 	 * under the pointer (FE10). The gesture never entered a field, so it has
 	 * no native range to inherit within one block, and a gesture that never
@@ -54,6 +59,7 @@ export function createPointerSelectionGesture(
 		startSelection: editor.getSelection(),
 		startSelectionVersion: getEditorSelectionRecord(editor)?.version ?? 0,
 		promotedDuringDrag: false,
+		committed: false,
 	};
 }
 

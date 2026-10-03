@@ -34,10 +34,7 @@ function createFieldEditor(blockId: string) {
 		deactivate: () => {
 			deactivated += 1;
 		},
-		resetBackendSelectionAuthority: () => {},
-		withBackendSelectionWrite: <T>(write: () => T) => write(),
 		requestDomFocus: () => false,
-		getBackendSelectionApplicationDepth: () => 0,
 		applyDomTextSelection: () => {},
 		selectAllBehavior: "block-first" as const,
 		resolveInsertMarks: () => undefined,

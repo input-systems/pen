@@ -1,6 +1,9 @@
 import { isCollapsed } from "@input/pen-core";
 import type { Editor, InlineDecoration } from "@input/pen-types";
-import type { FieldEditorInputController } from "./controller";
+import type {
+	FieldEditorInputController,
+	PenFieldEditorFocusOptions,
+} from "./controller";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
@@ -39,11 +42,7 @@ import type {
 	EditContextTextFormatUpdateEvent,
 	EditContextTextUpdateEvent,
 } from "./editContextTypes";
-import {
-	authorityOffsetsInBlock,
-	type ReaderSelection,
-} from "./selectionReader";
-import { normalizeSelectionFormation } from "../utils/selectionFormation";
+import { authorityOffsetsInBlock } from "./selectionReader";
 import {
 	buildInlineDecorationsRenderSignature,
 	inlineDecorationsForBlock,
@@ -109,11 +108,14 @@ export class EditContextBackend {
 		this.fieldEditor = fieldEditor;
 	}
 
-	activate(element: HTMLElement, ytext: unknown): void {
-		this.isComposing = false;
+	activate(
+		element: HTMLElement,
+		ytext: unknown,
+		focusOptions?: PenFieldEditorFocusOptions,
+	): void {
 		this.deferredRemoteDeltas = [];
 		this.clearPendingTextUpdate();
-		this._activateEditContext(element, ytext);
+		this._activateEditContext(element, ytext, focusOptions);
 		this.attachment.listen(
 			element,
 			"keydown",
@@ -122,13 +124,16 @@ export class EditContextBackend {
 	}
 
 	deactivate(): void {
-		this.isComposing = false;
 		this.deferredRemoteDeltas = [];
 		this.clearPendingTextUpdate();
 		this._deactivateEditContext();
 	}
 
-	private _activateEditContext(element: HTMLElement, ytext: unknown): void {
+	private _activateEditContext(
+		element: HTMLElement,
+		ytext: unknown,
+		focusOptions?: PenFieldEditorFocusOptions,
+	): void {
 		this.element = element;
 		this.ytext = ytext as FieldEditorTextLike;
 		this.fieldEditor.setComposing(false);
@@ -206,14 +211,14 @@ export class EditContextBackend {
 		this.fieldEditor.notifyDomReconciled(
 			this.fieldEditor.focusBlockId ?? undefined,
 		);
-		this.fieldEditor.resetBackendSelectionAuthority();
 		this.trustedTypingCaret = null;
-		this.fieldEditor.withBackendSelectionWrite(() => {
-			this.updateSelection();
-			this.fieldEditor.requestDomFocus(element, "backend-activate", {
-				preventScroll: true,
-			});
-		});
+		this.updateSelection();
+		this.fieldEditor.requestDomFocus(
+			element,
+			"backend-activate",
+			{ preventScroll: true },
+			focusOptions,
+		);
 	}
 
 	private _deactivateEditContext(): void {
@@ -235,12 +240,28 @@ export class EditContextBackend {
 		this.observer = null;
 		this.inlineDecorationsSignature = null;
 		this.trustedTypingCaret = null;
-		this.fieldEditor.resetBackendSelectionAuthority();
 		this.fieldEditor.setComposing(false);
 	}
 
 	updateSelection(): void {
-		if (!this.editContext || !this.ytext) return;
+		const written = this.writeSelectionState();
+		if (written) {
+			this.projectDOMSelection(
+				written.blockId,
+				written.anchorOffset,
+				written.focusOffset,
+			);
+		}
+	}
+
+	/**
+	 * Writes the record into the EditContext buffer only, for a DOM that
+	 * already shows it (W3.R6). Returns the written selection when the
+	 * record is a text selection in this field; otherwise the buffer caret
+	 * goes to the end and nothing is returned.
+	 */
+	writeSelectionState(): EditContextSelection | null {
+		if (!this.editContext || !this.ytext) return null;
 
 		const selection = this.fieldEditor.selection;
 		const blockId = this.fieldEditor.focusBlockId;
@@ -250,25 +271,22 @@ export class EditContextBackend {
 			selection.anchor.blockId === blockId &&
 			selection.focus.blockId === blockId
 		) {
-			const anchorOffset = this.resolveEditContextOffset(
-				selection.anchor.offset,
-			);
-			const focusOffset = this.resolveEditContextOffset(
-				selection.focus.offset,
-			);
-			this.setEditContextSelection({
+			const written = {
 				blockId,
-				anchorOffset,
-				focusOffset,
-			});
-			this.fieldEditor.withBackendSelectionWrite(() => {
-				this.projectDOMSelection(blockId, anchorOffset, focusOffset);
-			});
-			return;
+				anchorOffset: this.resolveEditContextOffset(
+					selection.anchor.offset,
+				),
+				focusOffset: this.resolveEditContextOffset(
+					selection.focus.offset,
+				),
+			};
+			this.setEditContextSelection(written);
+			return written;
 		}
 
 		const len = this.ytext.length;
 		writeEditContextSelection(this.editContext, len, len);
+		return null;
 	}
 
 	protected projectDOMSelection(
@@ -288,12 +306,18 @@ export class EditContextBackend {
 		);
 	}
 
-	protected isComposing = false;
+	/**
+	 * C4 composition state. `committed-awaiting-format` drops the one
+	 * `textformatupdate` Chromium sends after a commit or an empty
+	 * `compositionend`; without it, the rewind would re-open the committed
+	 * text as a composition. A new composition supersedes it.
+	 */
+	protected compositionPhase:
+		"idle" | "composing" | "committed-awaiting-format" = "idle";
 	protected deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [];
 	protected pendingTextUpdate: PendingEditContextTextUpdate | null = null;
 	protected lastCommittedTextUpdate: PendingEditContextTextUpdate | null =
 		null;
-	protected ignoreNextTextFormatUpdate = false;
 	protected paintedCompositionPreview = false;
 
 	protected handleCompositionStart = (): void => {
@@ -306,7 +330,7 @@ export class EditContextBackend {
 		if (this.pendingTextUpdate) {
 			if (committed.length === 0) {
 				this.dropPendingTextUpdate();
-				this.ignoreNextTextFormatUpdate = true;
+				this.compositionPhase = "committed-awaiting-format";
 			} else {
 				this.commitPendingTextUpdate();
 			}
@@ -329,21 +353,26 @@ export class EditContextBackend {
 	};
 
 	protected hasInFlightEditContextComposition(): boolean {
-		return this.isComposing || this.fieldEditor.isComposing;
+		return (
+			this.compositionPhase === "composing" ||
+			this.fieldEditor.isComposing
+		);
 	}
 
 	protected beginEditContextComposition(): void {
-		if (this.isComposing) {
+		if (this.compositionPhase === "composing") {
 			return;
 		}
-		this.isComposing = true;
+		this.compositionPhase = "composing";
 		this.deferredRemoteDeltas = [];
 		this.fieldEditor.notifyGestureEvent?.("compositionstart");
 		this.fieldEditor.setComposing(true);
 	}
 
 	protected closeEditContextComposition(): void {
-		this.isComposing = false;
+		if (this.compositionPhase === "composing") {
+			this.compositionPhase = "idle";
+		}
 		this.fieldEditor.setComposing(false);
 		this.flushDeferredRemoteDeltas();
 		this.fieldEditor.notifyGestureEvent?.("compositionend-completed");
@@ -352,7 +381,7 @@ export class EditContextBackend {
 	protected clearPendingTextUpdate(): void {
 		this.pendingTextUpdate = null;
 		this.lastCommittedTextUpdate = null;
-		this.ignoreNextTextFormatUpdate = false;
+		this.compositionPhase = "idle";
 		this.paintedCompositionPreview = false;
 	}
 
@@ -365,7 +394,8 @@ export class EditContextBackend {
 		selectionEnd?: number;
 	}): PendingEditContextTextUpdate {
 		const resolved =
-			this.isComposing && this.deferredRemoteDeltas.length > 0
+			this.compositionPhase === "composing" &&
+			this.deferredRemoteDeltas.length > 0
 				? this.resolveRebasedTextUpdateRange(input)
 				: this.resolveTextUpdateRange(input);
 		return {
@@ -410,7 +440,7 @@ export class EditContextBackend {
 			this.fieldEditor.notifyDomReconciled(
 				this.fieldEditor.focusBlockId ?? undefined,
 			);
-			this.restoreDOMCaret();
+			this.updateSelection();
 		}
 		this.pendingTextUpdate = null;
 		this.lastCommittedTextUpdate = null;
@@ -425,8 +455,10 @@ export class EditContextBackend {
 		this.pendingTextUpdate = null;
 		this.lastCommittedTextUpdate = null;
 		this.paintedCompositionPreview = false;
-		this.ignoreNextTextFormatUpdate = true;
+		// The apply still runs inside the composition (C2 rebase, deferred
+		// local echo); the phase moves once it has.
 		this.applyEditContextTextUpdate(this.rebasePendingTextUpdate(pending));
+		this.compositionPhase = "committed-awaiting-format";
 	}
 
 	/**
@@ -439,7 +471,7 @@ export class EditContextBackend {
 		pending: PendingEditContextTextUpdate,
 	): PendingEditContextTextUpdate {
 		const deltas = this.deferredRemoteDeltas;
-		if (!this.isComposing || deltas.length === 0) {
+		if (this.compositionPhase !== "composing" || deltas.length === 0) {
 			return pending;
 		}
 		const { start: rawStart, end: rawEnd } = pending.originRange;
@@ -474,7 +506,7 @@ export class EditContextBackend {
 		this.fieldEditor.notifyDomReconciled(
 			this.fieldEditor.focusBlockId ?? undefined,
 		);
-		this.restoreDOMCaret();
+		this.updateSelection();
 	}
 
 	protected handleTextUpdate = (event: Event): void => {
@@ -501,7 +533,7 @@ export class EditContextBackend {
 		) {
 			if (text.length === 0) {
 				this.dropPendingTextUpdate();
-				this.ignoreNextTextFormatUpdate = true;
+				this.compositionPhase = "committed-awaiting-format";
 				this.closeEditContextComposition();
 				return;
 			}
@@ -563,7 +595,7 @@ export class EditContextBackend {
 				listInputRuleTarget.anchorOffset,
 				listInputRuleTarget.focusOffset,
 			);
-			this.restoreDOMCaret();
+			this.updateSelection();
 			return;
 		}
 
@@ -581,7 +613,7 @@ export class EditContextBackend {
 				inlineInputRuleTarget.anchorOffset,
 				inlineInputRuleTarget.focusOffset,
 			);
-			this.restoreDOMCaret();
+			this.updateSelection();
 			return;
 		}
 
@@ -616,7 +648,7 @@ export class EditContextBackend {
 				selection.anchorOffset,
 				selection.focusOffset,
 			);
-			this.restoreDOMCaret();
+			this.updateSelection();
 		}
 	}
 
@@ -764,47 +796,14 @@ export class EditContextBackend {
 		};
 	}
 
-	protected shouldIgnoreStaleCollapsedDomSelection(
-		selection: ReturnType<typeof normalizeSelectionFormation>,
-	): boolean {
-		if (selection.type === "block") {
-			return false;
-		}
-		if (
-			selection.anchor.blockId !== selection.focus.blockId ||
-			selection.anchor.offset !== selection.focus.offset
-		) {
-			return false;
-		}
-
-		// A caret that disagrees with the authority is stale only when
-		// nothing is driving it. Inside an open gesture window it is the
-		// user moving the caret (R3), and the reader owns that proposal.
-		if (this.fieldEditor.isAdmissibleGestureRead?.()) {
-			return false;
-		}
-
-		const editorSelectionRange =
-			this.resolveEditorSelectionRange(selection.anchor.blockId) ??
-			this.resolveCollapsedEditorSelectionRange(selection.anchor.blockId);
-		if (!editorSelectionRange) {
-			return false;
-		}
-
-		return (
-			selection.anchor.offset !== editorSelectionRange.start ||
-			selection.focus.offset !== editorSelectionRange.end
-		);
-	}
-
 	protected handleTextFormatUpdate = (event: Event): void => {
 		if (!this.element) return;
 
 		const ranges =
 			(event as EditContextTextFormatUpdateEvent).getTextFormats?.() ??
 			[];
-		if (this.ignoreNextTextFormatUpdate) {
-			this.ignoreNextTextFormatUpdate = false;
+		if (this.compositionPhase === "committed-awaiting-format") {
+			this.compositionPhase = "idle";
 			applyEditContextTextFormats(this.element, ranges);
 			return;
 		}
@@ -823,90 +822,6 @@ export class EditContextBackend {
 			buildEditContextCharacterBounds(this.element, rangeStart, rangeEnd),
 		);
 	};
-
-	/**
-	 * PH1 (W3.R4 removes these one engine-gated change at a time): a stale
-	 * collapsed caret is put back from the EditContext, and a read inside the
-	 * focused field first syncs the EditContext selection from the DOM
-	 * offsets. Reads elsewhere go to the reader's R decision.
-	 */
-	interceptDomSelectionRead(
-		proposal: Exclude<ReaderSelection, null>,
-	): boolean {
-		if (!this.element || !this.editContext) return false;
-		if (proposal.type !== "text") return false;
-		if (this.shouldIgnoreStaleCollapsedDomSelection(proposal)) {
-			this.restoreDOMCaret();
-			return true;
-		}
-		if (
-			proposal.anchor.blockId !== proposal.focus.blockId ||
-			proposal.anchor.blockId !== this.fieldEditor.focusBlockId
-		) {
-			return false;
-		}
-		this.syncFieldSelectionFromDom(proposal.anchor.blockId);
-		return true;
-	}
-
-	/** The focused field's DOM selection, written into the EditContext and read. */
-	private syncFieldSelectionFromDom(blockId: string): void {
-		const editContext = this.editContext;
-		const offsets = this.liveFieldOffsets();
-		if (!editContext || !offsets) return;
-		if (this.restoreStaleCollapsedOffsets(blockId, offsets)) return;
-
-		writeEditContextSelection(editContext, offsets.start, offsets.end);
-		this.fieldEditor.readDomSelection?.({
-			type: "text",
-			anchor: { blockId, offset: offsets.anchor },
-			focus: { blockId, offset: offsets.focus },
-		});
-	}
-
-	/** Directional offsets of a live selection wholly inside this field, else null. */
-	private liveFieldOffsets(): DirectionalSelectionOffsets | null {
-		const element = this.element;
-		return element
-			? (this.fieldEditor.readFieldSelectionOffsets?.(element) ?? null)
-			: null;
-	}
-
-	/** A collapsed DOM caret off the editor's or the input's range is put back. */
-	private restoreStaleCollapsedOffsets(
-		blockId: string,
-		offsets: DirectionalSelectionOffsets,
-	): boolean {
-		if (offsets.anchor !== offsets.focus) return false;
-		const editorSelectionRange = this.resolveEditorSelectionRange(blockId);
-		if (
-			editorSelectionRange &&
-			(offsets.start !== editorSelectionRange.start ||
-				offsets.end !== editorSelectionRange.end)
-		) {
-			this.setEditContextSelection({
-				blockId,
-				anchorOffset: editorSelectionRange.start,
-				focusOffset: editorSelectionRange.end,
-			});
-			this.restoreDOMCaret();
-			return true;
-		}
-		const authoritativeSelection =
-			this.getAuthoritativeTextInputSelection(blockId);
-		if (
-			authoritativeSelection &&
-			(offsets.anchor !== authoritativeSelection.anchorOffset ||
-				offsets.focus !== authoritativeSelection.focusOffset)
-		) {
-			this.setEditContextSelection(authoritativeSelection, {
-				source: "text-update",
-			});
-			this.restoreDOMCaret();
-			return true;
-		}
-		return false;
-	}
 
 	protected handleYTextChange = (event: FieldEditorTextChangeEvent): void => {
 		if (!this.editContext || !this.element || !this.ytext) return;
@@ -927,7 +842,7 @@ export class EditContextBackend {
 			this.fieldEditor.notifyDomReconciled(
 				this.fieldEditor.focusBlockId ?? undefined,
 			);
-			this.restoreDOMCaret();
+			this.updateSelection();
 			return;
 		}
 
@@ -997,7 +912,7 @@ export class EditContextBackend {
 		// Inside the apply the authority still holds the pre-apply caret; the
 		// buffer holds the one this backend wrote for its own edit, and P1
 		// projects the record once the apply returns.
-		this.restoreDOMCaretFromBuffer();
+		this.writeBufferCaretIntoDom();
 	};
 
 	protected handleDecorationsChange = (): void => {
@@ -1024,34 +939,16 @@ export class EditContextBackend {
 			this.fieldEditor.focusBlockId ?? undefined,
 		);
 		if (projectSelection) {
-			this.restoreDOMCaret();
+			this.updateSelection();
 		}
 	};
 
-	protected restoreDOMCaret(): void {
-		if (!this.editContext || !this.element) return;
-
-		const root = this.element.closest(
-			"[data-pen-editor-root]",
-		) as HTMLElement | null;
-		const selection = this.fieldEditor.selection;
-		const blockId = this.fieldEditor.focusBlockId;
-		if (
-			root &&
-			blockId &&
-			selection?.type === "text" &&
-			selection.anchor.blockId === blockId &&
-			selection.focus.blockId === blockId
-		) {
-			this.fieldEditor.withBackendSelectionWrite(() => {
-				writeNativeRange(root, selection.anchor, selection.focus);
-			});
-			return;
-		}
-		this.restoreDOMCaretFromBuffer();
-	}
-
-	private restoreDOMCaretFromBuffer(): void {
+	/**
+	 * Shows the EditContext buffer's caret in the DOM after a local
+	 * reconcile inside the apply, where the record still holds the pre-apply
+	 * caret; P1 projects the record once the apply returns (FE9, W3.R6).
+	 */
+	private writeBufferCaretIntoDom(): void {
 		if (!this.editContext || !this.element) return;
 		const start = this.editContext.selectionStart;
 		const end = this.editContext.selectionEnd;
@@ -1061,10 +958,7 @@ export class EditContextBackend {
 			start === end ? anchorPoint : findTextPosition(this.element, end);
 		if (!anchorPoint || !focusPoint) return;
 
-		const element = this.element;
-		this.fieldEditor.withBackendSelectionWrite(() => {
-			writeNativeRangeBetween(element, anchorPoint, focusPoint);
-		});
+		writeNativeRangeBetween(this.element, anchorPoint, focusPoint);
 	}
 
 	protected getInlineDecorationsForBlock(): readonly InlineDecoration[] {

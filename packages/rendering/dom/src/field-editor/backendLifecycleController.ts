@@ -1,5 +1,8 @@
 import type { Editor } from "@input/pen-types";
-import type { FieldEditorInputController } from "./controller";
+import type {
+	FieldEditorInputController,
+	PenFieldEditorFocusOptions,
+} from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
 import type { InputBackend } from "../internal/inputBackend";
 
@@ -43,8 +46,12 @@ export class BackendLifecycleController {
 		return this.replace(BackendClass);
 	}
 
-	activate(element: HTMLElement, ytext: FieldEditorTextLike): void {
-		this.backend?.activate(element, ytext);
+	activate(
+		element: HTMLElement,
+		ytext: FieldEditorTextLike,
+		focusOptions?: PenFieldEditorFocusOptions,
+	): void {
+		this.backend?.activate(element, ytext, focusOptions);
 	}
 
 	updateSelection(relPos: unknown): void {

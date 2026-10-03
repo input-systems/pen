@@ -1,4 +1,3 @@
-import { isCollapsed, isMultiBlock } from "@input/pen-core";
 import type {
 	BlockScrollAlign,
 	DiagnosticEvent,
@@ -7,7 +6,6 @@ import type {
 	SelectionState,
 } from "@input/pen-types";
 import type { PenFieldEditorFocusOptions } from "./controller";
-import type { HistorySelectionCoordinator } from "./historySelectionCoordinator";
 import {
 	nativeSelectionForWrite,
 	type GestureEventKind,
@@ -258,7 +256,6 @@ type ProjectionOptions = {
 } & PenFieldEditorFocusOptions;
 
 export type SelectionProjectorOptions = {
-	historySelectionCoordinator: HistorySelectionCoordinator;
 	isEditing: () => boolean;
 	getMode: () => "inactive" | "single" | "expanded" | "block";
 	getFocusBlockId: () => string | null;
@@ -297,6 +294,8 @@ export type SelectionProjectorOptions = {
 	 * well as an equivalent DOM; absent means there is no such state.
 	 */
 	backendSelectionAgrees?: () => boolean;
+	/** Writes the record into that backend state alone, leaving the DOM. */
+	writeBackendSelectionState?: () => void;
 	/** The reader's gesture windows (R1–R3); the reader owns them. */
 	getGestureWindows: () => GestureWindowState;
 	/** The root's scheduler: the unmounted check and scroll jobs queue on it. */
@@ -350,10 +349,7 @@ export interface ProjectionMountRequester {
  * shows, reads every write back, and guards P2 loops (W3.R6, W3.R7).
  */
 export class SelectionProjector {
-	private readonly _historySelectionCoordinator: HistorySelectionCoordinator;
 	private readonly _options: SelectionProjectorOptions;
-	private _syncDomVersion = 0;
-	private _pendingSelectionProjectionVersion: number | null = null;
 	private _lastProjectedVersion = 0;
 	private _parked: { version: number; blockId: string | null } | null = null;
 	private _mountRequester: ProjectionMountRequester | null = null;
@@ -372,12 +368,10 @@ export class SelectionProjector {
 	} | null = null;
 
 	constructor(options: SelectionProjectorOptions) {
-		this._historySelectionCoordinator = options.historySelectionCoordinator;
 		this._options = options;
 	}
 
 	reset(): void {
-		this._pendingSelectionProjectionVersion = null;
 		this._withheldForComposition = false;
 	}
 
@@ -427,9 +421,6 @@ export class SelectionProjector {
 
 	/** The reader's gesture inputs, after its windows reflect them. */
 	onGesture(eventKind: GestureEventKind): void {
-		if (eventKind === "pointerdown") {
-			this.recordUserSelectionIntent();
-		}
 		if (eventKind === "pointerup") {
 			// S2: during a drag the engine's own selection controller can
 			// re-clamp the native range after the projector wrote the
@@ -471,10 +462,6 @@ export class SelectionProjector {
 		this.project("window-closed");
 	}
 
-	isProjectionInFlight(): boolean {
-		return this._pendingSelectionProjectionVersion !== null;
-	}
-
 	/**
 	 * P2. `read` is the divergent proposal; W3.R7 refuses to re-project a
 	 * version whose last projection read back exactly this, because the
@@ -488,26 +475,6 @@ export class SelectionProjector {
 			return;
 		}
 		this.project("divergence");
-	}
-
-	prepareSyncedTextSelection(
-		currentSelection: SelectionState | null,
-		blockId: string,
-		anchorOffset: number,
-		focusOffset: number,
-	): "skip" | "apply" {
-		const isAlreadyCurrentSelection =
-			currentSelection?.type === "text" &&
-			!isMultiBlock(currentSelection) &&
-			currentSelection.anchor.blockId === blockId &&
-			currentSelection.focus.blockId === blockId &&
-			currentSelection.anchor.offset === anchorOffset &&
-			currentSelection.focus.offset === focusOffset;
-		if (isAlreadyCurrentSelection) {
-			return "skip";
-		}
-		this.recordUserSelectionIntent();
-		return "apply";
 	}
 
 	activateTextSelection(
@@ -644,16 +611,10 @@ export class SelectionProjector {
 		if (this._withheldTrigger()) {
 			return;
 		}
-		const version = ++this._syncDomVersion;
-		this._pendingSelectionProjectionVersion = version;
-
 		if (!this._options.isEditing() && !this._activateForOwnedFocus()) {
-			this._cancelSelectionProjection(version);
 			return;
 		}
 
-		const pendingProjectionRequestId =
-			this._historySelectionCoordinator.getPendingProjectionRequestId();
 		// S2, D18: a null, app or block record has no native text range to
 		// write or read back — the text path would compare the still-active
 		// field's range against it and report a mismatch. Clear the range and
@@ -675,7 +636,7 @@ export class SelectionProjector {
 			if (root) {
 				clearNativeRangeIn(root);
 			}
-			this._completeProjection(version, pendingProjectionRequestId);
+			this._completeProjection();
 			return;
 		}
 		// T3: surface mode `block` skips contenteditable expansion.
@@ -687,11 +648,10 @@ export class SelectionProjector {
 				? { found: true, projected: true }
 				: this._projectIntoTarget(options);
 		if (target.projected) {
-			this._completeProjection(version, pendingProjectionRequestId);
+			this._completeProjection();
 			return;
 		}
 
-		this._cancelSelectionProjection(version);
 		this._parkProjection(target.found);
 	}
 
@@ -753,12 +713,7 @@ export class SelectionProjector {
 		return this._options.resolveInlineElement(focusBlockId);
 	}
 
-	private _completeProjection(
-		version: number,
-		pendingProjectionRequestId: ReturnType<
-			HistorySelectionCoordinator["getPendingProjectionRequestId"]
-		>,
-	): void {
+	private _completeProjection(): void {
 		this._parked = null;
 		const recordVersion = this._options.getRecord?.()?.version;
 		if (recordVersion != null) {
@@ -766,12 +721,6 @@ export class SelectionProjector {
 		}
 		this._options.emitSelectionProjected();
 		this._scheduleSelectionScroll();
-		if (this._pendingSelectionProjectionVersion === version) {
-			this._pendingSelectionProjectionVersion = null;
-		}
-		this._historySelectionCoordinator.completeDeferredProjection(
-			pendingProjectionRequestId,
-		);
 	}
 
 	setMountRequester(requester: ProjectionMountRequester | null): void {
@@ -942,15 +891,6 @@ export class SelectionProjector {
 		return isForeignNativeTextEntryTarget(activeElement);
 	}
 
-	recordUserSelectionIntent(): void {
-		const pendingProjectionVersion =
-			this._pendingSelectionProjectionVersion;
-		if (pendingProjectionVersion !== null) {
-			this._syncDomVersion += 1;
-			this._cancelSelectionProjection(pendingProjectionVersion);
-		}
-	}
-
 	private _projectIntoElement(
 		element: HTMLElement,
 		options: PenFieldEditorFocusOptions,
@@ -959,9 +899,18 @@ export class SelectionProjector {
 		const attachedElement = this._options.getAttachedElement();
 		if (attachedElement !== element || !attachedElement?.isConnected) {
 			didAttach = this._options.attachElement(element, options);
-		} else if (this._alreadyAgrees(element)) {
-			// W3.R6: the DOM and focus already show the record; no write.
-			return true;
+		} else {
+			const agreement = this._agreement(element);
+			if (agreement === "all") {
+				// W3.R6: the DOM and focus already show the record; no write.
+				return true;
+			}
+			if (agreement === "dom") {
+				// Only the backend's own state (an EditContext buffer) lags:
+				// write that, not the native range the user may be dragging.
+				this._options.writeBackendSelectionState?.();
+				return true;
+			}
 		}
 		if (
 			didAttach &&
@@ -982,19 +931,27 @@ export class SelectionProjector {
 	}
 
 	/**
+	 * W3.R6: whether the attached target already shows the record — the DOM
+	 * and focus (`"dom"`), and also the backend's own state (`"all"`).
+	 */
+	private _agreement(element: HTMLElement): "all" | "dom" | "none" {
+		const readBack = this._options.readBack?.(element);
+		if (
+			readBack == null ||
+			!readBack.equivalent ||
+			!readBack.focusOnTarget
+		) {
+			return "none";
+		}
+		return (this._options.backendSelectionAgrees?.() ?? true)
+			? "all"
+			: "dom";
+	}
+
+	/**
 	 * W3.R1: read the write back. A mismatch is reported once per
 	 * (version, trigger) and never answered with a second write.
 	 */
-	private _alreadyAgrees(element: HTMLElement): boolean {
-		const readBack = this._options.readBack?.(element);
-		return (
-			readBack != null &&
-			readBack.equivalent &&
-			readBack.focusOnTarget &&
-			(this._options.backendSelectionAgrees?.() ?? true)
-		);
-	}
-
 	private _checkReadBack(element: HTMLElement): void {
 		const readBack = this._options.readBack?.(element);
 		if (!readBack || (readBack.equivalent && readBack.focusOnTarget)) {
@@ -1051,13 +1008,6 @@ export class SelectionProjector {
 			focusOnTarget: readBack.focusOnTarget,
 			surface: this._options.getSurface?.() ?? "text",
 		};
-	}
-
-	private _cancelSelectionProjection(version: number): void {
-		if (this._pendingSelectionProjectionVersion === version) {
-			this._pendingSelectionProjectionVersion = null;
-		}
-		this._historySelectionCoordinator.cancelDeferredProjection();
 	}
 }
 

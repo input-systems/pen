@@ -80,30 +80,26 @@ describe("single selection reader (S1, W3.R4)", () => {
 		expect(read).not.toHaveBeenCalled();
 	});
 
-	it("R: an equivalent read stops at step 3 without the decision or the backend intercept", () => {
+	it("R: an equivalent read stops at step 3 without the decision", () => {
 		const { editor, blockId, root, placeCaret } = seed();
 		editor.selectText(blockId, 2, 2);
 		const read = vi.fn(() => "equivalent" as const);
-		const intercept = vi.fn(() => true);
-		const reader = createSelectionReader({ editor, read, intercept });
+		const reader = createSelectionReader({ editor, read });
 		reader.attach(root);
 		placeCaret(2);
 		expect(reader.sync()).toBe("equivalent");
-		expect(intercept).not.toHaveBeenCalled();
 		expect(read).not.toHaveBeenCalled();
 	});
 
-	it("R: a read the backend intercept handles never reaches the decision", () => {
+	it("R: a non-equivalent read goes to the decision; no backend pre-filters it (W3.R4)", () => {
 		const { editor, blockId, root, placeCaret } = seed();
 		editor.selectText(blockId, 0, 0);
-		const read = vi.fn(() => "accept" as const);
-		const intercept = vi.fn(() => true);
-		const reader = createSelectionReader({ editor, read, intercept });
+		const read = vi.fn(() => "diverge" as const);
+		const reader = createSelectionReader({ editor, read });
 		reader.attach(root);
 		placeCaret(4);
-		expect(reader.sync()).toBe("no-proposal");
-		expect(intercept).toHaveBeenCalledWith(caret(blockId, 4));
-		expect(read).not.toHaveBeenCalled();
+		expect(reader.sync()).toBe("diverge");
+		expect(read).toHaveBeenCalledWith(caret(blockId, 4));
 	});
 
 	it("S1: the reader reads through its DOM port", () => {

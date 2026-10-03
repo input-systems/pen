@@ -116,7 +116,6 @@ function stubController(
 	blockId: string,
 	shouldProjectSelectionAfterReconcile: boolean,
 ) {
-	const withBackendSelectionWrite = vi.fn(<T>(write: () => T) => write());
 	const controller = {
 		focusBlockId: blockId,
 		inputMode: "richtext" as const,
@@ -127,12 +126,9 @@ function stubController(
 		activateCell: () => {},
 		activateTextSelection: () => {},
 		deactivate: () => {},
-		resetBackendSelectionAuthority: () => {},
-		withBackendSelectionWrite,
 		requestDomFocus: () => false,
 		shouldProjectSelectionAfterReconcile: () =>
 			shouldProjectSelectionAfterReconcile,
-		getBackendSelectionApplicationDepth: () => 0,
 		applyDomTextSelection: () => {},
 		selectAllBehavior: "block-first" as const,
 		resolveInsertMarks: () => undefined,
@@ -140,7 +136,7 @@ function stubController(
 		notifyDomReconciled: () => {},
 		notifyGestureEvent: () => {},
 	} as unknown as FieldEditorInputController;
-	return { controller, withBackendSelectionWrite };
+	return { controller };
 }
 
 type Fixture = { editor: Editor; backend: InputBackend };
@@ -155,7 +151,7 @@ function mount(
 ) {
 	const { editor, blockId, decorate } = seedEditor();
 	const element = inlineElement(blockId);
-	const { controller, withBackendSelectionWrite } = stubController(
+	const { controller } = stubController(
 		editor,
 		blockId,
 		shouldProjectSelectionAfterReconcile,
@@ -163,8 +159,12 @@ function mount(
 	const backend = createBackend(editor, controller);
 	fixtures.push({ editor, backend });
 	backend.activate(element, getYText(editor, blockId));
-	withBackendSelectionWrite.mockClear();
-	return { element, decorate, withBackendSelectionWrite };
+	// Counted from here, so the activation's own write is not one.
+	const setBaseAndExtent = vi.spyOn(Selection.prototype, "setBaseAndExtent");
+	const addRange = vi.spyOn(Selection.prototype, "addRange");
+	const selectionWrites = () =>
+		setBaseAndExtent.mock.calls.length + addRange.mock.calls.length;
+	return { element, decorate, selectionWrites };
 }
 
 const backends = [
@@ -190,37 +190,32 @@ afterEach(() => {
 	}
 	document.body.replaceChildren();
 	delete (globalThis as { EditContext?: unknown }).EditContext;
+	vi.restoreAllMocks();
 });
 
 describe.each(backends)(
 	"HOST9: $name decoration change while another control owns focus",
 	({ create }) => {
 		it("rebuilds the field without writing the selection back into the DOM", () => {
-			const { element, decorate, withBackendSelectionWrite } = mount(
-				create,
-				false,
-			);
+			const { element, decorate, selectionWrites } = mount(create, false);
 
 			decorate();
 
 			expect(
 				element.querySelector(`[${DECORATION_ATTRIBUTE}]`),
 			).not.toBeNull();
-			expect(withBackendSelectionWrite).not.toHaveBeenCalled();
+			expect(selectionWrites()).toBe(0);
 		});
 
 		it("still restores the selection when the field owns focus", () => {
-			const { element, decorate, withBackendSelectionWrite } = mount(
-				create,
-				true,
-			);
+			const { element, decorate, selectionWrites } = mount(create, true);
 
 			decorate();
 
 			expect(
 				element.querySelector(`[${DECORATION_ATTRIBUTE}]`),
 			).not.toBeNull();
-			expect(withBackendSelectionWrite).toHaveBeenCalled();
+			expect(selectionWrites()).toBeGreaterThan(0);
 		});
 	},
 );

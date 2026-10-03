@@ -278,7 +278,7 @@ describe("isLogicallyEquivalent", () => {
 	});
 });
 
-describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
+describe("classifyDomSelectionRead §4.2 steps 2–5", () => {
 	const snapshot: ReaderSnapshot = {
 		blockOrder: ["p1"],
 		blocks: { p1: { kind: "text", text: "hello" } },
@@ -286,22 +286,9 @@ describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
 	const caret = textSelection({ blockId: "p1", offset: 0 });
 	const moved = textSelection({ blockId: "p1", offset: 2 });
 
-	it("step 1: an in-flight projection is ignored before mapping", () => {
-		expect(
-			classifyDomSelectionRead({
-				projectionInFlight: true,
-				proposal: moved,
-				authorityState: caret,
-				snapshot,
-				gestureWindows: CLOSED_GESTURE_WINDOWS,
-			}),
-		).toBe("ignore-inflight");
-	});
-
 	it("step 2: an unresolvable DOM read produces no proposal", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: null,
 				authorityState: caret,
 				snapshot,
@@ -313,7 +300,6 @@ describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
 	it("step 3: an equivalent proposal stops", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: caret,
 				authorityState: caret,
 				snapshot,
@@ -325,7 +311,6 @@ describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
 	it("step 3: a real move is not equivalent", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -347,7 +332,6 @@ describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
 		};
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: textSelection({ blockId: "embed", offset: 2 }),
 				authorityState: textSelection({ blockId: "embed", offset: 1 }),
 				snapshot: atomSnapshot,
@@ -366,7 +350,6 @@ describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
 		};
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: blockSelection(["p1", "p2"], "p1"),
 				authorityState: blockSelection(["p1", "p2"], "p2"),
 				snapshot: blockSnapshot,
@@ -390,7 +373,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 	it("step 4: a closed window rejects the proposal and requests P2", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -402,7 +384,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 	it("step 5: an open pointer window accepts the proposal", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -417,7 +398,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 	it("step 5: an open ime window accepts the proposal", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -432,7 +412,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 	it("step 5: an open context-menu window accepts the proposal", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -447,7 +426,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 	it("step 5: an open drag window accepts the proposal", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -466,7 +444,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 		);
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -478,7 +455,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 	it("step 3 still wins over an open window", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: caret,
 				authorityState: caret,
 				snapshot,
@@ -499,7 +475,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 		expect(overlapping.pointer).toBe(true);
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -595,7 +570,6 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 			editor,
 			proposal: textSelection({ blockId: id, offset: 2 }),
 			gestureWindows: CLOSED_GESTURE_WINDOWS,
-			projectionInFlight: false,
 		});
 		expect(decided.decision).toBe("diverge");
 		expect(decided.normalized).toBeNull();
@@ -622,7 +596,6 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 				"pointerdown",
 				CLOSED_GESTURE_WINDOWS,
 			),
-			projectionInFlight: false,
 		});
 		expect(decided.decision).toBe("accept");
 		expect(decided.origin).toBe("pointer");
@@ -653,7 +626,6 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 			editor,
 			proposal: textSelection({ blockId: id, offset: 2 }),
 			gestureWindows: overlapping,
-			projectionInFlight: false,
 		});
 		expect(decided.decision).toBe("accept");
 		expect(decided.origin).toBe("ime");
@@ -684,7 +656,6 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 				"pointerdown",
 				CLOSED_GESTURE_WINDOWS,
 			),
-			projectionInFlight: false,
 		});
 		expect(decided.decision).toBe("accept");
 		expect(decided.normalized).toEqual(
@@ -715,7 +686,6 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 				"pointerdown",
 				CLOSED_GESTURE_WINDOWS,
 			),
-			projectionInFlight: false,
 		});
 		expect(result.decision).toBe("accept");
 		expect(result.origin).toBe("pointer");
@@ -742,7 +712,6 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 			editor,
 			proposal: textSelection({ blockId: id, offset: 2 }),
 			gestureWindows: CLOSED_GESTURE_WINDOWS,
-			projectionInFlight: false,
 		});
 		expect(result.decision).toBe("diverge");
 		expect(result.normalized).toBeNull();
@@ -773,7 +742,6 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 				"pointerdown",
 				CLOSED_GESTURE_WINDOWS,
 			),
-			projectionInFlight: false,
 		});
 		expect(result.decision).toBe("accept");
 		expect(result.normalized).toEqual(

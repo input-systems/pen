@@ -36,7 +36,6 @@ export function useEditorContentGestures(
 		regionGestureRef,
 		pointerGestureRef,
 		pointerGestureVersionRef,
-		skipNextClickRef,
 		interactionModelRef,
 		clearPointerSelectionState,
 	} = options;
@@ -57,7 +56,6 @@ export function useEditorContentGestures(
 				regionGesture: regionGestureRef,
 				pointerGesture: pointerGestureRef,
 				pointerGestureVersion: pointerGestureVersionRef,
-				skipNextClick: skipNextClickRef,
 				interactionModel: interactionModelRef,
 				clearPointerSelectionState,
 			},

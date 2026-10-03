@@ -26,10 +26,7 @@ import {
 import { CellEditingController } from "./cellEditingController";
 import { ExpandedContentEditableBackend } from "./expandedContentEditableBackend";
 import { FocusController } from "./focusController";
-import { HistorySelectionCoordinator } from "./historySelectionCoordinator";
 import { PendingMarkController } from "./pendingMarkController";
-import { FieldEditorSelectionCoordinator } from "./selectionCoordinator";
-import { resolveEditedCellText } from "./selectionAuthority";
 import { SessionReconciler } from "./sessionReconciler";
 import { classifySelectionSurface } from "./crossBlock";
 import type {
@@ -48,7 +45,10 @@ import { queryBlockElement, queryInlineElement } from "./selectionBridge";
 import type { DirectionalSelectionOffsets } from "./selectionMapping";
 import { areBlockIdsEqual, resolveInputMode } from "./fieldEditorImplHelpers";
 import { isSingleFieldNativeLeftover } from "./singleFieldNativeLeftover";
-import type { ProjectionMountRequester } from "./selectionProjector";
+import {
+	SelectionProjector,
+	type ProjectionMountRequester,
+} from "./selectionProjector";
 import type { ProjectionCommit, ProjectionScroll } from "./projectionScroll";
 import {
 	createSelectionReader,
@@ -59,6 +59,7 @@ import {
 	type GestureSelectionOrigin,
 	type ReaderSelection,
 	readBackProjection,
+	resolveEditedCellText,
 	type SelectionReader,
 } from "./selectionReader";
 import type { FieldEditorStoreSnapshot } from "./store";
@@ -120,7 +121,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected _isEditing = false;
 	protected _isFocused = false;
 	protected _isComposing = false;
-	protected _suppressNextBackendActivationFocus = false;
 	protected _inputMode: "richtext" | "code" | "table" | "none" = "none";
 	protected _mode: "inactive" | "single" | "expanded" | "block" = "inactive";
 	protected _editor: Editor;
@@ -142,10 +142,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected readonly _backendLifecycle: BackendLifecycleController;
 	protected readonly _focusController: FocusController;
 	protected readonly _cellEditingController: CellEditingController;
-	protected readonly _historySelectionCoordinator: HistorySelectionCoordinator;
 	protected readonly _pendingMarkController: PendingMarkController;
 	protected _selectAllBehavior: EditorSelectAllBehavior;
-	protected readonly _selectionCoordinator: FieldEditorSelectionCoordinator;
+	/** P: writes the authority into the DOM for this root. */
+	protected readonly _projector: SelectionProjector;
 	/** S1: the one `selectionchange` listener for this editor's root. */
 	protected readonly _selectionReader: SelectionReader;
 	/** The last commit seen, for projection scroll (W3.R15). */
@@ -189,90 +189,73 @@ export class FieldEditorImpl implements FieldEditorSession {
 			getYText: (blockId) => this._getYText(blockId),
 			emitStateChange: () => this._emitStateChange(),
 		});
-		this._historySelectionCoordinator = new HistorySelectionCoordinator(
-			this._editor,
-		);
 		this._selectionReader = createSelectionReader({
 			editor: this._editor,
 			read: (proposal) => this.readDomSelection(proposal),
-			intercept: (proposal) =>
-				this._backendLifecycle.current?.interceptDomSelectionRead?.(
-					proposal,
-				) ?? false,
-			onGesture: (kind) => this._selectionCoordinator.onGesture(kind),
+			onGesture: (kind) => this._projector.onGesture(kind),
 		});
-		this._selectionCoordinator = new FieldEditorSelectionCoordinator(
-			{
-				historySelectionCoordinator: this._historySelectionCoordinator,
-				isEditing: () => this._isEditing,
-				getMode: () => this._mode,
-				getFocusBlockId: () => this._focusBlockId,
-				getAttachedElement: () => this._attachedElement,
-				getRootElement: () => this._findEditorRoot(),
-				findExpandedHost: () => this._findExpandedHost(),
-				resolveInlineElement: (blockId) =>
-					this._resolveInlineElement(blockId),
-				attachElement: (element, focusOptions) =>
-					this.attachElement(element, focusOptions),
-				requestDomFocus: (
+		this._projector = new SelectionProjector({
+			isEditing: () => this._isEditing,
+			getMode: () => this._mode,
+			getFocusBlockId: () => this._focusBlockId,
+			getAttachedElement: () => this._attachedElement,
+			getRootElement: () => this._findEditorRoot(),
+			findExpandedHost: () => this._findExpandedHost(),
+			resolveInlineElement: (blockId) =>
+				this._resolveInlineElement(blockId),
+			attachElement: (element, focusOptions) =>
+				this.attachElement(element, focusOptions),
+			requestDomFocus: (target, reason, focusOptions, policyOptions) =>
+				this.requestDomFocus(
 					target,
 					reason,
 					focusOptions,
 					policyOptions,
-				) =>
-					this.requestDomFocus(
-						target,
-						reason,
-						focusOptions,
-						policyOptions,
-					),
-				updateBackendSelection: () => {
-					this._backendLifecycle.updateSelection(null);
-				},
-				setTextSelection: (
+				),
+			updateBackendSelection: () => {
+				this._backendLifecycle.updateSelection(null);
+			},
+			setTextSelection: (blockId, anchorOffset, focusOffset, origin) =>
+				this.setTextSelection(
 					blockId,
 					anchorOffset,
 					focusOffset,
 					origin,
-				) =>
-					this.setTextSelection(
-						blockId,
-						anchorOffset,
-						focusOffset,
-						origin,
-					),
-				activate: (blockId) => this.activate(blockId),
-				emitSelectionProjected: () => {
-					this._emitFocusLifecycle({
-						type: "selection-projected",
-						editor: this._editor,
-						blockId: this._focusBlockId,
-					});
-				},
-				getRecord: () => getEditorSelectionRecord(this._editor),
-				emitDiagnostic: (event) => {
-					this._editor.internals.emit("diagnostic", event);
-				},
-				readBack: (target) => {
-					const root = this._findEditorRoot();
-					return root
-						? readBackProjection(this._editor, root, target)
-						: null;
-				},
-				getSurface: () =>
-					this._cellEditingController.activeCellCoord
-						? "cell"
-						: this._mode === "expanded"
-							? "expanded"
-							: "text",
-				getScheduler: () => this._ensureScheduler(),
-				getLastCommit: () => this._lastCommit,
-			backendSelectionAgrees: () =>
-					this._backendLifecycle.current?.selectionAgreesWithAuthority?.() ??
-					true,
+				),
+			activate: (blockId) => this.activate(blockId),
+			emitSelectionProjected: () => {
+				this._emitFocusLifecycle({
+					type: "selection-projected",
+					editor: this._editor,
+					blockId: this._focusBlockId,
+				});
 			},
-			this._selectionReader,
-		);
+			getRecord: () => getEditorSelectionRecord(this._editor),
+			emitDiagnostic: (event) => {
+				this._editor.internals.emit("diagnostic", event);
+			},
+			readBack: (target) => {
+				const root = this._findEditorRoot();
+				return root
+					? readBackProjection(this._editor, root, target)
+					: null;
+			},
+			getSurface: () =>
+				this._cellEditingController.activeCellCoord
+					? "cell"
+					: this._mode === "expanded"
+						? "expanded"
+						: "text",
+			getScheduler: () => this._ensureScheduler(),
+			getLastCommit: () => this._lastCommit,
+			backendSelectionAgrees: () =>
+				this._backendLifecycle.current?.selectionAgreesWithAuthority?.() ??
+				true,
+			writeBackendSelectionState: () => {
+				this._backendLifecycle.current?.writeSelectionState?.();
+			},
+			getGestureWindows: () => this._selectionReader.windows,
+		});
 		// FE4: the commit feed lives here rather than in a host's mount,
 		// because both the vanilla mount and the framework bindings build a
 		// field editor while only the vanilla one has a mount function. The
@@ -304,8 +287,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 				}
 				const scheduler = this._ensureScheduler();
 				const alreadyProjected =
-					record.version <=
-					this._selectionCoordinator.lastProjectedVersion;
+					record.version <= this._projector.lastProjectedVersion;
 				// HOST9: the record stays authoritative but is not
 				// written into the DOM while a native control that is
 				// not this field owns focus. the backend write is held
@@ -314,8 +296,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 				// compositionend-completed releases the projection.
 				const withheld =
 					!alreadyProjected &&
-					(this._selectionCoordinator.isFocusHeldByNativeControlOutsideRoot() ||
-						this._selectionCoordinator.withholdForComposition());
+					(this._projector.isFocusHeldByNativeControlOutsideRoot() ||
+						this._projector.withholdForComposition());
 				// surface first so P1 sees the new focus block. skip is
 				// not delivery — the projector has not run yet.
 				this._recomputeSurfaceFromSelection({
@@ -323,15 +305,12 @@ export class FieldEditorImpl implements FieldEditorSession {
 					skipBackendWrite: true,
 				});
 				if (!alreadyProjected && !withheld) {
-					this._selectionCoordinator.project("selection-change");
+					this._projector.project("selection-change");
 					scheduler?.setSelection(record);
 				}
-				this._selectionCoordinator.projectNonTextSelection(
-					record.state,
-				);
+				this._projector.projectNonTextSelection(record.state);
 				const delivered =
-					record.version <=
-					this._selectionCoordinator.lastProjectedVersion;
+					record.version <= this._projector.lastProjectedVersion;
 				this._recomputeSurfaceFromSelection({
 					syncSelectionToBackend: true,
 					skipBackendWrite: delivered || withheld,
@@ -353,8 +332,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 				this.projectAfterRebuild(blockIds),
 			shouldProjectSelection: () =>
 				this.shouldProjectSelectionAfterReconcile(),
-			projectSelection: () =>
-				this._selectionCoordinator.project("selection-change"),
+			projectSelection: () => this._projector.project("selection-change"),
 			notifyDomReconciled: (blockId) => this.notifyDomReconciled(blockId),
 			getScheduler: () => this._ensureScheduler(),
 		});
@@ -481,11 +459,11 @@ export class FieldEditorImpl implements FieldEditorSession {
 	}
 
 	beginPointerSelection(): void {
-		this._selectionCoordinator.beginPointerSelection();
+		this._selectionReader.notifyGesture("pointerdown");
 	}
 
 	endPointerSelection(): void {
-		this._selectionCoordinator.endPointerSelection();
+		this._selectionReader.notifyGesture("pointerup");
 	}
 
 	setComposing(composing: boolean): void {
@@ -506,8 +484,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._activeBlockIds = [];
 		this._isEditing = false;
 		this._isComposing = false;
-		this._historySelectionCoordinator.reset();
-		this._selectionCoordinator.reset();
+		this._projector.reset();
+		this._selectionReader.resetGestures();
 		this._inputMode = "none";
 		this._mode = "inactive";
 		this._pendingMarkController.reset();
@@ -585,12 +563,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 		options?: FocusOptions,
 		policyOptions: PenFieldEditorFocusOptions = {},
 	): boolean {
-		if (
-			reason === "backend-activate" &&
-			this._suppressNextBackendActivationFocus
-		) {
-			return true;
-		}
 		return this._focusController.requestDomFocus(
 			target,
 			reason,
@@ -715,11 +687,11 @@ export class FieldEditorImpl implements FieldEditorSession {
 			if (!isInEditorContentPointerTarget(root, event.target)) {
 				return;
 			}
-			this._selectionCoordinator.notifyGestureEvent("pointerdown");
+			this._selectionReader.notifyGesture("pointerdown");
 		};
 		// R1: the context-menu window opens from the root, attached field or not.
 		const onContextMenu = (): void => {
-			this._selectionCoordinator.notifyGestureEvent("contextmenu");
+			this._selectionReader.notifyGesture("contextmenu");
 		};
 		root.addEventListener("pointerdown", onPointerDown, true);
 		root.addEventListener("contextmenu", onContextMenu);
@@ -792,13 +764,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 		const ytext = this._getYText(this._focusBlockId);
 		if (!ytext) return false;
 
-		this._suppressNextBackendActivationFocus =
-			options.domFocus === false || options.passive === true;
-		try {
-			this._backendLifecycle.activate(element, ytext);
-		} finally {
-			this._suppressNextBackendActivationFocus = false;
-		}
+		// A passive or `domFocus: false` attach reaches the backend's own
+		// focus request, which the focus controller then leaves unfocused.
+		this._backendLifecycle.activate(element, ytext, options);
 		this._attachedElement = element;
 		this._emitFocusLifecycle({
 			type: "backend-attach-completed",
@@ -823,13 +791,13 @@ export class FieldEditorImpl implements FieldEditorSession {
 		if (!this._isEditing) return;
 		if (this._focusBlockId !== blockId) return;
 
+		const current = this._editor.selection;
 		if (
-			this._selectionCoordinator.prepareSyncedTextSelection(
-				this._editor.selection,
-				blockId,
-				anchorOffset,
-				focusOffset,
-			) === "skip"
+			current?.type === "text" &&
+			current.anchor.blockId === blockId &&
+			current.focus.blockId === blockId &&
+			current.anchor.offset === anchorOffset &&
+			current.focus.offset === focusOffset
 		) {
 			return;
 		}
@@ -841,8 +809,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 		focus: { blockId: string; offset: number },
 		origin: SelectionOrigin,
 	): void {
-		this._selectionCoordinator.recordUserSelectionIntent();
-
 		if (!this._isEditing || !this._focusBlockId) {
 			this._startSession(anchor.blockId, {
 				stopCapturing: false,
@@ -877,8 +843,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 			return;
 		}
 
-		this._selectionCoordinator.recordUserSelectionIntent();
-
 		if (
 			anchor.blockId === focus.blockId &&
 			(!this._isEditing || this._focusBlockId !== anchor.blockId)
@@ -908,19 +872,19 @@ export class FieldEditorImpl implements FieldEditorSession {
 	}
 
 	notifyGestureEvent(eventKind: GestureEventKind): void {
-		this._selectionCoordinator.notifyGestureEvent(eventKind);
+		this._selectionReader.notifyGesture(eventKind);
 	}
 
 	isAdmissibleGestureRead(): boolean {
-		return this._selectionCoordinator.isAdmissibleGestureRead();
+		return this._selectionReader.isAdmissibleRead();
 	}
 
 	getGestureWindows(): GestureWindowState {
-		return this._selectionCoordinator.getGestureWindows();
+		return this._selectionReader.windows;
 	}
 
 	requestDivergenceProjection(read?: ReaderSelection): void {
-		this._selectionCoordinator.requestDivergenceProjection(read);
+		this._projector.requestDivergenceProjection(read);
 	}
 
 	/**
@@ -947,20 +911,18 @@ export class FieldEditorImpl implements FieldEditorSession {
 	}
 
 	projectAfterRebuild(blockIds: readonly string[]): void {
-		this._selectionCoordinator.projectAfterRebuild(blockIds);
+		this._projector.projectAfterRebuild(blockIds);
 	}
 
 	shouldProjectSelectionAfterReconcile(): boolean {
-		return this._selectionCoordinator.shouldProjectSelectionAfterReconcile();
+		return this._projector.shouldProjectSelectionAfterReconcile();
 	}
 
 	readDomSelection(proposal: ReaderSelection): DomSelectionReadDecision {
 		const decided = decideDomSelectionRead({
 			editor: this._editor,
 			proposal,
-			gestureWindows: this._selectionCoordinator.getGestureWindows(),
-			projectionInFlight:
-				this._selectionCoordinator.isProjectionInFlight(),
+			gestureWindows: this._selectionReader.windows,
 		});
 		this.notifyGestureEvent("selectionchange");
 		const isLeftoverField =
@@ -991,23 +953,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 		return decided.decision;
 	}
 
-	resetBackendSelectionAuthority(): void {
-		this._selectionCoordinator.resetAuthority();
-	}
-
-	withBackendSelectionWrite<T>(write: () => T): T {
-		return this._selectionCoordinator.withSelectionWrite(write);
-	}
-
-	getBackendSelectionApplicationDepth(): number {
-		return this._selectionCoordinator.isApplyingSelection;
-	}
-
 	private _applyAcceptedDomSelection(
 		normalized: Exclude<ReaderSelection, null>,
 		origin: GestureSelectionOrigin,
 	): void {
-		this._selectionCoordinator.recordUserSelectionIntent();
 		switch (normalized.type) {
 			case "text": {
 				if (
@@ -1106,7 +1055,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 		focusOffset: number,
 		options?: PenFieldEditorFocusOptions,
 	): void {
-		this._selectionCoordinator.activateTextSelection(
+		this._projector.activateTextSelection(
 			blockId,
 			anchorOffset,
 			focusOffset,
@@ -1148,13 +1097,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 		if (options.domFocus === false || options.passive) {
 			return true;
 		}
-		const focused = this.focus(options);
-		this.commitProgrammaticTextSelection(
-			blockId,
-			anchorOffset,
-			focusOffset,
-		);
-		return focused;
+		// One commit: `focus()` finds the record already in this block and
+		// writes it into the backend rather than committing it again.
+		return this.focus(options);
 	}
 
 	commitProgrammaticTextSelection(
@@ -1163,7 +1108,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 		focusOffset: number,
 		options?: PenFieldEditorFocusOptions,
 	): void {
-		this._selectionCoordinator.commitProgrammaticTextSelection(
+		this._projector.commitProgrammaticTextSelection(
 			blockId,
 			anchorOffset,
 			focusOffset,
@@ -1196,7 +1141,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 	 */
 	protected _claimCellCaret(cell: ActiveCellCoord): void {
 		if (resolveEditedCellText(this._editor.selection, cell.blockId, cell)) {
-			this._selectionCoordinator.project("activation");
+			this._projector.project("activation");
 			return;
 		}
 		const ytext = this._getYTextForCell(cell.blockId, cell.row, cell.col);
@@ -1243,7 +1188,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 			this.activate(point.blockId);
 		}
 
-		this._selectionCoordinator.project("activation");
+		this._projector.project("activation");
 	}
 
 	delegate(blockSchema: BlockSchema): boolean {
@@ -1260,7 +1205,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	protected _syncSelectionToDOM(): void {
 		if (!this._isEditing) return;
-		this._selectionCoordinator.project("activation");
+		this._projector.project("activation");
 	}
 
 	togglePendingMark(markType: string): boolean {
@@ -1373,7 +1318,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 	 * over `BlockWindow.reveal`); null removes it.
 	 */
 	setMountRequester(requester: ProjectionMountRequester | null): void {
-		this._selectionCoordinator.setMountRequester(requester);
+		this._projector.setMountRequester(requester);
 	}
 
 	/**
@@ -1385,11 +1330,11 @@ export class FieldEditorImpl implements FieldEditorSession {
 		target: { readonly blockId: string } | "selection",
 		scroll: Exclude<ProjectionScroll, "none"> = "auto",
 	): void {
-		this._selectionCoordinator.scrollIntoView(target, scroll);
+		this._projector.scrollIntoView(target, scroll);
 	}
 
 	ackBlockMounted(blockId: string, element: HTMLElement): void {
-		this._selectionCoordinator.ackBlockMounted(blockId, element);
+		this._projector.ackBlockMounted(blockId, element);
 		// A newly mounted block may resolve a request that was unresolved.
 		this._overlay?.notifyInputsChanged();
 		if (this._cellEditingController.activeCellCoord?.blockId === blockId) {
@@ -1518,9 +1463,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 		if (!this._isEditing || !this._focusBlockId) return;
 		const NextBackendClass = this._resolveBackendClass();
 		if (!this._backendLifecycle.hasBackend(NextBackendClass)) {
-			this.withBackendSelectionWrite(() => {
-				this._backendLifecycle.replace(NextBackendClass);
-			});
+			this._backendLifecycle.replace(NextBackendClass);
 			this._attachedElement = null;
 		}
 
@@ -1624,10 +1567,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 			this._focusBlockId = nextFocusBlockId;
 		}
 
-		this._historySelectionCoordinator.beginDeferredProjection(
-			event.requestId,
-		);
-
 		// skip backend sync until the restored inline is attached — a write
 		// against the previous field races selectionchange with the restored caret
 		this._recomputeSurfaceFromSelection({
@@ -1642,9 +1581,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 		}
 
 		this.focus();
-		this._historySelectionCoordinator.completeDeferredProjection(
-			event.requestId,
-		);
 	}
 
 	protected _attachedElementOwnsFocus(): boolean {

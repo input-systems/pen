@@ -123,6 +123,11 @@ describe("@input/pen-react click gestures: stale selectionchange events", () => 
 					}),
 				);
 
+				// `selectionchange` is a task: it lands after R1's
+				// pointer-settled microtask has closed the pointer window, so
+				// the late full-block range is closed-window divergence (I4)
+				// and P2 projects the caret back. No backend echo predicate.
+				await Promise.resolve();
 				setNativeSelectionRange(inlineElement!, 0, inlineElement!, 11);
 				document.dispatchEvent(new Event("selectionchange"));
 

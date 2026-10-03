@@ -2,7 +2,6 @@
 
 import type { DiagnosticEvent, SelectionRecord } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
-import { HistorySelectionCoordinator } from "../historySelectionCoordinator";
 import { SelectionProjector } from "../selectionProjector";
 import {
 	CLOSED_GESTURE_WINDOWS,
@@ -36,9 +35,6 @@ function createDroppingController(readBack: () => ProjectionReadBack) {
 	let windows = CLOSED_GESTURE_WINDOWS;
 	const controller = new SelectionProjector({
 		getGestureWindows: () => windows,
-		historySelectionCoordinator: new HistorySelectionCoordinator({
-			facet: () => undefined as never,
-		}),
 		isEditing: () => true,
 		getMode: () => "single",
 		getFocusBlockId: () => "first",
@@ -251,5 +247,56 @@ describe("selection projector triggers and guards (W3.R6, W3.R7)", () => {
 		expect(writes()).toBe(1);
 		gesture("compositionend-completed");
 		expect(writes()).toBe(1);
+	});
+});
+
+describe("selection projector equivalence skip (W3.R6)", () => {
+	const AGREEING: ProjectionReadBack = {
+		...DROPPED,
+		equivalent: true,
+		actual: DROPPED.expected,
+	};
+
+	function createAgreeingProjector(backendAgrees: boolean) {
+		const element = document.createElement("span");
+		document.body.append(element);
+		const calls = { domWrites: 0, stateWrites: 0 };
+		const projector = new SelectionProjector({
+			getGestureWindows: () => CLOSED_GESTURE_WINDOWS,
+			isEditing: () => true,
+			getMode: () => "single",
+			getFocusBlockId: () => "first",
+			getAttachedElement: () => element,
+			getRootElement: () => document.body,
+			findExpandedHost: () => null,
+			resolveInlineElement: () => element,
+			attachElement: () => true,
+			requestDomFocus: () => true,
+			updateBackendSelection: () => {
+				calls.domWrites += 1;
+			},
+			setTextSelection: () => {},
+			activate: () => {},
+			emitSelectionProjected: () => {},
+			getRecord: () => record(1),
+			readBack: () => AGREEING,
+			backendSelectionAgrees: () => backendAgrees,
+			writeBackendSelectionState: () => {
+				calls.stateWrites += 1;
+			},
+		});
+		return { projector, calls };
+	}
+
+	it("P1: a DOM that already shows the record and a backend that agrees is not written", () => {
+		const { projector, calls } = createAgreeingProjector(true);
+		projector.project("selection-change");
+		expect(calls).toEqual({ domWrites: 0, stateWrites: 0 });
+	});
+
+	it("P1: when only the backend state lags, the projector writes that state and leaves the native range", () => {
+		const { projector, calls } = createAgreeingProjector(false);
+		projector.project("selection-change");
+		expect(calls).toEqual({ domWrites: 0, stateWrites: 1 });
 	});
 });
