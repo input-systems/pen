@@ -46,7 +46,6 @@ describe("HB6 SSE transport host integration", () => {
 			join(import.meta.dirname, "../../../README.md"),
 			"utf8",
 		);
-		expect(readme).toMatch(/Support status:\s*reference/);
 		expect(readme).toMatch(/Grade:\s*reference/);
 
 		const serverEditor = createHeadlessEditor();

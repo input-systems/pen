@@ -12,7 +12,7 @@ pnpm add @input/pen @input/pen-transport
 
 ## `./direct`
 
-**Grade: development-only.** Support status: experimental. This is a single-process, in-process only, no-network transport for tests and demos. It never opens a socket and cannot reach a runtime in another process. It is non-resumable: there is no stream history and nothing to reconnect. Do not ship it.
+**Grade: development-only.** This is a single-process, in-process only, no-network transport for tests and demos. It never opens a socket and cannot reach a runtime in another process. It is non-resumable: there is no stream history and nothing to reconnect. Do not ship it.
 
 A host can rely on `directTransport({ toolRuntime, editor }).stream(request)` running `toolCalls` in-process against the construction-time runtime and editor and yielding `PenStreamPart`s until `done`. A host cannot rely on a socket, resume, `reconnect`, or `onConnectionChange`.
 
@@ -52,7 +52,7 @@ Mutating `toolCalls` are default-deny. Set `allowedMutatingTools` to grant speci
 
 ## `./sse`
 
-**Grade: reference.** Support status: reference. This transport is single-process, non-resumable, and development-oriented. It illustrates Pen's SSE streaming protocol. Do not use it as a production collaboration or sync backend.
+**Grade: reference.** This transport is single-process, non-resumable, and development-oriented. It illustrates Pen's SSE streaming protocol. Do not use it as a production collaboration or sync backend.
 
 A host can rely on `sseTransport({ url }).stream(request)` POSTing a `PenStreamRequest` and yielding `PenStreamPart`s from `createSSEHandler`'s event-stream, including in-process `toolCalls` when a `toolRuntime` is wired. A host cannot rely on resume, `reconnect`, multi-process deployment, persistence, or request authentication — those stay host seams.
 

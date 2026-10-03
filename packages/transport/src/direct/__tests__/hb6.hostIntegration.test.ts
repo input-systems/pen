@@ -26,7 +26,6 @@ describe("HB6 direct transport host integration", () => {
 			join(import.meta.dirname, "../../../README.md"),
 			"utf8",
 		);
-		expect(readme).toMatch(/Support status:\s*experimental/);
 		expect(readme).toMatch(/Grade:\s*development-only/);
 
 		const editor = createHeadlessEditor({
