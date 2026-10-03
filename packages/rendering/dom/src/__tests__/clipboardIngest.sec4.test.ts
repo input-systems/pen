@@ -7,6 +7,7 @@ import {
 	CLIPBOARD_INGEST_MAX_NODE_COUNT,
 	CLIPBOARD_INGEST_MAX_TEXT_SIZE,
 	admitClipboardBlocks,
+	admitClipboardPlainText,
 } from "../utils/clipboardIngest";
 import type { PenBlock } from "../utils/clipboardPayload";
 import { defaultSchema } from "@input/pen-schema";
@@ -34,6 +35,65 @@ function nestToggles(depth: number): PenBlock {
 		children: [nestToggles(depth - 1)],
 	};
 }
+
+describe("IOP5 literal clipboard recovery bounds", () => {
+	it.each(["\n", "\r\n"])(
+		"bounds raw text before splitting and prefers a complete line (%j)",
+		(newline) => {
+			const editor = createBareEditor();
+			const result = admitClipboardPlainText(
+				"kept" + newline + "x".repeat(CLIPBOARD_INGEST_MAX_TEXT_SIZE),
+				"paragraph",
+				editor,
+			);
+			expect(result.blocks.map((block) => block.content)).toEqual([
+				"kept",
+			]);
+			expect(result.droppedByReason).toEqual([
+				{
+					reason: "text-size-exceeded",
+					count: 1,
+					bound: "CLIPBOARD_INGEST_MAX_TEXT_SIZE",
+				},
+			]);
+			editor.destroy();
+		},
+	);
+
+	it("keeps a bounded prefix of an oversized single line", () => {
+		const editor = createBareEditor();
+		const result = admitClipboardPlainText(
+			"x".repeat(CLIPBOARD_INGEST_MAX_TEXT_SIZE + 1),
+			"paragraph",
+			editor,
+		);
+		expect(result.blocks[0].content?.length).toBe(
+			CLIPBOARD_INGEST_MAX_TEXT_SIZE,
+		);
+		expect(result.droppedByReason[0].reason).toBe("text-size-exceeded");
+		editor.destroy();
+	});
+
+	it("bounds the number of recovered lines", () => {
+		const editor = createBareEditor();
+		const result = admitClipboardPlainText(
+			Array(CLIPBOARD_INGEST_MAX_NODE_COUNT + 5)
+				.fill("line")
+				.join("\n"),
+			"paragraph",
+			editor,
+		);
+		expect(result.blocks).toHaveLength(CLIPBOARD_INGEST_MAX_NODE_COUNT);
+		expect(result.droppedByReason).toEqual([
+			{
+				reason: "count-exceeded",
+				count: 5,
+				bound: "CLIPBOARD_INGEST_MAX_NODE_COUNT",
+			},
+		]);
+		editor.destroy();
+	});
+});
 
 describe("SEC4 clipboard JSON ingest bounds", () => {
 	it("SEC4: drops blocks past depth 32", () => {

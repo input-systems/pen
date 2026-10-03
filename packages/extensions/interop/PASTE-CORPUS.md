@@ -2,7 +2,7 @@
 
 Clipboard `text/html` + `text/plain` pairs measured through the generic HTML import path (`parseHtmlToBlocks`). Pen does not sniff `mso` classes or `docs-internal-guid`. A documented flattening is the paste contract; an undocumented one is a regression.
 
-1 of 9 sources are hand-captured. Still synthetic-until-capture: `word-desktop`, `word-web`, `google-docs`, `notion`, `vscode`, `article`, `excel-sheets`, `pen`. The replacement procedure is `src/html/import/__tests__/pasteCorpus/CAPTURE.md`.
+1 of 10 sources are hand-captured. Still synthetic-until-capture: `word-desktop`, `word-web`, `google-docs`, `notion`, `slack`, `vscode`, `article`, `excel-sheets`, `pen`. The replacement procedure is `src/html/import/__tests__/pasteCorpus/CAPTURE.md`.
 
 Generated from `src/html/import/__tests__/pasteCorpus/` by `src/html/import/__tests__/pasteCorpus.test.ts`. Do not edit by hand.
 
@@ -12,9 +12,10 @@ Generated from `src/html/import/__tests__/pasteCorpus/` by `src/html/import/__te
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Microsoft Word (desktop) | synthetic-until-capture | h1 | flattened to paragraphs | 2×2, no header row | none | kept | dropped (img inside MsoNormal paragraph is not lifted) | bold, italic, link | none | Word numbering metadata (mso-list on paragraphs) becomes plain paragraphs with the visible bullet glyph; the generic path does not sniff MsoListParagraph; Office <style> blocks and html/head/meta wrappers are stripped by the sanitizer; An <img> nested in <p class=MsoNormal> does not become an image block; an empty paragraph remains |
 | Microsoft Word (web) | synthetic-until-capture | h1 | nested bullets (indent 0/1) | 2×2, no header row | none | kept | none | bold, italic, strike, link | none | Office xmlns / Mso* class names are ignored; conversion uses tags only; No Word numbering metadata is preserved beyond the emitted <ul>/<li> tree |
-| Google Docs | synthetic-until-capture | flattened into one paragraph | flattened into one paragraph | flattened (cell text concatenated) | none | kept | none | span bold and italic kept; font-weight normal wrapper ignored | span color kept as textColor | The docs-internal-guid <b> wrapper still collapses headings, lists, and tables into one paragraph; Adjacent block text is concatenated with no separator |
+| Google Docs | synthetic-until-capture | h1 | nested bullets (indent 0/1) | 1×2, no header row | none | kept | none | span bold and italic kept; font-weight normal wrapper ignored | span color kept as textColor | The docs-internal-guid <b> wrapper is read as a container and adds no mark of its own; Font family, size, and line-height are discarded |
 | Apple Notes | captured: Apple Notes 4.13 (2026-09-23) | none | flat numbered and bullets | none | none | none in capture | none | bold, italic, and class-based underline kept | none | font family, size, margins, minimum heights, and list marker CSS are discarded |
 | Notion | synthetic-until-capture | h1 | nested bullets (indent 0/1) plus checklist | none | codeBlock language ts | kept | 1 remote src kept | bold, italic, strike, link | none | Notion-specific block identity (if a real capture adds data-block-id) is ignored; conversion uses tags only |
+| Slack | synthetic-until-capture | none | nested bullets (indent 0/1/2) plus a nested numbered item | none | inline code mark | kept | none | bold, code, link | none | data-indent and data-stringify-* attributes are ignored; indent comes from the list tree only |
 | VS Code | synthetic-until-capture | none | none | none | flattened to one paragraph per line | none | none | none | token colors kept as textColor | Styled VS Code copy has no pre/code wrapper, so it does not become a codeBlock |
 | Browser article | synthetic-until-capture | h1 | none | none | codeBlock | kept | 1 remote src kept; title becomes caption; figcaption becomes a paragraph | italic, bold, link | none | figure/figcaption wrappers unwrap; caption text is a sibling paragraph, not image.caption (title attribute is) |
 | Excel / Google Sheets | synthetic-until-capture | none | none | 2×2, no header row | none | none | none | none | none | google-sheets-html-origin is stripped; the table remains; Excel mso-number-format / <style> (when present on a real Excel capture) are stripped; The first row is not promoted to a header row without <thead> |
@@ -47,11 +48,11 @@ Generated from `src/html/import/__tests__/pasteCorpus/` by `src/html/import/__te
 
 - **id:** `google-docs`
 - **Provenance:** `synthetic-until-capture`
-- **Approximates:** Google Docs clipboard HTML: <b id=docs-internal-guid-…> wrapper, span-styled marks, semantic headings/lists/tables inside the wrapper. Typical Docs copies also append Apple-interchange-newline.
+- **Approximates:** Google Docs clipboard HTML: <b id=docs-internal-guid-…> wrapper, span-styled marks, semantic headings/lists/tables inside the wrapper, and a nested list emitted as a child of the <ul> rather than of an <li>. Typical Docs copies also append Apple-interchange-newline.
 - **Markers:** `docs-internal-guid`, `font-weight:700`, `Apple-interchange-newline`
 
-- The docs-internal-guid <b> wrapper still collapses headings, lists, and tables into one paragraph
-- Adjacent block text is concatenated with no separator
+- The docs-internal-guid <b> wrapper is read as a container and adds no mark of its own
+- Font family, size, and line-height are discarded
 
 ### Apple Notes
 
@@ -70,6 +71,15 @@ Generated from `src/html/import/__tests__/pasteCorpus/` by `src/html/import/__te
 - **Markers:** `StartFragment`, `input type=checkbox`, `language-ts`
 
 - Notion-specific block identity (if a real capture adds data-block-id) is ignored; conversion uses tags only
+
+### Slack
+
+- **id:** `slack`
+- **Provenance:** `synthetic-until-capture`
+- **Approximates:** Slack message copy: a p-rich_text_section line, p-rich_text_list lists carrying data-indent, and nested lists emitted as a child of the parent <ul> rather than of an <li>. Not a hand-captured dump.
+- **Markers:** `p-rich_text_section`, `p-rich_text_list--nested`, `data-stringify-indent`
+
+- data-indent and data-stringify-* attributes are ignored; indent comes from the list tree only
 
 ### VS Code
 

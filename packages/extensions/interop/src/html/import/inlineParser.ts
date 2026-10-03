@@ -29,21 +29,44 @@ const INLINE_MARK_MAP: Record<string, string> = {
 	mark: "highlight",
 };
 
-export function parseInlineContent(node: DOMNode): InlineResult {
+export function parseInlineContent(
+	node: DOMNode,
+	ancestors: readonly DOMNode[] = [],
+): InlineResult {
+	return parseInlineLines([node], ancestors);
+}
+
+/** Normalize each line's EM8 terminator before joining and offsetting its marks. */
+export function parseInlineLines(
+	lines: readonly DOMNode[],
+	ancestors: readonly DOMNode[],
+): InlineResult {
 	const result: InlineResult = { text: "", marks: [] };
-	walkInline(node, result, new Map());
-	// a break that ends a block's line box opens no line of its own, so a block's
-	// sole `<br>` is its empty placeholder (EM8)
-	if (!result.text.endsWith("\n")) {
-		return result;
+	const inheritedMarks: ActiveMarks = new Map();
+	for (const ancestor of ancestors) {
+		applyElementMarks(inheritedMarks, ancestor);
 	}
-	const text = result.text.slice(0, -1);
-	return {
-		text,
-		marks: result.marks
-			.map((mark) => ({ ...mark, end: Math.min(mark.end, text.length) }))
-			.filter((mark) => mark.start < mark.end),
-	};
+	for (const [index, node] of lines.entries()) {
+		if (index > 0) appendText(result, "\n", inheritedMarks);
+		const line: InlineResult = { text: "", marks: [] };
+		walkInline(node, line, inheritedMarks);
+		// A block's final break is a terminator, including its empty placeholder.
+		if (line.text.endsWith("\n")) line.text = line.text.slice(0, -1);
+		const offset = result.text.length;
+		result.text += line.text;
+		for (const mark of line.marks) {
+			const end = Math.min(mark.end, line.text.length);
+			if (mark.start >= end) continue;
+			const previous = findPreviousMark(result.marks, mark);
+			const start = offset + mark.start;
+			if (previous?.end === start) {
+				previous.end = offset + end;
+			} else {
+				result.marks.push({ ...mark, start, end: offset + end });
+			}
+		}
+	}
+	return result;
 }
 
 export function containsBreak(node: DOMNode): boolean {
@@ -76,21 +99,25 @@ function walkInline(
 	}
 
 	const nextMarks = new Map(activeMarks);
-	const semanticMark = INLINE_MARK_MAP[node.tagName];
-	if (semanticMark) {
-		setMark(nextMarks, semanticMark);
-	}
-	if (node.tagName === "a") {
-		setMark(nextMarks, "link", {
-			href: node.attributes?.href ?? "",
-			title: node.attributes?.title ?? undefined,
-		});
-	}
-	applyInlineStyles(nextMarks, node.attributes?.style ?? "");
+	applyElementMarks(nextMarks, node);
 
 	for (const child of node.children ?? []) {
 		walkInline(child, result, nextMarks);
 	}
+}
+
+function applyElementMarks(marks: ActiveMarks, node: DOMNode): void {
+	const semanticMark = INLINE_MARK_MAP[node.tagName ?? ""];
+	if (semanticMark) {
+		setMark(marks, semanticMark);
+	}
+	if (node.tagName === "a") {
+		setMark(marks, "link", {
+			href: node.attributes?.href ?? "",
+			title: node.attributes?.title ?? undefined,
+		});
+	}
+	applyInlineStyles(marks, node.attributes?.style ?? "");
 }
 
 function applyInlineStyles(activeMarks: ActiveMarks, style: string): void {

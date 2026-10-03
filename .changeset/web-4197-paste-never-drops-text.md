@@ -1,0 +1,6 @@
+---
+"@input/pen-interop": patch
+"@input/pen-dom": patch
+---
+
+HTML import no longer drops pasted text. A list nested as a child of the list itself, which is how Slack, Apple Notes and Google Docs write nested bullets, keeps every item at the right indent instead of losing the nested items; an `<li>` that only wraps a nested list adds no empty item, an item's block children import as lines of the one item, and an `<li>` copied without its list imports as a bullet. An inline wrapper around blocks, such as the `<b>` Google Docs puts around a whole copy, is read as a container, so its headings, lists and tables stay separate blocks instead of collapsing into one paragraph. A table caption imports as a paragraph before the table and a `<pre>` keeps text outside its `<code>`. As a backstop, a conversion that would still lose text imports the fragment as plain paragraphs, and a paste whose HTML parses to nothing falls back to literal clipboard text without reinterpreting Markdown or deleting the selection when no replacement exists. Schema containers keep inline body text outside their declared title source. Wrapper formatting respects inner overrides and resets, including table cells, and nested-only items do not consume the parent ordered list's start number.
