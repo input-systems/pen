@@ -27,7 +27,7 @@
   {
     "id": "capability-matrix",
     "command": "pnpm capability-matrix",
-    "description": "Every capability-matrix cell that claims a surface must name a path that exists outside the playground."
+    "description": "Every capability-matrix cell that claims a surface must name a path that exists outside the playground, at least one a test, conformance spec, or example (HB5); the self-test proves a document-only cell fails."
   },
   {
     "id": "positioning-check",

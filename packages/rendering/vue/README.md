@@ -63,8 +63,8 @@ export const PenExample = defineComponent({
 
 The normative per-surface matrix is `packages/docs/CAPABILITY-MATRIX.md` in the Pen repository. Vue's column, in short:
 
-- `supported`: single-block fields, expanded (multi-block) fields, table-cell editing, document mutation, paste import (the HTML importer is wired by default), the review-surface styling contract.
-- `bring-your-own-ui`: AI review, streaming preview, autocomplete, multiplayer, search, undo, history, input rules, overlays. The state and behavior reach Vue — AI decorations paint through `useDecorations` like any other decoration — and this package ships no components for them.
+- `supported`: single-block fields, expanded (multi-block) fields, table-cell editing, document mutation, host-defined container blocks, paste import (the HTML importer is wired by default), the review-surface styling contract, editor-field chrome.
+- `bring-your-own-ui`: AI review, streaming preview, autocomplete, multiplayer, search, undo, snapshots, input rules, overlays, and every Chrome row — toolbar, selection toolbar, slash menu, suggestion menu, block handle, table chrome. For the Chrome rows this is the designed state (HB1): the matrix cites the core or pen-dom behavior a Vue toolbar or menu builds on. The state and behavior reach Vue — AI decorations paint through `useDecorations` like any other decoration — and this package ships no components for them.
 - `not-supported`: nothing. Every capability reaches Vue.
 
 That second list is not a to-do list. Pen's capabilities live in `@input/pen-core`, `@input/pen-dom`, and the extensions; React ships more chrome over the same state, and Vue reaching React's component count is not a goal.

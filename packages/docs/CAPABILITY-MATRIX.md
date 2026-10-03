@@ -2,7 +2,7 @@
 
 Normative (`spec/rules/host.md` HB1). This document states, per surface, what each capability gives you. A capability absent from this document does not exist publicly; changing a cell is a spec-visible change.
 
-`scripts/check-capability-matrix.mjs` (GATE 5.3) parses the tables below: every status must be in the vocabulary, and every claiming cell must name a path that exists and is not under `playground/`.
+`scripts/check-capability-matrix.mjs` (GATE 5.3) parses the tables below: every status must be in the vocabulary, and every claiming cell must name a path that exists and is not under `playground/`, at least one of which is a test, conformance spec, or example (HB5). `--self-test` proves a cell citing only a document fails.
 
 ## Surfaces
 
@@ -22,7 +22,7 @@ Normative (`spec/rules/host.md` HB1). This document states, per surface, what ea
 | `not-supported` | Not reachable on this surface. Needs a different surface. |
 | `planned` | Intended, not shipped. Do not build against it. |
 
-`bring-your-own-ui` is the most common status here, and that is the matrix's main finding rather than a gap in it. Pen's capabilities live in `@input/pen-core`, `@input/pen-dom`, and the extensions; a binding's job is to mount and subscribe (HB2). So a capability usually reaches every DOM surface, and what differs between React and Vue is how much chrome ships with it. React carries the reference feature set — 18,030 source lines against Vue's 2,107 — and that spread is a difference in bundled UI, not in reach.
+`bring-your-own-ui` is the most common status here, and that is the matrix's main finding rather than a gap in it. Pen's capabilities live in `@input/pen-core`, `@input/pen-dom`, and the extensions; a binding's job is to mount and subscribe (HB2). So a capability usually reaches every DOM surface, and what differs between React and Vue is how much chrome ships with it. React carries the reference feature set, and that spread is a difference in bundled UI, not in reach.
 
 Two consequences worth stating plainly. Vue reaching React is not a goal: a Vue app that renders its own accept/reject buttons over the same decorations is using Pen as designed. And `bring-your-own-ui` is not a soft `not-supported` — the state is on an editor you already have, so the work is rendering, not plumbing.
 
@@ -54,11 +54,24 @@ The three AI rows are the parity story HB1 exists to tell. All three capabilitie
 
 | Capability | React | Vue | Vanilla | Headless |
 | --- | --- | --- | --- | --- |
-| Overlays (carets, selection rects, block outlines) | `supported` — `packages/rendering/react/src/__tests__/regionSelection.marqueeBounds.test.tsx` | `bring-your-own-ui` — Vue paints no overlays, as `packages/rendering/vue/STYLING.md` states; native selection still renders | `bring-your-own-ui` — geometry and overlay utilities ship; `mountEditor` mounts no layer. `packages/tooling/conformance/suites/overlays/o1-ordinary-native.spec.ts` | `not-supported` — overlays are geometry, which needs layout |
+| Overlays (carets, selection rects, block outlines) | `supported` — `packages/rendering/react/src/__tests__/regionSelection.marqueeBounds.test.tsx` | `bring-your-own-ui` — Vue paints no overlays (`packages/rendering/vue/STYLING.md`); native selection still renders, and overlay geometry is readable from `packages/rendering/dom/src/geometry/__tests__/geometryReader.test.ts` | `bring-your-own-ui` — geometry and overlay utilities ship; `mountEditor` mounts no layer. `packages/tooling/conformance/suites/overlays/o1-ordinary-native.spec.ts` | `not-supported` — overlays are geometry, which needs layout |
 | Review surface styling | `supported` — `packages/extensions/ai/src/__tests__/rs4.stylingContract.test.ts` | `supported` — `packages/extensions/ai/src/__tests__/rs4.stylingContract.test.ts` | `supported` — `packages/extensions/ai/src/__tests__/rs4.stylingContract.test.ts` | `not-supported` — CSS needs a document |
 | Editor field chrome | `supported` — `packages/rendering/react/src/__tests__/editorChrome.test.ts` | `supported` — `packages/rendering/vue/src/__tests__/editorChrome.test.ts` | `supported` — `packages/rendering/dom/src/__tests__/editorChrome.test.ts` | `not-supported` — CSS needs a document |
 
 The styling contract is `supported` everywhere it can be because it is one exported sheet plus one class vocabulary (RS4), not per-binding code: `PEN_REVIEW_STYLESHEET` from `@input/pen-dom`, class names from `@input/pen-types`. Editor-field chrome is the same idea: one sheet (`PEN_EDITOR_CHROME_STYLESHEET`), adopted by `EditorRoot`, `PenEditor`, and `mountEditor` unless `chrome={false}`.
+
+## Chrome
+
+| Capability | React | Vue | Vanilla | Headless |
+| --- | --- | --- | --- | --- |
+| Toolbar (marks, block type) | `supported` — `packages/rendering/react/src/__tests__/toolbar.ax3.test.ts` | `bring-your-own-ui` — mark and conversion commands; active-state derivation is React-local. `packages/core/src/commands/__tests__/text.test.ts` | `bring-your-own-ui` — mark and conversion commands; active-state derivation is React-local. `packages/core/src/commands/__tests__/text.test.ts` | `bring-your-own-ui` — commands run headlessly. `packages/core/src/commands/__tests__/text.test.ts` |
+| Selection toolbar | `supported` — `packages/rendering/react/src/__tests__/selectionToolbar.a11y.test.ts` | `bring-your-own-ui` — placement from `resolveSelectionRect`. `packages/rendering/dom/src/__tests__/selectionPlacement.test.ts` | `bring-your-own-ui` — placement from `resolveSelectionRect`. `packages/rendering/dom/src/__tests__/selectionPlacement.test.ts` | `not-supported` — placement needs layout |
+| Slash menu | `supported` — `packages/rendering/react/src/__tests__/slashMenu.navigationAndCatalog.test.tsx` | `bring-your-own-ui` — catalog order is in core; `/` matching is React-local. `packages/core/src/__tests__/slashMenuOrder.test.ts` | `bring-your-own-ui` — catalog order is in core; `/` matching is React-local. `packages/core/src/__tests__/slashMenuOrder.test.ts` | `bring-your-own-ui` — catalog order is in core. `packages/core/src/__tests__/slashMenuOrder.test.ts` |
+| Suggestion menu | `supported` — `packages/rendering/react/src/__tests__/suggestionMenu.triggerAndAnchoring.test.tsx` | `bring-your-own-ui` — `resolveSuggestionMenuTarget`. `packages/core/src/__tests__/resolveSuggestionMenuTarget.n6.test.ts` | `bring-your-own-ui` — `resolveSuggestionMenuTarget`. `packages/core/src/__tests__/resolveSuggestionMenuTarget.n6.test.ts` | `bring-your-own-ui` — `resolveSuggestionMenuTarget` runs without a DOM. `packages/core/src/__tests__/resolveSuggestionMenuTarget.n6.test.ts` |
+| Block handle (drag, move) | `supported` — `packages/rendering/react/src/__tests__/blockHandle.a11y.test.ts` | `bring-your-own-ui` — move ops. `packages/core/src/commands/__tests__/structure.test.ts` | `bring-your-own-ui` — move ops. `packages/core/src/commands/__tests__/structure.test.ts` | `bring-your-own-ui` — move ops. `packages/core/src/commands/__tests__/structure.test.ts` |
+| Table chrome (column menu, row and column UI) | `supported` — `packages/rendering/react/src/__tests__/tableColumnMenu.ax3.test.tsx` | `bring-your-own-ui` — table commands. `packages/core/src/__tests__/editorCore.tableCommands.test.ts` | `bring-your-own-ui` — table commands. `packages/core/src/__tests__/editorCore.tableCommands.test.ts` | `bring-your-own-ui` — table commands. `packages/core/src/__tests__/editorCore.tableCommands.test.ts` |
+
+React ships the reference chrome; Vue and vanilla ship none, by design (HB1). Each chrome row cites the behavior below the binding that a host's own chrome uses, and names where React keeps state derivation of its own — toolbar active marks (`computeToolbarState`, `resolveActiveMarks`), slash-trigger matching (`getSlashTarget`), block-drag move ops (`buildMoveBlockOps`), and table defaults (`utils/tableDefaults.ts`) — so the gap is stated rather than discovered. For these rows `bring-your-own-ui` on Vue and vanilla is the designed state, not a backlog.
 
 ## Data
 
@@ -80,7 +93,3 @@ Undo is `bring-your-own-ui` on all three DOM surfaces because no binding exports
 | Autoformat | `bring-your-own-ui` — install `autoformatExtension()`; no binding API. `packages/extensions/autoformat/src/__tests__/editorActivation.test.ts` | `bring-your-own-ui` — `packages/extensions/autoformat/src/__tests__/editorActivation.test.ts` | `bring-your-own-ui` — `packages/extensions/autoformat/src/__tests__/editorActivation.test.ts` | `bring-your-own-ui` — the engine runs, but typing-triggered rules need a field editor: `packages/extensions/autoformat/src/__tests__/extension.test.ts` |
 
 Autoformat has no chrome to ship, so no binding exports anything for it: `bring-your-own-ui` here means "install the extension", not "render something".
-
-## What the matrix does not cover
-
-Editor chrome beyond these capabilities — toolbars, slash menus, selection toolbars, prompt composers — ships only in `@input/pen-react` and is not a capability in the HB1 sense: it is application UI over the same public state, and a host is expected to build its own. It is out of scope here so that the matrix keeps saying something about reach rather than turning into a component index.
