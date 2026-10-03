@@ -13,6 +13,8 @@
 - createLargeDocument
 - createScale3Editor
 - createScale3RealisticEditor
+- detectLoadSnapshot
+- detectMachineClass
 - envelopeGateP50Ms
 - envelopePointIsGated
 - getScale3Baseline
@@ -63,6 +65,7 @@
 - BenchReport
 - BenchReportResult
 - EnvelopeAxis
+- EnvelopeLoadSnapshot
 - EnvelopeRecord
 - EnvelopeRungId
 - Scale2Plus8ToleranceResult

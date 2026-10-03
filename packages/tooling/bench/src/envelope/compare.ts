@@ -44,6 +44,24 @@ export interface EnvelopePointRecord {
 	gateP50Ms: number | null;
 }
 
+/** One renderer row (W1.R9): a conformance `scale-render` clock, Pen-removed floor beside it. */
+export interface EnvelopeRendererRow {
+	readonly id: `renderer.${"react" | "vue" | "vanilla"}.${"1k" | "5k" | "10k" | "50k"}`;
+	readonly surface: "react" | "vue" | "vanilla";
+	readonly rootBlocks: number;
+	readonly totalBlocks: number;
+	readonly grade: "measured";
+	/** `null` when the row timed out or is not recorded yet. */
+	readonly mountP50Ms: number | null;
+	readonly mountFloorP50Ms: number | null;
+	readonly keystrokeToFrameP50Ms: number | null;
+	readonly caretDownToFrameP50Ms: number | null;
+	readonly mountTimedOut: boolean;
+	readonly machineClass: string;
+	readonly recordedAt: string;
+	readonly source: `@input/pen-conformance baselines/scale-render.${string}.chromium.json`;
+}
+
 export interface EnvelopeRecord {
 	ruleId: "SCALE1";
 	spec: string;
@@ -64,6 +82,8 @@ export interface EnvelopeRecord {
 		crossClass: string;
 	};
 	points: EnvelopePointRecord[];
+	/** Generated from the conformance baselines by `importRenderer.ts`; never hand-edited. */
+	renderer: readonly EnvelopeRendererRow[];
 }
 
 export interface EnvelopeDriftFailure {
@@ -111,6 +131,8 @@ export interface BuildEnvelopeRecordOptions {
 	machineClass?: string;
 	status?: EnvelopeStatus;
 	caveat?: string;
+	/** The committed renderer rows, carried across a headless re-record. */
+	renderer?: readonly EnvelopeRendererRow[];
 }
 
 export function buildEnvelopeRecord(
@@ -191,6 +213,7 @@ export function buildEnvelopeRecord(
 			crossClass: ENVELOPE_CROSS_CLASS_POLICY,
 		},
 		points,
+		renderer: options.renderer ?? [],
 	};
 }
 
@@ -314,7 +337,7 @@ export async function loadCommittedEnvelope(
 	}
 	const parsed = JSON.parse(raw) as EnvelopeRecord;
 	assertEnvelopeRecord(parsed);
-	return parsed;
+	return { ...parsed, renderer: parsed.renderer ?? [] };
 }
 
 export async function writeEnvelopeRecord(

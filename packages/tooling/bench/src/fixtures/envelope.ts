@@ -1,7 +1,9 @@
 import {
+	createPeerHarness,
 	createTestDocument,
 	createTestEditor,
 	createTwoPeerHarness,
+	type PeerHarness,
 } from "@input/pen-test";
 import type { BlockHandle, DocumentOp } from "@input/pen-types";
 import type { TestBlock, TestEditor } from "@input/pen-test";
@@ -259,14 +261,43 @@ export function measureCreatedTableCells(rows: number, cols: number): number {
 	return measured;
 }
 
-export function measureSharedSeedPeerCount(): number {
-	const collab = createEnvelopeCollaboration(4);
+/**
+ * SCALE1 concurrent peers (W5.R7): forks `peerCount` peers from one seed,
+ * has each insert its own token into `block-0`, runs `sync`, and returns how
+ * many peers hold every token. The constant is the input, never the result:
+ * a dropped delivery lowers the count and fails drift by name.
+ */
+export function measureSharedSeedPeerCount(
+	peerCount: number = SCALE1_PEER_COUNT,
+	sync: (harness: PeerHarness) => void = (harness) => harness.syncAll(),
+): number {
+	const harness = createPeerHarness(peerCount, {
+		blocks: generateBlockSpecs(4),
+	});
 	try {
-		assertPeerBObservesPeerAInsert(collab);
-		return SCALE1_PEER_COUNT;
+		const blockId = envelopeBlockId(0);
+		const tokens = harness.peers.map((peer) => `TOKEN-${peer.label.toUpperCase()}-SURVIVE`);
+		for (const [index, peer] of harness.peers.entries()) {
+			peer.editor.apply(
+				[
+					{
+						type: "splice-text",
+						blockId,
+						from: 0,
+						to: 0,
+						insert: tokens[index]!,
+					},
+				],
+				{ origin: "user" },
+			);
+		}
+		sync(harness);
+		return harness.peers.filter((peer) => {
+			const text = peer.editor.getBlock(blockId)?.textContent() ?? "";
+			return tokens.every((token) => text.includes(token));
+		}).length;
 	} finally {
-		void collab.editorA.destroy();
-		void collab.editorB.destroy();
+		harness.destroy();
 	}
 }
 

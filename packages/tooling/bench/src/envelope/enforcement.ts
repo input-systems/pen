@@ -1,3 +1,4 @@
+import { SCALE3_SYNCED_PEER_POINTS } from "../constants/scale3";
 import { SCALE1_MEASUREMENTS } from "../constants/scale1";
 import { RELATED_FIXTURE_AUDIT, SCALE1_FIXTURE_AUDIT } from "../fixtures/audit";
 
@@ -105,8 +106,20 @@ export const ENFORCEMENT_INVENTORY: readonly EnforcementRow[] = [
 		unitFailsOn: "remote-caret decorations !== 8",
 		isolatedClock: "gated",
 		clockNote:
-			"critical:true; 0.06ms median against a 2ms gate. Axis is caret decorations, not synced Y.Docs. N-peer scaling is unmeasured",
+			"critical:true; 0.06ms median against a 2ms gate. Axis is caret decorations, not synced Y.Docs; synced peers have their own axis",
 	},
+	...SCALE3_SYNCED_PEER_POINTS.map(
+		(peers): EnforcementRow => ({
+			id: `scale3.keystroke.synced-peers.${peers}`,
+			subject: `SCALE3 synced-peer-count ${peers}`,
+			unit: "enforced",
+			unitFailsOn:
+				"any count field drift by row id and field name in baselines/scale3-peers.json",
+			isolatedClock: "record-only",
+			clockNote:
+				"typist and fan-out medians recorded by bench:scale3:peers with an empty-relay floor; never gated (CH8), fan-out grows with n",
+		}),
+	),
 	{
 		id: "scale3.keystroke.realistic-stack",
 		subject: "SCALE3 realistic-stack keystroke clocks",

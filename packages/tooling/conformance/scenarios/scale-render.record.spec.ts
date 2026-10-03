@@ -10,9 +10,12 @@ import {
 	loadBaseline,
 	loadInvariants,
 	writeBaseline,
+	writeLargeCounts,
 	type ScaleRenderAction,
+	type ScaleRenderClockFixture,
 	type ScaleRenderCountFixture,
 	type ScaleRenderCounts,
+	type ScaleRenderLargeFixture,
 	type ScaleRenderSurface,
 } from "../src/scaleRender";
 import { scenario } from "../src/scenario";
@@ -131,13 +134,17 @@ function actionScripts(fixture: ScaleRenderCountFixture): Record<Exclude<ScaleRe
 	};
 }
 
-async function measureMount(page: Page, fixture: ScaleRenderCountFixture): Promise<Metrics> {
+async function measureMount(
+	page: Page,
+	fixture: ScaleRenderClockFixture,
+	timeout = 180_000,
+): Promise<Metrics> {
 	const { totalBlocks } = mixedFixtureIdentity(SCALE_RENDER_ROOT_COUNTS[fixture]);
 	await page.evaluate(() => window.__penScaleProbe.begin());
 	await page.evaluate((name) => window.__penConformance.load(name), fixture);
-	await expect(page.locator(`[data-fixture="${fixture}"]`)).toBeVisible({ timeout: 180_000 });
+	await expect(page.locator(`[data-fixture="${fixture}"]`)).toBeVisible({ timeout });
 	await expect
-		.poll(() => page.locator("[data-pen-editor-block]").count(), { timeout: 180_000 })
+		.poll(() => page.locator("[data-pen-editor-block]").count(), { timeout })
 		.toBe(totalBlocks);
 	const metrics = await page.evaluate(() => window.__penScaleProbe.end());
 	const live = await page.evaluate(() => window.__penScaleProbe.live());
@@ -186,7 +193,42 @@ function checkAgainstBaseline(
 }
 
 
-for (const surface of SURFACES) {
+/**
+ * 10k / 50k (SCALE_RENDER_LARGE=1, nightly): mount counts only, recorded and
+ * never compared. Per-action counts at these sizes wait on W2: React and Vue
+ * caret moves are O(M²) today. A fixture that does not mount in time records
+ * `mountTimedOut`, which is itself evidence (D30).
+ */
+const LARGE = process.env.SCALE_RENDER_LARGE === "1";
+const RECORD_LARGE = process.env.RECORD_SCALE_RENDER_CLOCKS === "1";
+const LARGE_FIXTURES: readonly ScaleRenderLargeFixture[] = ["scale-10k", "scale-50k"];
+const LARGE_MOUNT_TIMEOUT_MS = 600_000;
+
+for (const surface of LARGE ? SURFACES : []) {
+	for (const fixture of LARGE_FIXTURES) {
+		scenario(
+			`SCALE6: ${surface} ${fixture} mount counts are recorded`,
+			async (_s, page) => {
+				test.skip(test.info().project.name !== "chromium", "scale-render counts are Chromium-only");
+				test.setTimeout(LARGE_MOUNT_TIMEOUT_MS + 120_000);
+				let counts: ScaleRenderCounts | { mountTimedOut: true };
+				try {
+					counts = { mount: await measureMount(page, fixture, LARGE_MOUNT_TIMEOUT_MS) };
+				} catch {
+					counts = { mountTimedOut: true };
+				}
+				await test.info().attach(`scale-render.${surface}.${fixture}`, {
+					body: JSON.stringify(counts, null, 2),
+					contentType: "application/json",
+				});
+				if (RECORD_LARGE) writeLargeCounts(surface, fixture, counts);
+			},
+			{ url: `/?surface=${surface}&probe=render`, axe: false },
+		);
+	}
+}
+
+for (const surface of LARGE ? [] : SURFACES) {
 	for (const fixture of FIXTURES) {
 		scenario(
 			`SCALE6: ${surface} ${fixture} renderer counts match the committed baseline`,

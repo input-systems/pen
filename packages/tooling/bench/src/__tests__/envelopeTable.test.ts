@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { ENVELOPE_SAMPLE_SIZE, SCALE1_MEASUREMENTS } from "../constants/scale1";
 import { envelopeTablePath, loadCommittedEnvelope } from "../envelope/compare";
+import { buildRendererRows } from "../envelope/importRenderer";
 import { renderEnvelopeMarkdown } from "../envelope/table";
 import {
 	assertEnforcementInventoryCoversFixtures,
@@ -61,5 +62,25 @@ describe("SCALE1 generated envelope table", () => {
 		expect(blocks.map((point) => point.count)).toEqual([100, 1000, 5000]);
 		expect(blocks[0]!.count).toBeLessThan(blocks[1]!.count);
 		expect(blocks[1]!.count).toBeLessThan(blocks[2]!.count);
+	});
+
+	it("SCALE1: the Renderer section has one measured row per surface at 1k, 5k, 10k and 50k", async () => {
+		const record = await loadCommittedEnvelope();
+		const ids = record.renderer.map((row) => row.id).sort();
+		const expected = ["react", "vue", "vanilla"]
+			.flatMap((surface) =>
+				["1k", "5k", "10k", "50k"].map((size) => `renderer.${surface}.${size}`),
+			)
+			.sort();
+		expect(ids).toEqual(expected);
+		expect(record.renderer.every((row) => row.grade === "measured")).toBe(true);
+		const markdown = renderEnvelopeMarkdown(record);
+		expect(markdown).toContain("## Renderer");
+		expect(markdown).not.toContain("No renderer suite yet asserts these sizes.");
+	});
+
+	it("SCALE1: committed renderer rows are generated from the conformance scale-render baselines", async () => {
+		const record = await loadCommittedEnvelope();
+		expect(record.renderer).toEqual(await buildRendererRows());
 	});
 });

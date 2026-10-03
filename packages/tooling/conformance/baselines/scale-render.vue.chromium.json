@@ -52,7 +52,7 @@
 		"scale-1k": {
 			"mount": {
 				"commit.affectedBlockIds": 26,
-				"dom.mutationRecords": 3,
+				"dom.mutationRecords": 4,
 				"listeners.invoked.commit": 1,
 				"listeners.invoked.diagnostic": 1,
 				"render.blockRenders": 2053,
@@ -78,7 +78,7 @@
 			},
 			"keystroke": {
 				"commit.affectedBlockIds": 1,
-				"dom.mutationRecords": 3,
+				"dom.mutationRecords": 4,
 				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.total": 1,
 				"listeners.invoked.commit": 7,
@@ -86,17 +86,17 @@
 				"render.blockRenders": 2,
 				"scan.blockOrderReads": 1,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 95,
+				"scan.blocksMapReads": 76,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
-				"scan.textFullReads": 15,
+				"scan.textFullReads": 11,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 4
 			},
 			"caretRight": {
-				"dom.mutationRecords": 2,
+				"dom.mutationRecords": 3,
 				"geometry.boundingClientRect.inFlush": 2,
 				"geometry.boundingClientRect.total": 2,
 				"listeners.invoked.selectionChange": 5,
@@ -104,16 +104,16 @@
 				"render.blockRenders": 2,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 101,
+				"scan.blocksMapReads": 68,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 30,
+				"scan.textFullReads": 10,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 2
 			},
 			"caretDown": {
-				"dom.mutationRecords": 19,
+				"dom.mutationRecords": 20,
 				"geometry.boundingClientRect.inFlush": 2,
 				"geometry.boundingClientRect.outOfFlush": 1581,
 				"geometry.boundingClientRect.total": 1583,
@@ -122,17 +122,17 @@
 				"render.blockRenders": 4,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 128,
+				"scan.blocksMapReads": 97,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 28,
+				"scan.textFullReads": 10,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
 				"notifier.deliveries": 14
 			},
 			"shiftDown": {
-				"dom.mutationRecords": 19,
+				"dom.mutationRecords": 20,
 				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.outOfFlush": 1581,
 				"geometry.boundingClientRect.total": 1582,
@@ -142,10 +142,10 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 123,
+				"scan.blocksMapReads": 109,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 13,
+				"scan.textFullReads": 5,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -153,9 +153,9 @@
 			},
 			"enterParagraph": {
 				"commit.affectedBlockIds": 2,
-				"dom.mutationRecords": 18,
-				"geometry.boundingClientRect.inFlush": 2,
-				"geometry.boundingClientRect.total": 2,
+				"dom.mutationRecords": 22,
+				"geometry.boundingClientRect.inFlush": 10,
+				"geometry.boundingClientRect.total": 10,
 				"listeners.invoked.commit": 7,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 7,
@@ -163,10 +163,10 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3680,
 				"scan.blocksMapIterations": 4203,
-				"scan.blocksMapReads": 2326,
+				"scan.blocksMapReads": 2299,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
-				"scan.textFullReads": 32,
+				"scan.textFullReads": 24,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -174,9 +174,9 @@
 			},
 			"enterNumbered": {
 				"commit.affectedBlockIds": 2,
-				"dom.mutationRecords": 18,
-				"geometry.boundingClientRect.inFlush": 2,
-				"geometry.boundingClientRect.total": 2,
+				"dom.mutationRecords": 22,
+				"geometry.boundingClientRect.inFlush": 10,
+				"geometry.boundingClientRect.total": 10,
 				"listeners.invoked.commit": 7,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 7,
@@ -184,10 +184,10 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3690,
 				"scan.blocksMapIterations": 4203,
-				"scan.blocksMapReads": 2690,
+				"scan.blocksMapReads": 2663,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
-				"scan.textFullReads": 32,
+				"scan.textFullReads": 24,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -215,7 +215,7 @@
 		"scale-5k": {
 			"mount": {
 				"commit.affectedBlockIds": 130,
-				"dom.mutationRecords": 3,
+				"dom.mutationRecords": 4,
 				"listeners.invoked.commit": 1,
 				"listeners.invoked.diagnostic": 1,
 				"render.blockRenders": 10265,
@@ -241,7 +241,7 @@
 			},
 			"keystroke": {
 				"commit.affectedBlockIds": 1,
-				"dom.mutationRecords": 3,
+				"dom.mutationRecords": 4,
 				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.total": 1,
 				"listeners.invoked.commit": 7,
@@ -249,17 +249,17 @@
 				"render.blockRenders": 2,
 				"scan.blockOrderReads": 1,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 95,
+				"scan.blocksMapReads": 76,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2,
-				"scan.textFullReads": 15,
+				"scan.textFullReads": 11,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 4
 			},
 			"caretRight": {
-				"dom.mutationRecords": 2,
+				"dom.mutationRecords": 3,
 				"geometry.boundingClientRect.inFlush": 2,
 				"geometry.boundingClientRect.total": 2,
 				"listeners.invoked.selectionChange": 5,
@@ -267,16 +267,16 @@
 				"render.blockRenders": 2,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 101,
+				"scan.blocksMapReads": 68,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 30,
+				"scan.textFullReads": 10,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
 				"notifier.deliveries": 2
 			},
 			"caretDown": {
-				"dom.mutationRecords": 19,
+				"dom.mutationRecords": 20,
 				"geometry.boundingClientRect.inFlush": 2,
 				"geometry.boundingClientRect.outOfFlush": 7881,
 				"geometry.boundingClientRect.total": 7883,
@@ -285,17 +285,17 @@
 				"render.blockRenders": 4,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 128,
+				"scan.blocksMapReads": 97,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 28,
+				"scan.textFullReads": 10,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
 				"notifier.deliveries": 14
 			},
 			"shiftDown": {
-				"dom.mutationRecords": 19,
+				"dom.mutationRecords": 20,
 				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.outOfFlush": 7881,
 				"geometry.boundingClientRect.total": 7882,
@@ -305,10 +305,10 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 0,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 123,
+				"scan.blocksMapReads": 109,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
-				"scan.textFullReads": 13,
+				"scan.textFullReads": 5,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
 				"render.blocksRendered": 2,
@@ -316,9 +316,9 @@
 			},
 			"enterParagraph": {
 				"commit.affectedBlockIds": 2,
-				"dom.mutationRecords": 18,
-				"geometry.boundingClientRect.inFlush": 2,
-				"geometry.boundingClientRect.total": 2,
+				"dom.mutationRecords": 22,
+				"geometry.boundingClientRect.inFlush": 10,
+				"geometry.boundingClientRect.total": 10,
 				"listeners.invoked.commit": 7,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 7,
@@ -326,10 +326,10 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 18380,
 				"scan.blocksMapIterations": 21003,
-				"scan.blocksMapReads": 10726,
+				"scan.blocksMapReads": 10699,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
-				"scan.textFullReads": 32,
+				"scan.textFullReads": 24,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -337,9 +337,9 @@
 			},
 			"enterNumbered": {
 				"commit.affectedBlockIds": 2,
-				"dom.mutationRecords": 18,
-				"geometry.boundingClientRect.inFlush": 2,
-				"geometry.boundingClientRect.total": 2,
+				"dom.mutationRecords": 22,
+				"geometry.boundingClientRect.inFlush": 10,
+				"geometry.boundingClientRect.total": 10,
 				"listeners.invoked.commit": 7,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 7,
@@ -347,10 +347,10 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 18390,
 				"scan.blocksMapIterations": 21003,
-				"scan.blocksMapReads": 11090,
+				"scan.blocksMapReads": 11063,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
-				"scan.textFullReads": 32,
+				"scan.textFullReads": 24,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
 				"dom.blocksTouched": 2,
@@ -373,6 +373,125 @@
 				"render.blocksRendered": 1,
 				"dom.blocksTouched": 1,
 				"notifier.deliveries": 3
+			}
+		}
+	},
+	"largeCounts": {
+		"scale-10k": {
+			"mount": {
+				"commit.affectedBlockIds": 260,
+				"dom.mutationRecords": 3,
+				"listeners.invoked.commit": 1,
+				"listeners.invoked.diagnostic": 1,
+				"render.blockRenders": 20530,
+				"render.contentRenders": 1,
+				"scan.blockOrderReads": 84000,
+				"scan.blocksMapIterations": 41990,
+				"scan.blocksMapReads": 341848,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 21004,
+				"scan.textFullReads": 30550,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 10500,
+				"notifier.deliveries": 0,
+				"listeners.live.commit": 8,
+				"listeners.live.selectionChange": 5,
+				"listeners.live.historyApplied": 3,
+				"listeners.live.diagnostic": 1,
+				"listeners.live.decorationsChange": 2,
+				"listeners.live.store": 1,
+				"listeners.live.total": 20,
+				"notifier.blockSubscribers": 20530,
+				"mount.blocksMounted": 10500
+			}
+		},
+		"scale-50k": {
+			"mount": {
+				"commit.affectedBlockIds": 1300,
+				"dom.mutationRecords": 3,
+				"listeners.invoked.commit": 1,
+				"listeners.invoked.diagnostic": 1,
+				"render.blockRenders": 102650,
+				"render.contentRenders": 1,
+				"scan.blockOrderReads": 1470000,
+				"scan.blocksMapIterations": 209950,
+				"scan.blocksMapReads": 1709208,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 105004,
+				"scan.textFullReads": 152750,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 52500,
+				"notifier.deliveries": 0,
+				"listeners.live.commit": 8,
+				"listeners.live.selectionChange": 5,
+				"listeners.live.historyApplied": 3,
+				"listeners.live.diagnostic": 1,
+				"listeners.live.decorationsChange": 2,
+				"listeners.live.store": 1,
+				"listeners.live.total": 20,
+				"notifier.blockSubscribers": 102650,
+				"mount.blocksMounted": 52500
+			}
+		}
+	},
+	"clocks": {
+		"recordedAt": "2026-10-03",
+		"machineClass": "macos-arm64 (darwin 27, Apple Silicon). Not the CI runner (github-actions-ubuntu-latest).",
+		"load": {
+			"load1": 4.57568359375,
+			"ncpu": 14,
+			"busy": false
+		},
+		"browserVersion": "151.0.7922.34",
+		"statistic": "median",
+		"floors": {
+			"scale-1k": {
+				"mountMs": {
+					"p50": 27.5,
+					"n": 5,
+					"min": 22.2,
+					"max": 35.2
+				},
+				"keystrokeToFrameMs": {
+					"p50": 11.9,
+					"n": 20,
+					"min": 9,
+					"max": 13.8
+				},
+				"heapAfterMountBytes": 18685552
+			}
+		},
+		"fixtures": {
+			"scale-1k": {
+				"mountMs": {
+					"p50": 86.3,
+					"n": 5,
+					"min": 79.6,
+					"max": 119
+				},
+				"keystrokeToFrameMs": {
+					"p50": 5.4,
+					"n": 20,
+					"min": 2.1,
+					"max": 17
+				},
+				"caretRightToFrameMs": {
+					"p50": 7.8,
+					"n": 20,
+					"min": 1.3,
+					"max": 11.3
+				},
+				"caretDownToFrameMs": {
+					"p50": 9.5,
+					"n": 20,
+					"min": 8.9,
+					"max": 16
+				},
+				"scrollLongTasks": {
+					"count": 0,
+					"totalMs": 0
+				},
+				"heapAfterMountBytes": 110547360
 			}
 		}
 	},
@@ -834,6 +953,162 @@
 				"vue/scale-5k/enterParagraph/geometry.boundingClientRect.total: new metric — re-record",
 				"vue/scale-5k/enterNumbered/geometry.boundingClientRect.inFlush: new metric — re-record",
 				"vue/scale-5k/enterNumbered/geometry.boundingClientRect.total: new metric — re-record"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 16: cross-block reads form through core T2 (convertPointerDrag over a two-block scoped snapshot); shiftDown +16 map reads, +4 text reads, equal at 1k and 5k",
+			"moved": [
+				"vue/scale-1k/shiftDown/scan.blocksMapReads: 139 !== 123",
+				"vue/scale-1k/shiftDown/scan.textFullReads: 17 !== 13"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 16: cross-block reads form through core T2 (convertPointerDrag over a two-block scoped snapshot); shiftDown +16 map reads, +4 text reads, equal at 1k and 5k",
+			"moved": [
+				"vue/scale-5k/shiftDown/scan.blocksMapReads: 139 !== 123",
+				"vue/scale-5k/shiftDown/scan.textFullReads: 17 !== 13"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 1: the overlay layer is appended once at mount and its data-pen-overlay-selection-version is written once per selection change on Vue and vanilla; +1 dom.mutationRecords per action, equal at 1k and 5k",
+			"moved": [
+				"vue/scale-5k/mount/dom.mutationRecords: 4 !== 3",
+				"vue/scale-5k/keystroke/dom.mutationRecords: 4 !== 3",
+				"vue/scale-5k/caretRight/dom.mutationRecords: 3 !== 2",
+				"vue/scale-5k/caretDown/dom.mutationRecords: 20 !== 19",
+				"vue/scale-5k/shiftDown/dom.mutationRecords: 20 !== 19",
+				"vue/scale-5k/enterParagraph/dom.mutationRecords: 19 !== 18",
+				"vue/scale-5k/enterNumbered/dom.mutationRecords: 19 !== 18"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 1: the overlay layer is appended once at mount and its data-pen-overlay-selection-version is written once per selection change on Vue and vanilla; +1 dom.mutationRecords per action, equal at 1k and 5k",
+			"moved": [
+				"vue/scale-1k/mount/dom.mutationRecords: 4 !== 3",
+				"vue/scale-1k/keystroke/dom.mutationRecords: 4 !== 3",
+				"vue/scale-1k/caretRight/dom.mutationRecords: 3 !== 2",
+				"vue/scale-1k/caretDown/dom.mutationRecords: 20 !== 19",
+				"vue/scale-1k/shiftDown/dom.mutationRecords: 20 !== 19",
+				"vue/scale-1k/enterParagraph/dom.mutationRecords: 19 !== 18",
+				"vue/scale-1k/enterNumbered/dom.mutationRecords: 19 !== 18"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 3: the overlay is on by default; per action it reads the caret block's inline facts (+3 blocks-map reads, +1 text read), measures the caret and layer origin in the read phase (+2..+8 in-flush rect reads) and writes its plan (+1 mutation record); equal at 1k and 5k",
+			"moved": [
+				"vue/scale-1k/keystroke/scan.blocksMapReads: 98 !== 95",
+				"vue/scale-1k/keystroke/scan.textFullReads: 16 !== 15",
+				"vue/scale-1k/enterParagraph/dom.mutationRecords: 22 !== 19",
+				"vue/scale-1k/enterParagraph/geometry.boundingClientRect.inFlush: 10 !== 2",
+				"vue/scale-1k/enterParagraph/geometry.boundingClientRect.total: 10 !== 2",
+				"vue/scale-1k/enterParagraph/scan.blocksMapReads: 2329 !== 2326",
+				"vue/scale-1k/enterParagraph/scan.textFullReads: 33 !== 32",
+				"vue/scale-1k/enterNumbered/dom.mutationRecords: 22 !== 19",
+				"vue/scale-1k/enterNumbered/geometry.boundingClientRect.inFlush: 10 !== 2",
+				"vue/scale-1k/enterNumbered/geometry.boundingClientRect.total: 10 !== 2",
+				"vue/scale-1k/enterNumbered/scan.blocksMapReads: 2693 !== 2690",
+				"vue/scale-1k/enterNumbered/scan.textFullReads: 33 !== 32"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 3: the overlay is on by default; per action it reads the caret block's inline facts (+3 blocks-map reads, +1 text read), measures the caret and layer origin in the read phase (+2..+8 in-flush rect reads) and writes its plan (+1 mutation record); equal at 1k and 5k",
+			"moved": [
+				"vue/scale-5k/keystroke/scan.blocksMapReads: 98 !== 95",
+				"vue/scale-5k/keystroke/scan.textFullReads: 16 !== 15",
+				"vue/scale-5k/enterParagraph/dom.mutationRecords: 22 !== 19",
+				"vue/scale-5k/enterParagraph/geometry.boundingClientRect.inFlush: 10 !== 2",
+				"vue/scale-5k/enterParagraph/geometry.boundingClientRect.total: 10 !== 2",
+				"vue/scale-5k/enterParagraph/scan.blocksMapReads: 10729 !== 10726",
+				"vue/scale-5k/enterParagraph/scan.textFullReads: 33 !== 32",
+				"vue/scale-5k/enterNumbered/dom.mutationRecords: 22 !== 19",
+				"vue/scale-5k/enterNumbered/geometry.boundingClientRect.inFlush: 10 !== 2",
+				"vue/scale-5k/enterNumbered/geometry.boundingClientRect.total: 10 !== 2",
+				"vue/scale-5k/enterNumbered/scan.blocksMapReads: 11093 !== 11090",
+				"vue/scale-5k/enterNumbered/scan.textFullReads: 33 !== 32"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 4 (N1): BlockHandle.length() reads Y.Text length instead of toString(); every action does fewer full text reads (-2 to -9), equal at 1k and 5k",
+			"moved": [
+				"vue/scale-1k/keystroke/scan.textFullReads: 14 !== 16",
+				"vue/scale-1k/caretRight/scan.textFullReads: 21 !== 30",
+				"vue/scale-1k/caretDown/scan.textFullReads: 25 !== 28",
+				"vue/scale-1k/shiftDown/scan.textFullReads: 9 !== 17",
+				"vue/scale-1k/enterParagraph/scan.textFullReads: 28 !== 33",
+				"vue/scale-1k/enterNumbered/scan.textFullReads: 28 !== 33"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 4 (N1): BlockHandle.length() reads Y.Text length instead of toString(); every action does fewer full text reads (-2 to -9), equal at 1k and 5k",
+			"moved": [
+				"vue/scale-5k/keystroke/scan.textFullReads: 14 !== 16",
+				"vue/scale-5k/caretRight/scan.textFullReads: 21 !== 30",
+				"vue/scale-5k/caretDown/scan.textFullReads: 25 !== 28",
+				"vue/scale-5k/shiftDown/scan.textFullReads: 9 !== 17",
+				"vue/scale-5k/enterParagraph/scan.textFullReads: 28 !== 33",
+				"vue/scale-5k/enterNumbered/scan.textFullReads: 28 !== 33"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 5: the EditContext backend tests emptiness with Y.Text length instead of toString(); full text reads drop by 1 to 12 per action, equal at 1k and 5k",
+			"moved": [
+				"vue/scale-1k/keystroke/scan.textFullReads: 13 !== 14",
+				"vue/scale-1k/caretRight/scan.textFullReads: 13 !== 21",
+				"vue/scale-1k/caretDown/scan.textFullReads: 13 !== 25",
+				"vue/scale-1k/enterParagraph/scan.textFullReads: 24 !== 28",
+				"vue/scale-1k/enterNumbered/scan.textFullReads: 24 !== 28"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 5: the EditContext backend tests emptiness with Y.Text length instead of toString(); full text reads drop by 1 to 12 per action, equal at 1k and 5k",
+			"moved": [
+				"vue/scale-5k/keystroke/scan.textFullReads: 13 !== 14",
+				"vue/scale-5k/caretRight/scan.textFullReads: 13 !== 21",
+				"vue/scale-5k/caretDown/scan.textFullReads: 13 !== 25",
+				"vue/scale-5k/enterParagraph/scan.textFullReads: 24 !== 28",
+				"vue/scale-5k/enterNumbered/scan.textFullReads: 24 !== 28"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 22: identical endpoints are equivalent without a normal-position snapshot, and null/app/block/unedited-cell projections skip the text read-back; scan reads drop and stay flat 1k→5k",
+			"moved": [
+				"vue/scale-1k/keystroke/scan.blocksMapReads: 76 !== 98",
+				"vue/scale-1k/keystroke/scan.textFullReads: 11 !== 13",
+				"vue/scale-1k/caretRight/scan.blocksMapReads: 68 !== 101",
+				"vue/scale-1k/caretRight/scan.textFullReads: 10 !== 13",
+				"vue/scale-1k/caretDown/scan.blocksMapReads: 97 !== 128",
+				"vue/scale-1k/caretDown/scan.textFullReads: 10 !== 13",
+				"vue/scale-1k/shiftDown/scan.blocksMapReads: 109 !== 139",
+				"vue/scale-1k/shiftDown/scan.textFullReads: 5 !== 9",
+				"vue/scale-1k/enterParagraph/scan.blocksMapReads: 2299 !== 2329",
+				"vue/scale-1k/enterNumbered/scan.blocksMapReads: 2663 !== 2693"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 22: identical endpoints are equivalent without a normal-position snapshot, and null/app/block/unedited-cell projections skip the text read-back; scan reads drop and stay flat 1k→5k",
+			"moved": [
+				"vue/scale-5k/keystroke/scan.blocksMapReads: 76 !== 98",
+				"vue/scale-5k/keystroke/scan.textFullReads: 11 !== 13",
+				"vue/scale-5k/caretRight/scan.blocksMapReads: 68 !== 101",
+				"vue/scale-5k/caretRight/scan.textFullReads: 10 !== 13",
+				"vue/scale-5k/caretDown/scan.blocksMapReads: 97 !== 128",
+				"vue/scale-5k/caretDown/scan.textFullReads: 10 !== 13",
+				"vue/scale-5k/shiftDown/scan.blocksMapReads: 109 !== 139",
+				"vue/scale-5k/shiftDown/scan.textFullReads: 5 !== 9",
+				"vue/scale-5k/enterParagraph/scan.blocksMapReads: 10699 !== 10729",
+				"vue/scale-5k/enterNumbered/scan.blocksMapReads: 11063 !== 11093"
 			]
 		}
 	]

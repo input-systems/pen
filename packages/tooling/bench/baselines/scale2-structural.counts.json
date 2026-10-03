@@ -6,7 +6,7 @@
 			"blockOrderReads": 389,
 			"blocksMapReads": 127,
 			"blocksMapIterations": 431,
-			"textFullReads": 6,
+			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
@@ -22,7 +22,7 @@
 			"blockOrderReads": 3686,
 			"blocksMapReads": 1072,
 			"blocksMapIterations": 4211,
-			"textFullReads": 6,
+			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
@@ -38,7 +38,7 @@
 			"blockOrderReads": 18386,
 			"blocksMapReads": 5272,
 			"blocksMapIterations": 21011,
-			"textFullReads": 6,
+			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
@@ -55,6 +55,10 @@
 		{
 			"date": "2026-10-02",
 			"reason": "Initial record (W2-S8): structural commits re-read only the named blocks' text; remote blockOrder changes report exact ids"
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 4 (N1): BlockHandle.length() reads Y.Text length instead of toString(), so an Enter does one fewer full text read"
 		}
 	]
 }

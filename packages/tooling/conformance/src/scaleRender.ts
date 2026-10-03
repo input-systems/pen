@@ -32,6 +32,50 @@ export type ScaleRenderCounts = Partial<
 	Record<ScaleRenderAction, Record<ScaleRenderMetric, number>>
 >;
 
+/** Every fixture a clock or large-count run can mount. */
+export type ScaleRenderClockFixture = ScaleRenderCountFixture | "scale-10k" | "scale-50k";
+export type ScaleRenderLargeFixture = "scale-10k" | "scale-50k";
+
+export interface ClockSample {
+	readonly p50: number;
+	readonly n: number;
+	readonly min: number;
+	readonly max: number;
+}
+
+export interface ScaleRenderFixtureClocks {
+	readonly mountMs: ClockSample;
+	readonly keystrokeToFrameMs: ClockSample;
+	readonly caretRightToFrameMs: ClockSample;
+	readonly caretDownToFrameMs: ClockSample;
+	readonly scrollLongTasks: { readonly count: number; readonly totalMs: number };
+	readonly heapAfterMountBytes: number;
+}
+
+/** Pen removed (`?surface=static`): the floor a clock row is published with (CH8). */
+export interface ScaleRenderFloorClocks {
+	readonly mountMs: ClockSample;
+	readonly keystrokeToFrameMs: ClockSample;
+	readonly heapAfterMountBytes: number;
+}
+
+/** A fixture that did not mount inside the test timeout: itself evidence (D30). */
+export interface ScaleRenderTimedOut {
+	readonly mountTimedOut: true;
+}
+
+export interface ScaleRenderClocks {
+	readonly recordedAt: string;
+	readonly machineClass: string;
+	readonly load: { readonly load1: number; readonly ncpu: number; readonly busy: boolean };
+	readonly browserVersion: string;
+	readonly statistic: "median";
+	readonly floors: Partial<Record<ScaleRenderClockFixture, ScaleRenderFloorClocks>>;
+	readonly fixtures: Partial<
+		Record<ScaleRenderClockFixture, ScaleRenderFixtureClocks | ScaleRenderTimedOut>
+	>;
+}
+
 export interface ScaleRenderFixtureRecord {
 	readonly generator: "@input/pen-test generateMixedBlockSpecs + mixedFixtureOps";
 	readonly contentSha256: string;
@@ -45,6 +89,12 @@ export interface ScaleRenderBaseline {
 	readonly fixtures: Partial<Record<ScaleRenderCountFixture, ScaleRenderFixtureRecord>>;
 	/** Gated. Any drift fails by name. */
 	readonly counts: Partial<Record<ScaleRenderCountFixture, ScaleRenderCounts>>;
+	/** Mount counts at 10k / 50k from the large run; never compared. */
+	readonly largeCounts?: Partial<
+		Record<ScaleRenderLargeFixture, ScaleRenderCounts | ScaleRenderTimedOut>
+	>;
+	/** Recorded only; never compared (CH8). */
+	readonly clocks?: ScaleRenderClocks | null;
 	/** One entry per re-record: what moved and why (SCALE3). */
 	readonly history: readonly {
 		readonly date: string;
@@ -72,9 +122,11 @@ export interface ScaleRenderInvariant {
 	readonly closedBy: string;
 }
 
-export const SCALE_RENDER_ROOT_COUNTS: Readonly<Record<ScaleRenderCountFixture, number>> = {
+export const SCALE_RENDER_ROOT_COUNTS: Readonly<Record<ScaleRenderClockFixture, number>> = {
 	"scale-1k": 1_000,
 	"scale-5k": 5_000,
+	"scale-10k": 10_000,
+	"scale-50k": 50_000,
 };
 
 const BASELINE_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "baselines");
@@ -218,10 +270,62 @@ export function writeBaseline(
 		browser: "chromium",
 		fixtures,
 		counts,
+		...(previous?.largeCounts ? { largeCounts: previous.largeCounts } : {}),
+		...(previous?.clocks ? { clocks: previous.clocks } : {}),
 		history: [
 			...(previous?.history ?? []),
 			{ date: new Date().toISOString().slice(0, 10), reason, moved },
 		],
 	};
 	writeFileSync(baselinePath(surface), `${JSON.stringify(baseline, null, "\t")}\n`);
+}
+
+export function clockSample(values: readonly number[]): ClockSample {
+	const sorted = [...values].sort((a, b) => a - b);
+	const round = (value: number) => Math.round(value * 100) / 100;
+	return {
+		p50: round(sorted[Math.floor(sorted.length / 2)] ?? 0),
+		n: sorted.length,
+		min: round(sorted[0] ?? 0),
+		max: round(sorted[sorted.length - 1] ?? 0),
+	};
+}
+
+function rewriteBaseline(
+	surface: ScaleRenderSurface,
+	update: (previous: ScaleRenderBaseline) => ScaleRenderBaseline,
+): void {
+	const previous = loadBaseline(surface);
+	if (!previous) throw new Error(`record scale-render counts for ${surface} before clocks`);
+	writeFileSync(baselinePath(surface), `${JSON.stringify(update(previous), null, "\t")}\n`);
+}
+
+/** Merges one fixture's clocks and floor into the surface baseline. Never compared. */
+export function writeClocks(
+	surface: ScaleRenderSurface,
+	stamp: Omit<ScaleRenderClocks, "floors" | "fixtures">,
+	fixture: ScaleRenderClockFixture,
+	clocks: ScaleRenderFixtureClocks | ScaleRenderTimedOut,
+	floor: ScaleRenderFloorClocks,
+): void {
+	rewriteBaseline(surface, (previous) => ({
+		...previous,
+		clocks: {
+			...stamp,
+			floors: { ...previous.clocks?.floors, [fixture]: floor },
+			fixtures: { ...previous.clocks?.fixtures, [fixture]: clocks },
+		},
+	}));
+}
+
+/** Merges one large fixture's counts into the surface baseline. Never compared. */
+export function writeLargeCounts(
+	surface: ScaleRenderSurface,
+	fixture: ScaleRenderLargeFixture,
+	counts: ScaleRenderCounts | ScaleRenderTimedOut,
+): void {
+	rewriteBaseline(surface, (previous) => ({
+		...previous,
+		largeCounts: { ...previous.largeCounts, [fixture]: counts },
+	}));
 }

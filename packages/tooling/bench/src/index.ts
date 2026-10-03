@@ -43,6 +43,8 @@ export {
 export type { EnvelopeAxis, EnvelopeRungId } from "./constants/scale1";
 export { buildEnvelopeRecord, compareEnvelopeDrift } from "./envelope/compare";
 export type { EnvelopeRecord } from "./envelope/compare";
+export { detectLoadSnapshot, detectMachineClass } from "./envelope/machine";
+export type { EnvelopeLoadSnapshot } from "./envelope/machine";
 export {
 	SCALE2_PLUS8_BASE_ID,
 	SCALE2_PLUS8_ID,
