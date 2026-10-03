@@ -16,6 +16,7 @@ This package is where most adopters start when embedding Pen in a React applicat
 - Editor primitives such as `EditorRoot`, `EditorContent`, `EditorBlock`, `EditorCaretOverlay`, `CARET`, selection rects, and field-editor wrappers
 - Toolbar, slash-menu, selection-toolbar, search, AI, AI suggestions, history, and multiplayer primitives
 - Hooks such as `useEditor`, `useSelection`, `useDecorations`, `useBlockList`, `useSearch`, `useAI`, and related state hooks
+- `useReducedMotion()` exposes the editor root's AX6 signal (false outside a root and during SSR)
 - Advanced contexts and renderer options for custom composition
 - Workspace scripts: `build`, `clean`, `dev`, `test`, `typecheck`
 

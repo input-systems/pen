@@ -67,13 +67,14 @@ Do not invent attributes that are not in this list.
 
 ### Editor shell (`PenEditor`)
 
-| Attribute              | Value   | Meaning                                                |
-| ---------------------- | ------- | ------------------------------------------------------ |
-| `data-pen-editor-root` | present | Editor root. Host CSS starts here.                     |
-| `data-pen-view-id`     | view id | Distinguishes this view from another on the same page. |
-| `data-focused`         | present | Root contains focus.                                   |
-| `data-readonly`        | present | `readonly` prop is on.                                 |
-| `data-empty`           | present | Document has no content.                               |
+| Attribute                 | Value   | Meaning                                                                |
+| ------------------------- | ------- | ---------------------------------------------------------------------- |
+| `data-pen-editor-root`    | present | Editor root. Host CSS starts here.                                     |
+| `data-pen-view-id`        | view id | Distinguishes this view from another on the same page.                 |
+| `data-focused`            | present | Root contains focus.                                                   |
+| `data-pen-reduced-motion` | present | The root's AX6 reduced-motion signal is set; make transitions instant. |
+| `data-readonly`           | present | `readonly` prop is on.                                                 |
+| `data-empty`              | present | Document has no content.                                               |
 
 ### Content (`PenContent`)
 

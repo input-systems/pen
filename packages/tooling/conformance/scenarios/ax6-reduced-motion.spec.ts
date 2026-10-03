@@ -125,8 +125,8 @@ scenario(
 	async (s, page) => {
 		assertPrefersReducedMotionSingleSite();
 
-		const media = await page.evaluate(() =>
-			window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+		const media = await page.evaluate(
+			() => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
 		);
 		expect(media).toBe(true);
 		expect(
@@ -141,6 +141,10 @@ scenario(
 			caret,
 			"AX6: caret animation-name must be none under reduced motion",
 		).toHaveCSS("animation-name", "none");
+		await expect(
+			page.locator("[data-pen-editor-root]"),
+			"AX6: the root reflects reduced motion for transitions",
+		).toHaveAttribute("data-pen-reduced-motion", "");
 
 		const running = await collectRunningAnimations(page);
 		expect(running, "AX6: editor surface produced animated frames").toEqual(
@@ -156,8 +160,8 @@ scenario(
 scenario(
 	"AX6: without reduced-motion the blink token animates the overlay caret",
 	async (s, page) => {
-		const media = await page.evaluate(() =>
-			window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+		const media = await page.evaluate(
+			() => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
 		);
 		expect(media).toBe(false);
 		expect(
@@ -172,6 +176,9 @@ scenario(
 			caret,
 			"AX6: caret must blink when reduced motion is off",
 		).toHaveCSS("animation-name", AX6_CARET_BLINK_NAME);
+		await expect(
+			page.locator("[data-pen-editor-root]"),
+		).not.toHaveAttribute("data-pen-reduced-motion");
 
 		const running = await collectRunningAnimations(page);
 		expect(

@@ -5,6 +5,7 @@ import {
 	AX6_MOTION_MAPPING,
 	REDUCED_MOTION_QUERY,
 	createReducedMotionSignal,
+	getRootReducedMotion,
 } from "../motion";
 
 type MockMediaQueryList = {
@@ -168,5 +169,45 @@ describe("createReducedMotionSignal (AX6)", () => {
 				value: originalView,
 			});
 		}
+	});
+});
+
+describe("getRootReducedMotion (AX6)", () => {
+	it("AX6: handles on one root share one matchMedia listener and release it with the last handle", () => {
+		const mediaQueryList = createMockMediaQueryList(false);
+		const addListener = vi.spyOn(mediaQueryList, "addEventListener");
+		const removeListener = vi.spyOn(mediaQueryList, "removeEventListener");
+		vi.stubGlobal("matchMedia", () => mediaQueryList);
+		const root = document.createElement("div");
+
+		const first = getRootReducedMotion(root);
+		const second = getRootReducedMotion(root);
+		expect(addListener).toHaveBeenCalledTimes(1);
+
+		const seen: boolean[] = [];
+		second.subscribe(() => seen.push(second.reduced));
+		mediaQueryList.dispatch(true);
+		expect(first.reduced).toBe(true);
+		expect(seen).toEqual([true]);
+
+		second.dispose();
+		mediaQueryList.dispatch(false);
+		expect(seen).toEqual([true]);
+		expect(removeListener).not.toHaveBeenCalled();
+
+		first.dispose();
+		expect(removeListener).toHaveBeenCalledTimes(1);
+	});
+
+	it("AX6: separate roots get separate signals", () => {
+		const mediaQueryList = createMockMediaQueryList(false);
+		const addListener = vi.spyOn(mediaQueryList, "addEventListener");
+		vi.stubGlobal("matchMedia", () => mediaQueryList);
+
+		const a = getRootReducedMotion(document.createElement("div"));
+		const b = getRootReducedMotion(document.createElement("div"));
+		expect(addListener).toHaveBeenCalledTimes(2);
+		a.dispose();
+		b.dispose();
 	});
 });

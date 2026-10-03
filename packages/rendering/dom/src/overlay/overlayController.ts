@@ -11,7 +11,8 @@ import type {
 	Unsubscribe,
 } from "@input/pen-types";
 import {
-	createReducedMotionSignal,
+	getRootReducedMotion,
+	REDUCED_MOTION_ATTR,
 	type ReducedMotionSignal,
 } from "../a11y/motion";
 import { shouldUseBlockSelection } from "../field-editor/crossBlock";
@@ -21,10 +22,7 @@ import type { GeometryReaderHost } from "../geometry/geometryReader";
 import type { Point, Rect } from "../geometry/types";
 import type { DomScheduler, OverlayPainter } from "../scheduler";
 import { DATA_ATTRS } from "../utils/dataAttributes";
-import {
-	createOverlayLayerElement,
-	OverlayLayerPainter,
-} from "./overlayLayer";
+import { createOverlayLayerElement, OverlayLayerPainter } from "./overlayLayer";
 import type { OverlayCaretVariant } from "./overlayStyles";
 import type {
 	OverlayContributor,
@@ -56,7 +54,7 @@ export type OverlayControllerOptions = {
 	readonly field: OverlayFieldSource;
 	readonly reader: GeometryReaderHost;
 	readonly scheduler: DomScheduler;
-	/** Defaults to a signal created for `root`, owned and disposed by the controller. */
+	/** Defaults to a handle on the root's shared signal, released by the controller. */
 	readonly reducedMotion?: ReducedMotionSignal;
 };
 
@@ -165,7 +163,7 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		this.root.appendChild(this.layer);
 		this.scheduler.setOverlayPainter(this);
 		this.reducedMotion =
-			this.sharedReducedMotion ?? createReducedMotionSignal(this.root);
+			this.sharedReducedMotion ?? getRootReducedMotion(this.root);
 		const motion = this.reducedMotion;
 		this.unsubscribers.push(
 			this.reader.onGenerationBump(() => {
@@ -197,6 +195,7 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		this.reducedMotion = null;
 		this.scheduler.setOverlayPainter(null);
 		this.syncNativeCaret(false);
+		this.syncReducedMotionAttr(false);
 		this.painter.clear();
 		// The layer keeps its OV4 attributes while detached: the first paint
 		// after a re-attach rewrites them only if they changed, and a detach
@@ -324,7 +323,11 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 			solidCaret,
 			epoch: this.epoch,
 		};
-		if (!this.dirty && this.lastInputs && inputsEqual(this.lastInputs, inputs)) {
+		if (
+			!this.dirty &&
+			this.lastInputs &&
+			inputsEqual(this.lastInputs, inputs)
+		) {
 			return;
 		}
 		this.dirty = false;
@@ -383,6 +386,7 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 			const painted = this._plan ?? next;
 			this.writeLayerState(painted);
 			this.syncNativeCaret(painted.nativeCaretHidden);
+			this.syncReducedMotionAttr(painted.solidCaret);
 			for (const listener of [...this.listeners]) {
 				listener(painted);
 			}
@@ -516,7 +520,13 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		const items: OverlayPaintItem[] = [];
 		const unresolved: Unresolved[] = [];
 		for (const { contributor, request } of requests) {
-			this.resolveRequest(contributor, request, origin, items, unresolved);
+			this.resolveRequest(
+				contributor,
+				request,
+				origin,
+				items,
+				unresolved,
+			);
 		}
 		return { items, unresolved };
 	}
@@ -537,7 +547,10 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		};
 		switch (request.kind) {
 			case "caret": {
-				const rect = this.reader.caretRect(request.point, request.affinity);
+				const rect = this.reader.caretRect(
+					request.point,
+					request.affinity,
+				);
 				if (!rect) {
 					unresolved.push({
 						key: request.key,
@@ -558,7 +571,9 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 					attributes: request.attributes,
 					label: request.label,
 					paint:
-						local && this.caretPaintHolds > 0 ? "binding" : base.paint,
+						local && this.caretPaintHolds > 0
+							? "binding"
+							: base.paint,
 					epoch: local ? this.epoch : 0,
 				});
 				return;
@@ -605,7 +620,12 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 				const bottom = Math.max(request.anchor.row, request.head.row);
 				const left = Math.min(request.anchor.col, request.head.col);
 				const right = Math.max(request.anchor.col, request.head.col);
-				const start = measureCellRect(this.root, request.blockId, top, left);
+				const start = measureCellRect(
+					this.root,
+					request.blockId,
+					top,
+					left,
+				);
 				const end = measureCellRect(
 					this.root,
 					request.blockId,
@@ -661,7 +681,9 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 	/** Write phase: OV4's painted version and the caret-visible flag on the layer. */
 	private writeLayerState(plan: OverlayPaintPlan): void {
 		const version = String(plan.selectionVersion);
-		if (this.layer.getAttribute(OVERLAY_SELECTION_VERSION_ATTR) !== version) {
+		if (
+			this.layer.getAttribute(OVERLAY_SELECTION_VERSION_ATTR) !== version
+		) {
 			this.layer.setAttribute(OVERLAY_SELECTION_VERSION_ATTR, version);
 		}
 		const caretVisible = this.layer.hasAttribute(CARET_VISIBLE_ATTR);
@@ -669,6 +691,14 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 			this.layer.setAttribute(CARET_VISIBLE_ATTR, "");
 		} else if (!plan.nativeCaretHidden && caretVisible) {
 			this.layer.removeAttribute(CARET_VISIBLE_ATTR);
+		}
+	}
+
+	/** Write phase: AX6's presence-only root attribute (HOST6). */
+	private syncReducedMotionAttr(reduced: boolean): void {
+		// Library and host transitions select on it.
+		if (this.root.hasAttribute(REDUCED_MOTION_ATTR) !== reduced) {
+			this.root.toggleAttribute(REDUCED_MOTION_ATTR, reduced);
 		}
 	}
 

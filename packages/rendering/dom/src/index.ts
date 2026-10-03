@@ -102,7 +102,12 @@ export {
 	urlPolicyFromEditor,
 } from "./security/resolveEditorUrl";
 export { urlPolicyExtension } from "./security/urlPolicyExtension";
-export { createReducedMotionSignal } from "./a11y/motion";
+export {
+	AX6_MOTION_MAPPING,
+	REDUCED_MOTION_ATTR,
+	createReducedMotionSignal,
+	getRootReducedMotion,
+} from "./a11y/motion";
 export type { ReducedMotionListener, ReducedMotionSignal } from "./a11y/motion";
 export { DomScheduler } from "./scheduler";
 export type {

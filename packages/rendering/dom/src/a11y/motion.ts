@@ -1,18 +1,23 @@
 /**
- * Central AX6 `prefers-reduced-motion` flag. The overlay controller
- * (`overlay/overlayController.ts`) reads `reduced` once per root and paints
- * a solid caret (`AX6_MOTION_MAPPING.caretBlink`).
- * Do not add per-feature media queries (this file is the only site).
+ * Central AX6 `prefers-reduced-motion` flag, one shared signal per editor
+ * root (`getRootReducedMotion`). Do not add per-feature media queries (this
+ * file is the only site).
  *
  * AX6 mapping when `reduced` is true:
  * - caret blink → solid (pen-dom overlay controller)
- * - shimmer → static badge (not consumed yet)
- * - transitions → instant (not consumed yet)
+ * - transitions → instant: the field editor reflects the signal as
+ *   `data-pen-reduced-motion` on the root, which the AI suggestion underline
+ *   selects on; React hosts read it through `useReducedMotion`
+ * - shimmer → static badge: the library ships no shimmer, so this binds host
+ *   code reading the same signal
  *
  * HOST4: missing `matchMedia` → `reduced=false` (animations stay on).
  */
 
 export const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
+/** Presence-only root attribute (HOST6) set while the root's signal is reduced. */
+export const REDUCED_MOTION_ATTR = "data-pen-reduced-motion";
 
 /** AX6 mapping overlay/paint must apply when `reduced` is true. */
 export const AX6_MOTION_MAPPING = {
@@ -72,6 +77,63 @@ export function createReducedMotionSignal(
 			disposed = true;
 			listeners.clear();
 			mediaQuery?.removeEventListener("change", onChange);
+		},
+	};
+}
+
+type SharedRootSignal = {
+	readonly signal: ReducedMotionSignal;
+	refs: number;
+};
+
+const rootSignals = new WeakMap<HTMLElement, SharedRootSignal>();
+
+/**
+ * The root's one reduced-motion signal, shared by the overlay, the root
+ * attribute and bindings so they read the same value. Each call returns a
+ * handle; `dispose()` releases it and its subscriptions, and the last
+ * release stops listening to `matchMedia`.
+ */
+export function getRootReducedMotion(root: HTMLElement): ReducedMotionSignal {
+	let shared = rootSignals.get(root);
+	if (!shared) {
+		shared = { signal: createReducedMotionSignal(root), refs: 0 };
+		rootSignals.set(root, shared);
+	}
+	shared.refs += 1;
+	const entry = shared;
+	const unsubscribers = new Set<() => void>();
+	let released = false;
+
+	return {
+		get reduced() {
+			return entry.signal.reduced;
+		},
+		subscribe(listener) {
+			if (released) {
+				return () => {};
+			}
+			const unsubscribe = entry.signal.subscribe(listener);
+			unsubscribers.add(unsubscribe);
+			return () => {
+				unsubscribers.delete(unsubscribe);
+				unsubscribe();
+			};
+		},
+		dispose() {
+			if (released) {
+				return;
+			}
+			released = true;
+			for (const unsubscribe of unsubscribers) {
+				unsubscribe();
+			}
+			unsubscribers.clear();
+			entry.refs -= 1;
+			if (entry.refs === 0) {
+				entry.signal.dispose();
+				rootSignals.delete(root);
+			}
 		},
 	};
 }

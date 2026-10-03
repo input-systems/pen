@@ -23,6 +23,7 @@
 - getInlineAtomDragSnapshot
 - getInlineAtomRenderInteractionProps
 - getRootGeometry
+- getRootReducedMotion
 - handleEditorDocumentKeyDown
 - handleEscapeSelectionTransition
 - handleFieldEditorPointerActivate
@@ -57,6 +58,7 @@
 ### value
 
 - Affinity
+- AX6_MOTION_MAPPING
 - BidiRun
 - BidiRunGeometry
 - collapsedRect
@@ -102,6 +104,7 @@
 - PenFocusRequest
 - Point
 - Rect
+- REDUCED_MOTION_ATTR
 - removeInlineAtom
 - resolveSelectAllBehavior
 - RootOverlay
@@ -445,9 +448,12 @@ _no exports_
 ### function
 
 - findBlockElement
+- findDOMPoint
 - findInlineContentElement
 - getClosestBlockElementFromPoint
 - getSelectionPointForBlockAtPointer
+- getSelectionPointRect
+- getTextSelectionClientRects
 - pointToEditorSelectionPoint
 - queryBlockElement
 - queryInlineElement
@@ -459,13 +465,10 @@ _no exports_
 - domPointToOffset
 - domSelectionToEditor
 - extractTextFromDOM
-- findDOMPoint
 - getBlockBoundaryPoint
 - getCaretOffset
 - getDirectionalSelectionOffsets
 - getSelectionOffsets
-- getSelectionPointRect
-- getTextSelectionClientRects
 - SelectionBoundary
 - SelectionPoint
 - TextDiffOp

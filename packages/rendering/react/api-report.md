@@ -71,6 +71,7 @@
 - useFieldEditorContext
 - useFieldEditorState
 - useFocusController
+- useReducedMotion
 - useSelection
 - useSelectionToolbar
 - useSelectionToolbarContext

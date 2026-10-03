@@ -29,6 +29,10 @@ const AI_SUGGESTIONS_STYLES = `
 	transition: filter 180ms ease;
 }
 
+[data-pen-reduced-motion] .pen-ai-suggestion-underline {
+	transition: none;
+}
+
 .pen-ai-suggestion-underline:hover {
 	--pen-ai-suggestion-line: var(--pen-ai-suggestion-line-hover, #1d4ed8);
 	filter: saturate(1.08);
