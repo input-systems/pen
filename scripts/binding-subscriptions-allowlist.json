@@ -1,0 +1,90 @@
+{
+  "_comment": "HB2 (spec/rules/host.md). Editor commit and selectionChange subscriptions in @input/pen-react and @input/pen-vue. Per-block state goes through the pen-dom block notifier; what remains here is editor-level. Each entry names the file, the enclosing symbol, why it subscribes to every event, and optionally closedBy, the requirement that removes it. pen/no-binding-editor-subscriptions fails an entry whose symbol no longer subscribes (I15).",
+  "entries": [
+    {
+      "file": "packages/rendering/react/src/hooks/useAttribution.ts",
+      "symbol": "useAttribution",
+      "reason": "editor-level subscription, not per block (HB2): one attribution snapshot per editor, re-read on commit."
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useBlockList.ts",
+      "symbol": "useBlockList",
+      "reason": "editor-level subscription, not per block (HB2): the root block order changes only on commit; one listener per editor."
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useDocumentEmptyState.ts",
+      "symbol": "useDocumentEmptyState",
+      "reason": "editor-level subscription, not per block (HB2): whether the document is empty, one listener per editor."
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useDocumentEmptyState.ts",
+      "symbol": "useDocumentPlaceholderTarget",
+      "reason": "editor-level subscription, not per block (HB2): the document placeholder target is computed once per editor (W2.R5's per-editor placeholder rule), not per block."
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useSelection.ts",
+      "symbol": "useSelection",
+      "reason": "editor-level subscription, not per block (HB2): the public selection hook returns the editor selection."
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useSelectionToolbar.ts",
+      "symbol": "useSelectionToolbar",
+      "reason": "editor-level subscription, not per block (HB2): the selection toolbar repositions from the selection authority on selection and commit."
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useSlashMenu.ts",
+      "symbol": "useSlashMenu",
+      "reason": "editor-level subscription, not per block (HB2): the slash menu re-derives its target on commit and selection change."
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useSuggestionMenu.ts",
+      "symbol": "useSuggestionMenu",
+      "reason": "editor-level subscription, not per block (HB2): the suggestion menu re-resolves its trigger (resolveSuggestionMenuTarget) on commit and selection change."
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useToolbar.ts",
+      "symbol": "useToolbar",
+      "reason": "editor-level subscription, not per block (HB2): toolbar active marks and block type follow the selection and commits."
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/ai/contextualPromptComposer.tsx",
+      "symbol": "AIContextualPromptComposer",
+      "reason": "editor-level subscription, not per block (HB2): the contextual prompt tracks its target selection through the selection authority (W3.R5 chrome rule)."
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/slash-menu/content.tsx",
+      "symbol": "SlashMenuContent",
+      "reason": "editor-level subscription, not per block (HB2): the open slash menu repositions when the selection authority moves (W3.R5 chrome rule)."
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/suggestion-menu/content.tsx",
+      "symbol": "SuggestionMenuContent",
+      "reason": "editor-level subscription, not per block (HB2): the open suggestion menu repositions when the selection authority moves (W3.R5 chrome rule)."
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/editor/autocompletePreviewBlock.tsx",
+      "symbol": "usePreviewNumberedListItemValue",
+      "reason": "Not a document-block subscription (HB2): it numbers a block of the autocomplete preview, which mounts only while a completion is visible, so the listener count follows the visible completion rather than the document."
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useCellTextSnapshot.ts",
+      "symbol": "useCellTextSnapshot",
+      "reason": "Outside-root fallback of the public hook (HB2): inside an editor root each cell subscribes through the table block's notifier slot; only a host calling the hook with no root falls back to a commit listener that filters by the commit summary. Kept by the W2 close-out decision because the hook is public."
+    },
+    {
+      "file": "packages/rendering/vue/src/composables/useBlockList.ts",
+      "symbol": "useBlockList",
+      "reason": "editor-level subscription, not per block (HB2): the root block order changes only on commit; one listener per editor."
+    },
+    {
+      "file": "packages/rendering/vue/src/composables/useSelection.ts",
+      "symbol": "useSelection",
+      "reason": "editor-level subscription, not per block (HB2): the public selection composable returns the editor selection."
+    },
+    {
+      "file": "packages/rendering/vue/src/internal/editorState.ts",
+      "symbol": "useDocumentEmptyState",
+      "reason": "editor-level subscription, not per block (HB2): whether the document is empty, one listener per editor."
+    }
+  ]
+}

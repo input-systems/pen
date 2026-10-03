@@ -7,6 +7,24 @@ import tseslint from "typescript-eslint";
 const require = createRequire(import.meta.url);
 const selectionTimers = require("./packages/tooling/eslint-plugin/src/rules/no-selection-timers-allowlist.json");
 
+// HB2: layout metrics the React and Vue bindings may not read outside the
+// allowlist. Rect and hit-test reads are SCH1's base set in every renderer.
+const BINDING_LAYOUT_METRIC_NAMES = [
+	"offsetTop",
+	"offsetLeft",
+	"offsetWidth",
+	"offsetHeight",
+	"clientTop",
+	"clientWidth",
+	"clientHeight",
+	"scrollTop",
+	"scrollWidth",
+	"scrollHeight",
+	"getComputedStyle",
+	"ResizeObserver",
+	"IntersectionObserver",
+];
+
 // CH2 (spec/rules/reliability.md): this config is where the repo's structural
 // invariants are enforced. It is permissive on purpose — a rule that would demand mass
 // edits lands as a warning until the cleanup it implies is done, so the error set stays
@@ -306,6 +324,27 @@ export default tseslint.config(
 		ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
 		rules: {
 			"pen/no-framework-free-modules-in-renderers": "error",
+		},
+	},
+	{
+		// HB2: bindings stay glue. Layout metrics a binding would need to
+		// rebuild a window or a height map are measures here, on top of SCH1's
+		// rect and hit-test reads; and per-block editor subscriptions go
+		// through pen-dom's block notifier. Remaining sites are listed with a
+		// reason in scripts/unscheduled-measure-allowlist.json and
+		// scripts/binding-subscriptions-allowlist.json; an entry with no live
+		// site fails (I15).
+		files: [
+			"packages/rendering/react/src/**/*.{ts,tsx}",
+			"packages/rendering/vue/src/**/*.{ts,tsx}",
+		],
+		ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
+		rules: {
+			"pen/no-unscheduled-measure": [
+				"error",
+				{ extraNames: BINDING_LAYOUT_METRIC_NAMES },
+			],
+			"pen/no-binding-editor-subscriptions": "error",
 		},
 	},
 	{

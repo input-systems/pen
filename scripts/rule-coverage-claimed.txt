@@ -293,3 +293,5 @@ rules/scale#SCALE6
 rules/host#HB2
 rules/selection#S1
 rules/selection#P3
+rules/host#HB1
+rules/host#HB5

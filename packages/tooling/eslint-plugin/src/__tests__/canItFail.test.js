@@ -252,6 +252,20 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 		);
 	});
 
+	it("no-binding-editor-subscriptions errors by name on a per-block commit listener", () => {
+		expectRuleErrors(
+			tsTester,
+			"no-binding-editor-subscriptions",
+			rules["no-binding-editor-subscriptions"],
+			{
+				code: 'export function useSeededBlock(editor) {\n\treturn editor.on("commit", () => {});\n}\n',
+				filename:
+					"packages/rendering/react/src/hooks/seeded-block-subscription.ts",
+				errors: [{ messageId: "subscription" }],
+			},
+		);
+	});
+
 	it("no-v1-extension-fields errors by name on keyBindings", () => {
 		expectRuleErrors(
 			tsTester,
@@ -462,7 +476,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 		);
 	});
 
-	it("plugin ships twenty-three rules and each can-it-fail case is registered", () => {
+	it("plugin ships twenty-four rules and each can-it-fail case is registered", () => {
 		expect(Object.keys(rules).sort()).toEqual([
 			"no-above-floor-api",
 			"no-aria-hidden-visible",
@@ -470,6 +484,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 			"no-bare-case-folding",
 			"no-bare-random-uuid",
 			"no-bidi-override",
+			"no-binding-editor-subscriptions",
 			"no-dom-selection-read",
 			"no-dom-selection-write",
 			"no-framework-free-modules-in-renderers",
