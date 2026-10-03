@@ -106,12 +106,33 @@ export { createReducedMotionSignal } from "./a11y/motion";
 export type { ReducedMotionListener, ReducedMotionSignal } from "./a11y/motion";
 export { DomScheduler } from "./scheduler";
 export type {
+	DomSchedulerDiagnostics,
 	DomSchedulerOptions,
 	DomSchedulerOwner,
 	DomSchedulerPhase,
 	FlushCollect,
 	GeometryInvalidator,
+	OverlayPainter,
 } from "./scheduler";
+export { getRootOverlay } from "./overlay/rootOverlay";
+export { overlayItemStyle } from "./overlay/overlayStyles";
+export type {
+	OverlayCaretVariant,
+	OverlayInlineStyle,
+} from "./overlay/overlayStyles";
+export type {
+	OverlayCaretRole,
+	OverlayCellCoord,
+	OverlayContributor,
+	OverlayFieldState,
+	OverlayItemKind,
+	OverlayPaintItem,
+	OverlayPaintMode,
+	OverlayPaintPlan,
+	OverlayReadContext,
+	OverlayRequest,
+	RootOverlay,
+} from "./overlay/types";
 export {
 	collapsedRect,
 	createGeometryReader,

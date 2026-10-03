@@ -4,7 +4,7 @@ import { analyzeEditorWcag22Aa, formatAxeViolations } from "../src/axeSurface";
 test("HOST6: empty unstyled document activates from an editor-root click", async ({
 	page,
 }) => {
-	await page.goto("/?unstyled=1&ax6=1");
+	await page.goto("/?unstyled=1&customCaret=1");
 	await page.evaluate(() => {
 		window.__penConformance.load("empty");
 	});

@@ -3,6 +3,7 @@ import type {
 	SelectionOrigin,
 	SelectionRecord,
 	SelectionState,
+	SelectionWriteOptions,
 } from "./selection";
 import type {
 	CRDTAdapter,
@@ -375,20 +376,35 @@ export interface Editor {
 		options?: { origin?: SelectionOrigin },
 	): void;
 	getSelection(): SelectionState;
-	selectBlock(blockId: string): void;
-	selectBlocks(blockIds: string[]): void;
-	selectCell(blockId: string, row: number, col: number): void;
+	selectBlock(blockId: string, options?: SelectionWriteOptions): void;
+	selectBlocks(blockIds: string[], options?: SelectionWriteOptions): void;
+	selectCell(
+		blockId: string,
+		row: number,
+		col: number,
+		options?: SelectionWriteOptions,
+	): void;
 	selectCellRange(
 		blockId: string,
 		anchor: { row: number; col: number },
 		head: { row: number; col: number },
+		options?: SelectionWriteOptions,
 	): void;
-	selectText(blockId: string, from: number, to: number): void;
+	selectText(
+		blockId: string,
+		from: number,
+		to: number,
+		options?: SelectionWriteOptions,
+	): void;
 	selectTextRange(
 		anchor: { blockId: string; offset: number },
 		focus: { blockId: string; offset: number },
+		options?: SelectionWriteOptions,
 	): void;
-	selectAll(behavior?: SelectAllBehavior): void;
+	selectAll(
+		behavior?: SelectAllBehavior,
+		options?: SelectionWriteOptions,
+	): void;
 
 	getSelectedText(): string;
 	getSelectedBlocks(): BlockHandle[];

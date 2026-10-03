@@ -1,9 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
+import { HARNESS_PORT } from "./src/harnessPort";
 
-// PEN_HARNESS_PORT lets parallel checkouts (git worktrees) run the suite
-// side by side; `reuseExistingServer` would otherwise test another
-// checkout's harness on the shared port.
-const HARNESS_PORT = Number(process.env.PEN_HARNESS_PORT ?? 4174);
 const HARNESS_BASE_URL = `http://127.0.0.1:${HARNESS_PORT}`;
 
 export default defineConfig({

@@ -382,6 +382,8 @@ describe("@input/pen-react cross-block drag: native selection promotion", () => 
 				secondInlineElement!,
 				2,
 			);
+			// Browsers fire pointerup before mouseup; the reader reads there (D19).
+			document.dispatchEvent(new Event("pointerup"));
 			document.dispatchEvent(createMouseUpEvent());
 			await flushAnimationFrames(2);
 		});

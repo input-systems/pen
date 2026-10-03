@@ -161,7 +161,12 @@ describe("@input/pen-undo commit event one-event property", () => {
 				return;
 			}
 
-			const before = documentFingerprint(editor);
+			// A state change is any CRDT change, not only a visible one: a
+			// splice that replaces "a" with "a" changes no text but is a real
+			// delete and insert, and I1 requires its one commit.
+			const stateOf = () =>
+				`${documentFingerprint(editor)}\n${Y.encodeStateVector(ydocOf(editorDoc)).join(",")}`;
+			const before = stateOf();
 			const commitCount = commits.length;
 
 			if (action === "apply") {
@@ -221,7 +226,7 @@ describe("@input/pen-undo commit event one-event property", () => {
 				return _exhaustive;
 			}
 
-			const changed = documentFingerprint(editor) !== before;
+			const changed = stateOf() !== before;
 			const produced = commits.slice(commitCount);
 			if (!changed) {
 				expect(produced, label(action, "no-op")).toHaveLength(0);

@@ -296,3 +296,5 @@ rules/selection#P3
 rules/host#HB1
 rules/host#HB5
 rules/ai#RS6
+rules/dom#OV3
+rules/selection#O5

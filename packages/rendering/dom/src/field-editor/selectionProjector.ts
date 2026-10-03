@@ -2,6 +2,7 @@ import { isCollapsed, isMultiBlock } from "@input/pen-core";
 import type {
 	BlockScrollAlign,
 	DiagnosticEvent,
+	SelectionOrigin,
 	SelectionRecord,
 	SelectionState,
 } from "@input/pen-types";
@@ -30,6 +31,7 @@ import {
 } from "./projectionScroll";
 import { findDOMPoint } from "./selectionBridgeOffsets";
 import type { SelectionPoint } from "./selectionBridge";
+import { queryBlockElement } from "./selectionDomQueries";
 
 /**
  * The selection writer (S1). Every mutation of the DOM selection or of an
@@ -91,10 +93,14 @@ export function writeNativeCaretAtEnd(element: HTMLElement): void {
 }
 
 /** Clears the native range when it lies inside `root`. */
-function clearNativeRangeIn(root: HTMLElement): void {
+function clearNativeRangeIn(
+	root: HTMLElement,
+	keepInside: HTMLElement | null = null,
+): void {
 	const selection = root.ownerDocument.getSelection();
 	if (!selection || selection.rangeCount === 0) return;
 	if (!selection.anchorNode || !root.contains(selection.anchorNode)) return;
+	if (keepInside?.contains(selection.anchorNode)) return;
 	selection.removeAllRanges();
 }
 
@@ -293,6 +299,7 @@ export type SelectionProjectorOptions = {
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		origin?: SelectionOrigin,
 	) => void;
 	activate: (blockId: string) => void;
 	emitSelectionProjected: () => void;
@@ -441,6 +448,15 @@ export class SelectionProjector {
 		if (eventKind === "pointerdown") {
 			this.recordUserSelectionIntent();
 		}
+		if (eventKind === "pointerup") {
+			// S2: during a drag the engine's own selection controller can
+			// re-clamp the native range after the projector wrote the
+			// pointer path's record (a drag that starts in a code block stays
+			// in that editing host). The gesture's last record is final at
+			// pointerup, so project it once more; the equivalence skip makes
+			// this a no-op whenever the DOM already agrees.
+			this.project("window-closed");
+		}
 		if (eventKind === "compositionend-completed") {
 			this._releaseCompositionWithholding();
 		}
@@ -539,7 +555,12 @@ export class SelectionProjector {
 		focusOffset: number,
 		options?: ProjectionOptions,
 	): void {
-		this._options.setTextSelection(blockId, anchorOffset, focusOffset);
+		this._options.setTextSelection(
+			blockId,
+			anchorOffset,
+			focusOffset,
+			options?.origin,
+		);
 
 		if (
 			!this._options.isEditing() ||
@@ -644,13 +665,35 @@ export class SelectionProjector {
 		const version = ++this._syncDomVersion;
 		this._pendingSelectionProjectionVersion = version;
 
-		if (!this._options.isEditing()) {
+		if (!this._options.isEditing() && !this._activateForOwnedFocus()) {
 			this._cancelSelectionProjection(version);
 			return;
 		}
 
 		const pendingProjectionRequestId =
 			this._historySelectionCoordinator.getPendingProjectionRequestId();
+		// S2, D18: a null, app or block record has no native text range to
+		// write or read back — the text path would compare the still-active
+		// field's range against it and report a mismatch. Clear the range and
+		// finish; the focus projection moves focus to the root or the sink.
+		// A cell record does too unless a cell is being edited: an edited
+		// cell's caret is a native range in it until it moves into the
+		// authority (§3.7), so that one keeps the text path.
+		const record = this._options.getRecord?.();
+		if (
+			record &&
+			(record.state === null ||
+				record.state.type === "app" ||
+				record.state.type === "block" ||
+				(record.state.type === "cell" && this._options.getSurface?.() !== "cell"))
+		) {
+			const root = this._options.getRootElement();
+			if (root) {
+				clearNativeRangeIn(root);
+			}
+			this._completeProjection(version, pendingProjectionRequestId);
+			return;
+		}
 		// T3: surface mode `block` skips contenteditable expansion.
 		// projecting a 51-block text range into the focused field clamps
 		// native to that field (empty-p1 0..length) and an open pointer
@@ -666,6 +709,26 @@ export class SelectionProjector {
 
 		this._cancelSelectionProjection(version);
 		this._parkProjection(target.found);
+	}
+
+	/**
+	 * S2: a text record that arrives while no field is active (after a null
+	 * selection put focus on the root) still names a caret the DOM must
+	 * show. When this editor owns focus, activate the record's block the way
+	 * a click would; otherwise the record waits for the next activation.
+	 */
+	private _activateForOwnedFocus(): boolean {
+		const state = this._options.getRecord?.()?.state;
+		const root = this._options.getRootElement();
+		if (state?.type !== "text" || !root) {
+			return false;
+		}
+		const active = root.ownerDocument.activeElement;
+		if (!active || !root.contains(active)) {
+			return false;
+		}
+		this._options.activate(state.focus.blockId);
+		return this._options.isEditing();
 	}
 
 	/** A non-P1 authority trigger while composing is withheld (W3.R6). */
@@ -791,21 +854,26 @@ export class SelectionProjector {
 	}
 
 	/**
-	 * S2: a block or null selection leaves no native range in the root, so
-	 * its projection clears one. Withheld while a native control outside the
-	 * field owns focus (HOST9).
+	 * S2: a block, cell or null selection leaves no native range in the
+	 * root, so its projection clears one. Withheld while a native control
+	 * outside the field owns focus (HOST9).
 	 */
 	projectNonTextSelection(state: SelectionState | null): void {
-		if (state !== null && state.type !== "block") {
+		if (state !== null && state.type !== "block" && state.type !== "cell") {
 			return;
 		}
 		if (this.isFocusHeldByNativeControlOutsideRoot()) {
 			return;
 		}
 		const root = this._options.getRootElement();
-		if (root) {
-			clearNativeRangeIn(root);
+		if (!root) {
+			return;
 		}
+		// An edited cell's caret is a native range inside its table; any
+		// other range a cell selection leaves in the root is stale.
+		const keepInside =
+			state?.type === "cell" ? queryBlockElement(root, state.blockId) : null;
+		clearNativeRangeIn(root, keepInside);
 	}
 
 	/**

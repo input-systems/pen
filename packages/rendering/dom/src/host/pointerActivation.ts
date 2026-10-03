@@ -1,5 +1,5 @@
 import { usesInlineTextSelection } from "@input/pen-core";
-import type { Editor } from "@input/pen-types";
+import type { Editor, FieldEditorFocusOptions } from "@input/pen-types";
 import { pointToEditorSelectionPoint } from "../field-editor/selectionBridge";
 import { findInlineContentElement } from "../field-editor/selectionDomQueries";
 import { DATA_ATTRS } from "../utils/dataAttributes";
@@ -13,6 +13,7 @@ export interface FieldEditorPointerTarget {
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	attachElement(element: HTMLElement): void;
 }
@@ -88,6 +89,7 @@ export function handleFieldEditorPointerActivate(
 			blockId,
 			hostFallback.offset,
 			hostFallback.offset,
+			{ origin: "pointer" },
 		);
 	} else {
 		const point = pointToEditorSelectionPoint(
@@ -100,10 +102,13 @@ export function handleFieldEditorPointerActivate(
 				point.blockId,
 				point.offset,
 				point.offset,
+				{ origin: "pointer" },
 			);
 		} else {
 			const offset = block?.length() ?? 0;
-			fieldEditor.activateTextSelection(blockId, offset, offset);
+			fieldEditor.activateTextSelection(blockId, offset, offset, {
+				origin: "pointer",
+			});
 		}
 	}
 

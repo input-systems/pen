@@ -64,6 +64,12 @@ function checkNormalPositions(
 		return { ok: true };
 	}
 	for (const point of [state.anchor, state.focus]) {
+		// N2: a structural block's extent is the unit 0..1, which T2's cover
+		// puts a text range's endpoint on; it has no text to step through.
+		if (snapshot.blocks[point.blockId]?.kind !== "text") {
+			if (point.offset === 0 || point.offset === 1) continue;
+			return { ok: false, reason: `${point.blockId}@${point.offset} is outside a structural block's 0..1 extent` };
+		}
 		if (!reachableFromBlockStart(snapshot, point)) {
 			return {
 				ok: false,
@@ -121,8 +127,12 @@ type SchedulerQueues = { rafHandle: number | null };
 
 /**
  * `whenIdle` (W3.R19): resolve after a scheduler flush that left nothing
- * queued. Test-side: a flush is forced by queueing an empty write, and the
+ * queued. Test-side: a flush is forced by queueing an empty read, and the
  * scheduler's private frame handle says whether that flush scheduled another.
+ * A read, not a write: a flush that ran a queued write and painted an
+ * overlay item requests one follow-up paint (OV1 stale-after-write), so a
+ * forced write would never let the scheduler go idle. The read's
+ * continuation runs after the whole flush, paint included.
  */
 export async function whenSchedulerIdle(
 	root: HTMLElement | null,
@@ -132,7 +142,7 @@ export async function whenSchedulerIdle(
 	}
 	const scheduler = getRootGeometry(root).scheduler;
 	for (let flushes = 0; flushes < IDLE_FLUSH_LIMIT; flushes += 1) {
-		await scheduler.write(() => {});
+		await scheduler.read(() => {});
 		if ((scheduler as unknown as SchedulerQueues).rafHandle === null) {
 			return;
 		}

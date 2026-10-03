@@ -193,7 +193,9 @@ export function applyDeleteBehavior(
 	if (!range) return null;
 
 	if (!isCollapsedRange(range)) {
-		editor.selectText(blockId, range.start, range.end);
+		editor.selectText(blockId, range.start, range.end, {
+			origin: "keyboard",
+		});
 		editor.deleteSelection({ origin: "user" });
 		return (
 			getCollapsedTextSelectionTarget(editor) ?? {

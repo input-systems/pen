@@ -3,7 +3,12 @@ import {
 	isMultiBlock,
 	type CommandDispatchContext,
 } from "@input/pen-core";
-import type { Command, Editor, SelectionState } from "@input/pen-types";
+import type {
+	Command,
+	Editor,
+	FieldEditorFocusOptions,
+	SelectionState,
+} from "@input/pen-types";
 
 export interface FieldEditorCommandTarget {
 	readonly focusBlockId?: string | null;
@@ -11,11 +16,13 @@ export interface FieldEditorCommandTarget {
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	commitProgrammaticTextSelection?(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	deactivate(): void;
 	activateCell?(blockId: string, row: number, col: number): void;
@@ -59,7 +66,7 @@ export function syncEditorTextSelection(
 	) {
 		return;
 	}
-	editor.selectText(blockId, range.start, range.end);
+	editor.selectText(blockId, range.start, range.end, { origin: "keyboard" });
 }
 
 export function activateFieldEditorFromSelection(
@@ -88,6 +95,7 @@ export function activateFieldEditorFromSelection(
 					selection.focus.blockId,
 					selection.anchor.offset,
 					selection.focus.offset,
+					{ origin: "keyboard" },
 				);
 				return;
 			}
@@ -95,6 +103,7 @@ export function activateFieldEditorFromSelection(
 				selection.focus.blockId,
 				selection.anchor.offset,
 				selection.focus.offset,
+				{ origin: "keyboard" },
 			);
 			return;
 		case "block":

@@ -73,7 +73,7 @@ export async function executeTransfer(
 	);
 
 	if (lastInsertedBlockId) {
-		editor.selectBlock(lastInsertedBlockId);
+		editor.selectBlock(lastInsertedBlockId, { origin: "pointer" });
 	}
 
 	return true;

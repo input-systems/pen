@@ -61,12 +61,11 @@ export default tseslint.config(
 		rules: {
 			"pen/no-html-injection-sinks": "error",
 
-			// S4: selection paths get no timers. Scope is the in-config
-			// module list (contenteditableBackend.ts and the fail-closed
-			// caretPositions.ts basename) plus a basename-contains-`selection`
-			// net so a new selectionReader.ts cannot silently escape.
-			// sessionReconciler is neither matched nor listed: a flush
-			// coalescer, not a selection module.
+			// S4: selection paths get no timers, microtask or promise
+			// deferrals, async/await, setter-calling scheduler callbacks, or
+			// retry counters. Scope is the allowlist's `modules` paths plus a
+			// basename-contains-`selection` net so a new selectionReader.ts
+			// cannot silently escape.
 			// Do not add a `files:` glob; the rule self-scopes from this list.
 			"pen/no-selection-timers": [
 				"error",
@@ -248,6 +247,16 @@ export default tseslint.config(
 		files: ["packages/rendering/**/src/**/*.{ts,tsx}"],
 		rules: {
 			"pen/no-dom-selection-write": "error",
+		},
+	},
+	{
+		// W3.R16: focus is a projection concern. In pen-dom only
+		// field-editor/focusController.ts calls HTMLElement.focus; the
+		// allowlist scripts/dom-focus-allowlist.json is empty, and an entry
+		// with no live call fails (I15). The rule self-scopes to pen-dom.
+		files: ["packages/rendering/dom/src/**/*.{ts,tsx}"],
+		rules: {
+			"pen/no-direct-dom-focus": "error",
 		},
 	},
 	{

@@ -68,7 +68,7 @@
   {
     "id": "stamp-first-train",
     "command": "node scripts/stamp-first-train.mjs --self-test",
-    "description": "The first-train stamp (peer-promoted 1.0.0 → 0.1.0) fails closed on mixed or surprise versions."
+    "description": "The first-train stamp (peer-promoted 1.0.0 \u2192 0.1.0) fails closed on mixed or surprise versions."
   },
   {
     "id": "provenance-preconditions",
@@ -121,5 +121,15 @@
     "id": "dev-ports",
     "command": "node scripts/pen-dev-vite.mjs",
     "description": "Playground, docs, and examples bind unique strict Vite ports so `pnpm dev` does not hop."
+  },
+  {
+    "id": "selection-origin-check",
+    "command": "node scripts/selection-origin-check.mjs --self-test && node scripts/selection-origin-check.mjs",
+    "description": "S3 (W3.G7): pen-dom and pen-undo selection-setter calls name their origin; host-API forwarding is allowlisted with a reason and the list only shrinks."
+  },
+  {
+    "id": "overlay-measure-free",
+    "command": "node scripts/overlay-measure-free.mjs --self-test && node scripts/overlay-measure-free.mjs",
+    "description": "OV3 (W35.G1): React and Vue overlay bindings measure nothing; the ones still measuring are allowlisted with closedBy and the list only shrinks."
   }
 ]

@@ -1,0 +1,4 @@
+{
+  "_comment": "W3.R16 (spec/rules/selection.md P): in @input/pen-dom only field-editor/focusController.ts calls HTMLElement.focus. Each entry is another call, with the requirement that removes it. pen/no-direct-dom-focus fails an entry with no matching call (I15); the list stays empty.",
+  "entries": []
+}

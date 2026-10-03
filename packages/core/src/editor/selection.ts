@@ -237,7 +237,13 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 		if (validated === undefined) {
 			return this.record;
 		}
-		if (selectionEquals(this._state, validated)) {
+		// D17: undo and redo map the selection in their own commit before the
+		// history restore writes it, so the restore often equals the mapped
+		// state. It still claims the record, or nothing scrolls it into view.
+		if (
+			selectionEquals(this._state, validated) &&
+			!(origin === "restore" && this._origin !== "restore")
+		) {
 			return this.record;
 		}
 		this._state = validated;

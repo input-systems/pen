@@ -58,6 +58,7 @@ export function mountEditor(
 	});
 
 	const tree = createDocumentTree(editor, fieldEditor, root);
+	fieldEditor.setReadOnly(readonly);
 	fieldEditor.setRootElement(root);
 	const unregisterVerticalCaret = registerVerticalCaretMeasure(editor, root);
 

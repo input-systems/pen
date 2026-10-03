@@ -1,10 +1,11 @@
 import {
+	getEditorSelectionRecord,
 	isCollapsed,
 	isMultiBlock,
 	usesInlineTextSelection,
 } from "@input/pen-core";
 import { generateId, type Editor, type Point } from "@input/pen-types";
-import { getRootGeometry, measureWithRoot } from "../geometry/rootGeometry";
+import { measureWithRoot } from "../geometry/rootGeometry";
 import { getEditorBlockSelectionRole } from "../utils/blockSelectionSemantics";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import { getPreorderBlockIds } from "../utils/documentPreorder";
@@ -24,13 +25,11 @@ import {
 	getBoundaryPoint,
 	resolveClickedBlockId,
 	resolveClickedCellCoord,
+	selectClickedBlock,
 	shouldIgnorePointerGesture,
 	type ContentGesturesContext,
 } from "./contentGesturesShared";
-import {
-	domSelectionToEditor,
-	pointToEditorSelectionPoint,
-} from "./selectionBridge";
+import { pointToEditorSelectionPoint } from "./selectionBridge";
 
 export function createPointerSelectionGestures<
 	InteractionModel extends PointerInteractionModel,
@@ -227,19 +226,6 @@ export function createPointerSelectionGestures<
 			skipNextClickRef.current = true;
 		};
 
-		const isSelectionForward = (
-			anchorPoint: Point,
-			focusPoint: Point,
-		): boolean => {
-			const order = getPreorderBlockIds(editor);
-			const anchorIdx = order.indexOf(anchorPoint.blockId);
-			const focusIdx = order.indexOf(focusPoint.blockId);
-			if (anchorIdx === focusIdx) {
-				return anchorPoint.offset <= focusPoint.offset;
-			}
-			return anchorIdx <= focusIdx;
-		};
-
 		const isExpandedSingleBlockTextSelection = (
 			selection: ReturnType<Editor["getSelection"]>,
 		): boolean =>
@@ -262,120 +248,97 @@ export function createPointerSelectionGestures<
 			focusPoint: Point,
 		): true => {
 			if (anchorPoint.blockId !== focusPoint.blockId) {
-				fieldEditor.applyDocumentTextSelection(anchorPoint, focusPoint);
+				fieldEditor.applyDocumentTextSelection(
+					anchorPoint,
+					focusPoint,
+					"pointer",
+				);
 				return true;
 			}
 			if (shouldPreferNativeInlineSelection(anchorPoint, focusPoint)) {
-				fieldEditor.applyDomTextSelection(anchorPoint, focusPoint);
+				fieldEditor.applyDomTextSelection(
+					anchorPoint,
+					focusPoint,
+					"pointer",
+				);
 				return true;
 			}
 			commitCanonicalSelection(anchorPoint, focusPoint);
 			return true;
 		};
 
-		const tryHandleMappedDomSelection = (): boolean => {
+		// The reader accepted the gesture's native range at pointerup, inside
+		// the pointer window (D19): a drag inside a field, or the word or
+		// paragraph a multi-click expanded. Mouseup keeps it and writes only
+		// what Pen computes, here the collapse of a range by a click.
+		const tryHandleReaderSelection = (): boolean => {
 			if (!root) {
 				return false;
 			}
 			const startedWithExpandedTextSelection =
 				gesture.startSelection?.type === "text" &&
 				!isCollapsed(gesture.startSelection);
+			const collapseToPointer = (): boolean => {
+				const pointerPoint = pointToEditorSelectionPoint(
+					root,
+					clientX,
+					clientY,
+				);
+				if (!pointerPoint) {
+					return false;
+				}
+				fieldEditor.collapseSelectionToPoint(pointerPoint, "pointer");
+				return true;
+			};
 			if (
 				clickCount === 1 &&
 				!moved &&
-				startedWithExpandedTextSelection
+				startedWithExpandedTextSelection &&
+				collapseToPointer()
 			) {
-				const pointerPoint = pointToEditorSelectionPoint(
-					root,
-					clientX,
-					clientY,
-				);
-				if (pointerPoint) {
-					fieldEditor.collapseSelectionToPoint(pointerPoint);
-					return true;
-				}
+				return true;
 			}
 
-			const mappedSelection = domSelectionToEditor(root);
-			if (!mappedSelection) {
+			// A cell gesture is the cell handler's, and an authority the
+			// reader did not write in this gesture is no native range to keep.
+			if (resolveClickedCellCoord(ctx, event)) {
 				return false;
 			}
-
-			const hasExpandedSingleBlockTextSelectionAtMouseUp =
+			const selection = editor.selection;
+			if (selection?.type !== "text") {
+				return false;
+			}
+			const expandedSingleBlock =
 				isExpandedSingleBlockTextSelection(gesture.startSelection) ||
-				isExpandedSingleBlockTextSelection(editor.selection) ||
-				(mappedSelection.anchor.blockId ===
-					mappedSelection.focus.blockId &&
-					mappedSelection.anchor.offset !==
-						mappedSelection.focus.offset);
+				isExpandedSingleBlockTextSelection(selection);
 			if (
 				(clickCount === 1 || clickCount >= 4) &&
-				hasExpandedSingleBlockTextSelectionAtMouseUp &&
+				expandedSingleBlock &&
 				!moved &&
-				mappedSelection.anchor.blockId ===
-					mappedSelection.focus.blockId &&
+				!isMultiBlock(selection) &&
 				shouldPreferNativeInlineSelection(
-					mappedSelection.anchor,
-					mappedSelection.focus,
-				)
+					selection.anchor,
+					selection.focus,
+				) &&
+				collapseToPointer()
 			) {
-				const pointerPoint = pointToEditorSelectionPoint(
-					root,
-					clientX,
-					clientY,
-				);
-				if (pointerPoint) {
-					fieldEditor.collapseSelectionToPoint(pointerPoint);
-					return true;
-				}
+				return true;
 			}
 
-			const collapsed =
-				mappedSelection.anchor.blockId ===
-					mappedSelection.focus.blockId &&
-				mappedSelection.anchor.offset === mappedSelection.focus.offset;
-			if (!collapsed) {
-				const needsBoundarySnap =
-					getEditorBlockSelectionRole(
-						editor,
-						mappedSelection.focus.blockId,
-					) !== "editable-inline";
-				if (needsBoundarySnap) {
-					const selectingForward = isSelectionForward(
-						mappedSelection.anchor,
-						mappedSelection.focus,
-					);
-					const snappedPoint = pointToEditorSelectionPoint(
-						root,
-						clientX,
-						clientY,
-						{
-							preferredBoundary: selectingForward
-								? "end"
-								: "start",
-						},
-					);
-					commitCanonicalSelection(
-						mappedSelection.anchor,
-						snappedPoint ?? mappedSelection.focus,
-					);
-					return true;
-				}
-				return commitMappedTextSelection(
-					mappedSelection.anchor,
-					mappedSelection.focus,
-				);
+			const readerWrote =
+				(getEditorSelectionRecord(editor)?.version ?? 0) !==
+				gesture.startSelectionVersion;
+			if (!readerWrote && !moved) {
+				return false;
 			}
-			if (startedWithExpandedTextSelection && clickCount < 3) {
+			if (
+				!isCollapsed(selection) ||
+				(startedWithExpandedTextSelection && clickCount < 3) ||
+				moved
+			) {
 				return commitMappedTextSelection(
-					mappedSelection.anchor,
-					mappedSelection.focus,
-				);
-			}
-			if (moved) {
-				return commitMappedTextSelection(
-					mappedSelection.anchor,
-					mappedSelection.focus,
+					selection.anchor,
+					selection.focus,
 				);
 			}
 			return false;
@@ -392,8 +355,6 @@ export function createPointerSelectionGestures<
 				{
 					clientX,
 					clientY,
-					getBoundaryPoint: (blockId, side) =>
-						getBoundaryPoint(ctx, blockId, side),
 				},
 			);
 			if (!resolvedSelection) {
@@ -401,7 +362,9 @@ export function createPointerSelectionGestures<
 			}
 			if (resolvedSelection.mode === "block") {
 				if (!blockSelectionEnabled) return false;
-				editor.selectBlocks(resolvedSelection.blockIds);
+				editor.selectBlocks(resolvedSelection.blockIds, {
+					origin: "pointer",
+				});
 				fieldEditor.deactivate();
 				ensureEditorFocus(ctx, root);
 				skipNextClickRef.current = true;
@@ -443,18 +406,22 @@ export function createPointerSelectionGestures<
 				})
 			) {
 				if (!blockSelectionEnabled) {
-					editor.selectCell(blockId, cellCoord.row, cellCoord.col);
+					editor.selectCell(blockId, cellCoord.row, cellCoord.col, {
+						origin: "pointer",
+					});
 					skipNextClickRef.current = true;
 					return true;
 				}
-				editor.selectBlock(blockId);
+				editor.selectBlock(blockId, { origin: "pointer" });
 				if (root) {
 					ensureEditorFocus(ctx, root);
 				}
 				skipNextClickRef.current = true;
 				return true;
 			}
-			editor.selectCell(blockId, cellCoord.row, cellCoord.col);
+			editor.selectCell(blockId, cellCoord.row, cellCoord.col, {
+				origin: "pointer",
+			});
 			skipNextClickRef.current = true;
 			return true;
 		};
@@ -501,7 +468,7 @@ export function createPointerSelectionGestures<
 				if (!blockSelectionEnabled) {
 					return false;
 				}
-				editor.selectBlock(blockId);
+				selectClickedBlock(ctx, blockId);
 				skipNextClickRef.current = true;
 				return true;
 			}
@@ -509,7 +476,7 @@ export function createPointerSelectionGestures<
 				if (!blockSelectionEnabled) {
 					return false;
 				}
-				editor.selectBlock(blockId);
+				selectClickedBlock(ctx, blockId);
 				fieldEditor.deactivate();
 				if (root) {
 					ensureEditorFocus(ctx, root);
@@ -551,7 +518,7 @@ export function createPointerSelectionGestures<
 			if (tryHandleDraggedPointerSelection()) {
 				return;
 			}
-			if (tryHandleMappedDomSelection()) {
+			if (tryHandleReaderSelection()) {
 				return;
 			}
 			const clickedBlockId = resolveClickedBlockId(ctx, event);
@@ -578,14 +545,6 @@ export function createPointerSelectionGestures<
 			}
 		};
 
-		if (clickCount > 1 && root) {
-			// A multi-click finishes by reading the browser's own word or
-			// paragraph expansion, so the read waits a frame for the engine
-			// to settle. Same frame as before, owned by the scheduler and
-			// running in its read phase (FE3) rather than a bare rAF.
-			void getRootGeometry(root).scheduler.read(completePointerSelection);
-			return;
-		}
 		completePointerSelection();
 	};
 

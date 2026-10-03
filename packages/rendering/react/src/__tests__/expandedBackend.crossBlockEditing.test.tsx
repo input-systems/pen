@@ -190,6 +190,8 @@ describe("@input/pen-react expanded backend: cross-block editing", () => {
 				thirdInlineElement!,
 				2,
 			);
+			// Browsers fire pointerup before mouseup; the reader reads there (D19).
+			document.dispatchEvent(new Event("pointerup"));
 			document.dispatchEvent(createMouseUpEvent());
 			await flushAnimationFrames(2);
 		});

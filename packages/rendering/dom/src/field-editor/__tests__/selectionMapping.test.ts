@@ -10,6 +10,7 @@ import {
 	domSelectionToEditor,
 	getBlockBoundaryPoint,
 	getBlockSurfaceRole,
+	resolveSelectionPoint,
 } from "../selectionMapping";
 
 const BRIDGE_VALUE_EXPORTS = [
@@ -473,6 +474,26 @@ describe("writeNativeRange", () => {
 	});
 });
 
+describe("resolveSelectionPoint between blocks", () => {
+	it("N2 S2: a gap beside an image maps to the image's 0..1 extent, as findDOMPoint writes it", () => {
+		const root = document.createElement("div");
+		root.setAttribute(DATA_ATTRS.editorRoot, "");
+		appendBlock(root, { blockId: "p1", text: "Before" });
+		appendBlock(root, { blockId: "image", blockType: "image", includeInline: false });
+		appendBlock(root, { blockId: "p2", text: "After" });
+		document.body.append(root);
+		try {
+			// The image is child 1: (root, 1) is before it, (root, 2) after it.
+			expect(resolveSelectionPoint(root, root, 1)).toEqual({ blockId: "image", offset: 0 });
+			expect(resolveSelectionPoint(root, root, 2)).toEqual({ blockId: "image", offset: 1 });
+			// A gap between two text blocks is the end of the one before.
+			expect(resolveSelectionPoint(root, root, 3)).toEqual({ blockId: "p2", offset: 5 });
+		} finally {
+			root.remove();
+		}
+	});
+});
+
 describe("getBlockSurfaceRole", () => {
 	it("reads a code block's own text surface as editable-inline (G4)", () => {
 		const { root, block } = mountBlock({
@@ -487,7 +508,7 @@ describe("getBlockSurfaceRole", () => {
 		}
 	});
 
-	it("keeps a stamped delegated role and a table's cells delegated (G4)", () => {
+	it("G4 S2: a stamped delegated code block still maps text offsets; a table's cells stay delegated", () => {
 		const { root, block: stamped } = mountBlock({
 			blockId: "c1",
 			text: "hey",
@@ -507,7 +528,9 @@ describe("getBlockSurfaceRole", () => {
 		table.append(cell);
 		root.append(table);
 		try {
-			expect(getBlockSurfaceRole(stamped)).toBe("delegated");
+			// Core's selection holds text offsets in a code block whether or
+			// not expanded mode stamped it; the reader must read the same.
+			expect(getBlockSurfaceRole(stamped)).toBe("editable-inline");
 			expect(getBlockSurfaceRole(table)).toBe("delegated");
 		} finally {
 			root.remove();

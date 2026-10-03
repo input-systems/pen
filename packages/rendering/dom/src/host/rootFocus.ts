@@ -9,17 +9,27 @@ import { collectHostTextBlocks } from "./pointerActivation";
 export interface FieldEditorRootFocusOptions {
 	event: FocusEvent;
 	editor: Editor;
-	fieldEditor: Pick<FieldEditorSession, "focusTextSelection">;
+	fieldEditor: Pick<
+		FieldEditorSession,
+		"focusTextSelection" | "requestRootFocus"
+	>;
 	root: HTMLElement;
 	readonly?: boolean;
 }
 
-/** Transfers direct editor-root focus into the active editor surface. */
+/** Transfers focus entering the editor root from outside into the active editor surface. */
 export function handleFieldEditorRootFocus(
 	options: FieldEditorRootFocusOptions,
 ): void {
 	const { event, editor, fieldEditor, root, readonly } = options;
 	if (event.target !== root) {
+		return;
+	}
+	// Focus that moved to the root from inside the editor is a projection
+	// (P: an app or null record, or a deactivated field), not focus entering
+	// the editor, and stays on the root (D18).
+	const from = event.relatedTarget;
+	if (from instanceof Node && root.contains(from)) {
 		return;
 	}
 
@@ -29,7 +39,9 @@ export function handleFieldEditorRootFocus(
 			`:scope > [${FOCUS_SINK_ATTR}]`,
 		);
 		if (focusSink instanceof HTMLElement) {
-			focusSink.focus({ preventScroll: true });
+			fieldEditor.requestRootFocus(focusSink, "selection-project", {
+				preventScroll: true,
+			});
 		}
 		return;
 	}

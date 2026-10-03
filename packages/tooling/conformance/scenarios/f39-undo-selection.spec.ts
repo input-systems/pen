@@ -157,7 +157,7 @@ scenario(
 		const redoneBlockId = redoneIds.find((id) => id !== "hello-p1");
 		expect(redoneBlockId).toBeTruthy();
 		await expect(
-			page.locator(`[data-block-id="${redoneBlockId}"]`),
+			page.locator(`[data-pen-editor-block][data-block-id="${redoneBlockId}"]`),
 		).toBeVisible();
 		await s.assert.domMatchesAuthority();
 	},

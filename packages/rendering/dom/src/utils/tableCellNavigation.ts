@@ -210,14 +210,14 @@ function moveSelectionToAdjacentBlock(
 		key === "ArrowUp" || key === "ArrowLeft" ? "previous" : "next";
 	const adjacentId = getAdjacentVisibleBlockId(editor, blockId, direction);
 	if (!adjacentId) {
-		editor.selectBlock(blockId);
+		editor.selectBlock(blockId, { origin: "keyboard" });
 		fieldEditor.deactivate();
 		return;
 	}
 
 	const adjacentBlock = editor.getBlock(adjacentId);
 	if (!adjacentBlock) {
-		editor.selectBlock(blockId);
+		editor.selectBlock(blockId, { origin: "keyboard" });
 		fieldEditor.deactivate();
 		return;
 	}
@@ -233,18 +233,22 @@ function moveSelectionToAdjacentBlock(
 			direction === "previous"
 				? Math.max((adjacentTable?.tableColumnCount() ?? 0) - 1, 0)
 				: 0;
-		editor.selectCell(adjacentId, targetRow, targetCol);
+		editor.selectCell(adjacentId, targetRow, targetCol, {
+			origin: "keyboard",
+		});
 		fieldEditor.deactivate();
 		return;
 	}
 
 	if (usesInlineTextSelection(schema)) {
 		const offset = direction === "previous" ? adjacentBlock.length() : 0;
-		fieldEditor.activateTextSelection(adjacentId, offset, offset);
+		fieldEditor.activateTextSelection(adjacentId, offset, offset, {
+			origin: "keyboard",
+		});
 		return;
 	}
 
-	editor.selectBlock(adjacentId);
+	editor.selectBlock(adjacentId, { origin: "keyboard" });
 	fieldEditor.deactivate();
 }
 
@@ -296,18 +300,25 @@ function setCellSelection(
 	head: { row: number; col: number } = anchor,
 ): void {
 	if (hasIndexedCellSelectionMetadata(selection)) {
-		editor.setSelection({
-			...selection,
-			anchor,
-			head,
-		});
+		editor.setSelection(
+			{
+				...selection,
+				anchor,
+				head,
+			},
+			{ origin: "keyboard" },
+		);
 		return;
 	}
 	if (anchor.row === head.row && anchor.col === head.col) {
-		editor.selectCell(selection.blockId, anchor.row, anchor.col);
+		editor.selectCell(selection.blockId, anchor.row, anchor.col, {
+			origin: "keyboard",
+		});
 		return;
 	}
-	editor.selectCellRange(selection.blockId, anchor, head);
+	editor.selectCellRange(selection.blockId, anchor, head, {
+		origin: "keyboard",
+	});
 }
 
 function activateCellEditing(

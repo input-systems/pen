@@ -161,8 +161,6 @@ export function createDragGestures<
 			{
 				clientX: event.clientX,
 				clientY: event.clientY,
-				getBoundaryPoint: (blockId, side) =>
-					getBoundaryPoint(ctx, blockId, side),
 			},
 		);
 		if (!resolvedSelection) {
@@ -176,7 +174,9 @@ export function createDragGestures<
 
 		if (resolvedSelection.mode === "block") {
 			if (!blockSelectionEnabled) return;
-			editor.selectBlocks(resolvedSelection.blockIds);
+			editor.selectBlocks(resolvedSelection.blockIds, {
+				origin: "pointer",
+			});
 			fieldEditor.deactivate();
 			return;
 		}
@@ -184,6 +184,7 @@ export function createDragGestures<
 			fieldEditor.applyDocumentTextSelection(
 				resolvedSelection.anchorPoint,
 				resolvedSelection.focusPoint,
+				"pointer",
 			);
 			return;
 		}

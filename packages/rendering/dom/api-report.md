@@ -15,7 +15,6 @@
 - attachInlineAtomWrapperInteractions
 - bindEditorDocumentKeyDown
 - canDestructure
-- collapsedRect
 - createGeometryReader
 - createReducedMotionSignal
 - createRegionSelectionRect
@@ -34,6 +33,7 @@
 - isInlineAtomDragSource
 - measureWithRoot
 - mountEditor
+- overlayItemStyle
 - registerInlineAtomInteractionRoot
 - registerVerticalCaretMeasure
 - resolveBlockTextAlignment
@@ -42,7 +42,6 @@
 - resolveShiftClickInlineAtomSelection
 - selectInlineAtomRangeFromShiftClick
 - shouldHandleEditorKeyboardEvent
-- singleRunLineBox
 - subscribeInlineAtomDragSnapshot
 - urlPolicyExtension
 - urlPolicyFromEditor
@@ -57,8 +56,13 @@
 
 ### value
 
+- Affinity
+- BidiRun
+- BidiRunGeometry
+- collapsedRect
 - DEFAULT_SELECT_ALL_BEHAVIOR
 - DomScheduler
+- DomSchedulerDiagnostics
 - DomSchedulerOptions
 - DomSchedulerOwner
 - DomSchedulerPhase
@@ -70,7 +74,21 @@
 - FieldEditorSession
 - FlushCollect
 - GeometryInvalidator
+- GeometryReader
 - getInlineAtomAtOffset
+- getRootOverlay
+- LineBox
+- OverlayCaretRole
+- OverlayCellCoord
+- OverlayContributor
+- OverlayFieldState
+- OverlayItemKind
+- OverlayPainter
+- OverlayPaintItem
+- OverlayPaintMode
+- OverlayPaintPlan
+- OverlayReadContext
+- OverlayRequest
 - PasteImporters
 - PEN_EDITOR_CHROME_STYLESHEET
 - PEN_REVIEW_STYLESHEET
@@ -82,18 +100,19 @@
 - PenFocusPolicy
 - PenFocusReason
 - PenFocusRequest
+- Point
+- Rect
 - removeInlineAtom
 - resolveSelectAllBehavior
+- RootOverlay
+- singleRunLineBox
 - UrlContext
 - urlPolicy
 - UrlPolicy
 
 ### type
 
-- Affinity
 - AttachContentGesturesOptions
-- BidiRun
-- BidiRunGeometry
 - BindEditorDocumentKeyDownOptions
 - BlockTextAlignment
 - ContentGestureRegionGesture
@@ -102,17 +121,15 @@
 - FieldEditorPointerTarget
 - FieldEditorRootFocusOptions
 - GeometryMeasureAdapter
-- GeometryReader
 - GeometryReaderHost
 - GeometryReaderOptions
 - GestureSlot
 - InlineAtomDragSnapshot
 - InlineAtomWrapperInteractionOptions
-- LineBox
 - MountedEditor
 - MountEditorOptions
-- Point
-- Rect
+- OverlayCaretVariant
+- OverlayInlineStyle
 - ReducedMotionListener
 - ReducedMotionSignal
 - RegionSelectionRect
@@ -130,26 +147,28 @@
 
 ### function
 
-- classifySelectionSurface
-- contractFieldEditorRange
-- expandFieldEditorRange
-- getExpandedBlockRole
 - resolveMarksAtPosition
-- shouldUseBlockSelection
 
 ### value
 
 - applyDeltaToDOM
 - buildMoveInlineAtomOps
+- classifySelectionSurface
 - computeTextDiff
+- contractFieldEditorRange
 - domSelectionToEditor
+- ExpandedBlockRole
+- expandFieldEditorRange
 - extractTextFromDOM
 - FieldEditorFocusReason
 - FieldEditorFocusRequest
 - FieldEditorStore
 - FieldEditorStoreSnapshot
+- FieldEditorSurfaceMode
+- FieldEditorSurfaceState
 - fullReconcileToDOM
 - getCaretOffset
+- getExpandedBlockRole
 - getInlineAtomAtOffset
 - getSelectionOffsets
 - handleClipboardPaste
@@ -177,13 +196,8 @@
 - resolveInlineAtomDropTarget
 - ResolveInlineAtomDropTargetOptions
 - SelectionPoint
+- shouldUseBlockSelection
 - TextDiffOp
-
-### type
-
-- ExpandedBlockRole
-- FieldEditorSurfaceMode
-- FieldEditorSurfaceState
 
 ## ./field-editor/beforeinputMap
 
@@ -894,10 +908,12 @@ _no exports_
 - createPointerSelectionGesture
 - resolvePointerDragSelection
 - resolvePointerGestureAnchorPoint
+- resolvePointerSelectionIntent
 
 ### type
 
 - PointerSelectionGesture
+- PointerSelectionInput
 - ResolvedPointerDragSelection
 
 ## ./utils/remoteCellSelection

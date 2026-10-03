@@ -3,10 +3,12 @@ import type { FuzzBlockView } from "../../types";
 import type { FuzzRng } from "./seed";
 
 /**
- * Weighted action generators for the DOM fuzzer (W3.R19 §3.15). Step 9 of
- * W3 ships the minimal set; the remaining §3.15 actions arrive with step 22.
- * Every action records concrete arguments, so a trace replays without the
- * generator.
+ * Weighted action generators for the DOM fuzzer (W3.R19 §3.15). Every
+ * action records concrete arguments, so a trace replays without the
+ * generator. Two weight tables: the PR set (`PR_ACTION_WEIGHTS`, the step-9
+ * kinds, frozen so the fixed PR seeds keep their traces) and the full §3.15
+ * set the nightly soak runs; a kind joins the PR set only after ten green
+ * nightly-length runs.
  */
 export type FuzzPoint = { blockId: string; offset: number };
 
@@ -24,6 +26,21 @@ export type FuzzAction =
 	| { kind: "undo"; args: Record<string, never> }
 	| { kind: "redo"; args: Record<string, never> }
 	| { kind: "remote"; args: { ops: DocumentOp[] } }
+	| { kind: "double-click"; args: FuzzPoint }
+	| { kind: "triple-click"; args: FuzzPoint }
+	| { kind: "home-end"; args: { key: "Home" | "End"; shift: boolean } }
+	| { kind: "delete"; args: FuzzPoint }
+	/** Click beside the n-th inline atom (wrapping), then arrow across it. */
+	| { kind: "atom-step"; args: { atomIndex: number; side: "left" | "right"; key: "ArrowLeft" | "ArrowRight" } }
+	| { kind: "paste"; args: { html: string } }
+	/** Chromium CDP composition with a remote apply between start and commit; elsewhere a plain remote apply. */
+	| { kind: "remote-mid-composition"; args: { composing: string; commit: string; ops: DocumentOp[] } }
+	| { kind: "context-menu"; args: FuzzPoint }
+	| { kind: "escape"; args: Record<string, never> }
+	/** W4 fills `blockWindow`; until then the executor records it skipped. */
+	| { kind: "scroll"; args: { blockId: string } }
+	/** A drag that scrolls while the button is held, across more than 50 blocks. */
+	| { kind: "long-drag"; args: { from: FuzzPoint; to: FuzzPoint } }
 	/** `PEN_FUZZ_FORCE_FAIL_AT`: the self-test's planted S2 violation. */
 	| { kind: "force-fail"; args: Record<string, never> };
 
@@ -33,7 +50,21 @@ export type FuzzStep = FuzzAction & { i: number };
 
 type GeneratedKind = Exclude<FuzzActionKind, "force-fail">;
 
-const ACTION_WEIGHTS: Readonly<Record<GeneratedKind, number>> = {
+type PrKind =
+	| "click"
+	| "drag"
+	| "arrow"
+	| "shift-arrow"
+	| "type"
+	| "enter"
+	| "backspace"
+	| "select-all"
+	| "undo"
+	| "redo"
+	| "remote";
+
+/** The PR set. Its key order and weights are frozen: they decide the PR seeds' traces. */
+const PR_ACTION_WEIGHTS: Readonly<Record<PrKind, number>> = {
 	click: 3,
 	drag: 2,
 	arrow: 3,
@@ -46,6 +77,40 @@ const ACTION_WEIGHTS: Readonly<Record<GeneratedKind, number>> = {
 	redo: 1,
 	remote: 2,
 };
+
+/** The full §3.15 set; `long-drag` is drawn only on a document longer than 50 blocks. */
+const FULL_ACTION_WEIGHTS: Readonly<Record<GeneratedKind, number>> = {
+	...PR_ACTION_WEIGHTS,
+	"double-click": 1,
+	"triple-click": 1,
+	"home-end": 1,
+	delete: 1,
+	"atom-step": 1,
+	paste: 1,
+	"remote-mid-composition": 1,
+	"context-menu": 1,
+	escape: 1,
+	scroll: 1,
+	"long-drag": 1,
+};
+
+export type FuzzActionSet = "pr" | "full";
+
+const LONG_DRAG_MIN_SPAN = 51;
+
+/** Small HTML paste payloads: marks, a list, a link, and two paragraphs. */
+const PASTE_HTML = [
+	"<p>pasted <strong>bold</strong> text</p>",
+	"<ul><li>one</li><li>two</li></ul>",
+	'<p>a <a href="https://example.com">link</a></p>',
+	"<p>first</p><p>second</p>",
+] as const;
+
+const COMPOSITIONS = [
+	{ composing: "か", commit: "漢" },
+	{ composing: "ni", commit: "你" },
+	{ composing: "e", commit: "é" },
+] as const;
 
 const ARROWS: readonly ArrowKey[] = [
 	"ArrowLeft",
@@ -79,10 +144,16 @@ export type GenerateContext = {
 	seed: number;
 	i: number;
 	blocks: readonly FuzzBlockView[];
+	/** Default `"pr"`. */
+	actionSet?: FuzzActionSet;
 };
 
-function pickKind(rng: FuzzRng): GeneratedKind {
-	const entries = Object.entries(ACTION_WEIGHTS) as [GeneratedKind, number][];
+function pickKind(rng: FuzzRng, context: GenerateContext): GeneratedKind {
+	const weights: Readonly<Partial<Record<GeneratedKind, number>>> =
+		context.actionSet === "full" ? FULL_ACTION_WEIGHTS : PR_ACTION_WEIGHTS;
+	const entries = (Object.entries(weights) as [GeneratedKind, number][]).filter(
+		([kind]) => kind !== "long-drag" || context.blocks.length >= LONG_DRAG_MIN_SPAN,
+	);
 	const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
 	let roll = rng.next() * total;
 	for (const [kind, weight] of entries) {
@@ -178,6 +249,23 @@ function remoteOps(rng: FuzzRng, context: GenerateContext): DocumentOp[] {
 		: remoteSplice(rng, context.blocks);
 }
 
+function longDragArgs(
+	rng: FuzzRng,
+	blocks: readonly FuzzBlockView[],
+): { from: FuzzPoint; to: FuzzPoint } {
+	const text = textBlocks(blocks);
+	const fromIndex = rng.int(Math.max(1, text.length - LONG_DRAG_MIN_SPAN));
+	const toIndex = Math.min(
+		text.length - 1,
+		fromIndex + LONG_DRAG_MIN_SPAN + rng.int(Math.max(1, text.length - fromIndex - LONG_DRAG_MIN_SPAN)),
+	);
+	const [from, to] = rng.next() < 0.5 ? [fromIndex, toIndex] : [toIndex, fromIndex];
+	return {
+		from: randomPoint(rng, text[from]!),
+		to: randomPoint(rng, text[to]!),
+	};
+}
+
 function typedGraphemes(rng: FuzzRng): string[] {
 	return Array.from({ length: 1 + rng.int(6) }, () => rng.pick(GRAPHEMES));
 }
@@ -202,6 +290,24 @@ const ARGS_GENERATORS: {
 	undo: () => ({}),
 	redo: () => ({}),
 	remote: (rng, context) => ({ ops: remoteOps(rng, context) }),
+	"double-click": (rng, { blocks }) => randomPoint(rng, rng.pick(textBlocks(blocks))),
+	"triple-click": (rng, { blocks }) => randomPoint(rng, rng.pick(textBlocks(blocks))),
+	"home-end": (rng) => ({ key: rng.next() < 0.5 ? "Home" : "End", shift: rng.next() < 0.5 }),
+	delete: (rng, { blocks }) => edgePoint(rng, blocks),
+	"atom-step": (rng) => ({
+		atomIndex: rng.int(8),
+		side: rng.next() < 0.5 ? "left" : "right",
+		key: rng.next() < 0.5 ? "ArrowLeft" : "ArrowRight",
+	}),
+	paste: (rng) => ({ html: rng.pick(PASTE_HTML) }),
+	"remote-mid-composition": (rng, context) => ({
+		...rng.pick(COMPOSITIONS),
+		ops: remoteSplice(rng, context.blocks),
+	}),
+	"context-menu": (rng, { blocks }) => randomPoint(rng, rng.pick(textBlocks(blocks))),
+	escape: () => ({}),
+	scroll: (rng, { blocks }) => ({ blockId: rng.pick(blocks).id }),
+	"long-drag": (rng, { blocks }) => longDragArgs(rng, blocks),
 };
 
 function actionOfKind(
@@ -224,5 +330,5 @@ export function generateAction(
 	if (textBlocks(context.blocks).length === 0) {
 		throw new Error("fuzz: the document has no text block left to act on");
 	}
-	return actionOfKind(pickKind(rng), rng, context);
+	return actionOfKind(pickKind(rng, context), rng, context);
 }

@@ -1,9 +1,13 @@
+import { buildTransitionSnapshot } from "@input/pen-core";
 import type { Editor, Point } from "@input/pen-types";
 import { getEditorBlockSelectionLength } from "../utils/blockSelectionSemantics";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import { getPreorderBlockIds } from "../utils/documentPreorder";
 import type { PointerInteractionModel } from "../utils/editorInteractionModel";
-import type { PointerSelectionGesture } from "../utils/pointerSelection";
+import {
+	resolvePointerSelectionIntent,
+	type PointerSelectionGesture,
+} from "../utils/pointerSelection";
 import type { RegionSelectionStore } from "../utils/regionSelection";
 import { normalizeSelectionFormation } from "../utils/selectionFormation";
 import type { FieldEditorSession } from "./controller";
@@ -158,17 +162,9 @@ export function ensureEditorFocus(
 ) {
 	const activeEl = root.ownerDocument?.activeElement;
 	if (activeEl instanceof Node && root.contains(activeEl)) return;
-	if (
-		typeof ctx.fieldEditor.requestRootFocus === "function" &&
-		!ctx.fieldEditor.requestRootFocus(root, "activate", {
-			preventScroll: true,
-		})
-	) {
-		return;
-	}
-	if (typeof ctx.fieldEditor.requestRootFocus !== "function") {
-		root.focus({ preventScroll: true });
-	}
+	ctx.fieldEditor.requestRootFocus(root, "activate", {
+		preventScroll: true,
+	});
 }
 
 export function activateCanonicalSelection(
@@ -182,9 +178,12 @@ export function activateCanonicalSelection(
 				anchorPoint.blockId,
 				anchorPoint.offset,
 				focusPoint.offset,
+				{ origin: "pointer" },
 			);
 		} else {
-			ctx.editor.selectTextRange(anchorPoint, focusPoint);
+			ctx.editor.selectTextRange(anchorPoint, focusPoint, {
+				origin: "pointer",
+			});
 			ctx.fieldEditor.activate(anchorPoint.blockId);
 		}
 		return;
@@ -196,7 +195,9 @@ export function activateCanonicalSelection(
 	});
 	if (normalizedSelection.type === "block") {
 		if (!ctx.blockSelectionEnabled) return;
-		ctx.editor.selectBlocks(normalizedSelection.blockIds);
+		ctx.editor.selectBlocks(normalizedSelection.blockIds, {
+			origin: "pointer",
+		});
 		ctx.fieldEditor.deactivate();
 		return;
 	}
@@ -210,5 +211,30 @@ export function activateCanonicalSelection(
 	ctx.fieldEditor.applyDocumentTextSelection(
 		normalizedSelection.anchor,
 		normalizedSelection.focus,
+		"pointer",
 	);
+}
+
+/**
+ * T5: a click that selects a block resolves through `clickSelectableBlock`.
+ * A structural block becomes a BlockSelection with its head; a text block
+ * that the interaction model selects whole is selected as a block.
+ */
+export function selectClickedBlock(
+	ctx: ContentGesturesContext,
+	blockId: string,
+): void {
+	const snapshot = buildTransitionSnapshot(ctx.editor, {
+		blockIds: [blockId],
+	});
+	const clicked = resolvePointerSelectionIntent(
+		snapshot,
+		{ anchor: null },
+		{ kind: "click", blockId, offset: 0 },
+	);
+	if (clicked?.type === "block") {
+		ctx.editor.setSelection(clicked, { origin: "pointer" });
+		return;
+	}
+	ctx.editor.selectBlock(blockId, { origin: "pointer" });
 }

@@ -134,7 +134,18 @@ export function scrollDelta(
 		target.right,
 		"nearest",
 	);
-	return dx === 0 && dy === 0 ? null : { dx, dy };
+	const x = wholePixels(dx);
+	const y = wholePixels(dy);
+	return x === 0 && y === 0 ? null : { dx: x, dy: y };
+}
+
+/**
+ * Scroll offsets snap to device pixels, so a fractional delta lands short
+ * and leaves a subpixel of the target outside the view; round away from zero.
+ */
+function wholePixels(delta: number): number {
+	const rounded = Math.sign(delta) * Math.ceil(Math.abs(delta));
+	return rounded === 0 ? 0 : rounded;
 }
 
 function axisDelta(

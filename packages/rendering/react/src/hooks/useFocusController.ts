@@ -50,7 +50,7 @@ export function useFocusController(editor: Editor): PenFocusController {
 		getAttachedFieldEditor(editor) as FieldEditorSession | null;
 
 	return {
-		text: async (request) => {
+		text: (request) => {
 			const offset = resolveFocusOffset(
 				editor,
 				request.blockId,
@@ -65,7 +65,7 @@ export function useFocusController(editor: Editor): PenFocusController {
 				passive: request.passive,
 			});
 		},
-		start: async (blockId, request = {}) => {
+		start: (blockId, request = {}) => {
 			return focusRange(getFieldEditor, {
 				blockId,
 				anchorOffset: 0,
@@ -75,7 +75,7 @@ export function useFocusController(editor: Editor): PenFocusController {
 				passive: request.passive,
 			});
 		},
-		end: async (blockId, request = {}) => {
+		end: (blockId, request = {}) => {
 			const offset = resolveFocusOffset(editor, blockId, "end");
 			return focusRange(getFieldEditor, {
 				blockId,
@@ -86,7 +86,7 @@ export function useFocusController(editor: Editor): PenFocusController {
 				passive: request.passive,
 			});
 		},
-		range: async (request) =>
+		range: (request) =>
 			focusRange(getFieldEditor, {
 				blockId: request.blockId,
 				anchorOffset: request.anchorOffset,
@@ -95,7 +95,7 @@ export function useFocusController(editor: Editor): PenFocusController {
 				domFocus: request.domFocus,
 				passive: request.passive,
 			}),
-		restore: async (request) => {
+		restore: (request) => {
 			if ("anchorOffset" in request) {
 				return focusRange(getFieldEditor, {
 					blockId: request.blockId,
@@ -123,14 +123,14 @@ export function useFocusController(editor: Editor): PenFocusController {
 		blur: () => {
 			getFieldEditor()?.blur();
 		},
-		waitForAttachment: async (blockId) => {
+		waitForAttachment: (blockId) => {
 			const fieldEditor = getFieldEditor();
-			return fieldEditor?.waitForAttachment(blockId) ?? false;
+			return fieldEditor?.waitForAttachment(blockId) ?? Promise.resolve(false);
 		},
 	};
 }
 
-async function focusRange(
+function focusRange(
 	getFieldEditor: () => FieldEditorSession | null,
 	request: {
 		blockId: string;
@@ -143,7 +143,7 @@ async function focusRange(
 ): Promise<boolean> {
 	const fieldEditor = getFieldEditor();
 	if (!fieldEditor) {
-		return false;
+		return Promise.resolve(false);
 	}
 
 	return fieldEditor.focusTextSelection(

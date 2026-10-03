@@ -246,6 +246,49 @@ describe("caret commands", () => {
 		editor.destroy();
 	});
 
+	it("N1: between two adjacent atoms caretRight selects the second atom", () => {
+		const editor = createCommandEditor([
+			{ id: "a", type: "paragraph", text: "abc" },
+		]);
+		insertMention(editor, "a", 3);
+		insertMention(editor, "a", 4);
+		const registry = createCommandHarness(editor);
+		editor.selectText("a", 4, 4);
+
+		expect(registry.dispatch(caretRight, { extend: false })).toBe(true);
+		expect(editor.selection).toMatchObject({
+			type: "text",
+			anchor: { blockId: "a", offset: 4 },
+			focus: { blockId: "a", offset: 5 },
+		});
+
+		editor.selectText("a", 4, 4);
+		expect(registry.dispatch(caretLeft, { extend: false })).toBe(true);
+		expect(editor.selection).toMatchObject({
+			type: "text",
+			anchor: { blockId: "a", offset: 3 },
+			focus: { blockId: "a", offset: 4 },
+		});
+		editor.destroy();
+	});
+
+	it("N1: caretRight on a selected second adjacent atom collapses past it", () => {
+		const editor = createCommandEditor([
+			{ id: "a", type: "paragraph", text: "abc" },
+		]);
+		insertMention(editor, "a", 3);
+		insertMention(editor, "a", 4);
+		const registry = createCommandHarness(editor);
+		editor.selectText("a", 4, 5);
+
+		expect(registry.dispatch(caretRight, { extend: false })).toBe(true);
+		expect(editor.selection).toMatchObject({
+			anchor: { blockId: "a", offset: 5 },
+			focus: { blockId: "a", offset: 5 },
+		});
+		editor.destroy();
+	});
+
 	it("pen.caretUp/Down cross at block edges without geometry", () => {
 		const editor = createCommandEditor([
 			{ id: "a", type: "paragraph", text: "aa" },
@@ -345,7 +388,7 @@ describe("caret commands", () => {
 		editor.destroy();
 	});
 
-	it("N2: pen.caretDown geometry landing on a table keeps a collapsed text caret", () => {
+	it("T5 S2: pen.caretDown geometry landing on a table selects its first-row edge cell", () => {
 		const editor = createCommandEditor([
 			{ id: "a", type: "paragraph", text: "hi" },
 			{ id: "t", type: "table" },
@@ -358,9 +401,38 @@ describe("caret commands", () => {
 		editor.selectText("a", 1, 1);
 
 		expect(registry.dispatch(caretDown, { extend: false })).toBe(true);
-		expect(editor.selection?.type).toBe("text");
-		expect(caretOf(editor)).toEqual({ blockId: "t", offset: 0 });
-		expect(getVerticalCaretGoalX(editor)).toBe(40);
+		expect(editor.selection).toMatchObject({
+			type: "cell",
+			blockId: "t",
+			anchor: { row: 0, col: 0 },
+			head: { row: 0, col: 0 },
+		});
+		expect(getVerticalCaretGoalX(editor)).toBeNull();
+		editor.destroy();
+	});
+
+	it("T5 S2: pen.caretUp into a table selects its last-row edge cell; Shift extends over it as a block", () => {
+		const editor = createCommandEditor([
+			{ id: "t", type: "table" },
+			{ id: "b", type: "paragraph", text: "below" },
+		]);
+		const registry = createCommandHarness(editor);
+		setVerticalCaretMeasure(editor, () => ({
+			point: { blockId: "t", offset: 0 },
+			goalX: 40,
+		}));
+		const rows = editor.getBlock("t")!.as("table")!.tableRowCount();
+		editor.selectText("b", 2, 2);
+
+		expect(registry.dispatch(caretUp, { extend: false })).toBe(true);
+		expect(editor.selection).toMatchObject({
+			type: "cell",
+			anchor: { row: rows - 1, col: 0 },
+		});
+
+		editor.selectText("b", 2, 2);
+		expect(registry.dispatch(caretUp, { extend: true })).toBe(true);
+		expect(editor.selection?.type).not.toBe("cell");
 		editor.destroy();
 	});
 

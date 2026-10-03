@@ -62,20 +62,20 @@ export function domPointToOffset(
 export function getBlockSurfaceRole(
 	blockEl: HTMLElement,
 ): "editable-inline" | "structural" | "delegated" {
-	const role = blockEl.getAttribute(DATA_ATTRS.surfaceRole);
-	if (role === "structural" || role === "delegated") {
-		return role;
-	}
-
-	const typeRole = getBlockSelectionRoleFromType(
-		blockEl.getAttribute(DATA_ATTRS.blockType),
-	);
-	// a delegated block with one text surface of its own (a code block) holds
-	// text offsets until expanded mode stamps its role; a table's cells do not.
-	if (typeRole === "delegated" && ownsTextSurface(blockEl)) {
+	const stamped = blockEl.getAttribute(DATA_ATTRS.surfaceRole);
+	const role =
+		stamped === "structural" || stamped === "delegated"
+			? stamped
+			: getBlockSelectionRoleFromType(
+					blockEl.getAttribute(DATA_ATTRS.blockType),
+				);
+	// A delegated block with one text surface of its own (a code block) holds
+	// text offsets, as core's selection does, whether or not expanded mode
+	// has stamped it `delegated`; a table's cells do not.
+	if (role === "delegated" && ownsTextSurface(blockEl)) {
 		return "editable-inline";
 	}
-	return typeRole;
+	return role;
 }
 
 function ownsTextSurface(blockEl: HTMLElement): boolean {
@@ -150,7 +150,7 @@ export function resolveSelectionPoint(
 	options: ResolveSelectionPointOptions = {},
 ): SelectionPoint | null {
 	const blockEl = findBlockElement(node, root);
-	if (!blockEl) return null;
+	if (!blockEl) return resolveBlockGapPoint(root, node, offset);
 	const blockId = blockEl.getAttribute("data-block-id");
 	if (!blockId) return null;
 
@@ -175,6 +175,40 @@ export function resolveSelectionPoint(
 
 	const charOffset = domPointToOffset(inlineEl, node, offset);
 	return { blockId, offset: charOffset };
+}
+
+/**
+ * The inverse of `findDOMPoint` for a block with no inline content (N2): the
+ * projector writes such a block's `0..1` extent as the gaps around its
+ * element, `(parent, index)` and `(parent, index + 1)`. A point in a gap
+ * between block elements maps to the unit block on its left at 1, else the
+ * unit block on its right at 0, else the nearer edge of a text block.
+ */
+function resolveBlockGapPoint(
+	root: HTMLElement,
+	node: Node,
+	offset: number,
+): SelectionPoint | null {
+	if (!(node instanceof Element) || !root.contains(node)) return null;
+	const before = node.childNodes[offset - 1];
+	const after = node.childNodes[offset];
+	const blockBefore = asBlockElement(before);
+	const blockAfter = asBlockElement(after);
+	if (blockBefore && !findInlineContentElement(blockBefore)) {
+		return getBoundaryPointForBlockElement(blockBefore, "end");
+	}
+	if (blockAfter && !findInlineContentElement(blockAfter)) {
+		return getBoundaryPointForBlockElement(blockAfter, "start");
+	}
+	if (blockBefore) return getBoundaryPointForBlockElement(blockBefore, "end");
+	if (blockAfter) return getBoundaryPointForBlockElement(blockAfter, "start");
+	return null;
+}
+
+function asBlockElement(node: Node | undefined): HTMLElement | null {
+	return node instanceof HTMLElement && node.hasAttribute(DATA_ATTRS.editorBlock)
+		? node
+		: null;
 }
 
 /**

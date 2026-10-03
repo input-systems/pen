@@ -15,6 +15,14 @@ export type SelectionOrigin =
 	| "restore"
 	| "gc";
 
+/**
+ * Options for the editor's selection setters (S3, W3.R11). `origin`
+ * defaults to `"programmatic"`; `"gc"` is reserved for repair writes (A4).
+ */
+export interface SelectionWriteOptions {
+	readonly origin?: SelectionOrigin;
+}
+
 export interface TextSelection {
 	type: "text";
 	anchor: Point;

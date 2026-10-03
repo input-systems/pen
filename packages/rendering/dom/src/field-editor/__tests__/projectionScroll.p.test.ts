@@ -110,6 +110,18 @@ describe("projection scroll policy (W3.R15)", () => {
 			dy: -130,
 		});
 	});
+
+	it("P: a fractional delta rounds away from zero so the target lands fully in view", () => {
+		const view = rect(0, 720);
+		expect(scrollDelta(view, rect(702.375, 720.375), "nearest")).toEqual({
+			dx: 0,
+			dy: 1,
+		});
+		expect(scrollDelta(view, rect(-0.5, 17.5), "nearest")).toEqual({
+			dx: 0,
+			dy: -1,
+		});
+	});
 });
 
 describe("projection scroll jobs (W3.R15)", () => {

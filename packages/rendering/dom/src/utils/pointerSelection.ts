@@ -1,6 +1,12 @@
-import type { Editor, SelectionState } from "@input/pen-types";
+import {
+	buildTransitionSnapshot,
+	clickSelectableBlock,
+	convertPointerDrag,
+	getEditorSelectionRecord,
+	type TransitionSnapshot,
+} from "@input/pen-core";
+import type { Editor, Point, SelectionState } from "@input/pen-types";
 import { pointToEditorSelectionPoint } from "../field-editor/selectionBridge";
-import { getEditorBlockSelectionRole } from "./blockSelectionSemantics";
 import { getPreorderBlockIds } from "./documentPreorder";
 
 export interface PointerSelectionGesture {
@@ -9,6 +15,8 @@ export interface PointerSelectionGesture {
 	clientY: number;
 	anchorPoint: { blockId: string; offset: number } | null;
 	startSelection: SelectionState | null;
+	/** The authority record version at pointerdown; a later one means the reader accepted a range in this gesture. */
+	startSelectionVersion: number;
 	promotedDuringDrag: boolean;
 	/**
 	 * `blockId` came from the nearest block edge (G4) rather than a block
@@ -44,6 +52,7 @@ export function createPointerSelectionGesture(
 		startedInHostChrome: input.startedInHostChrome ?? false,
 		anchorPoint: null,
 		startSelection: editor.getSelection(),
+		startSelectionVersion: getEditorSelectionRecord(editor)?.version ?? 0,
 		promotedDuringDrag: false,
 	};
 }
@@ -63,6 +72,42 @@ export function resolvePointerGestureAnchorPoint(
 	return pointToEditorSelectionPoint(root, gesture.clientX, gesture.clientY);
 }
 
+/** A pointer input with its points already resolved through G4. */
+export type PointerSelectionInput =
+	| { readonly kind: "drag"; readonly focus: Point }
+	| { readonly kind: "click"; readonly blockId: string; readonly offset: number };
+
+/**
+ * The selection a pointer input forms: a drag through T2
+ * (`convertPointerDrag`), a click through T5 (`clickSelectableBlock`). Pure:
+ * the DOM work is resolving the points, which the caller has done.
+ */
+export function resolvePointerSelectionIntent(
+	snapshot: TransitionSnapshot,
+	gesture: { readonly anchor: Point | null },
+	input: PointerSelectionInput,
+): SelectionState {
+	switch (input.kind) {
+		case "drag": {
+			const anchor = gesture.anchor ?? input.focus;
+			const start = {
+				type: "text" as const,
+				anchor,
+				focus: anchor,
+				affinity: "downstream" as const,
+				goalX: null,
+			};
+			return convertPointerDrag(snapshot, start, input.focus);
+		}
+		case "click":
+			return clickSelectableBlock(snapshot, input.blockId, input.offset);
+		default: {
+			const _exhaustive: never = input;
+			return _exhaustive;
+		}
+	}
+}
+
 export function resolvePointerDragSelection(
 	editor: Editor,
 	root: HTMLElement,
@@ -70,10 +115,6 @@ export function resolvePointerDragSelection(
 	input: {
 		clientX: number;
 		clientY: number;
-		getBoundaryPoint: (
-			blockId: string,
-			side: "start" | "end",
-		) => { blockId: string; offset: number };
 	},
 ): ResolvedPointerDragSelection | null {
 	const focusPoint = pointToEditorSelectionPoint(
@@ -102,9 +143,9 @@ export function resolvePointerDragSelection(
 	if (!anchorPoint) {
 		return null;
 	}
-	// Within one block the browser owns the range and the mapped read at
-	// mouseup commits it. A drag anchored in host chrome never entered a
-	// field, so there is no native range to inherit (FE10) and Pen has to
+	// Within one block the browser owns the range and the reader accepted it
+	// inside the pointer window. A drag anchored in host chrome never entered
+	// a field, so there is no native range to inherit (FE10) and Pen has to
 	// resolve that one itself.
 	if (
 		focusPoint.blockId === anchorPoint.blockId &&
@@ -114,46 +155,24 @@ export function resolvePointerDragSelection(
 		return null;
 	}
 
-	const anchorRole = getEditorBlockSelectionRole(editor, anchorPoint.blockId);
-	const focusRole = getEditorBlockSelectionRole(editor, focusPoint.blockId);
-	if (anchorRole === "editable-inline" && focusRole === "editable-inline") {
-		return {
-			mode: "mapped-text",
-			anchorPoint,
-			focusPoint,
-		};
-	}
-
-	const blockOrder = getPreorderBlockIds(editor);
-	const anchorIdx = blockOrder.indexOf(anchorPoint.blockId);
-	const focusIdx = blockOrder.indexOf(focusPoint.blockId);
-	if (anchorIdx < 0 || focusIdx < 0) {
+	const snapshot = buildTransitionSnapshot(editor, {
+		blockIds: [anchorPoint.blockId, focusPoint.blockId],
+	});
+	const selection = resolvePointerSelectionIntent(
+		snapshot,
+		{ anchor: anchorPoint },
+		{ kind: "drag", focus: focusPoint },
+	);
+	if (selection?.type !== "text") {
 		return null;
 	}
-
-	const selectingForward = anchorIdx <= focusIdx;
-	// N2: a mid-paragraph drag start must stay at that offset. Snapping
-	// the text anchor to the block end made Backspace leave the whole
-	// paragraph after a divider-only delete (WebKit / Firefox).
-	const normalizedAnchorPoint =
-		anchorRole === "editable-inline"
-			? anchorPoint
-			: input.getBoundaryPoint(
-					anchorPoint.blockId,
-					selectingForward ? "start" : "end",
-				);
-	const normalizedFocusPoint =
-		focusRole === "editable-inline"
-			? focusPoint
-			: input.getBoundaryPoint(
-					focusPoint.blockId,
-					selectingForward ? "end" : "start",
-				);
-
+	const bothText =
+		snapshot.blocks[anchorPoint.blockId]?.kind === "text" &&
+		snapshot.blocks[focusPoint.blockId]?.kind === "text";
 	return {
-		mode: "canonical",
-		anchorPoint: normalizedAnchorPoint,
-		focusPoint: normalizedFocusPoint,
+		mode: bothText ? "mapped-text" : "canonical",
+		anchorPoint: selection.anchor,
+		focusPoint: selection.focus,
 	};
 }
 

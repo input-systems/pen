@@ -1,6 +1,8 @@
 import type { DocumentOp } from "@input/pen-types";
 import type { TestBlock } from "@input/pen-test";
 import { BIDI_MIXED_BLOCKS } from "./bidi";
+import { ATOM_CARET_BLOCKS, atomCaretOps } from "./atomCaret";
+import { FUZZ_LARGE_BLOCKS, fuzzLargeOps } from "./fuzzLarge";
 import { FUZZ_MIXED_BLOCKS, fuzzMixedOps } from "./fuzzMixed";
 import { GRAPHEME_CLUSTER_BLOCKS } from "./grapheme";
 
@@ -16,16 +18,20 @@ export const SCALE_FIXTURE_ROOT_COUNTS: Readonly<Record<ScaleFixtureName, number
 };
 
 /**
- * DOM fuzzer fixtures (W3.R19): a `populateYDoc` skeleton plus ops applied
- * before any surface mounts. Kept out of `FIXTURE_NAMES` like the scale
- * fixtures, so per-fixture sweeps (AX1, AX8) do not grow with the fuzzer.
+ * Skeleton-plus-ops fixtures: a `populateYDoc` skeleton plus ops applied
+ * before any surface mounts, for content `populateYDoc` cannot write (inline
+ * atoms, marks, tables). The DOM fuzzer's document (W3.R19) and the atom
+ * caret set (W35.G7). Kept out of `FIXTURE_NAMES` like the scale fixtures,
+ * so per-fixture sweeps (AX1, AX8) do not grow with them.
  */
-export type FuzzFixtureName = "fuzz-mixed";
+export type FuzzFixtureName = "fuzz-mixed" | "fuzz-large" | "atom-caret";
 
 export const FUZZ_FIXTURES: Readonly<
 	Record<FuzzFixtureName, { blocks: readonly TestBlock[]; ops: () => DocumentOp[] }>
 > = {
 	"fuzz-mixed": { blocks: FUZZ_MIXED_BLOCKS, ops: fuzzMixedOps },
+	"fuzz-large": { blocks: FUZZ_LARGE_BLOCKS, ops: fuzzLargeOps },
+	"atom-caret": { blocks: ATOM_CARET_BLOCKS, ops: atomCaretOps },
 };
 
 /** Fixtures built outside `LOCAL_FIXTURES`; per-fixture sweeps skip them. */

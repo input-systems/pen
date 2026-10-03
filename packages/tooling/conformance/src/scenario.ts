@@ -7,6 +7,7 @@ import {
 	assertDomAuthorityResult,
 	assertStandingDiagnostics,
 	assertStandingDomMatchesAuthority,
+	assertStandingOverlayMatchesAuthority,
 } from "./standingAssertions";
 import type {
 	DragTextArgs,
@@ -86,6 +87,7 @@ function createScenario(page: Page): ScenarioApi {
 
 	async function standing(): Promise<void> {
 		await assertStandingDomMatchesAuthority(page);
+		await assertStandingOverlayMatchesAuthority(page);
 		await assertStandingDiagnostics(page, expectedDiagnostics);
 	}
 

@@ -1,4 +1,4 @@
-import type { DocumentOp } from "@input/pen-types";
+import type { BlockScrollAlign, DocumentOp } from "@input/pen-types";
 import type { StandingDiagnosticCode } from "./diagnosticsAllowlist";
 
 export type LogicalPoint = {
@@ -203,6 +203,32 @@ export type GeometryVerticalMotion = {
 	lineBoxes: GeometryLineBox[];
 };
 
+/** OV4: what the overlay layer painted against the authority record after a flush. */
+export type OverlayAuthorityCheck = {
+	/** `held`: versions match and any local caret names the record's focus and affinity. */
+	kind: "held" | "failed" | "no-overlay";
+	reason: string;
+	layerVersion: number | null;
+	recordVersion: number | null;
+	caret: { blockId: string; offset: number; affinity: string } | null;
+	expectedCaret: { blockId: string; offset: number; affinity: string } | null;
+};
+
+/** OV1 counters over a window: flushes, paints, reader calls, layer mutations. */
+export type OverlayProbeCounts = {
+	flushes: number;
+	paints: number;
+	caretRectReads: number;
+	blockRectReads: number;
+	/** The most `caretRect` / `blockRect` calls any single flush made. */
+	maxCaretRectReadsPerFlush: number;
+	maxBlockRectReadsPerFlush: number;
+	/** Mutation records on the layer's items and children. */
+	layerMutations: number;
+	/** Attribute writes on the layer element itself (OV4 version, caret-visible). */
+	layerAttributeWrites: number;
+};
+
 export type GeometryEightCaretItem = {
 	id: string;
 	kind: string;
@@ -217,6 +243,8 @@ export type GeometryEightCaretBudget = {
 	paintedCount: number;
 	overlayConnected: boolean;
 	overlayAttr: string | null;
+	/** The overlay layer's viewport origin; item x/y are relative to it (OV2). */
+	layerOrigin: { x: number; y: number };
 	readPhase: string;
 	writePhase: string;
 	items: GeometryEightCaretItem[];
@@ -320,6 +348,20 @@ export type FuzzCheckReport = {
 	blocks: FuzzBlockView[];
 };
 
+/** The page's side of the two-page relay (W5.R10). Every update is base64. */
+export type RelayBridge = {
+	/** Updates the local doc emitted since the last drain; relay deliveries are never re-emitted. */
+	drainOutbox(): string[];
+	/** Applied non-locally with the relay origin, as a real provider applies them. */
+	deliver(updates: readonly string[]): void;
+	stateVector(): string;
+	/** Everything this page holds that `stateVector` lacks; `""` means everything. */
+	encodeSince(stateVector: string): string;
+	/** The local awareness state when it changed since the last drain. */
+	drainAwareness(): string[];
+	deliverAwareness(updates: readonly string[]): void;
+};
+
 export type PenConformanceBridge = {
 	readonly selection: SerializedSelection;
 	/** Official `isCollapsed` from `@input/pen-core` over the live editor selection. */
@@ -341,12 +383,27 @@ export type PenConformanceBridge = {
 	readonly hasMultiplayer: boolean;
 	readonly presence: PresenceSnapshot;
 	load(name: string): void;
+	/** `?relay=1` (W5.R10): fork this page from another page's encoded state with its own client id. */
+	loadSeeded(fixture: string, seedBase64: string, clientId: number): void;
+	/** `?relay=1` only: the page's side of the two-page relay. Updates are base64. */
+	readonly relay?: RelayBridge;
 	focusText(block?: number): void;
 	selectText(block: number, offset?: number): void;
 	/** Plain text of one block, by id. */
 	blockText(blockId: string): string;
 	/** Select by block id; scale fixtures address blocks by id, not index. */
 	selectTextById(blockId: string, anchorOffset: number, focusOffset?: number): void;
+	/** G3: a collapsed caret with an explicit affinity, origin `keyboard`. */
+	selectCaretWithAffinity(
+		blockId: string,
+		offset: number,
+		affinity: "upstream" | "downstream",
+	): void;
+	/** O3: a block selection over these ids, origin `keyboard`. */
+	selectBlocksById(blockIds: readonly string[]): void;
+	/** Every block id, nested ones included, in document preorder. */
+	readonly preorderBlockIds: readonly string[];
+
 	/** Disconnect or reconnect the in-page remote peer (`connectPeers`). */
 	setPeersConnected(connected: boolean): void;
 	setWindow(start: number): void;
@@ -412,6 +469,12 @@ export type PenConformanceBridge = {
 	flushEightRemoteCarets(
 		points: readonly GeometryPoint[],
 	): Promise<GeometryEightCaretBudget>;
+	/** OV4: run a flush, then compare the overlay layer with the authority record. */
+	overlayMatchesAuthority(): Promise<OverlayAuthorityCheck>;
+	/** OV1: start counting overlay flushes, paints, reader calls and layer mutations. */
+	startOverlayProbe(): void;
+	/** OV1: stop counting and return the counts since `startOverlayProbe`. */
+	stopOverlayProbe(): OverlayProbeCounts;
 	readonly beforeinputMap: Readonly<
 		Record<string, SerializedBeforeInputMapping>
 	>;
@@ -424,6 +487,8 @@ export type PenConformanceBridge = {
 	clearDiagnostics(): void;
 	mutateActiveSurfaceText(text: string): void;
 	undo(): void;
+	/** W3.R15: `scrollIntoView({ blockId }, { align })` on the field editor. */
+	scrollBlockIntoView(blockId: string, align: BlockScrollAlign): void;
 	redo(): void;
 	stopCapturing(): void;
 	/** W3.R19: invariants after one fuzz step; drains diagnostics. */
@@ -498,7 +563,8 @@ export type ScenarioApi = {
 
 /** The `?probe=render` window API (W1 scale-render counts). */
 interface ScaleProbeBridge {
-	begin(): void;
+	/** Resolves after one frame has settled the setup, with the window open. */
+	begin(): Promise<void>;
 	end(): Promise<Record<string, number>>;
 	live(): Record<string, number>;
 }

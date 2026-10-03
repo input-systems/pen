@@ -107,7 +107,7 @@ export function handleEditorDocumentKeyDown(options: {
 	const { event, editor, fieldEditor, interactionModel, root } = options;
 
 	return (
-		handleEscapeSelectionTransition({ event, editor, fieldEditor, root }) ||
+		handleEscapeSelectionTransition({ event, editor, fieldEditor }) ||
 		handleDeleteSelectionShortcut(event, editor, fieldEditor, root) ||
 		handleTableCellSelectionKeyDown({ event, editor, fieldEditor, root }) ||
 		handleSelectAllShortcut(editor, event, fieldEditor) ||
@@ -191,7 +191,9 @@ function handleBlockSelectionEnter(
 		usesInlineTextSelection(anchorSchema)
 	) {
 		const offset = anchorBlock.length();
-		fieldEditor.activateTextSelection(anchorBlockId, offset, offset);
+		fieldEditor.activateTextSelection(anchorBlockId, offset, offset, {
+			origin: "keyboard",
+		});
 		return true;
 	}
 
@@ -210,7 +212,7 @@ function handleBlockSelectionEnter(
 		{ origin: "user" },
 	);
 
-	fieldEditor.activateTextSelection(newBlockId, 0, 0);
+	fieldEditor.activateTextSelection(newBlockId, 0, 0, { origin: "keyboard" });
 	return true;
 }
 
@@ -255,6 +257,7 @@ function handleDeleteSelectionShortcut(
 				nextSelection.focus.blockId,
 				nextSelection.focus.offset,
 				nextSelection.focus.offset,
+				{ origin: "keyboard" },
 			);
 		} else {
 			fieldEditor.deactivate();
@@ -269,7 +272,9 @@ function handleDeleteSelectionShortcut(
 		if (firstBlock) {
 			const schema = editor.schema.resolve(firstBlock.type);
 			if (usesInlineTextSelection(schema)) {
-				fieldEditor.activateTextSelection(firstBlock.id, 0, 0);
+				fieldEditor.activateTextSelection(firstBlock.id, 0, 0, {
+					origin: "keyboard",
+				});
 			}
 		}
 		return true;

@@ -10,7 +10,6 @@ import type {
 	PenFocusPolicy,
 	PenFocusReason,
 } from "./controller";
-import { queryBlockElement } from "./selectionBridge";
 
 type FocusControllerOptions = {
 	editor: Editor;
@@ -90,23 +89,6 @@ export class FocusController {
 		}
 	}
 
-	restoreFocusAfterDeactivate(blockId: string | null): void {
-		const root = this._getRootElement();
-		if (!root) return;
-
-		if (blockId) {
-			const blockEl = queryBlockElement(root, blockId);
-			if (blockEl) {
-				this.requestDomFocus(blockEl, "restore", {
-					preventScroll: true,
-				});
-				return;
-			}
-		}
-
-		this.requestDomFocus(root, "restore", { preventScroll: true });
-	}
-
 	attachedElementOwnsFocus(): boolean {
 		const attachedElement = this._getAttachedElement();
 		if (!attachedElement) {
@@ -129,11 +111,16 @@ export class FocusController {
 	waitForAttachment(
 		blockId: string | null = this._getFocusBlockId(),
 	): Promise<boolean> {
+		return Promise.resolve(this.isAttached(blockId));
+	}
+
+	/** Whether the field for `blockId` (or the focused one) is attached now. */
+	isAttached(blockId: string | null = this._getFocusBlockId()): boolean {
 		const attachedElement = this._getAttachedElement();
-		const attached =
+		return (
 			attachedElement?.isConnected === true &&
-			(blockId == null || this._getFocusBlockId() === blockId);
-		return Promise.resolve(attached);
+			(blockId == null || this._getFocusBlockId() === blockId)
+		);
 	}
 
 	onFocusLifecycle(listener: PenFocusLifecycleListener): Unsubscribe {

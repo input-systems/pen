@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { HARNESS_PORT } from "../src/harnessPort";
 import { scenario } from "../src/scenario";
 
-const INSECURE_ORIGIN = "http://pen.test:4174";
+const INSECURE_ORIGIN = `http://pen.test:${HARNESS_PORT}`;
 
 test.use({
 	baseURL: INSECURE_ORIGIN,

@@ -25,7 +25,7 @@ import { installStoreListenerProbe, readLiveStoreListeners } from "./storeListen
  * Nothing installs without the flag, so every other scenario is unaffected.
  */
 interface ScaleProbeApi {
-	begin(): void;
+	begin(): Promise<void>;
 	end(): Promise<Record<string, number>>;
 	live(): Record<string, number>;
 }
@@ -42,7 +42,13 @@ function recordScan(): void {
 }
 
 const api: ScaleProbeApi = {
-	begin() {
+	async begin() {
+		// Settle the setup before the window opens. A step outside the window
+		// (a programmatic caret placement) schedules a scheduler flush whose
+		// write phase may paint (the overlay's OV4 selection-version write);
+		// whether that frame fired before `begin` was a race, so the count
+		// sometimes held one write from the setup. One frame drains it.
+		await nextFrame();
 		resetMetrics();
 		resetDistinct();
 		scan?.reset();

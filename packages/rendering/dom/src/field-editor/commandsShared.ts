@@ -1,3 +1,4 @@
+import { INLINE_ATOM_REPLACEMENT_TEXT } from "./inlineAtomModel";
 import {
 	INPUT_RULES_ENGINE_SLOT_KEY,
 	generateId,
@@ -103,6 +104,32 @@ export function getAdjacentEditableBlock(
 		);
 	}
 	return null;
+}
+
+/**
+ * The field's text in the logical domain: each inline embed is one
+ * U+FFFC, as `getLogicalTextContent` reads the DOM (N1). `ytext.toString()`
+ * drops embeds, so comparing it with the DOM text, or computing offsets on
+ * it, misplaces everything after an atom.
+ */
+export function getLogicalInlineText(ytext: InlineTextLike): string {
+	const deltas = ytext.toDelta?.();
+	if (!Array.isArray(deltas)) {
+		return ytext.toString();
+	}
+	let text = "";
+	for (const delta of deltas) {
+		if (!delta || typeof delta !== "object" || !("insert" in delta)) {
+			continue;
+		}
+		const insert = (delta as { insert?: unknown }).insert;
+		if (typeof insert === "string") {
+			text += insert;
+		} else if (insert !== undefined && insert !== null) {
+			text += INLINE_ATOM_REPLACEMENT_TEXT;
+		}
+	}
+	return text;
 }
 
 export function getLogicalInlineLength(ytext: InlineTextLike): number {

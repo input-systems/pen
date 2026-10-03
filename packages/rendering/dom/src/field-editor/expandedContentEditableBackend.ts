@@ -179,6 +179,7 @@ export class ExpandedContentEditableBackend {
 							nextSelection.anchor.blockId,
 							nextSelection.anchor.offset,
 							nextSelection.focus.offset,
+							{ origin: "keyboard" },
 						);
 					}
 					return;
@@ -202,6 +203,7 @@ export class ExpandedContentEditableBackend {
 							nextSelection.anchor.blockId,
 							nextSelection.anchor.offset,
 							nextSelection.focus.offset,
+							{ origin: "keyboard" },
 						);
 					}
 					return;
@@ -232,6 +234,7 @@ export class ExpandedContentEditableBackend {
 					target.blockId,
 					target.anchorOffset,
 					target.focusOffset,
+					{ origin: "keyboard" },
 				);
 				return;
 			}

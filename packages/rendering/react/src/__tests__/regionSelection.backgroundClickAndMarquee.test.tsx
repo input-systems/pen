@@ -288,7 +288,7 @@ describe("@input/pen-react region selection: background click and marquee", () =
 		}
 	});
 
-	it("selects intersected blocks in document order and reuses the selection rect overlay", async () => {
+	it("O3: selects intersected blocks in document order; the marquee gives way to overlay outlines", async () => {
 		const { editor, firstBlockId, secondBlockId, thirdBlockId } =
 			createThreeBlockEditor();
 		const container = document.createElement("div");
@@ -361,13 +361,15 @@ describe("@input/pen-react region selection: background click and marquee", () =
 					?.hasAttribute("data-selected"),
 			).toBe(false);
 
-			const committedOverlay = container.querySelector(
-				"[data-pen-selection-rect]",
-			) as HTMLElement | null;
-			expect(committedOverlay).not.toBeNull();
-			expect(committedOverlay?.hasAttribute("data-selecting")).toBe(
-				false,
-			);
+			// The committed selection is not the marquee's: pen-dom draws it
+			// as one O3 outline per block in the overlay layer.
+			expect(container.querySelector("[data-pen-selection-rect]")).toBeNull();
+			const outlines = [
+				...container.querySelectorAll(
+					'[data-pen-overlay-layer] [data-pen-overlay-item="block-outline"]',
+				),
+			].map((node) => node.getAttribute("data-block-id"));
+			expect(outlines).toEqual([firstBlockId, secondBlockId]);
 		} finally {
 			await act(async () => {
 				root.unmount();

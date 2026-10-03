@@ -3,6 +3,7 @@ import { setInlineMark } from "@input/pen-shortcuts";
 import type { Editor } from "@input/pen-types";
 import type { FieldEditorTransferController } from "./controller";
 import { resolveEditorUrl } from "../security/resolveEditorUrl";
+import { originForTransfer } from "./selectionReader";
 
 function resolvePastedLinkUrl(
 	editor: Editor,
@@ -68,10 +69,13 @@ function tryPasteUrlAsLink(
 	);
 
 	const nextOffset = offset + url.length;
+	const origin = originForTransfer(fieldEditor);
 	if (fieldEditor) {
-		fieldEditor.activateTextSelection(blockId, nextOffset, nextOffset);
+		fieldEditor.activateTextSelection(blockId, nextOffset, nextOffset, {
+			origin,
+		});
 	} else {
-		editor.selectText(blockId, nextOffset, nextOffset);
+		editor.selectText(blockId, nextOffset, nextOffset, { origin });
 	}
 	return true;
 }

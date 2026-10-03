@@ -2,6 +2,7 @@ import type {
 	BlockSchema,
 	Editor,
 	FieldEditorFocusOptions,
+	SelectionOrigin,
 } from "@input/pen-types";
 import type { FieldEditorStore } from "./store";
 import type { EditorSelectAllBehavior } from "../constants/selectAll";
@@ -106,6 +107,12 @@ type FieldEditorSelectionState = Pick<
 export interface FieldEditorRootHandle {
 	setRootElement(element: HTMLElement | null): void;
 	setFocused(focused: boolean): void;
+	/**
+	 * The renderer `readonly` prop (O5), read by the overlay. Not the
+	 * `pen.ariaReadOnly` facet (AX1).
+	 */
+	setReadOnly(readonly: boolean): void;
+	readonly isReadOnly: boolean;
 	setFocusPolicy(focusPolicy: PenFocusPolicy | undefined): void;
 	setSelectAllBehavior(behavior: EditorSelectAllBehavior): void;
 	deactivate(): void;
@@ -113,11 +120,13 @@ export interface FieldEditorRootHandle {
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	commitProgrammaticTextSelection(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	focusTextSelection(
 		blockId: string,
@@ -187,13 +196,16 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 	 */
 	shouldProjectSelectionAfterReconcile?(): boolean;
 	readDomSelection?(proposal: ReaderSelection): DomSelectionReadDecision;
+	/** A cross-block text selection with its gesture's origin (S3). */
 	applyDocumentTextSelection(
 		anchor: { blockId: string; offset: number },
 		focus: { blockId: string; offset: number },
+		origin: SelectionOrigin,
 	): void;
 	applyDomTextSelection(
 		anchor: { blockId: string; offset: number },
 		focus: { blockId: string; offset: number },
+		origin: SelectionOrigin,
 		options?: {
 			focusBlockId?: string;
 		},
@@ -202,21 +214,25 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 		ytext: { toDelta(): unknown[] },
 		offset: number,
 	): Record<string, unknown | null> | undefined;
+	/** A text-input caret write; origin defaults to `keyboard`, `ime` while composing (S3). */
 	syncTextSelection(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		origin?: SelectionOrigin,
 	): void;
 	notifyDomReconciled(blockId?: string): void;
 	activateTextSelection(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	commitProgrammaticTextSelection(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	deactivate(): void;
 }
@@ -233,11 +249,13 @@ export interface FieldEditorKeyboardController extends Pick<
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	commitProgrammaticTextSelection?(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	commitCellTextSelection?(
 		blockId: string,
@@ -262,6 +280,7 @@ export interface FieldEditorTableNavigationController {
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	deactivate(): void;
 }
@@ -280,7 +299,10 @@ export interface FieldEditorTransferController {
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
+	/** The reader's gesture windows, for the paste caret's origin (S3). */
+	getGestureWindows?(): GestureWindowState;
 }
 
 export type FieldEditorInputController = FieldEditorDomController &
@@ -301,10 +323,13 @@ export type FieldEditorSession = FieldEditorStore &
 		togglePendingMark(markType: string): boolean;
 		clearPendingMarks(): void;
 		collapseSelectionToAnchor(): void;
-		collapseSelectionToPoint(point: {
-			blockId: string;
-			offset: number;
-		}): void;
+		collapseSelectionToPoint(
+			point: {
+				blockId: string;
+				offset: number;
+			},
+			origin?: SelectionOrigin,
+		): void;
 		onFocusLifecycle(listener: PenFocusLifecycleListener): () => void;
 		waitForAttachment(blockId?: string | null): Promise<boolean>;
 		/** Whether the live DOM selection maps inside this editor's root. */

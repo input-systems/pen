@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { SelectionRecord } from "@input/pen-types";
+import { DATA_ATTRS } from "../../utils/dataAttributes";
 import { HistorySelectionCoordinator } from "../historySelectionCoordinator";
 import { SelectionProjector } from "../selectionProjector";
 import { CLOSED_GESTURE_WINDOWS } from "../selectionReader";
@@ -36,6 +37,8 @@ function createController(
 		attachElement?: () => boolean;
 		requestDomFocus?: () => boolean;
 		emitDiagnostic?: (event: { code: string }) => void;
+		isEditing?: () => boolean;
+		activate?: (blockId: string) => void;
 	} = {},
 ) {
 	const setTextSelection: Array<{
@@ -50,7 +53,7 @@ function createController(
 		historySelectionCoordinator: new HistorySelectionCoordinator({
 			facet: () => undefined as never,
 		}),
-		isEditing: () => true,
+		isEditing: overrides.isEditing ?? (() => true),
 		getMode: overrides.getMode ?? (() => "single"),
 		getFocusBlockId: () => "first",
 		getAttachedElement: overrides.getAttachedElement ?? (() => null),
@@ -69,7 +72,7 @@ function createController(
 				(record?.version ?? 0) + 1,
 			);
 		},
-		activate: () => {},
+		activate: overrides.activate ?? (() => {}),
 		emitSelectionProjected: () => {},
 		getRecord: () => record,
 		emitDiagnostic: (event) => {
@@ -175,3 +178,124 @@ describe("SelectionProjector shouldProjectSelectionAfterReconcile", () => {
 		root.remove();
 	});
 });
+
+/** A root holding one text node with a native caret inside it. */
+function rootWithNativeRange(): HTMLElement {
+	const root = document.createElement("div");
+	root.textContent = "text";
+	document.body.append(root);
+	const range = document.createRange();
+	range.setStart(root.firstChild!, 2);
+	document.getSelection()!.removeAllRanges();
+	document.getSelection()!.addRange(range);
+	return root;
+}
+
+describe("SelectionProjector non-text and settle projections (fuzz seeds 23, 37, 41)", () => {
+	it("S2 D18: a null record clears the native range and completes without a text read-back", () => {
+		const root = rootWithNativeRange();
+		let attached = 0;
+		const { controller, diagnostics } = createController(
+			{ state: null, version: 5, origin: "restore", commitId: 0 },
+			{
+				getRootElement: () => root,
+				resolveInlineElement: () => root,
+				attachElement: () => {
+					attached += 1;
+					return true;
+				},
+			},
+		);
+		controller.project("selection-change");
+		expect(document.getSelection()!.rangeCount).toBe(0);
+		expect(attached, "no text projection ran").toBe(0);
+		expect(controller.lastProjectedVersion).toBe(5);
+		expect(diagnostics).toEqual([]);
+		root.remove();
+	});
+
+	it("S2: a block record completes without a text read-back", () => {
+		const root = rootWithNativeRange();
+		let attached = 0;
+		const { controller } = createController(
+			{ state: { type: "block", blockIds: ["divider"], head: "divider" }, version: 6, origin: "keyboard", commitId: 0 },
+			{
+				getRootElement: () => root,
+				resolveInlineElement: () => root,
+				attachElement: () => {
+					attached += 1;
+					return true;
+				},
+			},
+		);
+		controller.project("selection-change");
+		expect(attached).toBe(0);
+		expect(controller.lastProjectedVersion).toBe(6);
+		root.remove();
+	});
+
+	it("S2: a cell selection clears a native range outside its table and keeps an edited cell's caret", () => {
+		const root = rootWithNativeRange();
+		const table = document.createElement("div");
+		table.setAttribute(DATA_ATTRS.editorBlock, "");
+		table.setAttribute(DATA_ATTRS.blockId, "table");
+		table.textContent = "cell";
+		root.append(table);
+		const cell = {
+			type: "cell" as const,
+			blockId: "table",
+			anchor: { row: 0, col: 0 },
+			head: { row: 0, col: 0 },
+		};
+		const { controller } = createController(null, { getRootElement: () => root });
+		controller.projectNonTextSelection(cell);
+		expect(document.getSelection()!.rangeCount, "a stale range outside the table").toBe(0);
+
+		const caret = document.createRange();
+		caret.setStart(table.firstChild!, 2);
+		document.getSelection()!.addRange(caret);
+		controller.projectNonTextSelection(cell);
+		expect(document.getSelection()!.rangeCount, "the edited cell's caret stays").toBe(1);
+		root.remove();
+	});
+
+	it("S2: pointerup projects the gesture's last record again", () => {
+		let attached = 0;
+		const { controller } = createController(programmaticRecord("first", 2, 2, 7), {
+			resolveInlineElement: () => ({ isConnected: true }) as HTMLElement,
+			attachElement: () => {
+				attached += 1;
+				return false;
+			},
+		});
+		controller.onGesture("pointerup");
+		expect(attached, "the record was projected at pointerup").toBe(1);
+	});
+
+	it("S2: a text record activates its block when the editor owns focus and no field is active", () => {
+		const root = document.createElement("div");
+		root.tabIndex = -1;
+		document.body.append(root);
+		root.focus();
+		let editing = false;
+		const activated: string[] = [];
+		const { controller } = createController(programmaticRecord("p2", 0, 0, 3), {
+			getRootElement: () => root,
+			isEditing: () => editing,
+			activate: (blockId) => {
+				activated.push(blockId);
+				editing = true;
+			},
+		});
+		controller.project("selection-change");
+		// The fake's focus block never moves, so target resolution activates again.
+		expect(activated[0]).toBe("p2");
+		root.blur();
+		editing = false;
+		activated.length = 0;
+		controller.project("selection-change");
+		expect(activated, "focus is elsewhere: the record waits").toEqual([]);
+		root.remove();
+	});
+});
+

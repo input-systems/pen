@@ -325,6 +325,7 @@ describe("@input/pen-react clipboard: importer parsing", () => {
 			blockOrder[0],
 			13,
 			13,
+			{ origin: "keyboard" },
 		);
 
 		editor.destroy();
@@ -371,6 +372,7 @@ describe("@input/pen-react clipboard: importer parsing", () => {
 			blockOrder[0],
 			13,
 			13,
+			{ origin: "keyboard" },
 		);
 
 		editor.destroy();

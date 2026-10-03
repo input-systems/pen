@@ -14,6 +14,7 @@ import { generateId } from "@input/pen-types";
 import { getLastDescendantBlockId } from "../utils/parentIdTree";
 import type { FieldEditorTransferController } from "./controller";
 import type { TransferCursorContext } from "./transferSelection";
+import { originForTransfer } from "./selectionReader";
 
 interface BlockPlacement {
 	/** applied first, on its own, so AN14 anchor repair sees the split */
@@ -62,9 +63,12 @@ export function pasteBlocksAtCaret(
 			caret.blockId,
 			caret.offset,
 			caret.offset,
+			{ origin: originForTransfer(fieldEditor) },
 		);
 	} else if (caret) {
-		editor.selectBlock(caret.blockId);
+		editor.selectBlock(caret.blockId, {
+			origin: originForTransfer(fieldEditor),
+		});
 	}
 }
 

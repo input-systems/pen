@@ -31,8 +31,14 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "check:mirrors": "node ../../../scripts/conformance-mirror-drift.mjs",
+    "test:overlay:chromium": "playwright test suites/overlays --project=chromium",
+    "test:overlay:webkit": "playwright test suites/overlays --project=webkit",
+    "test:overlay:firefox": "playwright test suites/overlays --project=firefox",
     "test:scale-render": "playwright test scenarios/scale-render.record.spec.ts --project=chromium",
-    "record:scale-render": "node -e \"if(!process.env.SCALE_RENDER_REASON){console.error('record:scale-render needs SCALE_RENDER_REASON');process.exit(1)}\" && RECORD_SCALE_RENDER=1 playwright test scenarios/scale-render.record.spec.ts --project=chromium --workers=1"
+    "record:scale-render": "node -e \"if(!process.env.SCALE_RENDER_REASON){console.error('record:scale-render needs SCALE_RENDER_REASON');process.exit(1)}\" && RECORD_SCALE_RENDER=1 playwright test scenarios/scale-render.record.spec.ts --project=chromium --workers=1",
+    "record:scale-render:clocks": "SCALE_RENDER_CLOCKS=1 RECORD_SCALE_RENDER_CLOCKS=1 playwright test scenarios/scale-render.clocks.record.spec.ts --project=chromium --workers=1",
+    "record:scale-render:large": "SCALE_RENDER_LARGE=1 SCALE_RENDER_CLOCKS=1 RECORD_SCALE_RENDER_CLOCKS=1 playwright test scenarios/scale-render.record.spec.ts scenarios/scale-render.clocks.record.spec.ts --project=chromium --workers=1",
+    "test:scale-render:large": "SCALE_RENDER_LARGE=1 SCALE_RENDER_CLOCKS=1 playwright test scenarios/scale-render.record.spec.ts scenarios/scale-render.clocks.record.spec.ts --project=chromium --workers=1"
   },
   "dependencies": {
     "@input/pen-ai": "workspace:*",

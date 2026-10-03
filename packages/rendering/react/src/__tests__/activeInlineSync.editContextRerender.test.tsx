@@ -194,6 +194,8 @@ describe("@input/pen-react active inline sync: EditContext across rerenders", ()
 				selection?.removeAllRanges();
 				selection?.addRange(range);
 
+				// Browsers fire pointerup before mouseup; the reader reads there (D19).
+				document.dispatchEvent(new Event("pointerup"));
 				document.dispatchEvent(
 					new MouseEvent("mouseup", {
 						bubbles: true,

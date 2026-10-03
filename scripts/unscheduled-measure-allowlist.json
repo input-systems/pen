@@ -147,11 +147,6 @@
       "reason": "Dragenter/over hit-tests the editor root and content boxes; GeometryReader has no element-rect API. Already inside measureWithRoot."
     },
     {
-      "file": "packages/rendering/react/src/primitives/editor/caretOverlay.tsx",
-      "symbol": "readCaretRect",
-      "reason": "The overlay origin is the caret's containing block, not a document box GeometryReader owns. Already inside measureWithRoot with the caret rect, so a filtered ancestor's offset is subtracted in the same read."
-    },
-    {
       "file": "packages/rendering/react/src/primitives/selection-toolbar/content.tsx",
       "symbol": "SelectionToolbarContent",
       "reason": "Flip/shift measures the toolbar's own mounted box after it is in the DOM."

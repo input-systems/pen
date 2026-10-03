@@ -1,3 +1,4 @@
+import type { DocumentOp } from "@input/pen-types";
 import type { Page } from "@playwright/test";
 import { getInlineOffsetPoint } from "../../domGeometry";
 import type { FuzzCheckReport, ScenarioApi } from "../../types";
@@ -22,6 +23,8 @@ export type FuzzRunOptions = {
 	fixture: string;
 	steps: number;
 	forceFailAt: number | null;
+	/** Default `"pr"`. */
+	actionSet?: "pr" | "full";
 	/** Replay: execute these instead of generating. */
 	replay?: readonly FuzzStep[];
 };
@@ -65,16 +68,42 @@ async function clickAt(page: Page, point: FuzzPoint): Promise<void> {
 	await page.mouse.click(x, y);
 }
 
+/** Scrolls so both blocks are on screen when they fit, else centres `from`. */
+async function scrollPairIntoView(page: Page, from: string, to: string): Promise<void> {
+	await page.evaluate(
+		({ fromId, toId }) => {
+			const first = document.querySelector(`[data-block-id="${fromId}"]`);
+			const second = document.querySelector(`[data-block-id="${toId}"]`);
+			if (!first || !second) return;
+			const a = first.getBoundingClientRect();
+			const b = second.getBoundingClientRect();
+			const top = Math.min(a.top, b.top);
+			const bottom = Math.max(a.bottom, b.bottom);
+			if (bottom - top <= window.innerHeight) {
+				window.scrollBy(0, (top + bottom) / 2 - window.innerHeight / 2);
+			} else {
+				first.scrollIntoView({ block: "center" });
+			}
+		},
+		{ fromId: from, toId: to },
+	);
+}
+
 async function dragBetween(
 	page: Page,
 	from: FuzzPoint,
 	to: FuzzPoint,
 ): Promise<void> {
-	await scrollBlockIntoView(page, from.blockId);
+	// Both ends on screen: a drag that relies on autoscroll ends wherever
+	// the scroll timing leaves it, which varies with machine load.
+	await scrollPairIntoView(page, from.blockId, to.blockId);
 	const start = await pointFor(page, from);
-	const end = await pointFor(page, to);
 	await page.mouse.move(start.x, start.y);
 	await page.mouse.down();
+	// The press can activate a field and reflow the page; measure the end
+	// once that settles, so the drag lands where its args say under any load.
+	await page.evaluate(() => window.__penConformance.whenIdle());
+	const end = await pointFor(page, to);
 	await page.mouse.move(end.x, end.y, { steps: 4 });
 	await page.mouse.up();
 }
@@ -116,6 +145,85 @@ async function pressTimes(
 	}
 }
 
+async function multiClickAt(page: Page, point: FuzzPoint, clickCount: number): Promise<void> {
+	await scrollBlockIntoView(page, point.blockId);
+	const { x, y } = await pointFor(page, point);
+	await page.mouse.click(x, y, { clickCount });
+}
+
+/** Click just beside the n-th inline atom (wrapping), then arrow across it. */
+async function atomStep(
+	page: Page,
+	args: { atomIndex: number; side: "left" | "right"; key: "ArrowLeft" | "ArrowRight" },
+): Promise<void> {
+	const point = await page.evaluate(({ atomIndex, side }) => {
+		const atoms = [...document.querySelectorAll("[data-pen-editor-root] [data-pen-inline-atom]")];
+		if (atoms.length === 0) return null;
+		const atom = atoms[atomIndex % atoms.length]!;
+		atom.scrollIntoView({ block: "center" });
+		const rect = atom.getBoundingClientRect();
+		return {
+			x: side === "left" ? rect.left - 1 : rect.right + 1,
+			y: rect.top + rect.height / 2,
+		};
+	}, args);
+	if (!point) return;
+	await page.mouse.click(point.x, point.y);
+	await page.keyboard.press(args.key);
+}
+
+/** Chromium: a real CDP composition with a remote apply between start and commit. */
+async function remoteMidComposition(
+	page: Page,
+	args: { composing: string; commit: string; ops: readonly DocumentOp[] },
+): Promise<void> {
+	const remote = () =>
+		page.evaluate((ops) => window.__penConformance.remoteApply(ops), args.ops);
+	if (page.context().browser()?.browserType().name() !== "chromium") {
+		await remote();
+		return;
+	}
+	const cdp = await page.context().newCDPSession(page);
+	try {
+		await cdp.send("Input.imeSetComposition", {
+			text: args.composing,
+			selectionStart: args.composing.length,
+			selectionEnd: args.composing.length,
+		});
+		await remote();
+		await cdp.send("Input.insertText", { text: args.commit });
+	} finally {
+		await cdp.detach();
+	}
+}
+
+async function contextMenuAt(page: Page, point: FuzzPoint): Promise<void> {
+	await scrollBlockIntoView(page, point.blockId);
+	const { x, y } = await pointFor(page, point);
+	await page.mouse.click(x, y, { button: "right" });
+	await page.keyboard.press("Escape");
+}
+
+/** W4's `blockWindow.reveal` when present; until then the step is a recorded no-op. */
+async function scrollTo(page: Page, blockId: string): Promise<void> {
+	await page.evaluate((id) => {
+		const bridge = window.__penConformance as { blockWindow?: { reveal(id: string): void } };
+		bridge.blockWindow?.reveal(id);
+	}, blockId);
+}
+
+/** A drag whose far end is off screen: the page scrolls while the button is held. */
+async function longDrag(page: Page, from: FuzzPoint, to: FuzzPoint): Promise<void> {
+	await scrollBlockIntoView(page, from.blockId);
+	const start = await pointFor(page, from);
+	await page.mouse.move(start.x, start.y);
+	await page.mouse.down();
+	await scrollBlockIntoView(page, to.blockId);
+	const end = await pointFor(page, to);
+	await page.mouse.move(end.x, end.y, { steps: 6 });
+	await page.mouse.up();
+}
+
 type ArgsOf<K extends FuzzActionKind> = Extract<
 	FuzzAction,
 	{ kind: K }
@@ -141,6 +249,19 @@ const EXECUTORS: {
 			(ops) => window.__penConformance.remoteApply(ops),
 			args.ops,
 		),
+	"double-click": (page, args) => multiClickAt(page, args, 2),
+	"triple-click": (page, args) => multiClickAt(page, args, 3),
+	"home-end": (page, args) =>
+		page.keyboard.press(args.shift ? `Shift+${args.key}` : args.key),
+	delete: (page, args) => keyAtPoint(page, args, "Delete"),
+	"atom-step": (page, args) => atomStep(page, args),
+	paste: (page, args) =>
+		page.evaluate((html) => window.__penConformance.pasteHtml(html), args.html),
+	"remote-mid-composition": (page, args) => remoteMidComposition(page, args),
+	"context-menu": (page, args) => contextMenuAt(page, args),
+	escape: (page) => page.keyboard.press("Escape"),
+	scroll: (page, args) => scrollTo(page, args.blockId),
+	"long-drag": (page, args) => longDrag(page, args.from, args.to),
 	"force-fail": (page) =>
 		page.evaluate(() => window.__penConformance.installBrokenProjector()),
 };
@@ -204,6 +325,7 @@ function nextStep(
 			seed: options.seed,
 			i,
 			blocks: report.blocks,
+			actionSet: options.actionSet,
 		}),
 	};
 }

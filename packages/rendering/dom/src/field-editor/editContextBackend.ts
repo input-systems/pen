@@ -6,6 +6,12 @@ import { bindBackendTransferEvents } from "./backendTransferEvents";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
 import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
 import { getDirectionalSelectionOffsets } from "./selectionBridge";
+import { getLogicalInlineText } from "./commandsShared";
+import {
+	mapOffsetThroughRemoteDeltas,
+	mapOffsetThroughRemoteDeltasUpstream,
+} from "./contenteditableDomHelpers";
+import { computeTextDiff } from "./textDiff";
 import {
 	writeEditContextSelection,
 	writeNativeRangeBetween,
@@ -359,7 +365,10 @@ export class EditContextBackend {
 		selectionStart?: number;
 		selectionEnd?: number;
 	}): PendingEditContextTextUpdate {
-		const resolved = this.resolveTextUpdateRange(input);
+		const resolved =
+			this.isComposing && this.deferredRemoteDeltas.length > 0
+				? this.resolveRebasedTextUpdateRange(input)
+				: this.resolveTextUpdateRange(input);
 		return {
 			blockId: input.blockId,
 			text: input.text,
@@ -418,7 +427,36 @@ export class EditContextBackend {
 		this.lastCommittedTextUpdate = null;
 		this.paintedCompositionPreview = false;
 		this.ignoreNextTextFormatUpdate = true;
-		this.applyEditContextTextUpdate(pending);
+		this.applyEditContextTextUpdate(this.rebasePendingTextUpdate(pending));
+	}
+
+	/**
+	 * C2: a pending update holds buffer offsets from before the composition's
+	 * remote deltas (it is captured when the composition opens, and the
+	 * deferral list starts empty there), so it is mapped through all of them
+	 * before it applies: start downstream, end upstream.
+	 */
+	protected rebasePendingTextUpdate(
+		pending: PendingEditContextTextUpdate,
+	): PendingEditContextTextUpdate {
+		const deltas = this.deferredRemoteDeltas;
+		if (!this.isComposing || deltas.length === 0) {
+			return pending;
+		}
+		const { start: rawStart, end: rawEnd } = pending.originRange;
+		const start = mapOffsetThroughRemoteDeltas(rawStart, deltas);
+		const end =
+			rawEnd === rawStart
+				? start
+				: Math.max(start, mapOffsetThroughRemoteDeltasUpstream(rawEnd, deltas));
+		const caret = start + pending.text.length;
+		return {
+			...pending,
+			originRange: { start, end },
+			selection: { blockId: pending.blockId, anchorOffset: caret, focusOffset: caret },
+			selectionStart: caret,
+			selectionEnd: caret,
+		};
 	}
 
 	protected flushDeferredRemoteDeltas(): void {
@@ -429,7 +467,7 @@ export class EditContextBackend {
 		if (!this.editContext || !this.element || !this.ytext) {
 			return;
 		}
-		replaceEditContextText(this.editContext, this.ytext.toString());
+		resyncEditContextSpan(this.editContext, getLogicalInlineText(this.ytext));
 		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
 			urlPolicy: urlPolicyFromEditor(this.editor),
 			inlineDecorations: this.getInlineDecorationsForBlock(),
@@ -584,6 +622,46 @@ export class EditContextBackend {
 		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
 	}
 
+	/**
+	 * C2: mid-composition, remote text has entered `Y.Text` but not the
+	 * EditContext buffer, so the event's buffer range is mapped onto `Y.Text`
+	 * through the deferred deltas — start downstream, end upstream, the
+	 * contenteditable rebase's association — before the speculative apply.
+	 * The IME's own range is the source here; the authority's selection is
+	 * already in `Y.Text` space and would be mapped twice.
+	 */
+	protected resolveRebasedTextUpdateRange(input: {
+		blockId: string;
+		updateRangeStart: number;
+		updateRangeEnd: number;
+		text: string;
+		selectionStart?: number;
+		selectionEnd?: number;
+	}): {
+		range: { start: number; end: number };
+		selection: EditContextSelection | null;
+	} {
+		const start = mapOffsetThroughRemoteDeltas(
+			input.updateRangeStart,
+			this.deferredRemoteDeltas,
+		);
+		const end =
+			input.updateRangeEnd === input.updateRangeStart
+				? start
+				: Math.max(
+						start,
+						mapOffsetThroughRemoteDeltasUpstream(
+							input.updateRangeEnd,
+							this.deferredRemoteDeltas,
+						),
+					);
+		const caret = start + input.text.length;
+		return {
+			range: { start, end },
+			selection: { blockId: input.blockId, anchorOffset: caret, focusOffset: caret },
+		};
+	}
+
 	protected resolveTextUpdateRange(input: {
 		blockId: string;
 		updateRangeStart: number;
@@ -605,7 +683,8 @@ export class EditContextBackend {
 
 		return resolveEditContextTextUpdateRange({
 			...input,
-			isLogicallyEmpty: (this.ytext?.toString() ?? "") === "",
+			// `length` counts inline embeds: an atom-only field is not empty (N1).
+			isLogicallyEmpty: (this.ytext?.length ?? 0) === 0,
 			editorSelectionRange: this.resolveEditorSelectionRange(
 				input.blockId,
 			),
@@ -654,8 +733,10 @@ export class EditContextBackend {
 		offset: number,
 		options?: EditContextSelectionOptions,
 	): number {
-		return options?.source !== "text-update" &&
-			(this.ytext?.toString() ?? "") === ""
+		// Empty means no logical content: `length` counts inline embeds, so an
+		// atom-only field keeps its caret after the atom (N1); `toString()`
+		// drops embeds and would clamp it to 0.
+		return options?.source !== "text-update" && (this.ytext?.length ?? 0) === 0
 			? 0
 			: offset;
 	}
@@ -1253,6 +1334,28 @@ export class EditContextBackend {
 			focusOffset: selection.focusOffset,
 		};
 	}
+}
+
+/**
+ * C2: brings the EditContext buffer to `nextText` with one `updateText` over
+ * the changed span, so the IME's buffer outside the remote edit is untouched.
+ */
+function resyncEditContextSpan(editContext: EditContext, nextText: string): void {
+	const ops = computeTextDiff(editContext.text, nextText);
+	if (ops.length === 0) return;
+	const deleted = ops.find((op) => op.type === "delete");
+	const inserted = ops.find((op) => op.type === "insert");
+	const start = (deleted ?? inserted)!.offset;
+	editContext.updateText(
+		start,
+		start + (deleted?.type === "delete" ? deleted.length : 0),
+		inserted?.type === "insert" ? inserted.text : "",
+	);
+	writeEditContextSelection(
+		editContext,
+		Math.min(editContext.selectionStart, nextText.length),
+		Math.min(editContext.selectionEnd, nextText.length),
+	);
 }
 
 /**

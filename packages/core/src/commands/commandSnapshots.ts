@@ -104,30 +104,72 @@ function isVisibleBlock(editor: Editor, blockId: string): boolean {
 	return state.indexOf(current) >= 0;
 }
 
-export function buildTransitionSnapshot(editor: Editor): TransitionSnapshot {
-	const blockOrder = [...getVisibleBlockIds(editor)];
+/**
+ * Captures a {@link TransitionSnapshot} for the T functions.
+ *
+ * With `blockIds` the snapshot is scoped: it carries only those blocks, in
+ * document order, which is all T2 (`convertPointerDrag`) and T5
+ * (`clickSelectableBlock`) read. A pointer event pays for its endpoints, not
+ * for the document (SCALE2).
+ *
+ * @param editor - The editor to read block order and block content from.
+ * @param options - `blockIds` scopes the snapshot to those blocks.
+ * @returns A snapshot detached from the live document.
+ */
+export function buildTransitionSnapshot(
+	editor: Editor,
+	options?: { readonly blockIds?: readonly string[] },
+): TransitionSnapshot {
+	const scoped = options?.blockIds;
+	const blockOrder = scoped
+		? scopedBlockOrder(editor, scoped)
+		: [...getVisibleBlockIds(editor)];
 	const blocks: Record<string, TransitionBlock> = {};
 	for (const blockId of blockOrder) {
-		const block = editor.getBlock(blockId);
-		if (!block) {
-			continue;
+		const entry = transitionBlockFor(editor, blockId);
+		if (entry) {
+			blocks[blockId] = entry;
 		}
-		const parentId = editor.documentState.parentOf(blockId);
-		const listContainer = listContainerFor(editor, block);
-		blocks[blockId] = {
-			id: blockId,
-			kind: isEditableTextBlock(editor, blockId) ? "text" : "structural",
-			length: block.length(),
-			parentId,
-			containerId: listContainer?.id ?? parentId,
-			containerKind:
-				listContainer?.kind ?? parentContainerKind(editor, parentId),
-		};
 	}
 	return {
 		blockOrder,
-		topLevelIds: getRootBlockIds(editor),
+		topLevelIds: scoped
+			? blockOrder.filter(
+					(blockId) => editor.documentState.parentOf(blockId) == null,
+				)
+			: getRootBlockIds(editor),
 		blocks,
+	};
+}
+
+function scopedBlockOrder(
+	editor: Editor,
+	blockIds: readonly string[],
+): string[] {
+	const preorder = editor.documentState.preorderBlockIds();
+	const unique = [...new Set(blockIds)].filter((blockId) =>
+		editor.getBlock(blockId),
+	);
+	return unique.sort((a, b) => preorder.indexOf(a) - preorder.indexOf(b));
+}
+
+function transitionBlockFor(
+	editor: Editor,
+	blockId: string,
+): TransitionBlock | null {
+	const block = editor.getBlock(blockId);
+	if (!block) {
+		return null;
+	}
+	const parentId = editor.documentState.parentOf(blockId);
+	const listContainer = listContainerFor(editor, block);
+	return {
+		id: blockId,
+		kind: isEditableTextBlock(editor, blockId) ? "text" : "structural",
+		length: block.length(),
+		parentId,
+		containerId: listContainer?.id ?? parentId,
+		containerKind: listContainer?.kind ?? parentContainerKind(editor, parentId),
 	};
 }
 

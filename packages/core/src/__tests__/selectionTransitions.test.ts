@@ -4,7 +4,6 @@ import {
 	arrowFromBlockSelection,
 	clickSelectableBlock,
 	convertPointerDrag,
-	escalateCoveredTextToBlocks,
 	escalateSelectAll,
 	transitionCellSelection,
 	type SelectionState,
@@ -359,8 +358,47 @@ describe("selection transitions", () => {
 			);
 
 			expect(next?.type).toBe("text");
-			expect(escalateCoveredTextToBlocks(flatDoc, next)?.type).toBe(
-				"block",
+			expect(escalateSelectAll(flatDoc, next)?.type).toBe("block");
+		});
+
+		it("T2: a structural focus covers the block in the drag direction", () => {
+			expect(
+				convertPointerDrag(flatDoc, text({ blockId: "p2", offset: 2 }), {
+					blockId: "img",
+					offset: 0,
+				}),
+			).toEqual(
+				text({ blockId: "p2", offset: 2 }, { blockId: "img", offset: 1 }),
+			);
+			expect(
+				convertPointerDrag(flatDoc, text({ blockId: "p3", offset: 1 }), {
+					blockId: "img",
+					offset: 1,
+				}),
+			).toEqual(
+				text({ blockId: "p3", offset: 1 }, { blockId: "img", offset: 0 }),
+			);
+		});
+
+		it("T2: a structural anchor covers from the drag's start side", () => {
+			expect(
+				convertPointerDrag(flatDoc, text({ blockId: "img", offset: 1 }), {
+					blockId: "p3",
+					offset: 2,
+				}),
+			).toEqual(
+				text({ blockId: "img", offset: 0 }, { blockId: "p3", offset: 2 }),
+			);
+		});
+
+		it("T2: within one block the focus is clamped, not covered", () => {
+			expect(
+				convertPointerDrag(flatDoc, text({ blockId: "p1", offset: 2 }), {
+					blockId: "p1",
+					offset: 99,
+				}),
+			).toEqual(
+				text({ blockId: "p1", offset: 2 }, { blockId: "p1", offset: 8 }),
 			);
 		});
 	});
@@ -372,11 +410,6 @@ describe("selection transitions", () => {
 				{ blockId: "p2", offset: 5 },
 			);
 
-			expect(escalateCoveredTextToBlocks(flatDoc, covered)).toEqual({
-				type: "block",
-				blockIds: ["p1", "p2"],
-				head: "p2",
-			});
 			expect(escalateSelectAll(flatDoc, covered)).toEqual({
 				type: "block",
 				blockIds: ["p1", "p2"],
@@ -384,21 +417,23 @@ describe("selection transitions", () => {
 			});
 		});
 
-		it("T3: partial multi-block text stays text; single whole-block does not flip here", () => {
-			const partial = text(
-				{ blockId: "p1", offset: 2 },
+		it("T3: the pointer path never flips partial or whole-block text", () => {
+			const partial = convertPointerDrag(
+				flatDoc,
+				text({ blockId: "p1", offset: 2 }),
 				{ blockId: "p2", offset: 1 },
 			);
-			const single = text(
-				{ blockId: "p1", offset: 0 },
+			const single = convertPointerDrag(
+				flatDoc,
+				text({ blockId: "p1", offset: 0 }),
 				{ blockId: "p1", offset: 8 },
 			);
 
-			expect(escalateCoveredTextToBlocks(flatDoc, partial)).toEqual(
-				partial,
+			expect(partial).toEqual(
+				text({ blockId: "p1", offset: 2 }, { blockId: "p2", offset: 1 }),
 			);
-			expect(escalateCoveredTextToBlocks(flatDoc, single)).toEqual(
-				single,
+			expect(single).toEqual(
+				text({ blockId: "p1", offset: 0 }, { blockId: "p1", offset: 8 }),
 			);
 		});
 	});

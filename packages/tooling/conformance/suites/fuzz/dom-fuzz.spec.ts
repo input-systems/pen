@@ -22,6 +22,7 @@ import {
  * (`src/fuzz/dom/run.mjs`) sets the env for a chosen seed, the nightly soak,
  * or a trace replay.
  */
+/** The PR fixture; the self-test and the recorded defects run on it. */
 const FIXTURE = "fuzz-mixed";
 const config = resolveDomFuzzConfig(process.env);
 
@@ -29,33 +30,12 @@ const config = resolveDomFuzzConfig(process.env);
  * A seed that finds a product defect is recorded here, as `knownDefect`
  * (see the README ledger). Each symptom is the shrunk trace's first failure
  * (`PEN_FUZZ_SHRINK=1`), verbatim; the unshrunk seed fails the same check.
+ * Seeds 23, 37 and 41 were closed by W3 step 22 (stamped code blocks map
+ * text offsets, the pointer path re-projects at pointerup, non-text records
+ * complete without a text read-back, unit-block gaps map back, a text record
+ * activates its block when the editor owns focus).
  */
-const KNOWN_FUZZ_DEFECTS: Readonly<Record<number, KnownDefect>> = {
-	11: {
-		rule: "S2",
-		route: "pen-dom reader/caret: code block's structural role vs text authority (W3 lead; W3.R10)",
-		symptom:
-			"click fuzz-list-3@6, Shift+ArrowDown → authority focus fuzz-code@7, DOM focus fuzz-code@1: DOM selection is not equivalent to editor.selection",
-	},
-	23: {
-		rule: "S2",
-		route: "pen-dom projector on the expanded surface (W3 lead; W3.R1)",
-		symptom:
-			"drag fuzz-zwj@5 → fuzz-after-divider@12 across the divider → selection-projection-mismatch ×2 (trigger selection-change, then divergence; surface expanded)",
-	},
-	37: {
-		rule: "S2",
-		route: "pen-dom pointer path, drag out of a code block (W3 lead; W3.R12)",
-		symptom:
-			"drag fuzz-code@21 → fuzz-list-3@3 (upward) → authority fuzz-code@1..fuzz-list-3@3, DOM fuzz-code@1..fuzz-code@0: DOM selection is not equivalent to editor.selection",
-	},
-	41: {
-		rule: "S2",
-		route: "undo restoring a null selection: focus and projection (W3 lead; W3.R16)",
-		symptom:
-			"Mod-z right after load undoes a load-time commit (fuzz-title, fuzz-image, fuzz-list-1, fuzz-list-3) → selection null, focus on BODY, selection-projection-mismatch (version 2, trigger selection-change, surface text)",
-	},
-};
+const KNOWN_FUZZ_DEFECTS: Readonly<Record<number, KnownDefect>> = {};
 
 /**
  * The self-test plants an S2 violation at this step, on a seed whose earlier
@@ -135,33 +115,39 @@ if (config.replayPath) {
 	);
 } else {
 	console.log(
-		`fuzz:dom seeds ${config.seedLabel} × ${config.steps} steps on ${FIXTURE}`,
+		`fuzz:dom seeds ${config.seedLabel} × ${config.steps} steps on ${config.fixtures.join(", ")} (${config.actionSet} actions)`,
 	);
-	for (const seed of config.seeds) {
-		scenario(
-			`S2/S5/S6: DOM selection fuzz, seed ${seed}`,
-			async (s, page) => {
-				const engine = test.info().project.name;
-				const file = traceFilePath(engine, seed);
-				const trace = await runAndReport(
-					s,
-					page,
-					{
-						seed,
-						engine,
-						fixture: FIXTURE,
-						steps: config.steps,
-						forceFailAt: config.forceFailAt,
-					},
-					file,
-				);
-				expect(
-					trace.failure,
-					trace.failure ? describeFailure(trace, file) : "",
-				).toBeNull();
-			},
-			{ axe: false, knownDefect: KNOWN_FUZZ_DEFECTS[seed] },
-		);
+	for (const fixture of config.fixtures) {
+		for (const seed of config.seeds) {
+			const suffix = fixture === FIXTURE ? "" : ` (${fixture})`;
+			const knownDefect =
+				fixture === FIXTURE && config.actionSet === "pr" ? KNOWN_FUZZ_DEFECTS[seed] : undefined;
+			scenario(
+				`S2/S5/S6: DOM selection fuzz, seed ${seed}${suffix}`,
+				async (s, page) => {
+					const engine = test.info().project.name;
+					const file = traceFilePath(engine, fixture === FIXTURE ? seed : `${fixture}-${seed}`);
+					const trace = await runAndReport(
+						s,
+						page,
+						{
+							seed,
+							engine,
+							fixture,
+							steps: config.steps,
+							forceFailAt: config.forceFailAt,
+							actionSet: config.actionSet,
+						},
+						file,
+					);
+					expect(
+						trace.failure,
+						trace.failure ? describeFailure(trace, file) : "",
+					).toBeNull();
+				},
+				{ axe: false, knownDefect },
+			);
+		}
 	}
 
 	scenario(

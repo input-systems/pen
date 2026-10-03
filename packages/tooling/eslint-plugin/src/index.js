@@ -6,6 +6,7 @@ import { noBareRandomUuid } from "./rules/noBareRandomUuid.js";
 import { noBidiOverride } from "./rules/noBidiOverride.js";
 import { noBindingEditorSubscriptions } from "./rules/noBindingEditorSubscriptions.js";
 import { noDomSelectionRead } from "./rules/noDomSelectionRead.js";
+import { noDirectDomFocus } from "./rules/noDirectDomFocus.js";
 import { noDomSelectionWrite } from "./rules/noDomSelectionWrite.js";
 import { noFrameworkFreeModulesInRenderers } from "./rules/noFrameworkFreeModulesInRenderers.js";
 import { noHtmlInjectionSinks } from "./rules/noHtmlInjectionSinks.js";
@@ -32,6 +33,7 @@ export const rules = {
 	"no-bidi-override": noBidiOverride,
 	"no-binding-editor-subscriptions": noBindingEditorSubscriptions,
 	"no-dom-selection-read": noDomSelectionRead,
+	"no-direct-dom-focus": noDirectDomFocus,
 	"no-dom-selection-write": noDomSelectionWrite,
 	"no-framework-free-modules-in-renderers": noFrameworkFreeModulesInRenderers,
 	"no-html-injection-sinks": noHtmlInjectionSinks,

@@ -254,6 +254,28 @@ export function readBackProjection(
 	};
 }
 
+interface RawNativeRange {
+	readonly anchorNode: Node | null;
+	readonly anchorOffset: number;
+	readonly focusNode: Node | null;
+	readonly focusOffset: number;
+}
+
+function sameRawRange(
+	a: RawNativeRange | null,
+	b: RawNativeRange | null,
+): boolean {
+	if (a === null || b === null) {
+		return a === b;
+	}
+	return (
+		a.anchorNode === b.anchorNode &&
+		a.anchorOffset === b.anchorOffset &&
+		a.focusNode === b.focusNode &&
+		a.focusOffset === b.focusOffset
+	);
+}
+
 /** Test seam for the one `getSelection()` call. */
 export interface SelectionReaderDomPort {
 	getSelection(doc: Document): Selection | null;
@@ -339,6 +361,21 @@ export function createSelectionReader(
 	let root: HTMLElement | null = null;
 	let windows: GestureWindowState = CLOSED_GESTURE_WINDOWS;
 	let pointerSettledBound = false;
+	// The raw native range at the press, so pointerup reads only a range the
+	// gesture moved; a click on chrome or a cell leaves the old one standing.
+	let pressRange: RawNativeRange | null = null;
+	const rawRange = (): RawNativeRange | null => {
+		const selection = root ? dom.getSelection(root.ownerDocument) : null;
+		if (!selection) {
+			return null;
+		}
+		return {
+			anchorNode: selection.anchorNode,
+			anchorOffset: selection.anchorOffset,
+			focusNode: selection.focusNode,
+			focusOffset: selection.focusOffset,
+		};
+	};
 
 	// R1: a pointerup anywhere in the document ends the pointer gesture,
 	// which may have started in the content and ended outside it.
@@ -354,12 +391,23 @@ export function createSelectionReader(
 		const onUp = (): void => {
 			doc.removeEventListener("pointerup", onUp);
 			pointerSettledBound = false;
+			// The gesture's last native range — a drag's end, or the word or
+			// paragraph a multi-click expanded on press — is in the DOM now,
+			// but its selectionchange is queued behind pointer-settled. Read
+			// it while the window is still open (D19).
+			if (!sameRawRange(pressRange, rawRange())) {
+				sync();
+			}
+			pressRange = null;
 			notifyGesture("pointerup");
 		};
 		doc.addEventListener("pointerup", onUp);
 	};
 	const notifyGesture = (kind: GestureEventKind): void => {
 		if (kind === "pointerdown") {
+			if (!pointerSettledBound) {
+				pressRange = rawRange();
+			}
 			bindPointerSettled();
 		}
 		windows = nextGestureWindowState(kind, windows);
@@ -504,6 +552,21 @@ export function normalizeDomSelectionProposal(
 	};
 }
 
+/**
+ * The origin of a paste or drop caret (S3): `pointer` for a drop or while the
+ * context-menu or drag window is open (a menu paste, a drag-paste), else
+ * `keyboard` (a shortcut paste).
+ */
+export function originForTransfer(
+	source: { getGestureWindows?(): GestureWindowState } | null | undefined,
+	isDrop = false,
+): "pointer" | "keyboard" {
+	const windows = source?.getGestureWindows?.() ?? CLOSED_GESTURE_WINDOWS;
+	return isDrop || windows.contextMenu || windows.drag
+		? "pointer"
+		: "keyboard";
+}
+
 export function nextGestureWindowState(
 	eventKind: GestureEventKind,
 	state: GestureWindowState,
@@ -586,6 +649,15 @@ function sameSnappedPoint(
 	authorityPoint: ReaderPoint,
 	snapshot: ReaderSnapshot,
 ): boolean {
+	// The same point is equivalent without snapping. A structural block's
+	// 0..1 endpoint (N2, T2's cover) has no text to snap in, so only this
+	// recognises it.
+	if (
+		domPoint.blockId === authorityPoint.blockId &&
+		domPoint.offset === authorityPoint.offset
+	) {
+		return true;
+	}
 	const logicalDom = toLogicalPoint(domPoint, snapshot);
 	if (logicalDom === null) {
 		return false;

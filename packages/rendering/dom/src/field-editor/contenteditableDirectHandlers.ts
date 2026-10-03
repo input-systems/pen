@@ -1,3 +1,4 @@
+import { getLogicalInlineText } from "./commandsShared";
 import {
 	deleteBackward,
 	deleteForward,
@@ -177,7 +178,7 @@ const deleteLineForward: DirectHandler = (
 		return;
 	}
 
-	const end = ytext.toString().length;
+	const end = getLogicalInlineText(ytext).length;
 	if (end > range.end) {
 		backend.applyInlineTextEdit({
 			blockId,
@@ -261,12 +262,13 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 		if (target) {
 			if (target.selectBlock) {
 				fe.deactivate();
-				editor.selectBlock(target.blockId);
+				editor.selectBlock(target.blockId, { origin: "keyboard" });
 			} else {
 				fe.activateTextSelection(
 					target.blockId,
 					target.anchorOffset,
 					target.focusOffset,
+					{ origin: "keyboard" },
 				);
 			}
 			return;
@@ -282,7 +284,7 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 		}
 
 		const start = previousGraphemeBoundary(
-			ytext.toString(),
+			getLogicalInlineText(ytext),
 			range.start,
 			resolveEditorLocale(editor),
 		);
@@ -329,12 +331,13 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 		if (target) {
 			if (target.selectBlock) {
 				fe.deactivate();
-				editor.selectBlock(target.blockId);
+				editor.selectBlock(target.blockId, { origin: "keyboard" });
 			} else {
 				fe.activateTextSelection(
 					target.blockId,
 					target.anchorOffset,
 					target.focusOffset,
+					{ origin: "keyboard" },
 				);
 			}
 			return;
@@ -342,7 +345,7 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 
 		const start = range.start;
 		const end = nextGraphemeBoundary(
-			ytext.toString(),
+			getLogicalInlineText(ytext),
 			start,
 			resolveEditorLocale(editor),
 		);
@@ -386,7 +389,7 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 		}
 
 		const start = previousWordBoundary(
-			ytext.toString(),
+			getLogicalInlineText(ytext),
 			range.start,
 			resolveEditorLocale(editor),
 		);
@@ -436,7 +439,7 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 		}
 
 		const end = nextWordBoundary(
-			ytext.toString(),
+			getLogicalInlineText(ytext),
 			range.end,
 			resolveEditorLocale(editor),
 		);
@@ -471,6 +474,7 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 				target.blockId,
 				target.anchorOffset,
 				target.focusOffset,
+				{ origin: "keyboard" },
 			);
 			return;
 		}
@@ -479,6 +483,7 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 			target.blockId,
 			target.anchorOffset,
 			target.focusOffset,
+			{ origin: "keyboard" },
 		);
 	},
 

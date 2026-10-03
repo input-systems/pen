@@ -37,6 +37,7 @@ import type {
 	PipelinePhase,
 	SelectionRecord,
 	SelectionOrigin,
+	SelectionWriteOptions,
 	OpenTextStreamOptions,
 	TextStreamWriter,
 	EditorAnchors,
@@ -476,25 +477,30 @@ class EditorImpl implements Editor {
 		return this._selection.getSelection();
 	}
 
-	selectBlock(blockId: string): void {
+	selectBlock(blockId: string, options?: SelectionWriteOptions): void {
 		this._writeSelection(
 			{ type: "block", blockIds: [blockId], head: blockId },
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 
-	selectBlocks(blockIds: string[]): void {
+	selectBlocks(blockIds: string[], options?: SelectionWriteOptions): void {
 		this._writeSelection(
 			{
 				type: "block",
 				blockIds,
 				head: blockIds[blockIds.length - 1] ?? blockIds[0] ?? "",
 			},
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 
-	selectCell(blockId: string, row: number, col: number): void {
+	selectCell(
+		blockId: string,
+		row: number,
+		col: number,
+		options?: SelectionWriteOptions,
+	): void {
 		this._writeSelection(
 			{
 				type: "cell",
@@ -502,7 +508,7 @@ class EditorImpl implements Editor {
 				anchor: { row, col },
 				head: { row, col },
 			},
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 
@@ -510,31 +516,42 @@ class EditorImpl implements Editor {
 		blockId: string,
 		anchor: { row: number; col: number },
 		head: { row: number; col: number },
+		options?: SelectionWriteOptions,
 	): void {
 		this._writeSelection(
 			{ type: "cell", blockId, anchor, head },
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 
-	selectText(blockId: string, from: number, to: number): void {
+	selectText(
+		blockId: string,
+		from: number,
+		to: number,
+		options?: SelectionWriteOptions,
+	): void {
 		this.selectTextRange(
 			{ blockId, offset: from },
 			{ blockId, offset: to },
+			options,
 		);
 	}
 
 	selectTextRange(
 		anchor: { blockId: string; offset: number },
 		focus: { blockId: string; offset: number },
+		options?: SelectionWriteOptions,
 	): void {
 		this._writeSelection(
 			createTextSelection({ anchor, focus }),
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 
-	selectAll(behavior?: SelectAllBehavior): void {
+	selectAll(
+		behavior?: SelectAllBehavior,
+		options?: SelectionWriteOptions,
+	): void {
 		const snapshot = buildTransitionSnapshot(this);
 		const next = escalateSelectAll(
 			snapshot,
@@ -543,7 +560,7 @@ class EditorImpl implements Editor {
 		);
 		this._writeSelection(
 			fromTransitionSelection(next, snapshot.blockOrder),
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 

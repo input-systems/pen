@@ -239,14 +239,19 @@ describe("@input/pen-react Escape: the selection ladder", () => {
 			isEditing: false,
 			mode: "inactive",
 		});
-		expect(document.activeElement).toBe(blockElement);
+		// W3.R16: the block rung's projection focuses the revealed sink,
+		// never the block element.
+		const focusSink = rootElement?.querySelector("[data-pen-focus-sink]");
+		expect(document.activeElement).toBe(focusSink);
+		expect(focusSink?.getAttribute("aria-hidden")).toBeNull();
 
 		await act(async () => {
-			blockElement?.dispatchEvent(createEscapeEvent());
+			focusSink?.dispatchEvent(createEscapeEvent());
 		});
 
+		// D18: a null record focuses the editor root, not the sink.
 		expect(editor.selection).toBeNull();
-		expect(document.activeElement).toBe(blockElement);
+		expect(document.activeElement).toBe(rootElement);
 
 		await act(async () => {
 			root.unmount();

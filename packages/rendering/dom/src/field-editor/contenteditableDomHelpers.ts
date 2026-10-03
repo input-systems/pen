@@ -96,53 +96,154 @@ export function staticRangeToOffsets(
 	};
 }
 
-export function rebaseTextDiffOps(
-	ops: Array<
-		| { type: "insert"; offset: number; text: string }
-		| { type: "delete"; offset: number; length: number }
-	>,
-	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
-): Array<
+type TextDiffRebaseOp =
 	| { type: "insert"; offset: number; text: string }
-	| { type: "delete"; offset: number; length: number }
-> {
+	| { type: "delete"; offset: number; length: number };
+
+/**
+ * C2 (D3): rebases a composition diff taken against the composition-start
+ * text over the collaborator deltas deferred while it ran, so the result
+ * equals what two converged `Y.Doc`s produce with the remote edit ordered
+ * first.
+ *
+ * The base text is replayed as original-character tokens through each
+ * deferred delta with Yjs's placement: an insert lands after any deleted
+ * characters at its index, and within one delta the deletes at a cursor
+ * apply before the inserts there (a replace is a delete, then an insert).
+ * Offsets alone cannot say whether remote text sits before or after a
+ * character it deleted, which is why this is not an offset mapping.
+ *
+ * - The composed text goes where a local delete-then-insert puts it in
+ *   Yjs: immediately before the original character that followed the
+ *   replaced range, so every remote insert at or inside the range —
+ *   including one at exactly the composition start — lands before it.
+ * - The delete removes only the original characters of the range that are
+ *   still alive, so a remote insert inside the range survives and a remote
+ *   delete shrinks it.
+ *
+ * The result is ordered for sequential application in one apply: the insert
+ * first, then the deletes from the highest offset down, every one of which
+ * ends at or before the insert.
+ */
+export function rebaseTextDiffOps(
+	ops: TextDiffRebaseOp[],
+	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
+	baseLength: number,
+): TextDiffRebaseOp[] {
 	if (deferredRemoteDeltas.length === 0 || ops.length === 0) {
 		return ops;
 	}
+	const deleteOp = ops.find((op) => op.type === "delete");
+	const insertOp = ops.find((op) => op.type === "insert");
+	const from = deleteOp?.offset ?? insertOp?.offset ?? 0;
+	const to = from + (deleteOp?.type === "delete" ? deleteOp.length : 0);
 
-	return ops
-		.map((op) => {
-			if (op.type === "insert") {
-				return {
-					type: "insert" as const,
-					offset: mapOffsetThroughRemoteDeltas(
-						op.offset,
-						deferredRemoteDeltas,
-					),
-					text: op.text,
-				};
-			}
+	let tokens: ReplayToken[] = Array.from({ length: baseLength }, (_, index) => ({
+		original: index,
+		deleted: false,
+	}));
+	for (const { delta } of deferredRemoteDeltas) {
+		tokens = replayDelta(tokens, delta);
+	}
 
-			const start = mapOffsetThroughRemoteDeltas(
-				op.offset,
-				deferredRemoteDeltas,
-			);
-			const end = mapOffsetThroughRemoteDeltas(
-				op.offset + op.length,
-				deferredRemoteDeltas,
-			);
-			return {
-				type: "delete" as const,
-				offset: start,
-				length: Math.max(0, end - start),
-			};
-		})
-		.filter((op) => {
-			if (op.type === "insert") {
-				return true;
+	// Live offsets: each token's position counting only live tokens before it.
+	const liveBefore: number[] = [];
+	let live = 0;
+	let insertAt = -1;
+	for (const token of tokens) {
+		liveBefore.push(live);
+		if (insertAt === -1 && token.original === to) insertAt = live;
+		if (!token.deleted) live++;
+	}
+	if (insertAt === -1) insertAt = live;
+
+	const result: TextDiffRebaseOp[] = [];
+	if (insertOp?.type === "insert") {
+		result.push({ type: "insert", offset: insertAt, text: insertOp.text });
+	}
+	// Maximal runs of the range's surviving originals, highest first.
+	const runs: Array<{ start: number; end: number }> = [];
+	tokens.forEach((token, index) => {
+		if (token.deleted || token.original === null) return;
+		if (token.original < from || token.original >= to) return;
+		const offset = liveBefore[index]!;
+		const last = runs[runs.length - 1];
+		if (last && last.end === offset) last.end = offset + 1;
+		else runs.push({ start: offset, end: offset + 1 });
+	});
+	for (const run of runs.reverse()) {
+		result.push({ type: "delete", offset: run.start, length: run.end - run.start });
+	}
+	return result;
+}
+
+type ReplayToken = { readonly original: number | null; deleted: boolean };
+
+/** Applies one delta to the token list with Yjs's placement (see `rebaseTextDiffOps`). */
+function replayDelta(tokens: ReplayToken[], delta: FieldEditorDelta[]): ReplayToken[] {
+	const next = [...tokens];
+	let index = 0;
+	const skipToLive = () => {
+		while (index < next.length && next[index]!.deleted) index++;
+	};
+	let pendingInserts = 0;
+	const flushInserts = () => {
+		if (pendingInserts === 0) return;
+		// An insert lands after the deleted characters at its index.
+		while (index < next.length && next[index]!.deleted) index++;
+		const inserted = Array.from({ length: pendingInserts }, () => ({
+			original: null,
+			deleted: false,
+		}));
+		next.splice(index, 0, ...inserted);
+		index += pendingInserts;
+		pendingInserts = 0;
+	};
+	for (const part of delta) {
+		if (part.retain != null) {
+			flushInserts();
+			for (let remaining = part.retain; remaining > 0; remaining--) {
+				skipToLive();
+				index++;
 			}
-			return op.length > 0;
-		});
+			continue;
+		}
+		if (part.delete != null) {
+			// Deletes at this cursor apply before inserts queued at it.
+			const at = index;
+			for (let remaining = part.delete; remaining > 0; remaining--) {
+				skipToLive();
+				if (index < next.length) next[index]!.deleted = true;
+				index++;
+			}
+			index = at;
+			continue;
+		}
+		if (part.insert != null) {
+			pendingInserts += typeof part.insert === "string" ? part.insert.length : 1;
+		}
+	}
+	flushInserts();
+	return next;
+}
+
+/** Where the caret sits after `rebased` applies: the end of the composed text. */
+export function caretAfterRebasedDiff(rebased: readonly TextDiffRebaseOp[]): number | null {
+	const insert = rebased.find((op) => op.type === "insert");
+	const deletes = rebased.filter((op) => op.type === "delete");
+	if (insert?.type === "insert") {
+		// Every delete ends at or before the insert, so each one pulls it back.
+		const removedBefore = deletes.reduce(
+			(sum, op) => sum + (op.type === "delete" ? op.length : 0),
+			0,
+		);
+		return insert.offset + insert.text.length - removedBefore;
+	}
+	const lowest = deletes.reduce<number | null>(
+		(min, op) => (min === null || op.offset < min ? op.offset : min),
+		null,
+	);
+	return lowest;
 }
 
 /**
@@ -185,6 +286,42 @@ export function mapOffsetThroughRemoteDeltas(
 		}
 	}
 
+	return mappedOffset;
+}
+
+/**
+ * The upstream twin of {@link mapOffsetThroughRemoteDeltas}: a remote insert
+ * at exactly `originalOffset` stays after it. C2 maps the end of a replaced
+ * range this way, so a remote insert at the range's end stays outside it.
+ */
+export function mapOffsetThroughRemoteDeltasUpstream(
+	originalOffset: number,
+	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
+): number {
+	let mappedOffset = originalOffset;
+	for (const { delta } of deferredRemoteDeltas) {
+		let cursor = 0;
+		for (const part of delta) {
+			if (part.retain != null) {
+				cursor += part.retain;
+				continue;
+			}
+			if (part.delete != null) {
+				if (cursor < mappedOffset) {
+					mappedOffset -= Math.min(part.delete, mappedOffset - cursor);
+				}
+				continue;
+			}
+			if (part.insert != null) {
+				const insertedLength =
+					typeof part.insert === "string" ? part.insert.length : 1;
+				if (cursor < mappedOffset) {
+					mappedOffset += insertedLength;
+				}
+				cursor += insertedLength;
+			}
+		}
+	}
 	return mappedOffset;
 }
 

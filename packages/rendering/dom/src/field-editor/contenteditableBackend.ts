@@ -1,3 +1,4 @@
+import { getLogicalInlineText } from "./commandsShared";
 import type { Editor, InlineDecoration } from "@input/pen-types";
 import type { FieldEditorInputController } from "./controller";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
@@ -7,11 +8,8 @@ import {
 	inlineDecorationsRequireFullReconcile,
 } from "../utils/inlineDecorations";
 import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
-import {
-	computeTextDiff,
-	extractTextFromDOM,
-	getSelectionOffsets,
-} from "./selectionBridge";
+import { extractTextFromDOM, getSelectionOffsets } from "./selectionBridge";
+import { computeAnchoredTextDiff } from "./textDiff";
 import { writeLegacyFieldRange, writeNativeRange } from "./selectionProjector";
 import { applyListInputRule } from "./commands";
 import {
@@ -35,6 +33,7 @@ import {
 	isNavigationSelectionKey,
 	mapOffsetThroughRemoteDeltas,
 	rebaseTextDiffOps,
+	caretAfterRebasedDiff,
 	requiresResolvedInputRange,
 } from "./contenteditableDomHelpers";
 import {
@@ -67,6 +66,8 @@ export class ContentEditableBackend {
 	protected restoringDomFromModel = false;
 	protected lastWatchdogMismatch: string | null = null;
 	protected compositionStartText: string | null = null;
+	/** C2: start of the authority selection at compositionstart, a logical offset. */
+	protected compositionStartOffset = 0;
 	protected deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [];
 	protected readonly attachment = new BackendAttachment();
 	protected inlineDecorationsSignature: readonly InlineDecoration[] | null =
@@ -414,7 +415,8 @@ export class ContentEditableBackend {
 		}
 		this.isComposing = true;
 		this.ignoreBrowserMutations = false;
-		this.compositionStartText = this.ytext?.toString() ?? "";
+		this.compositionStartText = this.ytext ? getLogicalInlineText(this.ytext) : "";
+		this.compositionStartOffset = this.readCompositionStartOffset();
 		this.deferredRemoteDeltas = [];
 		this.fieldEditor.setComposing(true);
 		this.fieldEditor.notifyGestureEvent?.("compositionstart");
@@ -446,14 +448,20 @@ export class ContentEditableBackend {
 		if (!blockId) return;
 
 		const domText = extractTextFromDOM(this.element);
-		const baseText = this.compositionStartText ?? this.ytext.toString();
+		const baseText =
+			this.compositionStartText ?? getLogicalInlineText(this.ytext);
 
 		if (domText !== baseText) {
 			const diff = rebaseTextDiffOps(
-				computeTextDiff(baseText, domText),
+				computeAnchoredTextDiff(baseText, domText, this.compositionStartOffset),
 				this.deferredRemoteDeltas,
+				baseText.length,
 			);
-			this.applyTextDiffAsOps(blockId, diff, this.deferredRemoteDeltas);
+			// With deferred remote text the DOM caret predates it; the caret
+			// goes to the end of the composed text as rebased (C2).
+			const caret =
+				this.deferredRemoteDeltas.length > 0 ? caretAfterRebasedDiff(diff) : null;
+			this.applyTextDiffAsOps(blockId, diff, this.deferredRemoteDeltas, caret);
 		}
 
 		if (this.deferredRemoteDeltas.length > 0) {
@@ -473,6 +481,19 @@ export class ContentEditableBackend {
 		this.discardObservedMutations();
 	}
 
+	/** The start of the authority's text selection in this field, else the DOM caret. */
+	protected readCompositionStartOffset(): number {
+		const selection = this.editor.selection;
+		const blockId = this.fieldEditor.focusBlockId;
+		if (selection?.type === "text" && selection.focus.blockId === blockId) {
+			return selection.anchor.blockId === blockId
+				? Math.min(selection.anchor.offset, selection.focus.offset)
+				: selection.focus.offset;
+		}
+		const domCaret = this.element ? getSelectionOffsets(this.element) : null;
+		return domCaret?.start ?? 0;
+	}
+
 	// ── Mutation observer watchdog ────────────────────────────
 
 	protected handleMutations = (_mutations: MutationRecord[]): void => {
@@ -488,7 +509,7 @@ export class ContentEditableBackend {
 		if (!blockId) return;
 
 		const domText = extractTextFromDOM(this.element);
-		const crdtText = this.ytext.toString();
+		const crdtText = getLogicalInlineText(this.ytext);
 		if (domText === crdtText) {
 			this.lastWatchdogMismatch = null;
 			return;
@@ -621,6 +642,7 @@ export class ContentEditableBackend {
 		blockId: string,
 		diff: InlineTextDiffOp[],
 		deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [],
+		caretOverride: number | null = null,
 	): void {
 		if (diff.length === 0) return;
 		const ytext = this.ytext;
@@ -632,7 +654,16 @@ export class ContentEditableBackend {
 		const domCaret = this.element
 			? getSelectionOffsets(this.element)
 			: null;
-		const selection = domCaret
+		const selection = caretOverride !== null
+			? {
+					blockId,
+					anchorOffset: caretOverride,
+					focusOffset: caretOverride,
+					cell: cellCoord
+						? { row: cellCoord.row, col: cellCoord.col }
+						: undefined,
+				}
+			: domCaret
 			? {
 					blockId,
 					// The DOM caret predates deferred remote deltas (C2); map it
@@ -670,7 +701,7 @@ export class ContentEditableBackend {
 		const nextInlineDecorationsSignature =
 			this.getInlineDecorationsSignature();
 		if (
-			extractTextFromDOM(this.element) === this.ytext.toString() &&
+			extractTextFromDOM(this.element) === getLogicalInlineText(this.ytext) &&
 			nextInlineDecorationsSignature === this.inlineDecorationsSignature
 		) {
 			return false;
@@ -734,7 +765,8 @@ export class ContentEditableBackend {
 			editor: this.editor,
 			fieldEditor: this.fieldEditor,
 			ytext: this.ytext,
-			range: this.element ? getSelectionOffsets(this.element) : null,
+			// The authority after a reader sync, not the live DOM range (W35.R18).
+			range: this.resolveLiveInputRange(),
 		});
 		if (handled) {
 			event.preventDefault();

@@ -1,4 +1,8 @@
-import { createEditor, getCommandRegistry } from "@input/pen-core";
+import {
+	createEditor,
+	getCommandRegistry,
+	getEditorSelectionRecord,
+} from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { handleFieldEditorKeyDown } from "../keyHandling";
@@ -245,5 +249,69 @@ describe("word selection extension", () => {
 				value: previousPlatform,
 			});
 		}
+	});
+});
+
+describe("N1 arrow keys beside inline atoms", () => {
+	function atomEditor(direction?: "rtl") {
+		const editor = createEditor({ schema: defaultSchema });
+		fixtures.push(editor);
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			...(direction
+				? [{ type: "set-props" as const, blockId, props: { direction } }]
+				: []),
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "ab" },
+			{
+				type: "splice-text",
+				blockId,
+				from: 1,
+				to: 1,
+				insert: { nodeType: "mention", props: { id: "user-ada", label: "Ada" } },
+			},
+		]);
+		// "a", atom at 1..2, "b"
+		return { editor, blockId };
+	}
+
+	it("N1: field-editor keydown leaves arrow keys beside atoms to the keymap", () => {
+		const { editor, blockId } = atomEditor();
+		editor.selectText(blockId, 2, 2);
+
+		const handled = handleFieldEditorKeyDown({
+			event: createKeyEvent("ArrowLeft"),
+			editor,
+			fieldEditor: createFieldEditor(blockId),
+			ytext: getYText(editor, blockId),
+			range: { start: 2, end: 2 },
+		});
+
+		expect(handled).toBe(true);
+		const record = getEditorSelectionRecord(editor);
+		expect(record?.state).toMatchObject({
+			type: "text",
+			anchor: { blockId, offset: 1 },
+			focus: { blockId, offset: 2 },
+		});
+		expect(record?.origin).toBe("keyboard");
+	});
+
+	it("M2 N1: in an rtl block ArrowLeft beside an atom steps forward over it", () => {
+		const { editor, blockId } = atomEditor("rtl");
+		editor.selectText(blockId, 1, 1);
+
+		handleFieldEditorKeyDown({
+			event: createKeyEvent("ArrowLeft"),
+			editor,
+			fieldEditor: createFieldEditor(blockId),
+			ytext: getYText(editor, blockId),
+			range: { start: 1, end: 1 },
+		});
+
+		expect(getEditorSelectionRecord(editor)?.state).toMatchObject({
+			type: "text",
+			anchor: { blockId, offset: 1 },
+			focus: { blockId, offset: 2 },
+		});
 	});
 });

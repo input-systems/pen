@@ -20,7 +20,6 @@ import {
 } from "./commandDispatch";
 import type { SelectionRange } from "./commands";
 import { getAutocompleteController } from "../utils/autocompleteController";
-import { selectInlineAtomWithArrowKey } from "./keyHandlingInlineAtoms";
 import {
 	collectKeyBindings,
 	isRedoShortcut,
@@ -79,23 +78,6 @@ export function handleFieldEditorKeyDown(options: {
 		if (tableHandled !== null) {
 			return tableHandled;
 		}
-	}
-
-	if (
-		(event.key === "ArrowLeft" || event.key === "ArrowRight") &&
-		!event.metaKey &&
-		!event.ctrlKey &&
-		!event.altKey &&
-		selectInlineAtomWithArrowKey({
-			blockId,
-			editor,
-			event,
-			fieldEditor,
-			range,
-			ytext,
-		})
-	) {
-		return true;
 	}
 
 	if (range && editor.selection?.type !== "cell") {
@@ -320,11 +302,15 @@ function syncAcceptedInlineCompletionSelection(
 	const blockId = selection.focus.blockId;
 	const offset = selection.focus.offset;
 	if (typeof fieldEditor.commitProgrammaticTextSelection === "function") {
-		fieldEditor.commitProgrammaticTextSelection(blockId, offset, offset);
+		fieldEditor.commitProgrammaticTextSelection(blockId, offset, offset, {
+			origin: "keyboard",
+		});
 		return;
 	}
 
-	fieldEditor.activateTextSelection(blockId, offset, offset);
+	fieldEditor.activateTextSelection(blockId, offset, offset, {
+		origin: "keyboard",
+	});
 }
 
 function shouldDismissAutocompleteOnKeyDown(
@@ -386,7 +372,7 @@ export function handleSelectAllShortcut(
 		return false;
 	}
 
-	editor.selectAll(fieldEditor?.selectAllBehavior);
+	editor.selectAll(fieldEditor?.selectAllBehavior, { origin: "keyboard" });
 	if (fieldEditor) {
 		activateFieldEditorFromSelection(editor, fieldEditor);
 	}

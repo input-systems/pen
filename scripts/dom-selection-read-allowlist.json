@@ -2,13 +2,6 @@
   "_comment": "S1 selection-read ratchet. Each entry is a DOM selection read outside packages/rendering/dom/src/field-editor/selectionReader.ts, with the requirement that removes it. An entry whose read no longer exists fails (I15); the list only shrinks and W3.G2 closes at entries: [].",
   "entries": [
     {
-      "file": "packages/rendering/dom/src/field-editor/contentGesturesPointerSelection.ts",
-      "symbol": "mappedSelection",
-      "api": "domSelectionToEditor",
-      "reason": "the mouseup path maps the live selection, because a multi-click's word or paragraph expansion reaches selectionchange after pointer-settled closes the pointer window in Chromium, so the reader alone would refuse it (r-multi-click scenario); W3.R12 reads multi-click through the reader with no frame wait (D19) or computes the expansion in core",
-      "closedBy": "W3.R12"
-    },
-    {
       "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
       "symbol": "cellCaretOffsets",
       "api": "getSelectionOffsets",
@@ -21,13 +14,6 @@
       "api": "getSelectionOffsets",
       "reason": "applyTextDiffAsOps takes the caret the browser left after its own edit (composition end, mutation diff) before the diff reaches the model, so the reader cannot map it yet; C2 per D3 replaces the path",
       "closedBy": "W3.R14"
-    },
-    {
-      "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
-      "symbol": "range",
-      "api": "getSelectionOffsets",
-      "reason": "the contenteditable keydown range for handleFieldEditorKeyDown's inline-atom arrow path; W35 deletes that path with keyHandlingInlineAtoms (D11)",
-      "closedBy": "W35.R18"
     },
     {
       "file": "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",

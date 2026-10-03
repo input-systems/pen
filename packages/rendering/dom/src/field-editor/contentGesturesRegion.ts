@@ -134,9 +134,9 @@ export function createRegionGestures<
 			? getIntersectedBlockIds(boundedRect)
 			: [];
 		if (selectedIds.length > 0) {
-			editor.selectBlocks(selectedIds);
+			editor.selectBlocks(selectedIds, { origin: "pointer" });
 		} else {
-			editor.setSelection(null);
+			editor.setSelection(null, { origin: "pointer" });
 		}
 		fieldEditor.deactivate();
 		return true;
@@ -171,12 +171,12 @@ export function createRegionGestures<
 				? getIntersectedBlockIds(boundedRect)
 				: [];
 			if (selectedIds.length > 0) {
-				editor.selectBlocks(selectedIds);
+				editor.selectBlocks(selectedIds, { origin: "pointer" });
 				if (regionRoot) {
 					ensureEditorFocus(ctx, regionRoot);
 				}
 			} else {
-				editor.setSelection(null);
+				editor.setSelection(null, { origin: "pointer" });
 			}
 			skipNextClickRef.current = true;
 		}

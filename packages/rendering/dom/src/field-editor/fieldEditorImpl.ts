@@ -2,6 +2,7 @@ import type {
 	BlockSchema,
 	Editor,
 	HistoryAppliedEvent,
+	SelectionOrigin,
 	SelectionRecord,
 	SelectionState,
 	Unsubscribe,
@@ -74,6 +75,7 @@ import {
 } from "../a11y/focusSink";
 import { syncFocusSink } from "../a11y/syncFocusSink";
 import { getRootGeometry } from "../geometry/rootGeometry";
+import { attachRootOverlay } from "../overlay/rootOverlay";
 import type { DomScheduler } from "../scheduler";
 import { createBlockNotifier } from "./blockNotifier";
 import type { BlockNotifier } from "./blockNotifierTypes";
@@ -132,6 +134,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected _unsubscribeHistoryApplied: Unsubscribe | null = null;
 	protected _focusSink: FocusSink | null = null;
 	protected _unsubscribeFocusSink: Unsubscribe | null = null;
+	protected _overlay: ReturnType<typeof attachRootOverlay> | null = null;
+	protected _isReadOnly = false;
 	protected _unsubscribeAnnouncer: Unsubscribe | null = null;
 	protected _unbindRootPointerWindow: (() => void) | null = null;
 	protected _domSyncVersion = 0;
@@ -225,8 +229,18 @@ export class FieldEditorImpl implements FieldEditorSession {
 				updateBackendSelection: () => {
 					this._backendLifecycle.updateSelection(null);
 				},
-				setTextSelection: (blockId, anchorOffset, focusOffset) =>
-					this.setTextSelection(blockId, anchorOffset, focusOffset),
+				setTextSelection: (
+					blockId,
+					anchorOffset,
+					focusOffset,
+					origin,
+				) =>
+					this.setTextSelection(
+						blockId,
+						anchorOffset,
+						focusOffset,
+						origin,
+					),
 				activate: (blockId) => this.activate(blockId),
 				emitSelectionProjected: () => {
 					this._emitFocusLifecycle({
@@ -246,7 +260,11 @@ export class FieldEditorImpl implements FieldEditorSession {
 						: null;
 				},
 				getSurface: () =>
-					this._mode === "expanded" ? "expanded" : "text",
+					this._cellEditingController.activeCellCoord
+						? "cell"
+						: this._mode === "expanded"
+							? "expanded"
+							: "text",
 				getScheduler: () => this._ensureScheduler(),
 				getLastCommit: () => this._lastCommit,
 			backendSelectionAgrees: () =>
@@ -320,6 +338,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 					syncSelectionToBackend: true,
 					skipBackendWrite: delivered || withheld,
 				});
+				this._overlay?.notifySelectionChange(record);
 			},
 		);
 		this._unsubscribeHistoryApplied = this._editor.onHistoryApplied(
@@ -357,6 +376,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 	}
 	get isComposing(): boolean {
 		return this._isComposing;
+	}
+	/** The renderer `readonly` prop, as last set by `setReadOnly`. */
+	get isReadOnly(): boolean {
+		return this._isReadOnly;
 	}
 	get inputMode(): "richtext" | "code" | "table" | "none" {
 		return this._inputMode;
@@ -458,7 +481,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 		if (!this._isEditing) return;
 
 		const blockIds = [...this._activeBlockIds];
-		const focusTargetId = this._focusBlockId ?? blockIds[0] ?? null;
 		this._backendLifecycle.deactivate();
 		this._attachedElement = null;
 		this._cellEditingController.clear();
@@ -481,7 +503,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 			isEditing: false,
 		});
 		if (options.restoreFocus) {
-			this._restoreFocusAfterDeactivate(focusTargetId);
+			// Deactivation focuses nothing itself, and never a block element:
+			// the record's projection picks the target (P), so a block or
+			// cell selection lands on the sink.
+			this._projectFocusTarget();
 		}
 		this._emitStateChange();
 	}
@@ -573,7 +598,18 @@ export class FieldEditorImpl implements FieldEditorSession {
 		return this._focusController.requestRootFocus(target, reason, options);
 	}
 
+	/**
+	 * The renderer `readonly` prop (O5). Not the `pen.ariaReadOnly` facet
+	 * (AX1): the overlay reads this to draw no caret in a read-only field.
+	 */
+	setReadOnly(readonly: boolean): void {
+		if (this._isReadOnly === readonly) return;
+		this._isReadOnly = readonly;
+		this._emitStateChange();
+	}
+
 	setRootElement(element: HTMLElement | null): void {
+		this._unbindOverlay();
 		this._unbindFocusSink();
 		this._unbindAnnouncer();
 		this._unbindRootPointerGesture();
@@ -586,6 +622,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 		if (element) {
 			this._bindFocusSink(element);
 			this._bindAnnouncer(element);
+			// OV2: the overlay layer is appended after the sink and the
+			// announcer's live region, so it is the root's last child.
+			this._bindOverlay(element);
 			this._bindRootPointerGesture(element);
 			this._focusController.notifyRootAttached(element);
 		}
@@ -600,9 +639,28 @@ export class FieldEditorImpl implements FieldEditorSession {
 		root.appendChild(sink.element);
 		this._focusSink = sink;
 		this._unsubscribeFocusSink = this._editor.onSelectionChange(() => {
-			syncFocusSink(sink, this._editor);
+			this._projectFocusTarget();
 		});
-		syncFocusSink(sink, this._editor);
+		this._projectFocusTarget();
+	}
+
+	/**
+	 * P focus targets for the record: the sink for block and cell
+	 * selections, the root for app and `null` (D18). The focus controller
+	 * writes; nothing else in pen-dom calls `focus()` (W3.R16).
+	 */
+	protected _projectFocusTarget(): void {
+		const sink = this._focusSink;
+		if (!sink) {
+			return;
+		}
+		syncFocusSink(sink, this._editor, this._editor.selection, {
+			requestFocus: (target) => {
+				this._focusController.requestDomFocus(target, "selection-project", {
+					preventScroll: true,
+				});
+			},
+		});
 	}
 
 	protected _unbindFocusSink(): void {
@@ -610,6 +668,19 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._unsubscribeFocusSink = null;
 		this._focusSink?.dispose();
 		this._focusSink = null;
+	}
+
+	protected _bindOverlay(root: HTMLElement): void {
+		this._overlay = attachRootOverlay({
+			root,
+			editor: this._editor,
+			fieldEditor: this,
+		});
+	}
+
+	protected _unbindOverlay(): void {
+		this._overlay?.detach();
+		this._overlay = null;
 	}
 
 	protected _bindAnnouncer(root: HTMLElement): void {
@@ -721,10 +792,16 @@ export class FieldEditorImpl implements FieldEditorSession {
 		return true;
 	}
 
+	/** The origin of a text-input caret write (S3): `ime` while composing. */
+	inputOrigin(): "keyboard" | "ime" {
+		return this._selectionReader.windows.ime ? "ime" : "keyboard";
+	}
+
 	syncTextSelection(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		origin: SelectionOrigin = this.inputOrigin(),
 	): void {
 		if (!this._isEditing) return;
 		if (this._focusBlockId !== blockId) return;
@@ -739,12 +816,13 @@ export class FieldEditorImpl implements FieldEditorSession {
 		) {
 			return;
 		}
-		this.setTextSelection(blockId, anchorOffset, focusOffset);
+		this.setTextSelection(blockId, anchorOffset, focusOffset, origin);
 	}
 
 	applyDocumentTextSelection(
 		anchor: { blockId: string; offset: number },
 		focus: { blockId: string; offset: number },
+		origin: SelectionOrigin,
 	): void {
 		this._selectionCoordinator.recordUserSelectionIntent();
 
@@ -765,19 +843,20 @@ export class FieldEditorImpl implements FieldEditorSession {
 			}
 		}
 
-		this._editor.selectTextRange(anchor, focus);
+		this._editor.selectTextRange(anchor, focus, { origin });
 		this._emitStateChange();
 	}
 
 	applyDomTextSelection(
 		anchor: { blockId: string; offset: number },
 		focus: { blockId: string; offset: number },
+		origin: SelectionOrigin,
 		options?: {
 			focusBlockId?: string;
 		},
 	): void {
 		if (anchor.blockId !== focus.blockId) {
-			this.applyDocumentTextSelection(anchor, focus);
+			this.applyDocumentTextSelection(anchor, focus, origin);
 			return;
 		}
 
@@ -795,14 +874,19 @@ export class FieldEditorImpl implements FieldEditorSession {
 		}
 
 		if (anchor.blockId === focus.blockId) {
-			this.setTextSelection(anchor.blockId, anchor.offset, focus.offset);
+			this.setTextSelection(
+				anchor.blockId,
+				anchor.offset,
+				focus.offset,
+				origin,
+			);
 			return;
 		}
 
 		if (options?.focusBlockId) {
 			this._focusBlockId = options.focusBlockId;
 		}
-		this._editor.selectTextRange(anchor, focus);
+		this._editor.selectTextRange(anchor, focus, { origin });
 		this._emitStateChange();
 	}
 
@@ -945,8 +1029,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 					(!this._isEditing ||
 						this._focusBlockId !== normalized.anchor.blockId)
 				) {
+					// A pointer that moves the session to another block is a
+					// new edit location, as `activate()` treats it.
 					this._startSession(normalized.anchor.blockId, {
-						stopCapturing: false,
+						stopCapturing: origin === "pointer",
 						syncSelectionToBackend: false,
 						attachImmediately: false,
 					});
@@ -1018,11 +1104,12 @@ export class FieldEditorImpl implements FieldEditorSession {
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		origin: SelectionOrigin = "programmatic",
 	): void {
 		if (anchorOffset !== focusOffset) {
 			this._pendingMarkController.clear(true);
 		}
-		this._editor.selectText(blockId, anchorOffset, focusOffset);
+		this._editor.selectText(blockId, anchorOffset, focusOffset, { origin });
 		this._emitStateChange();
 	}
 
@@ -1040,20 +1127,35 @@ export class FieldEditorImpl implements FieldEditorSession {
 		);
 	}
 
-	async focusTextSelection(
+	/**
+	 * Writes the selection, then focuses in the same turn (S4: no deferral
+	 * between the write and the focus). The promise is the public contract;
+	 * it is already settled when returned.
+	 */
+	focusTextSelection(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
 		options: PenFieldEditorFocusOptions = {},
 	): Promise<boolean> {
+		return Promise.resolve(
+			this._focusTextSelectionNow(blockId, anchorOffset, focusOffset, options),
+		);
+	}
+
+	private _focusTextSelectionNow(
+		blockId: string,
+		anchorOffset: number,
+		focusOffset: number,
+		options: PenFieldEditorFocusOptions,
+	): boolean {
 		this.commitProgrammaticTextSelection(
 			blockId,
 			anchorOffset,
 			focusOffset,
 			options,
 		);
-		const attached = await this.waitForAttachment(blockId);
-		if (!attached) {
+		if (!this._focusController.isAttached(blockId)) {
 			return false;
 		}
 		if (options.domFocus === false || options.passive) {
@@ -1098,29 +1200,40 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._backendLifecycle.updateSelection(null);
 	}
 
-	collapseSelectionToFocus(): void {
+	collapseSelectionToFocus(origin: SelectionOrigin = "programmatic"): void {
 		const selection = this._editor.selection;
 		if (selection?.type !== "text") return;
 
-		this._collapseAndProject(selection.focus);
+		this._collapseAndProject(selection.focus, origin);
 	}
 
-	collapseSelectionToAnchor(): void {
+	collapseSelectionToAnchor(origin: SelectionOrigin = "programmatic"): void {
 		const selection = this._editor.selection;
 		if (selection?.type !== "text") return;
 
-		this._collapseAndProject(selection.anchor);
+		this._collapseAndProject(selection.anchor, origin);
 	}
 
-	collapseSelectionToPoint(point: { blockId: string; offset: number }): void {
-		this._collapseAndProject(point);
+	collapseSelectionToPoint(
+		point: { blockId: string; offset: number },
+		origin: SelectionOrigin = "programmatic",
+	): void {
+		this._collapseAndProject(point, origin);
 	}
 
-	protected _collapseAndProject(point: {
-		blockId: string;
-		offset: number;
-	}): void {
-		this.setTextSelection(point.blockId, point.offset, point.offset);
+	protected _collapseAndProject(
+		point: {
+			blockId: string;
+			offset: number;
+		},
+		origin: SelectionOrigin,
+	): void {
+		this.setTextSelection(
+			point.blockId,
+			point.offset,
+			point.offset,
+			origin,
+		);
 
 		if (!this._isEditing || this._focusBlockId !== point.blockId) {
 			this.activate(point.blockId);
@@ -1273,6 +1386,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	ackBlockMounted(blockId: string, element: HTMLElement): void {
 		this._selectionCoordinator.ackBlockMounted(blockId, element);
+		// A newly mounted block may resolve a request that was unresolved.
+		this._overlay?.notifyInputsChanged();
 		if (this._cellEditingController.activeCellCoord?.blockId === blockId) {
 			this._cellEditingController.trySyncBackend();
 		}
@@ -1280,6 +1395,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	destroy(): void {
 		this._selectionReader.detach();
+		this._unbindOverlay();
 		this._unbindFocusSink();
 		this._unbindAnnouncer();
 		this._unbindRootPointerGesture();
@@ -1333,23 +1449,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 		}
 	}
 
-	protected _restoreFocusAfterDeactivate(blockId: string | null): void {
-		const selection = this._editor.selection;
-		if (
-			this._focusSink &&
-			(selection?.type === "block" || selection?.type === "cell")
-		) {
-			this._focusController.requestDomFocus(
-				this._focusSink.element,
-				"restore",
-				{ preventScroll: true },
-			);
-			return;
-		}
-		this._focusController.restoreFocusAfterDeactivate(blockId);
-	}
-
 	protected _emitStateChange(): void {
+		this._overlay?.notifyFieldChange();
 		for (const callback of this._storeListeners) {
 			callback();
 		}

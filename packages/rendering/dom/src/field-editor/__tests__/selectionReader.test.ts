@@ -33,6 +33,25 @@ function blockSelection(
 }
 
 describe("isLogicallyEquivalent", () => {
+	it("S2 N2: a text range ending on a structural block's 0..1 extent is equivalent to itself", () => {
+		const snapshot: ReaderSnapshot = {
+			blockOrder: ["p1", "image"],
+			blocks: {
+				p1: { kind: "text", text: "Before" },
+				image: { kind: "structural", text: "" },
+			},
+		};
+		const range = textSelection({ blockId: "p1", offset: 3 }, { blockId: "image", offset: 1 });
+		expect(isLogicallyEquivalent(range, range, snapshot)).toBe(true);
+		expect(
+			isLogicallyEquivalent(
+				range,
+				textSelection({ blockId: "p1", offset: 3 }, { blockId: "image", offset: 0 }),
+				snapshot,
+			),
+		).toBe(false);
+	});
+
 	describe("empty block", () => {
 		const snapshot: ReaderSnapshot = {
 			blockOrder: ["empty"],

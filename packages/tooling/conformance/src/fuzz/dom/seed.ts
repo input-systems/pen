@@ -68,6 +68,10 @@ export type DomFuzzConfig = {
 	forceFailAt: number | null;
 	/** `PEN_FUZZ_SHRINK=1`: shrink a failing trace before writing it. */
 	shrink: boolean;
+	/** Nightly: the full §3.15 set; else the frozen PR set. `PEN_FUZZ_ACTIONS` overrides. */
+	actionSet: "pr" | "full";
+	/** Nightly: `fuzz-mixed` and `fuzz-large`; else `fuzz-mixed`. `PEN_FUZZ_FIXTURE` overrides. */
+	fixtures: string[];
 };
 
 type FuzzEnv = Readonly<Record<string, string | undefined>>;
@@ -117,5 +121,16 @@ export function resolveDomFuzzConfig(env: FuzzEnv): DomFuzzConfig {
 		replayPath: env.PEN_FUZZ_REPLAY ? env.PEN_FUZZ_REPLAY : null,
 		forceFailAt: nonNegativeInt(env.PEN_FUZZ_FORCE_FAIL_AT),
 		shrink: Boolean(env.PEN_FUZZ_SHRINK),
+		actionSet:
+			env.PEN_FUZZ_ACTIONS === "full" || env.PEN_FUZZ_ACTIONS === "pr"
+				? env.PEN_FUZZ_ACTIONS
+				: nightly
+					? "full"
+					: "pr",
+		fixtures: env.PEN_FUZZ_FIXTURE
+			? [env.PEN_FUZZ_FIXTURE]
+			: nightly
+				? ["fuzz-mixed", "fuzz-large"]
+				: ["fuzz-mixed"],
 	};
 }

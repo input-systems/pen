@@ -144,6 +144,35 @@ describe("reader gesture windows (R1–R3)", () => {
 		]);
 	});
 
+	it("R1: the document pointerup reads the live selection while the pointer window is still open (D19)", () => {
+		const { editor, blockId, root, placeCaret } = seed();
+		const windowsAtRead: boolean[] = [];
+		const reader = createSelectionReader({
+			editor,
+			read: () => {
+				windowsAtRead.push(reader.windows.pointer);
+				return "accept";
+			},
+		});
+		reader.attach(root);
+		reader.notifyGesture("pointerdown");
+		placeCaret(4);
+		document.dispatchEvent(new Event("pointerup"));
+		expect(windowsAtRead).toEqual([true]);
+		expect(reader.peek()).toEqual(caret(blockId, 4));
+	});
+
+	it("R1: a pointerup that finds the press's native range unchanged reads nothing", () => {
+		const { editor, root, placeCaret } = seed();
+		const read = vi.fn(() => "accept" as const);
+		const reader = createSelectionReader({ editor, read });
+		reader.attach(root);
+		placeCaret(2);
+		reader.notifyGesture("pointerdown");
+		document.dispatchEvent(new Event("pointerup"));
+		expect(read).not.toHaveBeenCalled();
+	});
+
 	it("R3: windows are independent; closing ime leaves an open pointer window", () => {
 		const { editor, root } = seed();
 		const reader = createSelectionReader({ editor, read: () => "accept" });

@@ -184,6 +184,13 @@ describe("SEC1 documentTree render path", () => {
 						attributes: { link: { href: args.href } },
 					},
 				],
+				// The document tree renders `inlineDeltas` (atoms included).
+				inlineDeltas: () => [
+					{
+						insert: text,
+						attributes: { link: { href: args.href } },
+					},
+				],
 			}),
 		} as unknown as Editor;
 		// The tree reads per-block state from the field editor's notifier.

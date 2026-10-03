@@ -289,6 +289,7 @@
 - SelectionRecord
 - SelectionRecordState
 - SelectionState
+- SelectionWriteOptions
 - SelectOption
 - ServerConfig
 - ServerExtensionContext

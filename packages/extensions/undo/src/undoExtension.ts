@@ -8,6 +8,7 @@ import type {
 	OpOrigin,
 	SelectionRecordState,
 	SelectionState,
+	SelectionWriteOptions,
 	UndoHistoryMetadataController,
 	UndoHistoryMetadataEntry,
 	UndoHistoryMetadataRestoreContext,
@@ -589,30 +590,37 @@ function captureFocusBlockId(editor: {
 	return null;
 }
 
+/** Undo and redo restore the selection with origin `restore` (S3, D17). */
+const RESTORE = { origin: "restore" } as const;
+
 function restoreSelection(
 	editor: {
-		setSelection(selection: SelectionState): void;
-		selectBlocks(blockIds: string[]): void;
+		setSelection(
+			selection: SelectionState,
+			options?: SelectionWriteOptions,
+		): void;
+		selectBlocks(blockIds: string[], options?: SelectionWriteOptions): void;
 		selectTextRange(
 			anchor: { blockId: string; offset: number },
 			focus: { blockId: string; offset: number },
+			options?: SelectionWriteOptions,
 		): void;
 	},
 	selection: StoredSelection | undefined,
 ): void {
 	if (selection == null) {
-		editor.setSelection(null);
+		editor.setSelection(null, RESTORE);
 		return;
 	}
 	if (selection.type === "text") {
-		editor.selectTextRange(selection.anchor, selection.focus);
+		editor.selectTextRange(selection.anchor, selection.focus, RESTORE);
 		return;
 	}
 	if (selection.type === "block") {
-		editor.selectBlocks(selection.blockIds);
+		editor.selectBlocks(selection.blockIds, RESTORE);
 		return;
 	}
-	editor.setSelection(selection);
+	editor.setSelection(selection, RESTORE);
 }
 
 function readCursorMeta(stackItem: {

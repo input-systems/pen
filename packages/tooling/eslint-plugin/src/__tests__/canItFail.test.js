@@ -238,6 +238,19 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 		);
 	});
 
+	it("no-direct-dom-focus errors by name on an element focus outside the focus controller", () => {
+		expectRuleErrors(
+			tsTester,
+			"no-direct-dom-focus",
+			rules["no-direct-dom-focus"],
+			{
+				code: "export function seeded(root: HTMLElement) {\n\troot.focus();\n}\n",
+				filename: "packages/rendering/dom/src/seeded-direct-focus.ts",
+				errors: [{ messageId: "focus" }],
+			},
+		);
+	});
+
 	it("no-unscoped-decoration-source errors by name on a function-form decorations source", () => {
 		expectRuleErrors(
 			tsTester,
@@ -315,14 +328,14 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 			rules["no-selection-timers"],
 			{
 				code: "function seededS4Timer() { setTimeout(() => {}, 0); }\n",
-				filename: "packages/core/src/editor/caretPositions.ts",
+				filename: "packages/core/src/selection/transitions.ts",
 				errors: [
 					{
 						messageId: "timer",
 						data: {
 							kind: "setTimeout",
 							symbol: "seededS4Timer",
-							file: "packages/core/src/editor/caretPositions.ts",
+							file: "packages/core/src/selection/transitions.ts",
 						},
 					},
 				],
@@ -476,7 +489,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 		);
 	});
 
-	it("plugin ships twenty-four rules and each can-it-fail case is registered", () => {
+	it("plugin ships twenty-five rules and each can-it-fail case is registered", () => {
 		expect(Object.keys(rules).sort()).toEqual([
 			"no-above-floor-api",
 			"no-aria-hidden-visible",
@@ -485,6 +498,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 			"no-bare-random-uuid",
 			"no-bidi-override",
 			"no-binding-editor-subscriptions",
+			"no-direct-dom-focus",
 			"no-dom-selection-read",
 			"no-dom-selection-write",
 			"no-framework-free-modules-in-renderers",

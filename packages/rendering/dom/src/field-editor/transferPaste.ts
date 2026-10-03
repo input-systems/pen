@@ -40,6 +40,7 @@ import {
 	type UploadedImage,
 } from "./transferTypes";
 import { shouldAllowDirectBlockPaste } from "../utils/flowCapabilities";
+import { originForTransfer } from "./selectionReader";
 
 export async function executePasteTransfer(
 	options: ExecuteTransferOptions,
@@ -281,6 +282,7 @@ function placeCursorAfterImport(
 			selection.anchor.blockId,
 			selection.anchor.offset,
 			selection.anchor.offset,
+			{ origin: originForTransfer(fieldEditor) },
 		);
 	}
 }
@@ -438,10 +440,12 @@ function restoreCursorAtBlockEnd(
 	const schema = editor.schema.resolve(block.type);
 	if (schema?.content === "inline") {
 		const offset = block.textContent().length;
-		fieldEditor.activateTextSelection(blockId, offset, offset);
+		fieldEditor.activateTextSelection(blockId, offset, offset, {
+			origin: originForTransfer(fieldEditor),
+		});
 		return;
 	}
-	editor.selectBlock(blockId);
+	editor.selectBlock(blockId, { origin: originForTransfer(fieldEditor) });
 }
 
 function canDirectPastePenBlocks(

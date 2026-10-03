@@ -36,6 +36,7 @@ import {
 } from "@input/pen-test";
 import { getRootBlockIds } from "@input/pen-dom/utils/parentIdTree";
 import {
+	type BlockScrollAlign,
 	type CRDTAdapter,
 	type CRDTDocument,
 	type DiagnosticEvent,
@@ -104,6 +105,9 @@ import {
 	compareCaretCache,
 	disposeGeometry,
 	flushEightRemoteCarets,
+	overlayMatchesAuthority,
+	startOverlayProbe,
+	stopOverlayProbe,
 	geometryBlocks,
 	geometryGeneration,
 	geometryLineBoxes,
@@ -127,7 +131,39 @@ export type Session = {
 	unsubscribers: Unsubscribe[];
 	disconnectPeers: () => void;
 	brokenProjection: DomAuthorityCheck | null;
+	/** `?relay=1`: updates the local doc emitted since the last drain (W5.R10). */
+	relayOutbox: Uint8Array[] | null;
+	/** `?relay=1`: the local awareness state last drained, to send only changes. */
+	relayAwarenessSent: string | null;
 };
+
+/**
+ * The origin of every update a relay delivers. An update applied with it is
+ * not re-emitted to the outbox, which is `connectPeers`' echo rule.
+ */
+const RELAY_ORIGIN = Symbol("pen-conformance-relay");
+
+/** A peer forked from another page's encoded state (`?relay=1`). */
+type SessionSeed = { readonly update: Uint8Array; readonly clientId: number };
+
+function isRelayMode(): boolean {
+	return readQueryFlag("relay");
+}
+
+function toBase64(bytes: Uint8Array): string {
+	let binary = "";
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	return btoa(binary);
+}
+
+function fromBase64(text: string): Uint8Array {
+	const binary = atob(text);
+	const bytes = new Uint8Array(binary.length);
+	for (let index = 0; index < binary.length; index += 1) {
+		bytes[index] = binary.charCodeAt(index);
+	}
+	return bytes;
+}
 
 let session: Session | null = null;
 const listeners = new Set<() => void>();
@@ -229,9 +265,13 @@ function col2MultiplayerExtensions() {
 	if (!readQueryFlag("col2")) {
 		return undefined;
 	}
+	// `?peer=<id>`: each relay page presents as its own user (W5.R10).
+	const peer = new URLSearchParams(window.location.search).get("peer");
 	return [
 		multiplayerExtension({
-			user: { id: "conformance-local", name: "Local" },
+			user: peer
+				? { id: `conformance-peer-${peer}`, name: `Peer ${peer}` }
+				: { id: "conformance-local", name: "Local" },
 		}),
 	];
 }
@@ -244,13 +284,31 @@ function sessionExtensions() {
 	return extensions.length > 0 ? extensions : undefined;
 }
 
-function createSession(fixtureName: string): Session {
-	const local = createLocalDocument(fixtureName);
+function createSeededDocument(seed: SessionSeed): {
+	adapter: CRDTAdapter;
+	ydoc: Y.Doc;
+	document: CRDTDocument;
+} {
+	const adapter = yjsAdapter({ awareness: createYjsAwareness });
+	const ydoc = new Y.Doc({ gc: false });
+	ydoc.clientID = seed.clientId;
+	Y.applyUpdate(ydoc, seed.update, RELAY_ORIGIN);
+	return { adapter, ydoc, document: wrapYjsDocument(adapter, ydoc) };
+}
+
+function createSession(fixtureName: string, seed?: SessionSeed): Session {
+	const local = seed ? createSeededDocument(seed) : createLocalDocument(fixtureName);
 	const remoteAdapter = yjsAdapter({ awareness: createYjsAwareness });
 	const remoteY = new Y.Doc({ gc: false });
 	Y.applyUpdate(remoteY, Y.encodeStateAsUpdate(local.ydoc));
 	const remoteDoc = wrapYjsDocument(remoteAdapter, remoteY);
-	const disconnectPeers = connectPeers(local.ydoc, remoteY);
+	// Relay mode: the peer is another page, reached only through the relay
+	// bridge, so the in-page zero-latency peer stays disconnected.
+	const relay = isRelayMode();
+	const relayOutbox: Uint8Array[] | null = relay ? [] : null;
+	const disconnectPeers = relay
+		? recordRelayOutbox(local.ydoc, relayOutbox!)
+		: connectPeers(local.ydoc, remoteY);
 
 	const editor = createEditor({
 		documentProfile: "structured",
@@ -280,6 +338,8 @@ function createSession(fixtureName: string): Session {
 		unsubscribers: [],
 		disconnectPeers,
 		brokenProjection: null,
+		relayOutbox,
+		relayAwarenessSent: null,
 	};
 	wireEvents(next);
 	if (isScaleFixtureName(fixtureName)) {
@@ -289,10 +349,81 @@ function createSession(fixtureName: string): Session {
 			origin: "system",
 		});
 	}
-	if (isFuzzFixtureName(fixtureName)) {
+	// A seeded peer already holds the fixture's ops in its forked state.
+	if (isFuzzFixtureName(fixtureName) && !seed) {
 		editor.apply(FUZZ_FIXTURES[fixtureName].ops(), { origin: "system" });
 	}
 	return next;
+}
+
+/** Collects every local update not applied by the relay itself. */
+function recordRelayOutbox(ydoc: Y.Doc, outbox: Uint8Array[]): () => void {
+	const onUpdate = (update: Uint8Array, origin: unknown) => {
+		if (origin === RELAY_ORIGIN) {
+			return;
+		}
+		outbox.push(update);
+	};
+	ydoc.on("update", onUpdate);
+	return () => ydoc.off("update", onUpdate);
+}
+
+/** `?relay=1`: fork this page from another page's encoded state with its own client id. */
+export function loadSeeded(fixture: string, seedBase64: string, clientId: number): void {
+	disposeGeometry();
+	if (session) {
+		destroySession(session);
+	}
+	windowStart = 0;
+	session = createSession(fixture, { update: fromBase64(seedBase64), clientId });
+	installBridge();
+	notify();
+}
+
+function relayBridge(): NonNullable<PenConformanceBridge["relay"]> {
+	const current = () => {
+		const active = getHarnessSession();
+		if (!active.relayOutbox) {
+			throw new Error("relay bridge needs ?relay=1");
+		}
+		return active;
+	};
+	return {
+		drainOutbox() {
+			const active = current();
+			const drained = active.relayOutbox!.splice(0).map(toBase64);
+			return drained;
+		},
+		deliver(updates) {
+			const active = current();
+			for (const update of updates) {
+				Y.applyUpdate(active.localY, fromBase64(update), RELAY_ORIGIN);
+			}
+		},
+		stateVector() {
+			return toBase64(Y.encodeStateVector(current().localY));
+		},
+		encodeSince(stateVector) {
+			const since = stateVector ? fromBase64(stateVector) : undefined;
+			return toBase64(Y.encodeStateAsUpdate(current().localY, since));
+		},
+		drainAwareness() {
+			const active = current();
+			const awareness = active.editor.internals.awareness;
+			if (!awareness) return [];
+			const state = JSON.stringify(awareness.getLocalState());
+			if (state === active.relayAwarenessSent) return [];
+			active.relayAwarenessSent = state;
+			return [toBase64(encodeYjsAwarenessUpdate(awareness, [active.localY.clientID]))];
+		},
+		deliverAwareness(updates) {
+			const awareness = current().editor.internals.awareness;
+			if (!awareness) return;
+			for (const update of updates) {
+				applyYjsAwarenessUpdate(awareness, fromBase64(update), RELAY_ORIGIN);
+			}
+		},
+	};
 }
 
 function recordEvent(target: Session, type: string, payload: unknown): void {
@@ -993,18 +1124,23 @@ function documentSnapshot(): DocumentContentSnapshot {
 	const editor = getHarnessSession().editor;
 	return {
 		blockOrder: [...editor.documentState.blockOrder],
-		blocks: editor.documentState.blockOrder.map((id) => {
+		// COL4: an order entry a concurrent delete left behind survives remote
+		// commits until the next local structural pass; renderers skip it, and
+		// so does the snapshot.
+		blocks: editor.documentState.blockOrder.flatMap((id) => {
 			const block = editor.getBlock(id);
 			if (!block) {
-				throw new Error(`documentSnapshot: missing block ${id}`);
+				return [];
 			}
-			return {
-				id: block.id,
-				type: block.type,
-				text: block.textContent(),
-				props: { ...block.props },
-				deltas: block.inlineDeltas(),
-			};
+			return [
+				{
+					id: block.id,
+					type: block.type,
+					text: block.textContent(),
+					props: { ...block.props },
+					deltas: block.inlineDeltas(),
+				},
+			];
 		}),
 	};
 }
@@ -1109,6 +1245,21 @@ function installBridge(): void {
 		},
 		setPeersConnected,
 		selectTextById,
+		selectCaretWithAffinity(blockId, offset, affinity) {
+			const point = { blockId, offset };
+			getHarnessSession().editor.setSelection(
+				{ type: "text", anchor: point, focus: point, affinity },
+				{ origin: "keyboard" },
+			);
+		},
+		get preorderBlockIds() {
+			return [...getHarnessSession().editor.documentState.preorderBlockIds()];
+		},
+		selectBlocksById(blockIds) {
+			getHarnessSession().editor.selectBlocks([...blockIds], {
+				origin: "keyboard",
+			});
+		},
 		blockText: (blockId: string) =>
 			getHarnessSession().editor.getBlock(blockId)?.textContent() ?? "",
 		get blockIds() {
@@ -1141,6 +1292,10 @@ function installBridge(): void {
 		},
 		load(name: string) {
 			loadFixture(name);
+		},
+		loadSeeded,
+		get relay() {
+			return getHarnessSession().relayOutbox ? relayBridge() : undefined;
 		},
 		focusText,
 		selectText,
@@ -1195,6 +1350,11 @@ function installBridge(): void {
 		flushEightRemoteCarets(points) {
 			return flushEightRemoteCarets(points);
 		},
+		overlayMatchesAuthority() {
+			return overlayMatchesAuthority(getHarnessSession().editor);
+		},
+		startOverlayProbe,
+		stopOverlayProbe,
 		get beforeinputMap() {
 			return beforeinputMap();
 		},
@@ -1205,6 +1365,15 @@ function installBridge(): void {
 		mutateActiveSurfaceText,
 		undo() {
 			getHarnessSession().editor.undoManager.undo();
+		},
+		scrollBlockIntoView(blockId: string, align: BlockScrollAlign) {
+			const fieldEditor = getHarnessSession().editor.facet(fieldEditorHostFacet) as {
+				scrollIntoView?(target: { blockId: string }, scroll: { align: BlockScrollAlign }): void;
+			} | null;
+			if (!fieldEditor?.scrollIntoView) {
+				throw new Error("scrollBlockIntoView: field editor has no scrollIntoView");
+			}
+			fieldEditor.scrollIntoView({ blockId }, { align });
 		},
 		redo() {
 			getHarnessSession().editor.undoManager.redo();

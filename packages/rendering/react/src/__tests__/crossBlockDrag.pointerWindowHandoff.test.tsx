@@ -171,6 +171,8 @@ describe("@input/pen-react cross-block drag: pointer window handoff", () => {
 				secondInlineElement!,
 				2,
 			);
+			// Browsers fire pointerup before mouseup; the reader reads there (D19).
+			document.dispatchEvent(new Event("pointerup"));
 			document.dispatchEvent(createMouseUpEvent());
 			await flushAnimationFrames(2);
 		});
@@ -329,6 +331,8 @@ describe("@input/pen-react cross-block drag: pointer window handoff", () => {
 		});
 
 		await act(async () => {
+			// Browsers fire pointerup before mouseup; the reader reads there (D19).
+			document.dispatchEvent(new Event("pointerup"));
 			document.dispatchEvent(createMouseUpEvent());
 			await flushAnimationFrames(2);
 		});

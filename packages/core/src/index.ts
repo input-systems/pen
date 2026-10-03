@@ -77,6 +77,15 @@ export {
 export { snapToNormalPosition } from "./selection/normalPosition";
 export type { NormalPositionSnapshot } from "./selection/normalPosition";
 export {
+	clickSelectableBlock,
+	convertPointerDrag,
+} from "./selection/transitions";
+export type {
+	TransitionBlock,
+	TransitionSnapshot,
+} from "./selection/transitions";
+export { buildTransitionSnapshot } from "./commands/commandSnapshots";
+export {
 	buildLazyNormalPositionSnapshot,
 	buildNormalPositionSnapshot,
 } from "./commands/helpers";

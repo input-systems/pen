@@ -443,6 +443,7 @@ describe("@input/pen-react clipboard: paste round-trips", () => {
 			blockOrder[0],
 			12,
 			12,
+			{ origin: "keyboard" },
 		);
 
 		editor.destroy();

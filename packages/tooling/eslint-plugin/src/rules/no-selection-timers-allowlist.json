@@ -1,10 +1,42 @@
 {
-  "_comment": "S4 (spec/rules/selection.md). `modules` is the protected set the basename-contains-selection matcher cannot see. Path-shaped entries must hold a live timer (GA6); bare-basename items are fail-closed matcher patterns (caretPositions), not paths. Basename `selection` is a fail-closed net so selectionReader.ts cannot silently escape. `outOfScope` is a decision that a file is not a selection module — not a waiver. `entries` waive a live timer in an in-scope file; each needs file, enclosing symbol, kind, and a reason that names why the site remains. Remove an entry in the same PR that deletes the call. Liveness checks the named symbol and kind, not merely the path.",
-  "modules": ["caretPositions.ts", "contenteditableBackend.ts"],
+  "_comment": "S4 (spec/rules/selection.md). `modules` is the protected set the basename-contains-selection matcher cannot see; every item is a repo path. Basename `selection` is a fail-closed net so selectionReader.ts cannot silently escape. `outOfScope` is a decision that a file is not a selection module \u2014 not a waiver. `entries` waive a live site in an in-scope file; each needs file, enclosing symbol, kind (a timer name, or promise-then, async, await, scheduler-setter, retry-counter), and a reason that names why the site remains. Remove an entry in the same PR that deletes the call. R1's pointer-settled microtask in selectionReader.ts is a structural match in the rule, not an entry.",
+  "modules": [
+    "packages/rendering/dom/src/field-editor/focusController.ts",
+    "packages/rendering/dom/src/field-editor/offsetDomain.ts",
+    "packages/core/src/selection/normalPosition.ts",
+    "packages/core/src/selection/transitions.ts",
+    "packages/rendering/dom/src/field-editor/editContextBackend.ts",
+    "packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
+    "packages/rendering/dom/src/field-editor/expandedContentEditableBackend.ts",
+    "packages/rendering/dom/src/field-editor/fieldEditorImpl.ts",
+    "packages/rendering/dom/src/field-editor/reconcilerFull.ts",
+    "packages/rendering/dom/src/field-editor/cellEditingController.ts",
+    "packages/rendering/dom/src/field-editor/contentGestures.ts",
+    "packages/rendering/dom/src/field-editor/contentGesturesPointerSelection.ts",
+    "packages/rendering/dom/src/field-editor/contentGesturesDrag.ts",
+    "packages/rendering/dom/src/field-editor/contentGesturesRegion.ts",
+    "packages/rendering/dom/src/field-editor/contentGesturesShared.ts",
+    "packages/rendering/dom/src/field-editor/sessionReconciler.ts",
+    "packages/rendering/dom/src/overlay/overlayController.ts",
+    "packages/rendering/dom/src/overlay/overlayLayer.ts",
+    "packages/rendering/react/src/renderers/toggle.tsx",
+    "packages/rendering/react/src/primitives/toolbar/select.tsx",
+    "packages/rendering/react/src/hooks/useSlashMenu.ts",
+    "packages/rendering/react/src/hooks/useFocusController.ts",
+    "packages/rendering/vue/src/components/PenBlock.ts"
+  ],
   "outOfScope": [
     {
-      "file": "packages/rendering/dom/src/field-editor/contentGesturesPointerSelection.ts",
-      "reason": "Pointer-selection gestures, not the selection engine. Split from contentGestures.ts (FE5); that file sat outside the S4 basename net. It holds no timers: multi-click completion runs in a scheduler read (FE3)."
+      "file": "packages/rendering/react/src/primitives/ai/contextualPromptComposer.tsx",
+      "reason": "Focuses the prompt's own native textarea (HOST9); it never reads or writes editor selection."
+    },
+    {
+      "file": "packages/rendering/react/src/renderers/table.tsx",
+      "reason": "AX3 control focus on table chrome; cell selection lives in cellEditingController.ts, which is in scope."
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/editor/blockHandle.tsx",
+      "reason": "AX3 control focus on the block handle; it writes no selection."
     }
   ],
   "entries": []

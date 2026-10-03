@@ -4,6 +4,7 @@ import type { FieldEditorTransferController } from "./controller";
 import type { Delta, PenBlock } from "../utils/clipboardPayload";
 import type { TransferCursorContext } from "./transferSelection";
 import { pasteBlocksAtCaret } from "./transferBlockPlacement";
+import { originForTransfer } from "./selectionReader";
 
 export function pasteBlocks(
 	blocks: PenBlock[],
@@ -112,7 +113,9 @@ function pasteInlineFragment(
 		origin: "user",
 		...(options?.undoGroup === false ? {} : { undoGroup: true }),
 	});
-	fieldEditor.activateTextSelection(cursor.blockId, offset, offset);
+	fieldEditor.activateTextSelection(cursor.blockId, offset, offset, {
+		origin: originForTransfer(fieldEditor),
+	});
 }
 
 function getPenBlockInlineDeltas(block: PenBlock): Delta[] {

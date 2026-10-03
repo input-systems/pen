@@ -21,6 +21,7 @@ export type {
 	CellSelection,
 	SelectionOrigin,
 	SelectionRecordState,
+	SelectionWriteOptions,
 } from "./selection";
 
 // ── Document Range ──────────────────────────────────────────

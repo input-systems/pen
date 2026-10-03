@@ -38,3 +38,21 @@ export function assertDomAuthorityResult(result: DomAuthorityCheck): void {
 		formatDomAuthorityReport(result),
 	).toBe(true);
 }
+
+/**
+ * OV4 (standing, every step): after a flush the overlay layer painted the
+ * authority's current selection version, and a painted local caret names the
+ * record's focus block, offset and affinity. A surface with no field editor
+ * has no overlay to check.
+ */
+export async function assertStandingOverlayMatchesAuthority(
+	page: Page,
+): Promise<void> {
+	const result = await page.evaluate(() =>
+		window.__penConformance.overlayMatchesAuthority(),
+	);
+	expect(
+		result.kind === "failed" ? "failed" : "held",
+		`standing: OV4 overlay layer matches the selection authority — ${result.reason}\n${JSON.stringify(result)}`,
+	).toBe("held");
+}

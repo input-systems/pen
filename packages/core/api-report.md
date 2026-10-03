@@ -27,11 +27,14 @@
 - buildNormalPositionSnapshot
 - buildSplitBlockRecipe
 - buildTableChildren
+- buildTransitionSnapshot
 - builtinCommandHandlers
+- clickSelectableBlock
 - collectEditorKeyBindings
 - collectToolExecutionOutput
 - commandHandler
 - convertBlockOps
+- convertPointerDrag
 - createAppHandle
 - createBlockHandle
 - createCommandRegistry
@@ -283,6 +286,8 @@
 - SuggestionMenuTarget
 - SuggestionMenuTrigger
 - ToggleMarkParam
+- TransitionBlock
+- TransitionSnapshot
 - UrlContext
 - UrlPolicy
 - VerticalCaretDirection
