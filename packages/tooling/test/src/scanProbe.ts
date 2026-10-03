@@ -23,6 +23,7 @@ export interface ScanCounts {
 	readonly documentWalks: number;
 }
 
+/** Counts document scans on one editor; `snapshot` reads, `reset` zeroes (SCALE2). */
 export interface ScanProbe {
 	snapshot(): ScanCounts;
 	reset(): void;

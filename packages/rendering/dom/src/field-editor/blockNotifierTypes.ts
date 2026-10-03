@@ -57,6 +57,10 @@ export type BlockListSegment =
 	| { readonly kind: "list"; readonly key: string; readonly blockIds: readonly string[] }
 	| { readonly kind: "block"; readonly blockId: string };
 
+/**
+ * Everything one block's renderer needs, rebuilt only when that block's own
+ * state changed (SCALE6). Identity-stable while unchanged.
+ */
 export interface BlockSnapshot {
 	readonly blockId: string;
 	readonly commit: BlockCommitSlice;
@@ -98,6 +102,7 @@ export interface DocumentSnapshot {
 	readonly placeholderTargetBlockId: string | null;
 }
 
+/** The source of a block-notifier delivery, for its fan-out diagnostics. */
 export type BlockNotifierEventKind =
 	| "commit"
 	| "selection"

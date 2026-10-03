@@ -145,6 +145,7 @@ export function mixedFixtureOps(rootCount: number): DocumentOp[] {
 	return ops;
 }
 
+/** The structural fingerprint of the mixed scale fixture, for asserting it built. */
 export interface MixedFixtureIdentity {
 	/** Root blocks after `mixedFixtureOps` runs. */
 	readonly rootCount: number;
@@ -176,6 +177,7 @@ export function mixedFixtureIdentity(rootCount: number): MixedFixtureIdentity {
 	};
 }
 
+/** Block ids in the mixed scale fixture that scenarios act on. */
 export interface MixedFixtureTargets {
 	/** First paragraph at or after the middle with `i % 20 === 1`. */
 	readonly paragraph: string;

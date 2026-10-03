@@ -348,7 +348,7 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 	{
 		code: "selection-projection-mismatch",
 		levels: ["warn"],
-		sources: ["rendering/dom/src/field-editor/selectionProjectionController.ts"],
+		sources: ["rendering/dom/src/field-editor/selectionProjector.ts"],
 	},
 	{
 		code: "selection-reserved-origin",
@@ -358,7 +358,7 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 	{
 		code: "selection-target-unmounted",
 		levels: ["warn"],
-		sources: ["rendering/dom/src/field-editor/selectionProjectionController.ts"],
+		sources: ["rendering/dom/src/field-editor/selectionProjector.ts"],
 	},
 	{
 		code: "stream-aborted",

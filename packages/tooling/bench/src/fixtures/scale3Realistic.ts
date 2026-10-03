@@ -14,8 +14,10 @@ import { createScale3YDoc, scale3KeystrokeTarget } from "./scale3Stack";
  */
 
 export const SCALE3_REALISTIC_BLOCK_COUNTS = [100, 1000, 5000] as const;
+/** A block count the realistic SCALE3 stack is measured at. */
 export type Scale3RealisticBlockCount = (typeof SCALE3_REALISTIC_BLOCK_COUNTS)[number];
 
+/** Options for `createScale3RealisticEditor`. */
 export interface Scale3RealisticOptions {
 	readonly blockCount: Scale3RealisticBlockCount;
 	/** Suggestions staged through the real suggest-mode path. Default 8. */

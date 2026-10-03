@@ -29,6 +29,11 @@ export interface DecorationInterest {
 	readonly origin: OpOrigin;
 }
 
+/**
+ * A decorations source that recomputes only the blocks a commit touches
+ * (SCALE2). Pass it to `scopedDecorationSource` instead of a function-form
+ * `decorationsFacet` source.
+ */
 export interface ScopedDecorationSourceSpec {
 	/**
 	 * Blocks to recompute for this commit. Omitted: `summary.affectedBlockIds`.
@@ -43,6 +48,7 @@ export interface ScopedDecorationSourceSpec {
 	decorate(blockIds: readonly string[], editor: Editor): readonly Decoration[];
 }
 
+/** A `ScopedDecorationSourceSpec` tagged for `decorationsFacet` (SCALE2). */
 export interface ScopedDecorationSource extends ScopedDecorationSourceSpec {
 	readonly kind: "scoped";
 }
