@@ -78,7 +78,7 @@ describe("mount ack and parked projections", () => {
 		installMockRaf();
 	});
 
-	it("parks when the target block is not mounted without inventing selection-target-unmounted", () => {
+	it("P4: selection-target-unmounted fires once when the flush after the park ends unacked", () => {
 		const editor = createEditor({ schema: defaultSchema });
 		const fieldEditor = new ProbeFieldEditor(editor);
 		const root = document.createElement("div");
@@ -88,7 +88,8 @@ describe("mount ack and parked projections", () => {
 
 		const diagnostics: DiagnosticEvent[] = [];
 		editor.on("diagnostic", (event) => {
-			diagnostics.push(event);
+			if (event.code === "selection-target-unmounted")
+				diagnostics.push(event);
 		});
 
 		const blockId = editor.firstBlock()!.id;
@@ -97,17 +98,70 @@ describe("mount ack and parked projections", () => {
 		]);
 		fieldEditor.activate(blockId);
 		editor.selectText(blockId, 2, 2);
-		flushFrame();
+		const version = getEditorSelectionRecord(editor)!.version;
+		expect(fieldEditor.parkedProjectionVersion).toBe(version);
+		expect(diagnostics).toHaveLength(0);
 
-		expect(fieldEditor.parkedProjectionVersion).toBe(
-			getEditorSelectionRecord(editor)!.version,
-		);
-		expect(fieldEditor.lastProjectedVersion).toBe(0);
-		expect(
-			diagnostics.filter(
-				(event) => event.code === "selection-target-unmounted",
-			),
-		).toHaveLength(0);
+		flushFrame();
+		expect(diagnostics).toEqual([
+			expect.objectContaining({
+				code: "selection-target-unmounted",
+				version,
+				blockId,
+				mountRequested: false,
+			}),
+		]);
+
+		flushFrame();
+		expect(diagnostics).toHaveLength(1);
+
+		// The park stays: a later ack still projects.
+		const block = mountBlock(root, blockId, "Hi");
+		fieldEditor.ackBlockMounted(blockId, block);
+		expect(fieldEditor.parkedProjectionVersion).toBeNull();
+		expect(fieldEditor.lastProjectedVersion).toBe(version);
+	});
+
+	it("P4: a mount requester is asked before the unmounted check and an in-task ack silences it", async () => {
+		const editor = createEditor({ schema: defaultSchema });
+		const fieldEditor = new ProbeFieldEditor(editor);
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		fixtures.push({ editor, fieldEditor, root });
+		fieldEditor.setRootElement(root);
+
+		const diagnostics: DiagnosticEvent[] = [];
+		editor.on("diagnostic", (event) => {
+			if (event.code === "selection-target-unmounted")
+				diagnostics.push(event);
+		});
+		const requests: Array<{ blockId: string; version: number }> = [];
+		fieldEditor.setMountRequester({
+			requestMount: (blockId, request) => {
+				requests.push({ blockId, version: request.version });
+				queueMicrotask(() => {
+					fieldEditor.ackBlockMounted(
+						blockId,
+						mountBlock(root, blockId, "Hi"),
+					);
+				});
+			},
+		});
+
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hi" },
+		]);
+		fieldEditor.activate(blockId);
+		editor.selectText(blockId, 2, 2);
+		const version = getEditorSelectionRecord(editor)!.version;
+		expect(requests).toContainEqual({ blockId, version });
+
+		await Promise.resolve();
+		flushFrame();
+		expect(fieldEditor.parkedProjectionVersion).toBeNull();
+		expect(fieldEditor.lastProjectedVersion).toBe(version);
+		expect(diagnostics).toHaveLength(0);
 	});
 
 	it("discards a parked projection when a newer version parks", () => {

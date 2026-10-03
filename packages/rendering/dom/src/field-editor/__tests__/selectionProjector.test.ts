@@ -101,18 +101,6 @@ describe("SelectionProjector gesture windows", () => {
 });
 
 describe("SelectionProjector park diagnostics", () => {
-	it("does not invent selection-target-unmounted for a virtualized unmount", () => {
-		const { controller, diagnostics } = createController(
-			programmaticRecord("first", 0, 0, 4),
-		);
-
-		controller.project("selection-change");
-		controller.project("selection-change");
-
-		expect(controller.parkedProjectionVersion).toBe(4);
-		expect(diagnostics.map((event) => event.code)).toEqual([]);
-	});
-
 	it("T3: mode block does not clamp a multi-block text range onto the focused field", () => {
 		const target = { isConnected: true } as HTMLElement;
 		let attached = 0;
@@ -146,28 +134,6 @@ describe("SelectionProjector park diagnostics", () => {
 		expect(controller.lastProjectedVersion).toBe(11);
 		expect(controller.parkedProjectionVersion).toBeNull();
 		expect(diagnostics.map((event) => event.code)).toEqual([]);
-	});
-
-	it("emits selection-target-unmounted once when the target is present but projection fails", () => {
-		const target = { isConnected: true } as HTMLElement;
-		const { controller, diagnostics } = createController(
-			programmaticRecord("first", 0, 0, 7),
-			{
-				resolveInlineElement: () => target,
-				attachElement: () => false,
-				requestDomFocus: () => false,
-			},
-		);
-
-		controller.project("selection-change");
-		controller.project("selection-change");
-
-		expect(controller.parkedProjectionVersion).toBe(7);
-		expect(
-			diagnostics.filter(
-				(event) => event.code === "selection-target-unmounted",
-			),
-		).toHaveLength(1);
 	});
 });
 

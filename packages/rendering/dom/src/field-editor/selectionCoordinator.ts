@@ -13,6 +13,7 @@ import {
 } from "./selectionAuthority";
 import {
 	SelectionProjector,
+	type ProjectionMountRequester,
 	type ProjectionTrigger,
 } from "./selectionProjector";
 
@@ -62,6 +63,10 @@ export class FieldEditorSelectionCoordinator {
 
 	ackBlockMounted(blockId: string, element: HTMLElement): void {
 		this._projection.ackBlockMounted(blockId, element);
+	}
+
+	setMountRequester(requester: ProjectionMountRequester | null): void {
+		this._projection.setMountRequester(requester);
 	}
 
 	resetAuthority(): void {

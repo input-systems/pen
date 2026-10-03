@@ -241,6 +241,7 @@ export {
 	type InteractionModel,
 	type SelectAllBehavior,
 	type DecorationUpdateScope,
+	type BlockScrollAlign,
 	HOOK_PRIORITY_AUTH,
 	HOOK_PRIORITY_SUGGEST,
 	HOOK_PRIORITY_INPUT_RULE,

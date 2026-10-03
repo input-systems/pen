@@ -7,7 +7,7 @@ import {
 import { scenario } from "../src/scenario";
 
 scenario(
-	"SCALE5: windowed host unmounts, edits, and selects outside the window without inventing diagnostics",
+	"SCALE5 P4: a selection outside a window that ignores reveal reports selection-target-unmounted once and projects on remount",
 	async (s, page) => {
 		await s.load("windowed-large");
 		await expect(page.locator("[data-pen-windowed]")).toHaveAttribute(
@@ -81,9 +81,22 @@ scenario(
 		expect(afterOutside.documentText).toContain("!Window block 0");
 		expect(afterOutside.documentText).toContain("?Window block 24");
 		expect(afterOutside.blockIds).toHaveLength(WINDOWED_LARGE_BLOCK_COUNT);
-		expect(afterOutside.diagnostics).not.toContain(
-			"selection-target-unmounted",
-		);
+		// W3.R9: no mount requester is installed, so the flush after the park
+		// reports the unmounted target once, without a mount request.
+		await expect
+			.poll(() =>
+				page.evaluate(() =>
+					window.__penConformance.diagnostics
+						.filter((event) => event.code === "selection-target-unmounted")
+						.map((event) => event.details ?? {}),
+				),
+			)
+			.toEqual([
+				expect.objectContaining({
+					blockId: windowedBlockId(0),
+					mountRequested: false,
+				}),
+			]);
 
 		await page.evaluate(() => {
 			window.__penConformance.setWindow(0);
@@ -91,11 +104,15 @@ scenario(
 		await expect(
 			page.locator(`[data-block-id="${windowedBlockId(0)}"]`),
 		).toBeVisible();
-		await page
-			.locator(
-				`[data-block-id="${windowedBlockId(0)}"] [data-pen-inline-content]`,
-			)
-			.click();
+		// P4: the remounted block's ack projects the parked caret, no click.
+		await expect
+			.poll(async () => {
+				const check = await page.evaluate(() =>
+					window.__penConformance.domMatchesAuthority(),
+				);
+				return check.ok ? "ok" : (check.reason ?? "mismatch");
+			})
+			.toBe("ok");
 		await s.assert.textContains("!Window block 0");
 		await s.assert.textContains("?Window block 24");
 		const remounted = await page.evaluate(() => ({
@@ -105,6 +122,10 @@ scenario(
 			),
 		}));
 		expect(remounted.blockIds).toHaveLength(WINDOWED_LARGE_BLOCK_COUNT);
-		expect(remounted.diagnostics).not.toContain("selection-target-unmounted");
+		expect(
+			remounted.diagnostics.filter(
+				(code) => code === "selection-target-unmounted",
+			),
+		).toHaveLength(1);
 	},
 );

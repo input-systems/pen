@@ -1,5 +1,6 @@
 import { isCollapsed, isMultiBlock } from "@input/pen-core";
 import type {
+	BlockScrollAlign,
 	DiagnosticEvent,
 	SelectionRecord,
 	SelectionState,
@@ -299,6 +300,8 @@ export type SelectionProjectorOptions = {
 	backendSelectionAgrees?: () => boolean;
 	/** The reader's gesture windows (R1–R3); the reader owns them. */
 	getGestureWindows: () => GestureWindowState;
+	/** The root's scheduler; a park queues its unmounted check as a write. */
+	getScheduler?: () => { write(job: () => void): Promise<void> } | null;
 };
 
 /** What asked for a projection, for the mismatch payload and its once-per key. */
@@ -319,6 +322,22 @@ const AUTHORITY_TRIGGERS: ReadonlySet<ProjectionTrigger> = new Set([
 ]);
 
 /**
+ * Asks the host to mount a block the projector parked on (W3.R9). W4
+ * implements it over `BlockWindow.reveal`. The resulting
+ * `ackBlockMounted(blockId, element)` must arrive within the same task, or
+ * the next flush reports `selection-target-unmounted`.
+ */
+export interface ProjectionMountRequester {
+	requestMount(
+		blockId: string,
+		request: {
+			readonly version: number;
+			readonly align: BlockScrollAlign | null;
+		},
+	): void;
+}
+
+/**
  * The selection projector (S1, P): writes the selection authority into the
  * DOM for one editor root. Every projection has a cause (`ProjectionTrigger`):
  * P1 a newer record, P2 a divergence, P3 a rebuilt target, P4 a mount ack, a
@@ -333,7 +352,7 @@ export class SelectionProjector {
 	private _pendingSelectionProjectionVersion: number | null = null;
 	private _lastProjectedVersion = 0;
 	private _parked: { version: number; blockId: string | null } | null = null;
-	private _parkedDiagnosticKey: string | null = null;
+	private _mountRequester: ProjectionMountRequester | null = null;
 	private _trigger: ProjectionTrigger = "activation";
 	private readonly _reportedMismatches = new Set<string>();
 	/** A projection withheld while composing; released once on compositionend-completed. */
@@ -600,7 +619,6 @@ export class SelectionProjector {
 		>,
 	): void {
 		this._parked = null;
-		this._parkedDiagnosticKey = null;
 		const recordVersion = this._options.getRecord?.()?.version;
 		if (recordVersion != null) {
 			this._lastProjectedVersion = recordVersion;
@@ -614,27 +632,55 @@ export class SelectionProjector {
 		);
 	}
 
+	setMountRequester(requester: ProjectionMountRequester | null): void {
+		this._mountRequester = requester;
+	}
+
+	/**
+	 * W3.R9: park on `(version, blockId)`. When the target is not mounted,
+	 * ask the requester to mount it in this turn and check once, in the write
+	 * phase of the next flush, that an ack resolved the park. A mounted target
+	 * whose write was refused is not "unmounted" and is not reported.
+	 */
 	private _parkProjection(foundTarget: boolean): void {
-		const recordVersion = this._options.getRecord?.()?.version ?? 0;
+		const version = this._options.getRecord?.()?.version ?? 0;
 		const blockId = this._projectionTargetBlockId();
-		this._parked = {
-			version: recordVersion,
-			blockId,
-		};
-		// a missing element is host virtualization, not an error.
-		if (!foundTarget) {
+		this._parked = { version, blockId };
+		if (foundTarget || blockId === null) {
 			return;
 		}
-		const key = `${recordVersion}:${blockId ?? ""}`;
-		if (this._parkedDiagnosticKey === key) {
+		const requester = this._mountRequester;
+		requester?.requestMount(blockId, { version, align: null });
+		this._scheduleUnmountedCheck(version, blockId, requester !== null);
+	}
+
+	private _scheduleUnmountedCheck(
+		version: number,
+		blockId: string,
+		mountRequested: boolean,
+	): void {
+		const scheduler = this._options.getScheduler?.();
+		if (!scheduler) {
 			return;
 		}
-		this._parkedDiagnosticKey = key;
-		this._options.emitDiagnostic?.({
-			code: "selection-target-unmounted",
-			level: "warn",
-			source: "selection",
-			message: "selection target is not mounted; projection parked",
+		void scheduler.write(() => {
+			const parked = this._parked;
+			if (parked?.version !== version || parked.blockId !== blockId) {
+				return;
+			}
+			if (this._alreadyReported(`unmounted:${version}:${blockId}`)) {
+				return;
+			}
+			this._options.emitDiagnostic?.({
+				code: "selection-target-unmounted",
+				level: "warn",
+				source: "selection-projector",
+				message:
+					"selection target is not mounted after the flush that followed its park",
+				version,
+				blockId,
+				mountRequested,
+			});
 		});
 	}
 

@@ -111,6 +111,7 @@
 - BlockRenderContext
 - BlockRenderer
 - BlockSchema
+- BlockScrollAlign
 - BlockSelection
 - BlockSelectionRole
 - BlockSuggestion

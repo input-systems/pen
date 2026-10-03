@@ -58,6 +58,8 @@ export type SerializedDiagnostic = {
 	source: string;
 	message: string;
 	reason?: string;
+	/** Primitive payload fields the diagnostic carries (version, blockId, …). */
+	details?: Readonly<Record<string, string | number | boolean>>;
 };
 
 export type ConformanceEventRecord = {

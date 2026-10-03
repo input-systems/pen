@@ -47,6 +47,7 @@ import type { FieldEditorTextLike } from "./crdt";
 import { queryBlockElement, queryInlineElement } from "./selectionBridge";
 import { areBlockIdsEqual, resolveInputMode } from "./fieldEditorImplHelpers";
 import { isSingleFieldNativeLeftover } from "./singleFieldNativeLeftover";
+import type { ProjectionMountRequester } from "./selectionProjector";
 import {
 	createSelectionReader,
 	decideDomSelectionRead,
@@ -242,7 +243,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 				},
 				getSurface: () =>
 					this._mode === "expanded" ? "expanded" : "text",
-				backendSelectionAgrees: () =>
+				getScheduler: () => this._ensureScheduler(),
+			backendSelectionAgrees: () =>
 					this._backendLifecycle.current?.selectionAgreesWithAuthority?.() ??
 					true,
 			},
@@ -1237,6 +1239,15 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	waitForAttachment(blockId = this._focusBlockId): Promise<boolean> {
 		return this._focusController.waitForAttachment(blockId);
+	}
+
+	/**
+	 * W3.R9: the host's mount requester, asked to mount a block the projector
+	 * parked on. Its ack must arrive within the same task (W4 implements it
+	 * over `BlockWindow.reveal`); null removes it.
+	 */
+	setMountRequester(requester: ProjectionMountRequester | null): void {
+		this._selectionCoordinator.setMountRequester(requester);
 	}
 
 	ackBlockMounted(blockId: string, element: HTMLElement): void {

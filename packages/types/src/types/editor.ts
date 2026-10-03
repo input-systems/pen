@@ -203,6 +203,12 @@ export interface DocumentValidationError {
 	severity: "error" | "warning";
 }
 
+/**
+ * Where a scroll-into-view places a block: the projector's mount request
+ * (W3) and `editor.scrollToBlock` (W4) share it.
+ */
+export type BlockScrollAlign = "start" | "center" | "end" | "nearest";
+
 /** Which scoped decoration source to recompute, and for which blocks. */
 export interface DecorationUpdateScope {
 	/**
