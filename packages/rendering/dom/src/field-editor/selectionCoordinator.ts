@@ -11,6 +11,7 @@ import {
 	type FieldEditorSelectionSnapshot,
 	type FieldEditorSelectionSource,
 } from "./selectionAuthority";
+import type { ProjectionScroll } from "./projectionScroll";
 import {
 	SelectionProjector,
 	type ProjectionMountRequester,
@@ -67,6 +68,13 @@ export class FieldEditorSelectionCoordinator {
 
 	setMountRequester(requester: ProjectionMountRequester | null): void {
 		this._projection.setMountRequester(requester);
+	}
+
+	scrollIntoView(
+		target: { readonly blockId: string } | "selection",
+		scroll: Exclude<ProjectionScroll, "none">,
+	): void {
+		this._projection.scrollIntoView(target, scroll);
 	}
 
 	resetAuthority(): void {

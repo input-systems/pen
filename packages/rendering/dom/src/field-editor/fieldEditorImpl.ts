@@ -9,6 +9,7 @@ import type {
 import {
 	DocumentRangeImpl,
 	getEditorSelectionRecord,
+	getOpOriginType,
 	getSelectionBlockRange,
 	hasFieldEditorSurface,
 	isCollapsed,
@@ -48,6 +49,7 @@ import { queryBlockElement, queryInlineElement } from "./selectionBridge";
 import { areBlockIdsEqual, resolveInputMode } from "./fieldEditorImplHelpers";
 import { isSingleFieldNativeLeftover } from "./singleFieldNativeLeftover";
 import type { ProjectionMountRequester } from "./selectionProjector";
+import type { ProjectionCommit, ProjectionScroll } from "./projectionScroll";
 import {
 	createSelectionReader,
 	decideDomSelectionRead,
@@ -143,6 +145,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected readonly _selectionCoordinator: FieldEditorSelectionCoordinator;
 	/** S1: the one `selectionchange` listener for this editor's root. */
 	protected readonly _selectionReader: SelectionReader;
+	/** The last commit seen, for projection scroll (W3.R15). */
+	protected _lastCommit: ProjectionCommit | null = null;
 	/** Per-block fan-out for renderers (SCALE6); one per field editor. */
 	readonly blockNotifier: BlockNotifier;
 
@@ -244,6 +248,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 				getSurface: () =>
 					this._mode === "expanded" ? "expanded" : "text",
 				getScheduler: () => this._ensureScheduler(),
+				getLastCommit: () => this._lastCommit,
 			backendSelectionAgrees: () =>
 					this._backendLifecycle.current?.selectionAgreesWithAuthority?.() ??
 					true,
@@ -258,6 +263,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 		// reader only clears on resize or font load, so a caret measured
 		// after an edit reads a box from before it.
 		this._unsubscribeCommit = this._editor.on("commit", (event) => {
+			this._lastCommit = {
+				commitId: event.commitId,
+				originType: getOpOriginType(event.origin),
+			};
 			this._ensureScheduler()?.acceptCommit(event);
 		});
 		this._unsubscribeSelection = this._editor.onSelectionChange(
@@ -1248,6 +1257,18 @@ export class FieldEditorImpl implements FieldEditorSession {
 	 */
 	setMountRequester(requester: ProjectionMountRequester | null): void {
 		this._selectionCoordinator.setMountRequester(requester);
+	}
+
+	/**
+	 * W3.R15: brings a block, or the current selection, into view in the
+	 * next scheduler flush (measure in the read phase, scroll in the write
+	 * phase). Serves `editor.scrollToBlock` when no BlockWindow is attached.
+	 */
+	scrollIntoView(
+		target: { readonly blockId: string } | "selection",
+		scroll: Exclude<ProjectionScroll, "none"> = "auto",
+	): void {
+		this._selectionCoordinator.scrollIntoView(target, scroll);
 	}
 
 	ackBlockMounted(blockId: string, element: HTMLElement): void {

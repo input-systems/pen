@@ -196,6 +196,11 @@
       "file": "packages/rendering/react/src/primitives/toolbar/root.tsx",
       "symbol": "moveRovingFocus",
       "reason": "HB2 layout metric: getComputedStyle(root).direction flips ArrowLeft/ArrowRight for RTL in the toolbar's roving-focus key handler; reads a style, not geometry."
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/projectionScroll.ts",
+      "symbol": "viewportRect",
+      "reason": "W3.R15: the scroll container's viewport for projection scroll; called only from measureScrollPlan inside the projector's scheduler.read job, so it runs in a read phase."
     }
   ]
 }

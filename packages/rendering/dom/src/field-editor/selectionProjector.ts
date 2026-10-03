@@ -17,7 +17,17 @@ import {
 	isForeignNativeTextEntryTarget,
 	isNativeTextEntryTarget,
 } from "../utils/textEntryTarget";
+import type { GeometryReader, Rect } from "../geometry/types";
 import { findLogicalDOMPoint } from "./inlineAtomDom";
+import {
+	applyScrollPlan,
+	measureScrollPlan,
+	resolveProjectionScroll,
+	selectionScrollTarget,
+	type ProjectionCommit,
+	type ProjectionScroll,
+	type ScrollPlan,
+} from "./projectionScroll";
 import { findDOMPoint } from "./selectionBridgeOffsets";
 import type { SelectionPoint } from "./selectionBridge";
 
@@ -300,8 +310,13 @@ export type SelectionProjectorOptions = {
 	backendSelectionAgrees?: () => boolean;
 	/** The reader's gesture windows (R1–R3); the reader owns them. */
 	getGestureWindows: () => GestureWindowState;
-	/** The root's scheduler; a park queues its unmounted check as a write. */
-	getScheduler?: () => { write(job: () => void): Promise<void> } | null;
+	/** The root's scheduler: the unmounted check and scroll jobs queue on it. */
+	getScheduler?: () => {
+		read(job: () => void): Promise<unknown>;
+		write(job: () => void): Promise<void>;
+	} | null;
+	/** The last commit, for `"auto"` scroll's local-typing case (W3.R15). */
+	getLastCommit?: () => ProjectionCommit | null;
 };
 
 /** What asked for a projection, for the mismatch payload and its once-per key. */
@@ -353,6 +368,10 @@ export class SelectionProjector {
 	private _lastProjectedVersion = 0;
 	private _parked: { version: number; blockId: string | null } | null = null;
 	private _mountRequester: ProjectionMountRequester | null = null;
+	/** The scroll option of the projection in progress. */
+	private _scroll: ProjectionScroll = "auto";
+	/** Supersedes a pending `scrollIntoView` when a newer one is asked. */
+	private _scrollToken = 0;
 	private _trigger: ProjectionTrigger = "activation";
 	private readonly _reportedMismatches = new Set<string>();
 	/** A projection withheld while composing; released once on compositionend-completed. */
@@ -535,12 +554,87 @@ export class SelectionProjector {
 		this.project("activation", options);
 	}
 
-	/** Projects the record now, for `trigger`. */
+	/** Projects the record now, for `trigger`; `scroll` defaults to `"auto"`. */
 	project(
 		trigger: ProjectionTrigger,
-		options: PenFieldEditorFocusOptions = {},
+		options: PenFieldEditorFocusOptions & { scroll?: ProjectionScroll } = {},
 	): void {
-		this._withTrigger(trigger, () => this._project(options));
+		const previousScroll = this._scroll;
+		this._scroll = options.scroll ?? "auto";
+		try {
+			this._withTrigger(trigger, () => this._project(options));
+		} finally {
+			this._scroll = previousScroll;
+		}
+	}
+
+	/**
+	 * W3.R15: brings a block or the current selection into view through the
+	 * same scheduled read (measure) and write (scroll) as projection scroll.
+	 * W4's `scrollToBlock` uses it when no BlockWindow is attached.
+	 */
+	scrollIntoView(
+		target: { readonly blockId: string } | "selection",
+		scroll: Exclude<ProjectionScroll, "none">,
+	): void {
+		const align = scroll === "auto" ? "nearest" : scroll.align;
+		const token = ++this._scrollToken;
+		const measure =
+			target === "selection"
+				? (reader: GeometryReader, view: Rect) =>
+						selectionScrollTarget(
+							reader,
+							this._options.getRecord?.()?.state ?? null,
+							view,
+							align,
+						)
+				: (reader: GeometryReader) => reader.blockRect(target.blockId);
+		this._scheduleScroll(align, measure, () => this._scrollToken === token);
+	}
+
+	/** After a projection: scroll its target per the record's origin (W3.R15). */
+	private _scheduleSelectionScroll(): void {
+		const record = this._options.getRecord?.();
+		if (!record) {
+			return;
+		}
+		const scroll = resolveProjectionScroll(
+			record,
+			this._options.getLastCommit?.() ?? null,
+			this._scroll,
+		);
+		if (!scroll) {
+			return;
+		}
+		const version = record.version;
+		this._scheduleScroll(
+			scroll.align,
+			(reader, view) =>
+				selectionScrollTarget(reader, record.state, view, scroll.align),
+			() => this._lastProjectedVersion === version,
+		);
+	}
+
+	/** One read (measure) and one write (scroll), skipped once superseded. */
+	private _scheduleScroll(
+		align: BlockScrollAlign,
+		measureTarget: (reader: GeometryReader, view: Rect) => Rect | null,
+		isCurrent: () => boolean,
+	): void {
+		const root = this._options.getRootElement();
+		const scheduler = this._options.getScheduler?.();
+		if (!root || !scheduler) {
+			return;
+		}
+		let plan: ScrollPlan | null = null;
+		void scheduler.read(() => {
+			plan = isCurrent() ? measureScrollPlan(root, align, measureTarget) : null;
+		});
+		void scheduler.write(() => {
+			if (plan && isCurrent()) {
+				applyScrollPlan(plan);
+			}
+		});
 	}
 
 	private _project(options: PenFieldEditorFocusOptions): void {
@@ -624,6 +718,7 @@ export class SelectionProjector {
 			this._lastProjectedVersion = recordVersion;
 		}
 		this._options.emitSelectionProjected();
+		this._scheduleSelectionScroll();
 		if (this._pendingSelectionProjectionVersion === version) {
 			this._pendingSelectionProjectionVersion = null;
 		}

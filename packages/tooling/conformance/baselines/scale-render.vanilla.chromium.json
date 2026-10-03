@@ -76,6 +76,8 @@
 			"keystroke": {
 				"commit.affectedBlockIds": 1,
 				"dom.mutationRecords": 3,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
 				"listeners.invoked.commit": 6,
 				"listeners.invoked.selectionChange": 5,
 				"scan.blockOrderReads": 1,
@@ -90,6 +92,8 @@
 			},
 			"caretRight": {
 				"dom.mutationRecords": 2,
+				"geometry.boundingClientRect.inFlush": 2,
+				"geometry.boundingClientRect.total": 2,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 1,
 				"scan.blockOrderReads": 0,
@@ -103,8 +107,9 @@
 			},
 			"caretDown": {
 				"dom.mutationRecords": 22,
+				"geometry.boundingClientRect.inFlush": 2,
 				"geometry.boundingClientRect.outOfFlush": 1581,
-				"geometry.boundingClientRect.total": 1581,
+				"geometry.boundingClientRect.total": 1583,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 6,
 				"scan.blockOrderReads": 0,
@@ -119,8 +124,9 @@
 			},
 			"shiftDown": {
 				"dom.mutationRecords": 20,
+				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.outOfFlush": 1581,
-				"geometry.boundingClientRect.total": 1581,
+				"geometry.boundingClientRect.total": 1582,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 3,
 				"scan.blockOrderReads": 0,
@@ -136,6 +142,8 @@
 			"enterParagraph": {
 				"commit.affectedBlockIds": 2,
 				"dom.mutationRecords": 23,
+				"geometry.boundingClientRect.inFlush": 3,
+				"geometry.boundingClientRect.total": 3,
 				"listeners.invoked.commit": 6,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 7,
@@ -152,6 +160,8 @@
 			"enterNumbered": {
 				"commit.affectedBlockIds": 2,
 				"dom.mutationRecords": 23,
+				"geometry.boundingClientRect.inFlush": 3,
+				"geometry.boundingClientRect.total": 3,
 				"listeners.invoked.commit": 6,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 7,
@@ -207,6 +217,8 @@
 			"keystroke": {
 				"commit.affectedBlockIds": 1,
 				"dom.mutationRecords": 3,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
 				"listeners.invoked.commit": 6,
 				"listeners.invoked.selectionChange": 5,
 				"scan.blockOrderReads": 1,
@@ -221,6 +233,8 @@
 			},
 			"caretRight": {
 				"dom.mutationRecords": 2,
+				"geometry.boundingClientRect.inFlush": 2,
+				"geometry.boundingClientRect.total": 2,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 1,
 				"scan.blockOrderReads": 0,
@@ -234,8 +248,9 @@
 			},
 			"caretDown": {
 				"dom.mutationRecords": 22,
+				"geometry.boundingClientRect.inFlush": 2,
 				"geometry.boundingClientRect.outOfFlush": 7881,
-				"geometry.boundingClientRect.total": 7881,
+				"geometry.boundingClientRect.total": 7883,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 6,
 				"scan.blockOrderReads": 0,
@@ -250,8 +265,9 @@
 			},
 			"shiftDown": {
 				"dom.mutationRecords": 20,
+				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.outOfFlush": 7881,
-				"geometry.boundingClientRect.total": 7881,
+				"geometry.boundingClientRect.total": 7882,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 3,
 				"scan.blockOrderReads": 0,
@@ -267,6 +283,8 @@
 			"enterParagraph": {
 				"commit.affectedBlockIds": 2,
 				"dom.mutationRecords": 23,
+				"geometry.boundingClientRect.inFlush": 3,
+				"geometry.boundingClientRect.total": 3,
 				"listeners.invoked.commit": 6,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 7,
@@ -283,6 +301,8 @@
 			"enterNumbered": {
 				"commit.affectedBlockIds": 2,
 				"dom.mutationRecords": 23,
+				"geometry.boundingClientRect.inFlush": 3,
+				"geometry.boundingClientRect.total": 3,
 				"listeners.invoked.commit": 6,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 7,
@@ -811,6 +831,42 @@
 				"vanilla/scale-5k/caretDown/scan.textFullReads: 32 !== 40",
 				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 43 !== 55",
 				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 43 !== 55"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 17 (W3.R15): keyboard and local-typing projections measure the scroll container and the caret's block in a scheduler read phase to scroll into view (+1-2 getBoundingClientRect per action, all in-flush)",
+			"moved": [
+				"vanilla/scale-1k/keystroke/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/keystroke/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-1k/caretRight/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/caretRight/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-1k/caretDown/geometry.boundingClientRect.total: 1583 !== 1581",
+				"vanilla/scale-1k/caretDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/shiftDown/geometry.boundingClientRect.total: 1582 !== 1581",
+				"vanilla/scale-1k/shiftDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/enterParagraph/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/enterParagraph/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-1k/enterNumbered/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/enterNumbered/geometry.boundingClientRect.total: new metric — re-record"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 17 (W3.R15): keyboard and local-typing projections measure the scroll container and the caret's block in a scheduler read phase to scroll into view (+1-2 getBoundingClientRect per action, all in-flush)",
+			"moved": [
+				"vanilla/scale-5k/keystroke/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/keystroke/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-5k/caretRight/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/caretRight/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-5k/caretDown/geometry.boundingClientRect.total: 7883 !== 7881",
+				"vanilla/scale-5k/caretDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/geometry.boundingClientRect.total: 7882 !== 7881",
+				"vanilla/scale-5k/shiftDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/geometry.boundingClientRect.total: new metric — re-record"
 			]
 		}
 	]
