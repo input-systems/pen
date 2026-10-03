@@ -2,17 +2,25 @@ import React from "react";
 import { useToolbarContext } from "../../context/toolbarContext";
 import { useEditorContext } from "../../context/editorContext";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
+import { composeToolbarPress } from "../../utils/toolbarPress";
 import { toggleInlineMark } from "@input/pen-dom/field-editor/commands";
 
 export interface ToolbarToggleProps extends AsChildProps {
 	format: string;
 	/** Composed with the toggle, not instead of it; see `ToolbarButtonProps.onClick`. */
 	onClick?: React.MouseEventHandler<HTMLElement>;
+	/**
+	 * Composed: the primitive prevents the primary-button default afterwards,
+	 * so a click never takes focus from the field (AX3).
+	 */
+	onPointerDown?: React.PointerEventHandler<HTMLElement>;
+	/** Composed like `onPointerDown`. */
+	onMouseDown?: React.MouseEventHandler<HTMLElement>;
 	ref?: React.Ref<HTMLElement>;
 }
 
 export function ToolbarToggle(props: ToolbarToggleProps) {
-	const { format, onClick, ...rest } = props;
+	const { format, onClick, onPointerDown, onMouseDown, ...rest } = props;
 	const { editor, state } = useToolbarContext();
 	const { readonly } = useEditorContext();
 
@@ -31,6 +39,8 @@ export function ToolbarToggle(props: ToolbarToggleProps) {
 		role: "button",
 		"aria-pressed": isActive,
 		onClick: handleClick,
+		onPointerDown: composeToolbarPress(onPointerDown),
+		onMouseDown: composeToolbarPress(onMouseDown),
 	};
 
 	return renderAsChild(rest, "button", primitiveProps);

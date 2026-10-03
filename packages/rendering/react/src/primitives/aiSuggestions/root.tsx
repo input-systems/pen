@@ -2,8 +2,9 @@ import React from "react";
 import type { Editor } from "@input/pen-types";
 import { EditorContext } from "../../context/editorContext";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
+import { captureFocusReturn, restoreFocusReturn } from "@input/pen-dom";
 import { resolveEditorRootElement } from "../../utils/aiDomScope";
-import { getAttachedFieldEditor } from "../../utils/fieldEditor";
+import { getAttachedFieldEditorSession } from "../../utils/fieldEditor";
 import { useAISuggestionPopover } from "../../hooks/useAISuggestionPopover";
 
 interface AISuggestionsContextValue {
@@ -172,11 +173,23 @@ export function useAISuggestionsContext(): AISuggestionsContextValue {
 	return context;
 }
 
+/**
+ * AX3: a caret-anchored popup never takes focus, so Escape leaves focus
+ * where it is when the editor holds it; focus that fell out of the editor
+ * goes to the editor surface.
+ */
 function restoreEditorFocus(editor: Editor): void {
-	const fieldEditor = getAttachedFieldEditor(editor);
-	if (fieldEditor?.focus({ reason: "keyboard", domFocus: true })) {
+	const root = resolveEditorRootElement(editor);
+	if (!root) {
 		return;
 	}
-
-	resolveEditorRootElement(editor)?.focus({ preventScroll: true });
+	const active = root.ownerDocument.activeElement;
+	if (active instanceof Node && root.contains(active)) {
+		return;
+	}
+	restoreFocusReturn(
+		captureFocusReturn(root),
+		getAttachedFieldEditorSession(editor),
+		"surface",
+	);
 }

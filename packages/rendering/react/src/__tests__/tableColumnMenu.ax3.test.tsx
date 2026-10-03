@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
-import React, { act } from "react";
+import React, { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
-import { createHeadlessEditor } from "@input/pen-core";
+import { createEditor, createHeadlessEditor } from "@input/pen-core";
 import type { Editor, TableColumnSchema } from "@input/pen-types";
+import { defaultPreset } from "@input/pen";
 import { defaultSchema } from "@input/pen-schema";
+import { Pen } from "../primitives/index";
 import { ColumnHeaderMenu } from "../renderers/tableColumnMenu";
 
 (
@@ -93,6 +95,94 @@ async function cleanup(
 	editor.destroy();
 }
 
+/** The column header button and its menu inside an editor root, as the table renderer owns them. */
+function HeaderWithMenu(props: {
+	editor: Editor;
+	onClose: () => void;
+	colCount: number;
+}) {
+	const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+	const [open, setOpen] = useState(true);
+	const close = () => {
+		props.onClose();
+		setOpen(false);
+	};
+	const menu =
+		anchor && open ? (
+			<ColumnHeaderMenu
+				editor={props.editor}
+				blockId="table-1"
+				column={COLUMN}
+				columnIndex={0}
+				allColumns={COLUMNS}
+				colCount={props.colCount}
+				anchorEl={anchor}
+				anchorRect={ANCHOR_RECT}
+				onClose={close}
+			/>
+		) : null;
+
+	return (
+		<Pen.Editor.Root editor={props.editor}>
+			<button type="button" ref={setAnchor} data-pen-column-header="">
+				Name
+			</button>
+			{menu}
+		</Pen.Editor.Root>
+	);
+}
+
+async function renderInEditor(options: { colCount?: number } = {}) {
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	const editor = createEditor({
+		schema: defaultSchema,
+		preset: defaultPreset({
+			tools: false,
+			deltaStream: false,
+			undo: false,
+		}),
+	});
+	const onClose = vi.fn();
+
+	await act(async () => {
+		root.render(
+			<HeaderWithMenu
+				editor={editor}
+				onClose={onClose}
+				colCount={options.colCount ?? 2}
+			/>,
+		);
+	});
+
+	const anchor = container.querySelector<HTMLElement>(
+		"[data-pen-column-header]",
+	)!;
+	const editorRoot = container.querySelector<HTMLElement>(
+		"[data-pen-editor-root]",
+	)!;
+	const menuItem = (label: string) =>
+		Array.from(
+			container.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+		).find((item) => item.textContent?.includes(label)) ?? null;
+
+	return {
+		container,
+		anchor,
+		editorRoot,
+		menuItem,
+		onClose,
+		cleanup: async () => {
+			await act(async () => {
+				root.unmount();
+			});
+			container.remove();
+			editor.destroy();
+		},
+	};
+}
+
 describe("@input/pen-react table column menu AX3", () => {
 	it("AX3: uses role=menu and roving tabindex without stealing editor focus", async () => {
 		const editorSurface = document.createElement("textarea");
@@ -175,15 +265,9 @@ describe("@input/pen-react table column menu AX3", () => {
 		await cleanup(root, container, anchorEl, editor);
 	});
 
-	it("AX3: Escape closes the column menu and restores focus to the invoking control", async () => {
-		const anchorEl = createAnchor();
-		const onClose = vi.fn();
-		const { container, root, editor } = await renderMenu({
-			anchorEl,
-			onClose,
-		});
-
-		const items = container.querySelectorAll<HTMLElement>(
+	it("AX3: Escape closes the column menu and returns focus to the column header button", async () => {
+		const view = await renderInEditor();
+		const items = view.container.querySelectorAll<HTMLElement>(
 			"[data-pen-column-menu-item]",
 		);
 		await act(async () => {
@@ -195,9 +279,75 @@ describe("@input/pen-react table column menu AX3", () => {
 			dispatchKey(items[1]!, "Escape");
 		});
 
-		expect(onClose).toHaveBeenCalledTimes(1);
-		expect(document.activeElement).toBe(anchorEl);
+		expect(view.onClose).toHaveBeenCalledTimes(1);
+		expect(
+			view.container.querySelector("[data-pen-column-menu]"),
+		).toBeNull();
+		expect(document.activeElement).toBe(view.anchor);
 
-		await cleanup(root, container, anchorEl, editor);
+		await view.cleanup();
+	});
+
+	it("AX3: every column menu action returns focus to the column header button, and delete returns it to the editor surface", async () => {
+		const actions: Array<{
+			label: string;
+			activate: (
+				view: Awaited<ReturnType<typeof renderInEditor>>,
+			) => void;
+			expected: "anchor" | "surface";
+		}> = [
+			{
+				label: "type",
+				activate: (view) => view.menuItem("Number")?.click(),
+				expected: "anchor",
+			},
+			{
+				label: "insert left",
+				activate: (view) => view.menuItem("Insert left")?.click(),
+				expected: "anchor",
+			},
+			{
+				label: "insert right",
+				activate: (view) => view.menuItem("Insert right")?.click(),
+				expected: "anchor",
+			},
+			{
+				label: "rename",
+				activate: (view) => {
+					const input =
+						view.container.querySelector<HTMLInputElement>(
+							"input[data-pen-column-menu-item]",
+						)!;
+					input.focus();
+					dispatchKey(input, "Enter");
+				},
+				expected: "anchor",
+			},
+			{
+				label: "delete",
+				activate: (view) => view.menuItem("Delete")?.click(),
+				expected: "surface",
+			},
+		];
+
+		for (const action of actions) {
+			const view = await renderInEditor();
+			const first = view.container.querySelector<HTMLElement>(
+				"[data-pen-column-menu-item]",
+			)!;
+			await act(async () => {
+				first.focus();
+			});
+
+			await act(async () => {
+				action.activate(view);
+			});
+
+			expect(view.onClose, action.label).toHaveBeenCalledTimes(1);
+			expect(document.activeElement, action.label).toBe(
+				action.expected === "anchor" ? view.anchor : view.editorRoot,
+			);
+			await view.cleanup();
+		}
 	});
 });

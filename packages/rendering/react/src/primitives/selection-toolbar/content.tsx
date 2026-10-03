@@ -5,8 +5,10 @@ import type { Editor } from "@input/pen-types";
 import { useSelectionToolbarContext } from "./root";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { composeRefs } from "../../utils/composeRefs";
-import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
-import { getAttachedFieldEditor } from "../../utils/fieldEditor";
+import { captureFocusReturn, restoreFocusReturn } from "@input/pen-dom";
+import { useFieldEditorContext } from "../../context/fieldEditorContext";
+import { resolveChromeEditorRoot } from "../../utils/aiDomScope";
+import { getAttachedFieldEditorSession } from "../../utils/fieldEditor";
 import { resolveSelectionToolbarRect } from "../../hooks/useSelectionToolbar";
 import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
 
@@ -17,9 +19,11 @@ type HorizontalAlign = "left" | "center" | "right";
  * Floating formatting surface for the current text selection.
  *
  * AX3 detached surface: `role="toolbar"` (hosts may render `role="menu"`
- * via `asChild`). Escape closes the surface and restores focus to the
- * editing position. Pointer interaction does not steal editor focus —
- * this primitive never auto-focuses itself.
+ * via `asChild`). Pointer interaction does not steal editor focus, and
+ * keyboard activation keeps focus on the activated control while the
+ * toolbar stays mounted. Escape, or an action that unmounts the toolbar
+ * with the selection, returns focus to the editor surface (D15). This
+ * primitive never auto-focuses itself.
  */
 export interface SelectionToolbarContentProps extends AsChildProps {
 	/**
@@ -48,7 +52,9 @@ export function SelectionToolbarContent(props: SelectionToolbarContentProps) {
 		...rest
 	} = props;
 	const { editor, selectionToolbar } = useSelectionToolbarContext();
+	const fieldEditorContext = useFieldEditorContext();
 	const contentRef = useRef<HTMLElement | null>(null);
+	const focusWithinRef = useRef(false);
 	const [dismissed, setDismissed] = useState(false);
 	const [position, setPosition] = useState<{
 		top: number;
@@ -58,6 +64,7 @@ export function SelectionToolbarContent(props: SelectionToolbarContentProps) {
 
 	const { isOpen, selectionRect } = selectionToolbar;
 	const selectionKey = textSelectionKey(editor);
+	const mounted = isOpen && Boolean(selectionRect) && !dismissed;
 
 	useIsomorphicLayoutEffect(() => {
 		setDismissed(false);
@@ -126,9 +133,57 @@ export function SelectionToolbarContent(props: SelectionToolbarContentProps) {
 		sideOffset,
 	]);
 
-	if (!isOpen || !selectionRect || dismissed) {
+	useIsomorphicLayoutEffect(() => {
+		if (!mounted) {
+			return;
+		}
+		const element = contentRef.current;
+		const editorRoot = resolveChromeEditorRoot(editor, element);
+		return () => {
+			// D15: Escape, or an action that takes the toolbar down with the
+			// selection, returns focus that was inside it to the editor
+			// surface. The element is already detached here, so focus has
+			// fallen to the document.
+			const hadFocus = focusWithinRef.current;
+			focusWithinRef.current = false;
+			if (!hadFocus || !editorRoot) {
+				return;
+			}
+			const active = editorRoot.ownerDocument.activeElement;
+			const focusFell =
+				active === null ||
+				active === editorRoot.ownerDocument.body ||
+				(element !== null && element.contains(active));
+			if (!focusFell) {
+				return;
+			}
+			restoreFocusReturn(
+				captureFocusReturn(editorRoot),
+				fieldEditorContext ?? getAttachedFieldEditorSession(editor),
+				"surface",
+			);
+		};
+	}, [mounted]);
+
+	if (!mounted) {
 		return null;
 	}
+
+	const handleFocus = () => {
+		focusWithinRef.current = true;
+	};
+
+	const handleBlur = (event: React.FocusEvent<HTMLElement>) => {
+		const next = event.relatedTarget;
+		const element = contentRef.current;
+		// A blur caused by the toolbar's own removal is not focus leaving it.
+		if (!element?.isConnected) {
+			return;
+		}
+		if (!(next instanceof Node) || !element.contains(next)) {
+			focusWithinRef.current = false;
+		}
+	};
 
 	const handlePointerDown = (event: React.PointerEvent) => {
 		event.preventDefault();
@@ -140,11 +195,10 @@ export function SelectionToolbarContent(props: SelectionToolbarContentProps) {
 		}
 		event.preventDefault();
 		event.stopPropagation();
-		const target = resolveEditorFocusTarget(editor, contentRef.current);
+		// Unmounting runs the restore above, synchronously.
 		flushSync(() => {
 			setDismissed(true);
 		});
-		restoreEditorFocus(editor, target);
 	};
 
 	const primitiveProps: Record<string, unknown> = {
@@ -154,6 +208,8 @@ export function SelectionToolbarContent(props: SelectionToolbarContentProps) {
 		"aria-label": resolveEditorMessage(editor, "pen.toolbar.formatting"),
 		onPointerDown: handlePointerDown,
 		onKeyDown: handleKeyDown,
+		onFocus: handleFocus,
+		onBlur: handleBlur,
 		style: {
 			position: "fixed" as const,
 			top: 0,
@@ -185,30 +241,4 @@ function textSelectionKey(editor: Editor): string | null {
 		selection.focus.blockId,
 		selection.focus.offset,
 	].join(":");
-}
-
-function resolveEditorFocusTarget(
-	editor: Editor,
-	from: HTMLElement | null,
-): HTMLElement | null {
-	const ownerDocument = from?.ownerDocument ?? document;
-	return (
-		from?.closest<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`) ??
-		ownerDocument.querySelector<HTMLElement>(
-			`[${DATA_ATTRS.editorRoot}][${DATA_ATTRS.viewId}="${editor.internals.viewId}"]`,
-		) ??
-		ownerDocument.querySelector<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`)
-	);
-}
-
-function restoreEditorFocus(editor: Editor, target: HTMLElement | null): void {
-	const fieldEditor = getAttachedFieldEditor(editor);
-	if (fieldEditor?.focus({ reason: "keyboard", domFocus: true })) {
-		const active =
-			target?.ownerDocument.activeElement ?? document.activeElement;
-		if (active instanceof Node && target?.contains(active)) {
-			return;
-		}
-	}
-	target?.focus({ preventScroll: true });
 }

@@ -1,11 +1,27 @@
-import React, { createContext, useContext, useId, useState } from "react";
+import React, {
+	createContext,
+	useContext,
+	useId,
+	useRef,
+	useState,
+} from "react";
 import {
 	foldAndNormalize,
 	localeFacet,
 	resolveEditorMessage,
 } from "@input/pen-core";
 import type { AICommandBinding } from "@input/pen-ai";
+import {
+	captureFocusReturn,
+	restoreFocusReturn,
+	type FocusReturnToken,
+} from "@input/pen-dom";
+import { useFieldEditorContext } from "../../context/fieldEditorContext";
+import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
+import { composeRefs } from "../../utils/composeRefs";
+import { resolveChromeEditorRoot } from "../../utils/aiDomScope";
+import { getAttachedFieldEditorSession } from "../../utils/fieldEditor";
 import { useAIContext } from "./root";
 
 interface CommandMenuContextValue {
@@ -18,6 +34,8 @@ interface CommandMenuContextValue {
 	getOptionId: (index: number) => string;
 	activeOptionId: string | undefined;
 	open: boolean;
+	/** AX3: return focus to what held it when the menu opened. */
+	returnFocus: () => void;
 }
 
 const CommandMenuContext = createContext<CommandMenuContextValue | null>(null);
@@ -41,10 +59,15 @@ export interface AICommandMenuProps extends AsChildProps {
 /**
  * AX3 command palette: combobox + listbox, activedescendant while a list exists.
  * Arrow/Home/End move the active option; Enter/Tab run it; Escape closes.
- * Focus stays in the filter input.
+ * Focus stays in the filter input while open; accepting a command or Escape
+ * returns it to whatever held it when the menu opened (D15).
  */
 export function AICommandMenu(props: AICommandMenuProps) {
+	const { ref, ...rest } = props;
 	const { controller, editor, state } = useAIContext();
+	const fieldEditorContext = useFieldEditorContext();
+	const menuRef = useRef<HTMLElement | null>(null);
+	const focusReturnRef = useRef<FocusReturnToken | null>(null);
 	const [filter, setFilter] = useState("");
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const listId = useId();
@@ -73,6 +96,24 @@ export function AICommandMenu(props: AICommandMenuProps) {
 		state.commandMenuOpen && commands.length > 0
 			? getOptionId(activeIndex)
 			: undefined;
+
+	function resolveRoot(): HTMLElement | null {
+		return resolveChromeEditorRoot(editor, menuRef.current);
+	}
+
+	function returnFocus() {
+		const token = focusReturnRef.current;
+		focusReturnRef.current = null;
+		if (!token) {
+			return;
+		}
+		restoreFocusReturn(
+			token,
+			fieldEditorContext ?? getAttachedFieldEditorSession(editor),
+			"target",
+			{ owner: menuRef.current },
+		);
+	}
 
 	function updateFilter(value: string) {
 		setFilter(value);
@@ -112,6 +153,7 @@ export function AICommandMenu(props: AICommandMenuProps) {
 			return;
 		}
 		controller?.closeCommandMenu();
+		returnFocus();
 		void controller?.runCommand(command.id);
 	}
 
@@ -142,16 +184,37 @@ export function AICommandMenu(props: AICommandMenuProps) {
 				event.preventDefault();
 				event.stopPropagation();
 				controller?.closeCommandMenu();
+				returnFocus();
 				break;
 			default:
 				break;
 		}
 	}
 
+	// Record what holds focus as the menu opens, before the host moves it
+	// into the filter input. Focus already inside the menu is not a target.
+	useIsomorphicLayoutEffect(() => {
+		if (!state.commandMenuOpen) {
+			focusReturnRef.current = null;
+			return;
+		}
+		const root = resolveRoot();
+		if (!root) {
+			return;
+		}
+		const token = captureFocusReturn(root);
+		const insideMenu =
+			token.target !== null && menuRef.current?.contains(token.target);
+		focusReturnRef.current = insideMenu
+			? captureFocusReturn(root, null)
+			: token;
+	}, [state.commandMenuOpen]);
+
 	const menuProps: AsChildProps & {
 		ref?: React.Ref<HTMLElement>;
 	} & Record<string, unknown> = {
-		...props,
+		...rest,
+		ref: composeRefs(ref, menuRef),
 		hidden: !state.commandMenuOpen,
 		onKeyDown: handleMenuKeyDown,
 	};
@@ -168,6 +231,7 @@ export function AICommandMenu(props: AICommandMenuProps) {
 				getOptionId,
 				activeOptionId,
 				open: state.commandMenuOpen,
+				returnFocus,
 			}}
 		>
 			{renderAsChild(menuProps, "div", {
@@ -252,8 +316,13 @@ export interface AICommandItemProps extends AsChildProps {
 export function AICommandItem(props: AICommandItemProps) {
 	const { command, ...rest } = props;
 	const { controller } = useAIContext();
-	const { commands, selectedIndex, setSelectedIndex, getOptionId } =
-		useCommandMenuContext();
+	const {
+		commands,
+		selectedIndex,
+		setSelectedIndex,
+		getOptionId,
+		returnFocus,
+	} = useCommandMenuContext();
 	const itemIndex = commands.findIndex((item) => item.id === command.id);
 	const isSelected = itemIndex >= 0 && itemIndex === selectedIndex;
 	const optionId = itemIndex >= 0 ? getOptionId(itemIndex) : undefined;
@@ -263,6 +332,7 @@ export function AICommandItem(props: AICommandItemProps) {
 		...rest,
 		onClick: () => {
 			controller?.closeCommandMenu();
+			returnFocus();
 			void controller?.runCommand(command.id);
 		},
 		onMouseEnter: () => {

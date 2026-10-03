@@ -3,7 +3,9 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { createEditor } from "@input/pen-core";
+import { createEditor, fieldEditorHostFacet } from "@input/pen-core";
+import type { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
+import { toggleInlineMark } from "@input/pen-dom/field-editor/commands";
 import { defaultPreset } from "@input/pen";
 import { Pen } from "../primitives/index";
 import { defaultSchema } from "@input/pen-schema";
@@ -24,7 +26,13 @@ function createTestEditor() {
 	});
 }
 
-async function renderSelectionToolbar() {
+async function renderSelectionToolbar(
+	controls: (
+		editor: ReturnType<typeof createTestEditor>,
+		blockId: string,
+	) => ReturnType<typeof createElement> = () =>
+		createElement("button", { type: "button" }, "Bold"),
+) {
 	const restoreSelectionRect = mockSelectionToolbarRect({
 		top: 120,
 		left: 160,
@@ -64,7 +72,7 @@ async function renderSelectionToolbar() {
 					createElement(
 						Pen.SelectionToolbar.Content,
 						null,
-						createElement("button", { type: "button" }, "Bold"),
+						controls(editor, blockId),
 					),
 				),
 			),
@@ -74,9 +82,35 @@ async function renderSelectionToolbar() {
 		}
 	});
 
-	const fixture = { container, editor, restoreSelectionRect, root };
+	const fixture = { container, editor, restoreSelectionRect, root, blockId };
 	fixtures.push(fixture);
 	return fixture;
+}
+
+/** Focuses the block's field over the selected range; returns the field element. */
+async function focusField(
+	fixture: Awaited<ReturnType<typeof renderSelectionToolbar>>,
+): Promise<HTMLElement> {
+	const fieldEditor = fixture.editor.facet(
+		fieldEditorHostFacet,
+	) as FieldEditorImpl;
+	await act(async () => {
+		await fieldEditor.focusTextSelection(fixture.blockId, 0, 5, {
+			reason: "keyboard",
+		});
+	});
+	const field = fixture.container.querySelector<HTMLElement>(
+		`[data-pen-editor-block][data-block-id="${fixture.blockId}"] [data-pen-inline-content]`,
+	);
+	expect(field).not.toBeNull();
+	expect(document.activeElement).toBe(field);
+	return field!;
+}
+
+function toolbarContent(container: HTMLElement): HTMLElement | null {
+	return container.querySelector<HTMLElement>(
+		"[data-pen-selection-toolbar-content]",
+	);
 }
 
 const fixtures: Array<{
@@ -84,6 +118,7 @@ const fixtures: Array<{
 	editor: ReturnType<typeof createTestEditor>;
 	restoreSelectionRect: () => void;
 	root: ReturnType<typeof createRoot>;
+	blockId: string;
 }> = [];
 
 afterEach(async () => {
@@ -114,41 +149,18 @@ describe("selection toolbar AX3", () => {
 
 	it("AX3: opening the toolbar does not steal editor focus", async () => {
 		const fixture = await renderSelectionToolbar();
+		const field = await focusField(fixture);
 
-		const editorRoot = fixture.container.querySelector(
-			"[data-pen-editor-root]",
-		) as HTMLElement | null;
-		expect(editorRoot).not.toBeNull();
-		await act(async () => {
-			editorRoot?.focus();
-		});
-		// The editor may hand root focus to its active field; either is the editor's.
-		const editorFocus = document.activeElement;
-		expect(editorRoot?.contains(editorFocus)).toBe(true);
-
-		const toolbar = fixture.container.querySelector(
-			"[data-pen-selection-toolbar-content]",
-		);
+		const toolbar = toolbarContent(fixture.container);
 		expect(toolbar).not.toBeNull();
-		expect(document.activeElement).toBe(editorFocus);
-		expect(document.activeElement).not.toBe(toolbar);
+		expect(document.activeElement).toBe(field);
 	});
 
 	it("AX3: pointerdown does not steal editor focus", async () => {
 		const fixture = await renderSelectionToolbar();
+		const field = await focusField(fixture);
 
-		const editorRoot = fixture.container.querySelector(
-			"[data-pen-editor-root]",
-		) as HTMLElement;
-		await act(async () => {
-			editorRoot.focus();
-		});
-		const editorFocus = document.activeElement;
-		expect(editorRoot.contains(editorFocus)).toBe(true);
-
-		const toolbar = fixture.container.querySelector(
-			"[data-pen-selection-toolbar-content]",
-		) as HTMLElement;
+		const toolbar = toolbarContent(fixture.container)!;
 		const event = new Event("pointerdown", {
 			bubbles: true,
 			cancelable: true,
@@ -158,19 +170,15 @@ describe("selection toolbar AX3", () => {
 		});
 
 		expect(event.defaultPrevented).toBe(true);
-		expect(document.activeElement).toBe(editorFocus);
+		expect(document.activeElement).toBe(field);
 	});
 
-	it("AX3: Escape closes and restores editor focus", async () => {
+	it("AX3: Escape closes and returns focus to the field", async () => {
 		const fixture = await renderSelectionToolbar();
-
-		const editorRoot = fixture.container.querySelector(
-			"[data-pen-editor-root]",
-		) as HTMLElement;
-		const toolbar = fixture.container.querySelector(
-			"[data-pen-selection-toolbar-content]",
-		) as HTMLElement;
-		const button = toolbar.querySelector("button") as HTMLButtonElement;
+		const field = await focusField(fixture);
+		const button = toolbarContent(fixture.container)!.querySelector(
+			"button",
+		) as HTMLButtonElement;
 		await act(async () => {
 			button.focus();
 		});
@@ -186,11 +194,64 @@ describe("selection toolbar AX3", () => {
 		});
 
 		expect(event.defaultPrevented).toBe(true);
-		expect(
-			fixture.container.querySelector(
-				"[data-pen-selection-toolbar-content]",
+		expect(toolbarContent(fixture.container)).toBeNull();
+		expect(document.activeElement).toBe(field);
+	});
+
+	it("AX3: keyboard activation in the selection toolbar keeps focus on the activated control", async () => {
+		const fixture = await renderSelectionToolbar((editor) =>
+			createElement(
+				"button",
+				{
+					type: "button",
+					"data-testid": "bold",
+					onClick: () => toggleInlineMark(editor, "bold"),
+				},
+				"Bold",
 			),
-		).toBeNull();
-		expect(editorRoot.contains(document.activeElement)).toBe(true);
+		);
+		await focusField(fixture);
+		const button = toolbarContent(fixture.container)!.querySelector(
+			"button",
+		) as HTMLButtonElement;
+		await act(async () => {
+			button.focus();
+		});
+
+		// Keyboard activation: a click with no press before it.
+		await act(async () => {
+			button.click();
+		});
+
+		expect(toolbarContent(fixture.container)).not.toBeNull();
+		expect(document.activeElement).toBe(button);
+	});
+
+	it("AX3: a selection toolbar action that unmounts the toolbar returns focus to the field", async () => {
+		const fixture = await renderSelectionToolbar((editor, blockId) =>
+			createElement(
+				"button",
+				{
+					type: "button",
+					onClick: () => editor.selectText(blockId, 5, 5),
+				},
+				"Collapse",
+			),
+		);
+		const field = await focusField(fixture);
+		const button = toolbarContent(fixture.container)!.querySelector(
+			"button",
+		) as HTMLButtonElement;
+		await act(async () => {
+			button.focus();
+		});
+		expect(document.activeElement).toBe(button);
+
+		await act(async () => {
+			button.click();
+		});
+
+		expect(toolbarContent(fixture.container)).toBeNull();
+		expect(document.activeElement).toBe(field);
 	});
 });

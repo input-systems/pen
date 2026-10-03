@@ -8,8 +8,17 @@ import type { AIContextualPromptAnchor, AISession } from "@input/pen-ai";
 import type { Editor, TextSelection } from "@input/pen-types";
 import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
 import { queryBlockElement } from "@input/pen-dom/field-editor/selectionBridge";
+import {
+	captureFocusReturn,
+	restoreFocusReturn,
+	type FocusReturnToken,
+} from "@input/pen-dom";
+import { useFieldEditorContext } from "../../context/fieldEditorContext";
 import { useAISessionActions } from "../../hooks/useAISessionActions";
+import { resolveChromeEditorRoot } from "../../utils/aiDomScope";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
+import { composeRefs } from "../../utils/composeRefs";
+import { getAttachedFieldEditorSession } from "../../utils/fieldEditor";
 import {
 	resolvePromptHostElement,
 	selectionMatchesSnapshot,
@@ -33,7 +42,11 @@ export function AIContextualPromptComposer(
 		resolveEditorMessage(editor, "pen.ai.prompt.placeholder");
 	const session = useContextualPromptSession(editor);
 	const actions = useAISessionActions(editor);
+	const fieldEditorContext = useFieldEditorContext();
 	const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
+	const composerRef = React.useRef<HTMLElement | null>(null);
+	const focusReturnRef = React.useRef<FocusReturnToken | null>(null);
+	const composerOpen = session?.contextualPrompt?.composer.isOpen === true;
 	const isRunningCurrentSession =
 		state.activeGeneration?.sessionId != null &&
 		state.activeGeneration.sessionId === session?.id &&
@@ -57,6 +70,29 @@ export function AIContextualPromptComposer(
 		input.setSelectionRange(endOffset, endOffset);
 		return input.ownerDocument.activeElement === input;
 	}, []);
+
+	// AX3 (D15): record what held focus when the prompt opened, before the
+	// input takes it, so accept, reject, dismiss and Escape can return it.
+	useIsomorphicLayoutEffect(() => {
+		if (!composerOpen) {
+			focusReturnRef.current = null;
+			return;
+		}
+		if (focusReturnRef.current) {
+			return;
+		}
+		const root = resolveChromeEditorRoot(editor, composerRef.current);
+		if (!root) {
+			return;
+		}
+		const token = captureFocusReturn(root);
+		const insideComposer =
+			token.target !== null &&
+			composerRef.current?.contains(token.target);
+		focusReturnRef.current = insideComposer
+			? captureFocusReturn(root, null)
+			: token;
+	}, [composerOpen, editor]);
 
 	useIsomorphicLayoutEffect(() => {
 		if (
@@ -125,6 +161,19 @@ export function AIContextualPromptComposer(
 			});
 	}
 
+	function returnFocus() {
+		const token = focusReturnRef.current;
+		if (!token) {
+			return;
+		}
+		restoreFocusReturn(
+			token,
+			fieldEditorContext ?? getAttachedFieldEditorSession(editor),
+			"target",
+			{ owner: composerRef.current },
+		);
+	}
+
 	function handleAcceptTurn(turnId: string) {
 		const resolved = actions.resolveSessionTurn(
 			sessionId,
@@ -134,6 +183,7 @@ export function AIContextualPromptComposer(
 		if (!resolved) {
 			actions.resolveSession(sessionId, "accept");
 		}
+		returnFocus();
 	}
 
 	function handleRejectTurn(turnId: string) {
@@ -145,9 +195,15 @@ export function AIContextualPromptComposer(
 		if (!resolved) {
 			actions.resolveSession(sessionId, "reject");
 		}
+		returnFocus();
 	}
 
 	function handleDismiss() {
+		dismissSession();
+		returnFocus();
+	}
+
+	function dismissSession() {
 		if (isRunningCurrentSession) {
 			actions.cancelSession(sessionId);
 			return;
@@ -439,7 +495,7 @@ export function AIContextualPromptComposer(
 		ref?: React.Ref<HTMLElement>;
 	} & Record<string, unknown> = {
 		...rest,
-		ref,
+		ref: composeRefs(ref, composerRef),
 		children: props.children ?? defaultChildren,
 	};
 

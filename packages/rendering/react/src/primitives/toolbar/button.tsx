@@ -1,5 +1,6 @@
 import React from "react";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
+import { composeToolbarPress } from "../../utils/toolbarPress";
 
 export interface ToolbarButtonProps extends AsChildProps {
 	onAction?: () => void;
@@ -10,11 +11,19 @@ export interface ToolbarButtonProps extends AsChildProps {
 	 * element; that must not silence the action.
 	 */
 	onClick?: React.MouseEventHandler<HTMLElement>;
+	/**
+	 * Composed: the primitive prevents the primary-button default afterwards,
+	 * so a click never takes focus from the field (AX3).
+	 */
+	onPointerDown?: React.PointerEventHandler<HTMLElement>;
+	/** Composed like `onPointerDown`. */
+	onMouseDown?: React.MouseEventHandler<HTMLElement>;
 	ref?: React.Ref<HTMLElement>;
 }
 
 export function ToolbarButton(props: ToolbarButtonProps) {
-	const { onAction, disabled, onClick, ...rest } = props;
+	const { onAction, disabled, onClick, onPointerDown, onMouseDown, ...rest } =
+		props;
 
 	const handleClick = (event: React.MouseEvent<HTMLElement>) => {
 		onClick?.(event);
@@ -29,6 +38,8 @@ export function ToolbarButton(props: ToolbarButtonProps) {
 		role: "button",
 		"aria-disabled": disabled || undefined,
 		onClick: handleClick,
+		onPointerDown: composeToolbarPress(onPointerDown),
+		onMouseDown: composeToolbarPress(onMouseDown),
 	};
 
 	return renderAsChild(rest, "button", primitiveProps);

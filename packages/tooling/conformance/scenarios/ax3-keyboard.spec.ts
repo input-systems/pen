@@ -20,6 +20,48 @@ async function installPointerGuard(page: Page): Promise<void> {
 	});
 }
 
+const FIELD_SURFACE = "[data-pen-field-editor-active-surface]";
+
+/**
+ * W6.R10: AX3 asserts the exact focused element, not containment in the
+ * root. `selector` must match `document.activeElement` itself.
+ */
+async function expectFocused(
+	page: Page,
+	selector: string,
+	what: string,
+): Promise<void> {
+	const result = await page.evaluate((sel) => {
+		const active = document.activeElement;
+		const describe = (element: Element | null): string => {
+			if (!element) return "null";
+			const attrs = Array.from(element.attributes)
+				.filter(
+					(attr) =>
+						attr.name.startsWith("data-") ||
+						attr.name === "role" ||
+						attr.name === "class",
+				)
+				.map((attr) => `${attr.name}="${attr.value}"`)
+				.join(" ");
+			return `<${element.tagName.toLowerCase()} ${attrs}>`;
+		};
+		return {
+			matches: active instanceof Element && active.matches(sel),
+			active: describe(active),
+		};
+	}, selector);
+	expect(
+		result.matches,
+		`AX3: focus should be on ${what} (${selector}); document.activeElement is ${result.active}`,
+	).toBe(true);
+}
+
+/** The field surface inside block `blockId` holds focus. */
+function fieldOf(blockId: string): string {
+	return `[data-pen-editor-block][data-block-id="${blockId}"] ${FIELD_SURFACE}`;
+}
+
 async function assertNoPointerEvents(page: Page): Promise<void> {
 	const count = await page.evaluate(
 		() =>
@@ -66,7 +108,7 @@ scenario(
 			documentText,
 			"confirm must not leave the slash trigger in the document",
 		).not.toContain("/head");
-		await s.assert.focusInsideEditor();
+		await expectFocused(page, fieldOf(blockId!), "the heading's field");
 		await assertNoPointerEvents(page);
 	},
 	{ url: AX3_URL },
@@ -84,7 +126,10 @@ scenario(
 		).toBeVisible();
 		await page.keyboard.press("Tab");
 		await s.assert.textContains("completion");
-		await s.assert.focusInsideEditor();
+		const blockId = await page.evaluate(
+			() => window.__penConformance.blockIds[0],
+		);
+		await expectFocused(page, fieldOf(blockId!), "the completed block's field");
 		await assertNoPointerEvents(page);
 	},
 	{ url: AX3_URL },
@@ -111,14 +156,18 @@ scenario(
 		expect(order[0]).toBe("two-p2");
 		expect(order[1]).toBe("two-p1");
 		await expect(page.locator("[data-pen-block-handle-menu]")).toHaveCount(0);
-		await s.assert.focusInsideEditor();
+		await expectFocused(
+			page,
+			'[data-pen-block-handle][data-block-id="two-p2"]',
+			"the moved block's handle",
+		);
 		await assertNoPointerEvents(page);
 	},
 	{ url: AX3_URL },
 );
 
 scenario(
-	"AX3: table row insertion is keyboard-only and keeps control focus",
+	"AX3: table row and column insertion is keyboard-only and keeps control focus",
 	async (s, page) => {
 		await installPointerGuard(page);
 		await s.load("hello-world", { pointer: false });
@@ -141,7 +190,107 @@ scenario(
 		await page.keyboard.press("Enter");
 		await expect(page.locator("[data-pen-table-row]")).toHaveCount(rowCount + 1);
 		await expect(addRow).toBeVisible();
-		await s.assert.focusInsideEditor();
+		await expectFocused(
+			page,
+			'[data-block-id="ax3-table"] .pen-table-add-row-control',
+			"the add-row button",
+		);
+
+		const firstRowCells = page
+			.locator('[data-block-id="ax3-table"] [data-pen-table-row]')
+			.first()
+			.locator("[data-pen-table-cell]");
+		const columnCount = await firstRowCells.count();
+		await page.evaluate(() => {
+			document
+				.querySelector<HTMLElement>(
+					'[data-block-id="ax3-table"] .pen-table-add-column-control',
+				)
+				?.focus();
+		});
+		await page.keyboard.press("Enter");
+		await expect(firstRowCells).toHaveCount(columnCount + 1);
+		await expectFocused(
+			page,
+			'[data-block-id="ax3-table"] .pen-table-add-column-control',
+			"the add-column button",
+		);
+		await assertNoPointerEvents(page);
+	},
+	{ url: AX3_URL },
+);
+
+scenario(
+	"AX3: Escape from the toolbar returns focus to the field",
+	async (s, page) => {
+		await installPointerGuard(page);
+		await s.load("hello-world", { pointer: false });
+		const blockId = await page.evaluate(
+			() => window.__penConformance.blockIds[0],
+		);
+		await page.keyboard.press("End");
+		await expectFocused(page, fieldOf(blockId!), "the field");
+		await page.evaluate(() => {
+			document
+				.querySelector<HTMLElement>(
+					'[data-pen-toolbar] [data-pen-toolbar-toggle][data-format="bold"]',
+				)
+				?.focus();
+		});
+		await expectFocused(
+			page,
+			'[data-pen-toolbar] [data-pen-toolbar-toggle][data-format="bold"]',
+			"the toolbar control",
+		);
+		// APG toolbar: keyboard activation keeps focus on the control.
+		await page.keyboard.press("Enter");
+		await expectFocused(
+			page,
+			'[data-pen-toolbar] [data-pen-toolbar-toggle][data-format="bold"]',
+			"the activated toolbar control",
+		);
+		await page.keyboard.press("Escape");
+		await expectFocused(page, fieldOf(blockId!), "the field");
+		await assertNoPointerEvents(page);
+	},
+	{ url: AX3_URL },
+);
+
+scenario(
+	"AX3: a table column menu action returns focus to the column header button",
+	async (s, page) => {
+		await installPointerGuard(page);
+		await s.load("hello-world", { pointer: false });
+		await s.apply([
+			{
+				type: "insert-block",
+				blockId: "ax3-table",
+				blockType: "table",
+				props: {},
+				position: "last",
+			},
+		]);
+		const header = page.locator("[data-pen-ax3-column-header]");
+		await page.evaluate(() => {
+			document
+				.querySelector<HTMLElement>("[data-pen-ax3-column-header]")
+				?.focus();
+		});
+		await page.keyboard.press("Enter");
+		await expect(page.locator("[data-pen-column-menu]")).toBeVisible();
+		const insertRight = page.getByRole("menuitem", {
+			name: "Insert right",
+		});
+		await insertRight.focus();
+		await expectFocused(page, "[data-pen-column-menu] [role=menuitem]", "a column menu item");
+		await page.keyboard.press("Enter");
+		await expect(page.locator("[data-pen-column-menu]")).toHaveCount(0);
+		await expect(header).toBeVisible();
+		await expectFocused(
+			page,
+			"[data-pen-ax3-column-header]",
+			"the column header button",
+		);
 		await assertNoPointerEvents(page);
 	},
 	{ url: AX3_URL },

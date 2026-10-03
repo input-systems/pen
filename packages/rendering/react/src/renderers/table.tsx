@@ -103,7 +103,6 @@ function TableRendererInner(props: {
 			],
 			{ origin: "user" },
 		);
-		queueMicrotask(() => addRowRef.current?.focus());
 	}
 
 	function handleAddColumn() {
@@ -117,7 +116,6 @@ function TableRendererInner(props: {
 			],
 			{ origin: "user" },
 		);
-		queueMicrotask(() => addColumnRef.current?.focus());
 	}
 
 	function handleControlMouseDown(

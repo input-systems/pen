@@ -7,6 +7,13 @@ import { useBlockDragHandle } from "../../hooks/useBlockDragHandle";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { composeRefs } from "../../utils/composeRefs";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
+import {
+	captureFocusReturn,
+	restoreFocusReturn,
+	type FocusReturnToken,
+} from "@input/pen-dom";
+import { useFieldEditorContext } from "../../context/fieldEditorContext";
+import { resolveChromeEditorRoot } from "../../utils/aiDomScope";
 import { buildMoveBlockOps } from "./blockDragSession";
 
 /** Command name (`spec/rules/commands.md`). Menu items dispatch this even when the command is not wired. */
@@ -40,28 +47,25 @@ export interface BlockHandleProps extends AsChildProps {
 export function EditorBlockHandle(props: BlockHandleProps) {
 	const { blockId, onMoveBlock, ref, ...rest } = props;
 	const { editor, readonly } = useEditorContext();
+	const fieldEditor = useFieldEditorContext();
 	const { props: dragProps } = useBlockDragHandle(blockId);
 	const handleRef = useRef<HTMLElement | null>(null);
 	const menuRef = useRef<HTMLDivElement | null>(null);
+	const focusReturnRef = useRef<FocusReturnToken | null>(null);
 	const [menuOpen, setMenuOpen] = useState(false);
 	const menuId = `pen-block-handle-menu-${blockId}`;
 
 	function closeMenu(): void {
+		// D15: a detached menu returns focus to its invoker, this handle.
+		const handle = handleRef.current;
+		const root = resolveChromeEditorRoot(editor, handle);
+		focusReturnRef.current = root ? captureFocusReturn(root, handle) : null;
 		setMenuOpen(false);
 	}
 
 	function openMenu(): void {
 		if (readonly) return;
 		setMenuOpen(true);
-	}
-
-	function restoreHandleFocus(): void {
-		const scope = handleRef.current?.ownerDocument ?? document;
-		scope
-			.querySelector<HTMLElement>(
-				`[data-pen-block-handle][data-block-id="${blockId}"]`,
-			)
-			?.focus();
 	}
 
 	function dispatchMove(command: BlockHandleMoveCommand): void {
@@ -71,15 +75,17 @@ export function EditorBlockHandle(props: BlockHandleProps) {
 			applyAdjacentMove(editor, blockId, command);
 		}
 		closeMenu();
-		queueMicrotask(restoreHandleFocus);
 	}
 
-	const menuWasOpen = useRef(false);
+	// The move and the close commit together, so this runs after the
+	// block's node has moved: synchronous, no microtask (AX3, S4).
 	useIsomorphicLayoutEffect(() => {
-		if (menuWasOpen.current && !menuOpen) {
-			restoreHandleFocus();
+		const token = focusReturnRef.current;
+		if (menuOpen || !token) {
+			return;
 		}
-		menuWasOpen.current = menuOpen;
+		focusReturnRef.current = null;
+		restoreFocusReturn(token, fieldEditor, "target");
 	}, [menuOpen]);
 
 	function handleTriggerKeyDown(

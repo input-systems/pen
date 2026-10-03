@@ -300,6 +300,7 @@ describe("@input/pen-react AI suggestions popover AX3", () => {
 		expect(
 			document.querySelector("[data-pen-ai-suggestions-popover]"),
 		).toBeNull();
+		expect(document.activeElement).toBe(field);
 		expect(field?.getAttribute("aria-controls")).toBeNull();
 		expect(field?.getAttribute("aria-activedescendant")).toBeNull();
 		expect(listbox?.id).toBeTruthy();
@@ -383,9 +384,28 @@ describe("@input/pen-react AI suggestions popover AX3", () => {
 		});
 
 		expect(document.activeElement).not.toBe(otherRoot);
+		// Nothing in the editor held focus and no field is attached: the root.
+		expect(document.activeElement).toBe(ownRoot);
+	});
+
+	it("AX3: Escape on the suggestions popover leaves focus in the field", async () => {
+		const fixture = await openSuggestionsPopover();
+		const field = fixture.container.querySelector<HTMLElement>(
+			"[data-pen-field-editor-active-surface]",
+		);
+		await act(async () => {
+			field?.focus();
+		});
+		expect(document.activeElement).toBe(field);
+
+		await act(async () => {
+			dispatchKey("Escape");
+			await flush();
+		});
+
 		expect(
-			document.activeElement === ownRoot ||
-				ownRoot?.contains(document.activeElement),
-		).toBe(true);
+			document.querySelector("[data-pen-ai-suggestions-popover]"),
+		).toBeNull();
+		expect(document.activeElement).toBe(field);
 	});
 });

@@ -109,6 +109,14 @@ export {
 	getRootReducedMotion,
 } from "./a11y/motion";
 export type { ReducedMotionListener, ReducedMotionSignal } from "./a11y/motion";
+export { captureFocusReturn, restoreFocusReturn } from "./a11y/focusReturn";
+export type {
+	FocusReturnFieldEditor,
+	FocusReturnOptions,
+	FocusReturnPreference,
+	FocusReturnResult,
+	FocusReturnToken,
+} from "./a11y/focusReturn";
 export { DomScheduler } from "./scheduler";
 export type {
 	DomSchedulerDiagnostics,

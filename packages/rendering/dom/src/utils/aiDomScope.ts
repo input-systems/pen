@@ -28,6 +28,21 @@ export function resolveEditorRootElement(editor: Editor): HTMLElement | null {
 	return roots.length === 1 ? roots[0] : null;
 }
 
+/**
+ * The editor root a piece of chrome belongs to: the root that contains it,
+ * else this editor's root by view id (chrome rendered or portaled outside
+ * it). AX3 focus return scopes every lookup to this root.
+ */
+export function resolveChromeEditorRoot(
+	editor: Editor,
+	element: Element | null,
+): HTMLElement | null {
+	return (
+		element?.closest<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`) ??
+		resolveEditorRootElement(editor)
+	);
+}
+
 export function resolveEditorContentElement(
 	editor: Editor,
 ): HTMLElement | null {

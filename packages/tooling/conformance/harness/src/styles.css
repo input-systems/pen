@@ -58,3 +58,21 @@ body {
 [data-pen-editor-block] + [data-pen-editor-block] {
 	margin-top: 0.72rem;
 }
+
+/* ?ax3=1 chrome: WCAG 2.2 target size (the standing axe check). */
+[data-pen-ax3-chrome] {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+[data-pen-ax3-chrome] [data-pen-toolbar] {
+	display: flex;
+	gap: 8px;
+}
+
+[data-pen-ax3-chrome] button {
+	min-width: 32px;
+	min-height: 32px;
+}
