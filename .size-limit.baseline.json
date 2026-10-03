@@ -1,6 +1,5 @@
 {
   "regressionPercent": 10,
-  "overrideLabel": "size-limit-override",
   "entries": [
     {
       "name": "@input/pen-types",
@@ -47,9 +46,9 @@
     {
       "name": "@input/pen-bench",
       "path": "packages/tooling/bench/dist/index.mjs",
-      "baselineBytes": 27000,
-      "limitBytes": 27000,
-      "note": "SCALE1 envelope table, reporters, drift check and CLI, plus the harness-floor feature (a Pen-removed null implementation timed alongside each bench, so a wall-clock cannot be attributed to Pen without one). Re-recorded twice on 2026-08-21: 1421 \u2192 25779 once the envelope/compare.ts work landed, then \u2192 27000 when the floor landed. The first jump is 18x and is stated rather than smoothed over \u2014 the earlier figure was taken when the package was a stub, so it was the first measurement of a bench harness that actually exists, not a regression in one."
+      "baselineBytes": 53969,
+      "limitBytes": 53969,
+      "note": "Re-recorded baseline 2026-10-03 (SCALE1, SCALE3; W1.R8, W2.R7, W2.R11). Recorded when size-limit joined the pull-request gates (W8.R6), which found bench over its ceiling. Cumulative since the 2026-08-21 record, not measured per commit: the realistic SCALE3 variant gated on document-read counts (8ba9ddcd), the SCALE1 envelope re-record (52bf68d7), and the W2 envelope rows for keystroke, caret and structural work (84691326, 58595a78, f0985260). 27000 \u2192 53969. Byte total reproduced across two rebuilds. Previously: re-recorded twice on 2026-08-21, 1421 \u2192 25779 \u2192 27000, when the envelope and harness floor landed."
     },
     {
       "name": "@input/pen-ingest",
@@ -61,9 +60,9 @@
     {
       "name": "@input/pen-core",
       "path": "packages/core/dist/index.mjs",
-      "baselineBytes": 405550,
-      "limitBytes": 405550,
-      "note": "The apply pipeline and commit path, the extension-free core, and the command registry. Re-recorded baseline 2026-08-21 after the core-commands work landed and the package went quiet. 275169 \u2192 405550 B."
+      "baselineBytes": 450501,
+      "limitBytes": 450501,
+      "note": "Re-recorded baseline 2026-10-03 (SCALE2, SCALE6; W2.R7, W2.R8, W2.R11). Recorded when size-limit joined the pull-request gates (W8.R6), which found core over its ceiling. Cumulative since the 2026-08-21 record, not measured per commit: core had already drifted to 429672 by 2026-08-26 (see pen-tools), and the W2 render-path work then added document-size-independent keystroke and caret paths (84691326), scoped decoration sources (6e57e4ac, ba13a293), structural commits that read only named blocks (58595a78), and the SCALE6 invariant rows (329a5d8b), with smaller PH0 changes (c8539a10, 07ae49aa). 405550 \u2192 450501. Byte total reproduced across two rebuilds."
     },
     {
       "name": "@input/pen-yjs",
@@ -81,10 +80,10 @@
     },
     {
       "name": "@input/pen-dom",
-      "path": "packages/rendering/dom/dist/index.mjs",
-      "baselineBytes": 99033,
-      "limitBytes": 99033,
-      "note": "Re-recorded baseline 2026-09-22. AX1 keyboard focus and tab navigation support. 89969 \u2192 99033."
+      "path": "packages/rendering/dom/dist/*.mjs",
+      "baselineBytes": 603987,
+      "limitBytes": 603987,
+      "note": "Re-recorded baseline 2026-10-03 (API7, SF6; W8.R6). Budgeted as the whole shipped ESM closure, not dist/index.mjs: the package is code-split into 40 .mjs files, so a change landing in a shared chunk never moved the old budget. This is a measurement change with no code movement. dist/index.mjs baseline 99033 (live 100503) \u2192 closure 603987. Byte total reproduced across two rebuilds. Previously: re-recorded 2026-09-22, AX1 keyboard focus and tab navigation, 89969 \u2192 99033."
     },
     {
       "name": "@input/pen-interop",
@@ -130,10 +129,10 @@
     },
     {
       "name": "@input/pen-react",
-      "path": "packages/rendering/react/dist/index.mjs",
-      "baselineBytes": 220087,
-      "limitBytes": 220087,
-      "note": "Re-recorded baseline 2026-08-25 (CS8). Gestures and inline-atom interaction moved to @input/pen-dom, so react keeps the hook shells only. 264324 \u2192 220087. See pen-dom's paired entry."
+      "path": "packages/rendering/react/dist/*.mjs",
+      "baselineBytes": 382855,
+      "limitBytes": 382855,
+      "note": "Re-recorded baseline 2026-10-03 (API7, SF6; W8.R6). Budgeted as the whole shipped ESM closure, not dist/index.mjs: the package is code-split into 15 .mjs files (the ai, ai-suggestions, multiplayer, search and snapshots subpaths plus shared chunks). This is a measurement change with no code movement. dist/index.mjs baseline 220087 (live 216998) \u2192 closure 382855. Byte total reproduced across two rebuilds. Previously: re-recorded 2026-08-25 (CS8), gestures and inline-atom interaction moved to @input/pen-dom, 264324 \u2192 220087."
     },
     {
       "name": "@input/pen-schema",
@@ -145,23 +144,23 @@
     {
       "name": "@input/pen-search",
       "path": "packages/extensions/search/dist/index.mjs",
-      "baselineBytes": 22866,
-      "limitBytes": 22866,
-      "note": "Re-recorded baseline 2026-08-21. LOC4/LOC5 fold-and-normalize + SEC9 query/budget caps. 18130 \u2192 22866."
+      "baselineBytes": 26100,
+      "limitBytes": 26100,
+      "note": "Re-recorded baseline 2026-10-03 (SCALE2, SCALE3; W2.R9). Recorded when size-limit joined the pull-request gates (W8.R6), which found search over its ceiling. The search provider became a scoped decoration source whose keystroke work reads only the edited block (ba13a293, the one source change since 5bc267fe). Cumulative since the 2026-08-21 record. 22866 \u2192 26100. Byte total reproduced across two rebuilds."
     },
     {
       "name": "@input/pen-test",
       "path": "packages/tooling/test/dist/index.mjs",
-      "baselineBytes": 40505,
-      "limitBytes": 40505,
-      "note": "Re-recorded baseline 2026-08-21. COL4 two-peer harness + envelope fixtures + durability corpus. 18429 \u2192 40505. Source quiet (test-only dirty)."
+      "baselineBytes": 50732,
+      "limitBytes": 50732,
+      "note": "Re-recorded baseline 2026-10-03 (SCALE1, SCALE3; W1.R1, W1.R7). Recorded when size-limit joined the pull-request gates (W8.R6), which found pen-test over its ceiling. The deterministic mixed scale fixture (145d348d) and the test-only scan probe that counts document reads (78527a3a) landed here. 40505 \u2192 50732. Byte total reproduced across two rebuilds."
     },
     {
       "name": "@input/pen-vue",
-      "path": "packages/rendering/vue/dist/index.mjs",
-      "baselineBytes": 1054,
-      "limitBytes": 1054,
-      "note": "First baseline. Vue bindings. Live 1153 B is just under the +10% ceiling; renderer mid-edit, not re-recorded."
+      "path": "packages/rendering/vue/dist/*.mjs",
+      "baselineBytes": 42534,
+      "limitBytes": 42534,
+      "note": "Re-recorded baseline 2026-10-03 (API7, SF6, SCALE2; W8.R6, W2.R5). Budgeted as the whole shipped ESM closure, not dist/index.mjs: dist/index.mjs is a re-export entry and the binding lives in a shared chunk (3 .mjs files), so the old budget weighed almost nothing. The entry had also grown past its old ceiling when the binding moved onto the block notifier (d42635e4, W2.R5): 1054 \u2192 2219 live. dist/index.mjs baseline 1054 \u2192 closure 42534. Byte total reproduced across two rebuilds."
     }
   ],
   "_deferred": {

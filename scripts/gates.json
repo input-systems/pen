@@ -82,6 +82,12 @@
     "description": "Docs reference real packages and their samples typecheck."
   },
   {
+    "id": "size-limit",
+    "command": "node scripts/size-limit.mjs",
+    "needsBuild": true,
+    "description": "API7 bundle budgets: +10% per package against .size-limit.baseline.json; every re-record attributes its bytes."
+  },
+  {
     "id": "dag-check",
     "command": "node scripts/dag-check.mjs",
     "description": "Published package dependency layers follow the types -> crdt -> core -> extensions DAG."
