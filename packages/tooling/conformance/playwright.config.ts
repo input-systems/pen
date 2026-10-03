@@ -1,6 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const HARNESS_BASE_URL = "http://127.0.0.1:4174";
+// PEN_HARNESS_PORT lets parallel checkouts (git worktrees) run the suite
+// side by side; `reuseExistingServer` would otherwise test another
+// checkout's harness on the shared port.
+const HARNESS_PORT = Number(process.env.PEN_HARNESS_PORT ?? 4174);
+const HARNESS_BASE_URL = `http://127.0.0.1:${HARNESS_PORT}`;
 
 export default defineConfig({
 	testDir: ".",
@@ -18,7 +22,7 @@ export default defineConfig({
 		trace: "retain-on-failure",
 	},
 	webServer: {
-		command: "pnpm --filter @input/pen-conformance run harness:dev",
+		command: `pnpm --filter @input/pen-conformance exec vite --config harness/vite.config.ts --host 127.0.0.1 --port ${HARNESS_PORT} --strictPort`,
 		url: HARNESS_BASE_URL,
 		reuseExistingServer: !process.env.CI,
 		timeout: 120_000,
