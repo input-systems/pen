@@ -61,6 +61,15 @@ describe("pen/no-dom-selection-read", () => {
 					filename: FILE,
 					options: [{ allowlist: [entry] }],
 				},
+				// The writer takes its Selection from the reader's handle.
+				{
+					code: "function write(root) { return nativeSelectionForWrite(root); }",
+					filename: path.join(
+						repoRoot,
+						"packages/rendering/dom/src/field-editor/selectionProjector.ts",
+					),
+					options: none,
+				},
 				// Tests are out of scope.
 				{
 					code: "function f() { getSelection(); }",
@@ -72,6 +81,13 @@ describe("pen/no-dom-selection-read", () => {
 				},
 			],
 			invalid: [
+				// Only the writer may take the Selection through the handle.
+				{
+					code: "function f(el) { return nativeSelectionForWrite(el); }",
+					filename: FILE,
+					options: none,
+					errors: [{ messageId: "read" }],
+				},
 				{
 					code: "function f() { getSelection(); }",
 					filename: FILE,

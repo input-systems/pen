@@ -47,6 +47,7 @@ import type {
 import { getCellYText, getResolvedYText } from "./contentResolution";
 import type { FieldEditorTextLike } from "./crdt";
 import { queryBlockElement, queryInlineElement } from "./selectionBridge";
+import type { DirectionalSelectionOffsets } from "./selectionMapping";
 import { areBlockIdsEqual, resolveInputMode } from "./fieldEditorImplHelpers";
 import { isSingleFieldNativeLeftover } from "./singleFieldNativeLeftover";
 import type { ProjectionMountRequester } from "./selectionProjector";
@@ -921,6 +922,12 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	hasSelectionInRoot(): boolean {
 		return this._selectionReader.hasSelectionInRoot();
+	}
+
+	readFieldSelectionOffsets(
+		element: HTMLElement,
+	): DirectionalSelectionOffsets | null {
+		return this._selectionReader.fieldOffsets(element);
 	}
 
 	projectAfterRebuild(blockIds: readonly string[]): void {

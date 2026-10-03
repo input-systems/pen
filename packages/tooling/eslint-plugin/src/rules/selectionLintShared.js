@@ -114,7 +114,7 @@ function createSelectionAllowlistTracker(
 		slots,
 		missingField: missingSelectionLintField,
 	});
-	return { report, listeners };
+	return { report, listeners, file: relative };
 }
 
 /**

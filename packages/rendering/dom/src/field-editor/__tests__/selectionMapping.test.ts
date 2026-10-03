@@ -7,11 +7,11 @@ import { pointToEditorSelectionPoint } from "../selectionBridge";
 import { writeNativeRange } from "../selectionProjector";
 import {
 	domPointToOffset,
-	domSelectionToEditor,
 	getBlockBoundaryPoint,
 	getBlockSurfaceRole,
 	resolveSelectionPoint,
 } from "../selectionMapping";
+import { domSelectionToEditor } from "../selectionReader";
 
 const BRIDGE_VALUE_EXPORTS = [
 	"computeTextDiff",

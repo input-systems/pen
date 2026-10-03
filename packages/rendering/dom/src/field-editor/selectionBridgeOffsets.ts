@@ -8,15 +8,7 @@ import {
 	findInlineContentElement,
 	queryBlockElement,
 } from "./selectionDomQueries";
-import {
-	domPointToOffset,
-	type DirectionalSelectionOffsets,
-	type SelectionPoint,
-} from "./selectionBridge";
-
-function isNodeWithinOrEqual(container: HTMLElement, node: Node): boolean {
-	return node === container || container.contains(node);
-}
+import type { SelectionPoint } from "./selectionBridge";
 
 export function getSelectionPointRect(
 	root: HTMLElement,
@@ -142,59 +134,6 @@ function findBlockUnitDOMPoint(
 	if (index < 0) return null;
 
 	return { node: parent, offset: charOffset <= 0 ? index : index + 1 };
-}
-
-/**
- * Get the current selection as character offsets within the active inline content.
- * Used by DIRECT_HANDLERS to know the selection range for editing operations.
- */
-export function getDirectionalSelectionOffsets(
-	inlineElement: HTMLElement,
-): DirectionalSelectionOffsets | null {
-	const sel = window.getSelection();
-	if (!sel || sel.rangeCount === 0) return null;
-	if (!sel.anchorNode || !sel.focusNode) return null;
-	if (
-		!isNodeWithinOrEqual(inlineElement, sel.anchorNode) ||
-		!isNodeWithinOrEqual(inlineElement, sel.focusNode)
-	) {
-		return null;
-	}
-
-	const anchor = domPointToOffset(
-		inlineElement,
-		sel.anchorNode,
-		sel.anchorOffset,
-	);
-	const focus = domPointToOffset(
-		inlineElement,
-		sel.focusNode,
-		sel.focusOffset,
-	);
-
-	return {
-		anchor,
-		focus,
-		start: Math.min(anchor, focus),
-		end: Math.max(anchor, focus),
-	};
-}
-
-export function getSelectionOffsets(
-	inlineElement: HTMLElement,
-): { start: number; end: number } | null {
-	const offsets = getDirectionalSelectionOffsets(inlineElement);
-	if (!offsets) return null;
-
-	return { start: offsets.start, end: offsets.end };
-}
-
-/**
- * Get the caret offset (collapsed cursor position) within an inline element.
- */
-export function getCaretOffset(inlineElement: HTMLElement): number {
-	const offsets = getSelectionOffsets(inlineElement);
-	return offsets?.start ?? 0;
 }
 
 const WRAPPED_LINE_HYSTERESIS_PX = 6;

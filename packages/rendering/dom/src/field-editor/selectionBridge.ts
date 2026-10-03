@@ -24,7 +24,6 @@ export {
 } from "./textDiff";
 export {
 	domPointToOffset,
-	domSelectionToEditor,
 	getBlockBoundaryPoint,
 	type DirectionalSelectionOffsets,
 	type SelectionBoundary,
@@ -320,10 +319,13 @@ function isInlineBoundaryFallbackPoint(
 }
 
 export {
-	findDOMPoint,
+	domSelectionToEditor,
 	getCaretOffset,
 	getDirectionalSelectionOffsets,
 	getSelectionOffsets,
+} from "./selectionReader";
+export {
+	findDOMPoint,
 	getSelectionPointRect,
 	getTextSelectionClientRects,
 } from "./selectionBridgeOffsets";

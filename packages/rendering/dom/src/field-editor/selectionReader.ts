@@ -5,7 +5,12 @@ import {
 } from "@input/pen-core";
 import type { Editor, Point, SelectionRecordState } from "@input/pen-types";
 import { toLogicalOffset } from "./offsetDomain";
-import { domSelectionToEditor } from "./selectionBridge";
+import {
+	domPointToOffset,
+	mapDomSelectionToEditor,
+	type DirectionalSelectionOffsets,
+	type SelectionPoint,
+} from "./selectionMapping";
 import { normalizeSelectionFormation } from "../utils/selectionFormation";
 
 export type ReaderPoint = Point;
@@ -276,6 +281,82 @@ function sameRawRange(
 	);
 }
 
+/**
+ * Maps the live selection inside `root` (S1: the reader owns the live read).
+ * Public through `./field-editor/selectionBridge` for hosts.
+ */
+export function domSelectionToEditor(
+	root: HTMLElement,
+	sel: Selection | null = root.ownerDocument.getSelection(),
+): { anchor: SelectionPoint; focus: SelectionPoint } | null {
+	return mapDomSelectionToEditor(root, sel);
+}
+
+/**
+ * The live range as directional character offsets inside one inline
+ * element, or null unless both endpoints are in it. Public through
+ * `./field-editor/selectionBridge` for hosts; inside the renderer packages
+ * the field editor reads it through `SelectionReader.fieldOffsets` (S1).
+ */
+export function getDirectionalSelectionOffsets(
+	inlineElement: HTMLElement,
+	sel: Selection | null = inlineElement.ownerDocument.getSelection(),
+): DirectionalSelectionOffsets | null {
+	if (!sel || sel.rangeCount === 0) return null;
+	if (!sel.anchorNode || !sel.focusNode) return null;
+	if (
+		!isNodeWithinOrEqual(inlineElement, sel.anchorNode) ||
+		!isNodeWithinOrEqual(inlineElement, sel.focusNode)
+	) {
+		return null;
+	}
+
+	const anchor = domPointToOffset(
+		inlineElement,
+		sel.anchorNode,
+		sel.anchorOffset,
+	);
+	const focus = domPointToOffset(
+		inlineElement,
+		sel.focusNode,
+		sel.focusOffset,
+	);
+
+	return {
+		anchor,
+		focus,
+		start: Math.min(anchor, focus),
+		end: Math.max(anchor, focus),
+	};
+}
+
+export function getSelectionOffsets(
+	inlineElement: HTMLElement,
+): { start: number; end: number } | null {
+	const offsets = getDirectionalSelectionOffsets(inlineElement);
+	if (!offsets) return null;
+
+	return { start: offsets.start, end: offsets.end };
+}
+
+/** The collapsed caret's offset within an inline element, else 0. */
+export function getCaretOffset(inlineElement: HTMLElement): number {
+	return getSelectionOffsets(inlineElement)?.start ?? 0;
+}
+
+function isNodeWithinOrEqual(container: HTMLElement, node: Node): boolean {
+	return node === container || container.contains(node);
+}
+
+/**
+ * The document `Selection` the projector writes through (S1). Only
+ * `selectionProjector.ts` calls it; `pen/no-dom-selection-read` flags any
+ * other caller, because obtaining it is how a read starts.
+ */
+export function nativeSelectionForWrite(node: Node): Selection | null {
+	return node.ownerDocument?.getSelection() ?? null;
+}
+
 /** Test seam for the one `getSelection()` call. */
 export interface SelectionReaderDomPort {
 	getSelection(doc: Document): Selection | null;
@@ -310,6 +391,15 @@ export interface SelectionReader {
 	peek(): ReaderSelection;
 	/** Whether the live selection maps inside this root. */
 	hasSelectionInRoot(): boolean;
+	/**
+	 * The live range's directional offsets inside one field element, or null
+	 * unless both endpoints are in it. For the reads the authority cannot
+	 * answer yet: the caret the browser left after its own edit, before the
+	 * diff reaches the model (C2); a field activated with no caret in the
+	 * record; and the in-cell caret until it moves into the authority
+	 * (W3.R18).
+	 */
+	fieldOffsets(element: HTMLElement): DirectionalSelectionOffsets | null;
 	/** R1–R3 gesture input; the only way window state changes. */
 	notifyGesture(kind: GestureEventKind): void;
 	readonly windows: GestureWindowState;
@@ -473,6 +563,11 @@ export function createSelectionReader(
 		sync,
 		peek,
 		hasSelectionInRoot: () => peek() !== null,
+		fieldOffsets: (element) =>
+			getDirectionalSelectionOffsets(
+				element,
+				dom.getSelection(element.ownerDocument),
+			),
 		notifyGesture,
 		get windows() {
 			return windows;

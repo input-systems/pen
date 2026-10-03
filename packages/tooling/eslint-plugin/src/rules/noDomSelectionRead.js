@@ -17,6 +17,12 @@ import {
 
 const ALLOWLIST_PATH = "scripts/dom-selection-read-allowlist.json";
 const OWNER = "packages/rendering/dom/src/field-editor/selectionReader.ts";
+/**
+ * The writer takes the `Selection` it writes through from the reader's
+ * `nativeSelectionForWrite`; any other caller would be reading through it.
+ */
+const WRITE_HANDLE = "nativeSelectionForWrite";
+const WRITER = "packages/rendering/dom/src/field-editor/selectionProjector.ts";
 
 /** Receivers whose `getSelection()` is the document's selection. */
 const DOCUMENT_RECEIVERS = new Set([
@@ -85,6 +91,7 @@ function readApi(node) {
 	) {
 		return "selectionchange";
 	}
+	if (name === WRITE_HANDLE) return WRITE_HANDLE;
 	return LIVE_MAPPERS.has(name) ? name : null;
 }
 
@@ -109,7 +116,9 @@ export const noDomSelectionRead = {
 			...tracker.listeners,
 			CallExpression(node) {
 				const api = readApi(node);
-				if (api) tracker.report(node, api);
+				if (!api) return;
+				if (api === WRITE_HANDLE && tracker.file === WRITER) return;
+				tracker.report(node, api);
 			},
 			MemberExpression(node) {
 				if (memberName(node) === "onselectionchange") {

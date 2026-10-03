@@ -212,12 +212,13 @@ function asBlockElement(node: Node | undefined): HTMLElement | null {
 }
 
 /**
- * Convert DOM selection range to editor (blockId, offset) pairs.
+ * Maps `sel` inside `root` to editor (blockId, offset) pairs. It reads only
+ * the `Selection` it is given; the reader's `domSelectionToEditor` supplies
+ * the live one (S1).
  */
-/** Maps `sel` (by default the live document selection) inside `root`. */
-export function domSelectionToEditor(
+export function mapDomSelectionToEditor(
 	root: HTMLElement,
-	sel: Selection | null = window.getSelection(),
+	sel: Selection | null,
 ): { anchor: SelectionPoint; focus: SelectionPoint } | null {
 	if (!sel || sel.rangeCount === 0) return null;
 

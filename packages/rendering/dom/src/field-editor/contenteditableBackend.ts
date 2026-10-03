@@ -8,7 +8,7 @@ import {
 	inlineDecorationsRequireFullReconcile,
 } from "../utils/inlineDecorations";
 import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
-import { extractTextFromDOM, getSelectionOffsets } from "./selectionBridge";
+import { extractTextFromDOM } from "./selectionBridge";
 import { computeAnchoredTextDiff } from "./textDiff";
 import { writeLegacyFieldRange, writeNativeRange } from "./selectionProjector";
 import { applyListInputRule } from "./commands";
@@ -490,8 +490,7 @@ export class ContentEditableBackend {
 				? Math.min(selection.anchor.offset, selection.focus.offset)
 				: selection.focus.offset;
 		}
-		const domCaret = this.element ? getSelectionOffsets(this.element) : null;
-		return domCaret?.start ?? 0;
+		return this.liveFieldOffsets()?.start ?? 0;
 	}
 
 	// ── Mutation observer watchdog ────────────────────────────
@@ -650,10 +649,8 @@ export class ContentEditableBackend {
 
 		const cellCoord = this._getActiveCellCoord(blockId);
 		// C2: the caret the browser left after its own edit, before the
-		// diff reaches the model; the reader cannot map it yet.
-		const domCaret = this.element
-			? getSelectionOffsets(this.element)
-			: null;
+		// diff reaches the model; the authority cannot answer it yet.
+		const domCaret = this.liveFieldOffsets();
 		const selection = caretOverride !== null
 			? {
 					blockId,
@@ -796,15 +793,25 @@ export class ContentEditableBackend {
 		);
 	}
 
+	// The in-cell caret is not in the authority yet (W3.R18).
 	private cellCaretOffsets(): { start: number; end: number } | null {
-		return this.element ? getSelectionOffsets(this.element) : null;
+		return this.liveFieldOffsets();
 	}
 
+	// A field activated with no caret in the record takes the browser's.
 	private unclaimedFieldCaretOffsets(): {
 		start: number;
 		end: number;
 	} | null {
-		return this.element ? getSelectionOffsets(this.element) : null;
+		return this.liveFieldOffsets();
+	}
+
+	/** The reader's live range inside this field (S1). */
+	private liveFieldOffsets(): { start: number; end: number } | null {
+		const element = this.element;
+		return element
+			? (this.fieldEditor.readFieldSelectionOffsets?.(element) ?? null)
+			: null;
 	}
 
 	resolveCurrentInputRange(): {

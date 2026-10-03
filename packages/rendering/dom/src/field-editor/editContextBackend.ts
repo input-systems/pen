@@ -5,7 +5,6 @@ import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
 import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
-import { getDirectionalSelectionOffsets } from "./selectionBridge";
 import { getLogicalInlineText } from "./commandsShared";
 import {
 	mapOffsetThroughRemoteDeltas,
@@ -881,15 +880,9 @@ export class EditContextBackend {
 	/** Directional offsets of a live selection wholly inside this field, else null. */
 	private liveFieldOffsets(): DirectionalSelectionOffsets | null {
 		const element = this.element;
-		const selection = element?.ownerDocument?.getSelection();
-		if (!element || !selection?.rangeCount) return null;
-		if (
-			!element.contains(selection.anchorNode) ||
-			!element.contains(selection.focusNode)
-		) {
-			return null;
-		}
-		return getDirectionalSelectionOffsets(element);
+		return element
+			? (this.fieldEditor.readFieldSelectionOffsets?.(element) ?? null)
+			: null;
 	}
 
 	/** A collapsed DOM caret off the editor's or the input's range is put back. */

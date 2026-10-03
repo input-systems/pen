@@ -9,6 +9,7 @@ import type {
 import type { PenFieldEditorFocusOptions } from "./controller";
 import type { HistorySelectionCoordinator } from "./historySelectionCoordinator";
 import {
+	nativeSelectionForWrite,
 	type GestureEventKind,
 	type GestureWindowState,
 	type ProjectionReadBack,
@@ -50,8 +51,7 @@ export function writeNativeRange(
 	const focusResult = findDOMPoint(root, focus.blockId, focus.offset);
 	if (!anchorResult || !focusResult) return;
 
-	const sel =
-		root.ownerDocument.defaultView?.getSelection() ?? window.getSelection();
+	const sel = nativeSelectionForWrite(root);
 	if (!sel) return;
 
 	writeNativeRangeAt(sel, anchorResult, focusResult);
@@ -69,7 +69,7 @@ export function writeLegacyFieldRange(
 	focusOffset: number,
 	_source: "programmatic" | "edit-context-textupdate" | "cell",
 ): void {
-	const selection = element.ownerDocument.getSelection();
+	const selection = nativeSelectionForWrite(element);
 	if (!selection) return;
 	writeNativeRangeAt(
 		selection,
@@ -84,7 +84,7 @@ export function writeLegacyFieldRange(
  * it here; step 13 projects it from the record instead.
  */
 export function writeNativeCaretAtEnd(element: HTMLElement): void {
-	const selection = element.ownerDocument.getSelection();
+	const selection = nativeSelectionForWrite(element);
 	if (!selection) return;
 	const range = element.ownerDocument.createRange();
 	range.selectNodeContents(element);
@@ -97,7 +97,7 @@ function clearNativeRangeIn(
 	root: HTMLElement,
 	keepInside: HTMLElement | null = null,
 ): void {
-	const selection = root.ownerDocument.getSelection();
+	const selection = nativeSelectionForWrite(root);
 	if (!selection || selection.rangeCount === 0) return;
 	if (!selection.anchorNode || !root.contains(selection.anchorNode)) return;
 	if (keepInside?.contains(selection.anchorNode)) return;
@@ -110,7 +110,7 @@ export function writeNativeRangeBetween(
 	anchor: { node: Node; offset: number },
 	focus: { node: Node; offset: number },
 ): void {
-	const selection = element.ownerDocument.getSelection();
+	const selection = nativeSelectionForWrite(element);
 	if (!selection) return;
 	const range = element.ownerDocument.createRange();
 	range.setStart(anchor.node, anchor.offset);

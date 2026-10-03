@@ -5,6 +5,7 @@ import type {
 	SelectionOrigin,
 } from "@input/pen-types";
 import type { FieldEditorStore } from "./store";
+import type { DirectionalSelectionOffsets } from "./selectionMapping";
 import type { EditorSelectAllBehavior } from "../constants/selectAll";
 import type {
 	FieldEditorSelectionSnapshot,
@@ -189,6 +190,14 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 	 * and then read the authority instead of mapping the DOM themselves.
 	 */
 	syncDomSelectionRead?(): void;
+	/**
+	 * S1: the reader's live range inside one field element (see
+	 * `SelectionReader.fieldOffsets`). Backends read the DOM selection only
+	 * through this.
+	 */
+	readFieldSelectionOffsets?(
+		element: HTMLElement,
+	): DirectionalSelectionOffsets | null;
 	/**
 	 * Whether a field rebuild may write the selection back into the DOM.
 	 * False while a native control that is not this field owns focus (HOST9):
