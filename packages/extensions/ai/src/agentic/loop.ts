@@ -125,6 +125,7 @@ export async function runAgenticLoop(
 		createAIToolTurn({
 			allowedMutatingTools: options.allowedMutatingTools,
 			confirm: options.confirm,
+			unconfirmedDestructive: options.unconfirmedDestructive,
 			budget: options.toolBudget,
 			groupId: generationId,
 		});

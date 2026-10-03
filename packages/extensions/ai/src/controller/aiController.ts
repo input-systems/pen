@@ -107,6 +107,7 @@ export class AIControllerImpl
 	readonly _allowedMutatingTools: readonly string[];
 
 	readonly _confirmAITool: AIExtensionConfig["confirm"];
+	readonly _unconfirmedDestructive: AIExtensionConfig["unconfirmedDestructive"];
 
 	readonly _suggestionPresentation: NonNullable<
 		AIExtensionConfig["suggestionPresentation"]
@@ -187,6 +188,7 @@ export class AIControllerImpl
 			config.maxAgenticSteps ?? AI_AGENTIC_MAX_STEPS_DEFAULT;
 		this._allowedMutatingTools = config.allowedMutatingTools ?? [];
 		this._confirmAITool = config.confirm;
+		this._unconfirmedDestructive = config.unconfirmedDestructive;
 		this._suggestionPresentation =
 			config.suggestionPresentation ?? "track-changes";
 		this._contentFormat = {

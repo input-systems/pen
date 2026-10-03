@@ -254,6 +254,8 @@ export type {
 	ToolRegistry,
 	ToolRuntime,
 	ToolExecutionResult,
+	ToolAuthorityContext,
+	ToolDestructiveResolver,
 	ToolDefinition,
 	ToolContext,
 	ToolSchema,

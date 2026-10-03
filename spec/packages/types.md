@@ -25,6 +25,7 @@ This is the contract package for the monorepo. It is the place where packages ag
 - Document format stamp `PEN_DOCUMENT_FORMAT` (`3`)
 - Shared AI operation contracts such as selection targets, scoped-range targets, requested-operation provenance, and low-level range helpers
 - Review-surface vocabulary: `REVIEW_SURFACE_CLASSES`, `REVIEW_SURFACE_BLOCK_SUGGESTION_CLASSES`, `REVIEW_SURFACE_CUSTOM_PROPERTIES`, and `BlockSuggestion` / `BlockSuggestionAction` / `BlockSuggestionPreviousState`. The action union is the host-reachable set (`split-block` and `format-text` included, RS7). `@input/pen-ai` re-exports the class tokens and `BlockSuggestion`; the default sheet stays on `@input/pen-dom` (RS4).
+- Tool contracts: `ToolDefinition`, whose `destructive` is `boolean | ToolDestructiveResolver`, and `ToolAuthorityContext` (`{ staged }`), the per-call facts a resolver reads (AIB3).
 - Wire stream contract `PenStreamRequest`: serializable context only (`docId`, `selection`, `blockId`). A live `Editor` is not a request field — `context.editor` was removed. Both AI transports take the editor at construction.
 - Workspace scripts: `build`, `clean`, `dev`, `test`, `typecheck`
 

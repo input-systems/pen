@@ -130,7 +130,7 @@ describe("AIB3 tool authority", () => {
 		expect(applied).toEqual([]);
 	});
 
-	it("AIB3: executeAITool without a turn default-denies mutating and destructive tools", async () => {
+	it("AIB3: executeAITool without a turn default-denies mutating and destructive tools, including calls a resolver classifies destructive", async () => {
 		const runtime = new AIToolRuntimeImpl();
 		runtime.registerTool(mutatingTool("insert_block"));
 		runtime.registerTool(mutatingTool("delete_block"));
@@ -151,8 +151,31 @@ describe("AIB3 tool authority", () => {
 				return { ok: true, name: "host_wipe" };
 			},
 		});
+		runtime.registerTool({
+			name: "host_classified",
+			description: "Classifies each call; this one is destructive",
+			inputSchema: { type: "object", properties: {} },
+			mutating: false,
+			destructive: () => true,
+			handler: async (_input, context) => {
+				context.editor.apply([insertOp("host_classified-0")]);
+				return { ok: true, name: "host_classified" };
+			},
+		});
 		const { editor, applied } = createRecordingEditor();
 		const context = new AIToolContextImpl(editor, "doc-1", () => {});
+
+		const classifiedDestructive = await executeAITool(
+			runtime,
+			"host_classified",
+			{},
+			context,
+		);
+		expect(classifiedDestructive).toEqual({
+			ok: false,
+			status: "blocked",
+			reason: "tool-not-allowed",
+		});
 
 		const mutating = await executeAITool(
 			runtime,
@@ -435,6 +458,180 @@ describe("AIB3 tool authority", () => {
 					'Destructive tool "delete_block" ran without a confirmation resolver.',
 			}),
 		]);
+	});
+
+	it("AIB3: a destructive resolver is evaluated once per call with the staged context", async () => {
+		const resolver = vi.fn(
+			(input: unknown) => (input as { wipe?: boolean }).wipe === true,
+		);
+		const definition: ToolDefinition = {
+			...mutatingTool("classified"),
+			mutating: true,
+			destructive: resolver,
+		};
+		const confirm = vi.fn(() => "allow" as const);
+		const grant = { allowedMutatingTools: ["classified"], confirm };
+
+		const staged = await authorizeAIToolCall(
+			"classified",
+			{ wipe: true },
+			definition,
+			grant,
+			{ staged: true },
+		);
+		expect(resolver).toHaveBeenCalledTimes(1);
+		expect(resolver).toHaveBeenLastCalledWith(
+			{ wipe: true },
+			{ staged: true },
+		);
+		expect(staged.destructive).toBe(true);
+		expect(confirm).toHaveBeenCalledTimes(1);
+
+		const harmless = await authorizeAIToolCall(
+			"classified",
+			{ wipe: false },
+			definition,
+			grant,
+		);
+		expect(resolver).toHaveBeenCalledTimes(2);
+		// No stated context reads as landing, the conservative direction.
+		expect(resolver).toHaveBeenLastCalledWith(
+			{ wipe: false },
+			{ staged: false },
+		);
+		expect(harmless).toEqual({
+			allowed: true,
+			mutating: true,
+			destructive: false,
+		});
+		expect(confirm).toHaveBeenCalledTimes(1);
+
+		// Without a call, the question is "can it be destructive".
+		expect(isDestructiveAITool("classified", definition)).toBe(true);
+		expect(resolver).toHaveBeenCalledTimes(2);
+		expect(
+			listAITools({
+				listTools: () => [definition],
+			} as unknown as Parameters<typeof listAITools>[0])[0]?.destructive,
+		).toBe(true);
+	});
+
+	it("AIB3: a resolver that throws classifies the call as destructive", async () => {
+		const throwing: ToolDefinition = {
+			...mutatingTool("throwing"),
+			destructive: () => {
+				throw new Error("classifier bug");
+			},
+		};
+		const nonBoolean: ToolDefinition = {
+			...mutatingTool("non_boolean"),
+			destructive: (() => "yes") as unknown as () => boolean,
+		};
+		for (const definition of [throwing, nonBoolean]) {
+			const confirm = vi.fn(() => "refuse" as const);
+			const authorization = await authorizeAIToolCall(
+				definition.name,
+				{},
+				definition,
+				{ allowedMutatingTools: [definition.name], confirm },
+				{ staged: false },
+			);
+			expect(authorization).toMatchObject({
+				allowed: false,
+				destructive: true,
+				reason: "tool-refused",
+			});
+			expect(confirm).toHaveBeenCalledTimes(1);
+		}
+	});
+
+	it("AIB3: unconfirmedDestructive refuse blocks a destructive call with no resolver and emits ai-tool-unconfirmed", async () => {
+		const runtime = new AIToolRuntimeImpl();
+		runtime.registerTool(mutatingTool("delete_block"));
+		const { editor, applied, diagnostics } = createRecordingEditor();
+		const context = new AIToolContextImpl(editor, "doc-1", () => {});
+		const turn = createAIToolTurn({
+			allowedMutatingTools: ["delete_block"],
+			unconfirmedDestructive: "refuse",
+		});
+
+		const result = await executeAITool(
+			runtime,
+			"delete_block",
+			{},
+			context,
+			turn,
+		);
+
+		expect(result).toEqual({
+			ok: false,
+			status: "blocked",
+			reason: "tool-refused",
+		});
+		expect(applied).toEqual([]);
+		expect(diagnostics).toEqual([
+			expect.objectContaining({
+				code: AI_TOOL_UNCONFIRMED_CODE,
+				message:
+					'Destructive tool "delete_block" was refused: no confirmation resolver and unconfirmedDestructive is "refuse".',
+			}),
+		]);
+	});
+
+	it("AIB3: unconfirmedDestructive refuse does not affect a non-destructive call", async () => {
+		const runtime = new AIToolRuntimeImpl();
+		runtime.registerTool({
+			...mutatingTool("classified"),
+			destructive: () => false,
+		});
+		const { editor, applied, diagnostics } = createRecordingEditor();
+		const context = new AIToolContextImpl(editor, "doc-1", () => {});
+		const turn = createAIToolTurn({
+			allowedMutatingTools: ["classified"],
+			unconfirmedDestructive: "refuse",
+		});
+
+		const result = await executeAITool(
+			runtime,
+			"classified",
+			{},
+			context,
+			turn,
+		);
+
+		expect(result).toEqual({ ok: true, name: "classified" });
+		expect(applied).toHaveLength(1);
+		expect(diagnostics).toEqual([]);
+	});
+
+	it("AIB3: a deferral still blocks under either policy", async () => {
+		for (const unconfirmedDestructive of ["allow", "refuse"] as const) {
+			const runtime = new AIToolRuntimeImpl();
+			runtime.registerTool(mutatingTool("delete_block"));
+			const { editor, applied, diagnostics } = createRecordingEditor();
+			const context = new AIToolContextImpl(editor, "doc-1", () => {});
+			const turn = createAIToolTurn({
+				allowedMutatingTools: ["delete_block"],
+				confirm: () => "defer",
+				unconfirmedDestructive,
+			});
+
+			const result = await executeAITool(
+				runtime,
+				"delete_block",
+				{},
+				context,
+				turn,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				status: "blocked",
+				reason: "tool-confirmation-deferred",
+			});
+			expect(applied).toEqual([]);
+			expect(diagnostics).toEqual([]);
+		}
 	});
 
 	it("AIB3: an over-budget op batch is rejected whole with a visible error, turn stays open", async () => {

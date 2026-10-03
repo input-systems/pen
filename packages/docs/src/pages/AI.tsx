@@ -245,10 +245,13 @@ const agenticKinds = AI_FEATURE_CONTENT["agentic-step"].excerptKinds;`}</code>
 					inspect_target, list_valid_operations, search_document,
 					retrieve_document_spans, list_block_types
 				</code>
-				. An unrecognized name defaults to mutating. Destructive follows
-				the same rule with an explicit <code>destructive</code> flag,
-				else the built-in names <code>delete_block</code> and{" "}
-				<code>write_document</code>.
+				. An unrecognized name defaults to mutating. Destructive is
+				classified per call: <code>destructive</code> is a flag or a
+				resolver <code>(input, {"{ staged }"}) =&gt; boolean</code>, else
+				the built-in names <code>delete_block</code> and{" "}
+				<code>write_document</code>. <code>edit_document</code> declares
+				a resolver: a staged call is never destructive, and a direct one
+				is only when it removes or replaces existing content.
 			</p>
 			<p>
 				Budgets, first limit hit ends the turn: 20 calls per turn, 32
@@ -303,9 +306,13 @@ const denied: AIToolCallDenied = {
 					only by the op budget.
 				</li>
 				<li>
-					A destructive tool with no <code>confirm</code> resolver is
-					allowed and emits <code>ai-tool-unconfirmed</code>. Absence
-					is not a refuse.
+					Without a <code>confirm</code> resolver, a destructive call
+					runs and emits <code>ai-tool-unconfirmed</code>: absence is
+					not a refuse by default. A production host that exposes the
+					external delete and whole-document tools should pass{" "}
+					<code>{'unconfirmedDestructive: "refuse"'}</code> to{" "}
+					<code>aiExtension</code>, which blocks those calls and
+					leaves the document unchanged.
 				</li>
 				<li>
 					<code>executeAITool</code> without a turn allowlists

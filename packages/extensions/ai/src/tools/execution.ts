@@ -8,6 +8,7 @@ import type {
 	Editor,
 	OpOrigin,
 	TextStreamWriter,
+	ToolAuthorityContext,
 	ToolContext,
 } from "@input/pen-types";
 import type { AIMutationMode } from "../runtime/contracts";
@@ -88,12 +89,16 @@ export async function openAIToolCall(
 	context: ToolContext,
 	turn?: AIToolTurn,
 ): Promise<OpenAIToolCall> {
+	const authorityContext = toolAuthorityContext(context);
 	if (!turn) {
+		// No turn, no grant: a call that writes, or that this context
+		// classifies destructive, never runs here (AIB3).
 		const authorization = await authorizeAIToolCall(
 			name,
 			input,
 			toolRuntime.getTool(name),
 			{ allowedMutatingTools: [] },
+			authorityContext,
 		);
 		if (!authorization.allowed || authorization.destructive) {
 			return {
@@ -123,6 +128,7 @@ export async function openAIToolCall(
 		input,
 		toolRuntime.getTool(name),
 		turn.grant,
+		authorityContext,
 	);
 
 	if (!turn.tryRecordCall()) {
@@ -136,6 +142,12 @@ export async function openAIToolCall(
 		};
 	}
 
+	// A refusal carries its diagnostic too ("refuse" with no resolver): the
+	// host learns why the call was blocked, not only that it was.
+	if (authorization.diagnostic) {
+		emitAuthorityDiagnostic(context, authorization.diagnostic);
+	}
+
 	if (!authorization.allowed) {
 		turn.closeCall();
 		return {
@@ -147,11 +159,22 @@ export async function openAIToolCall(
 		};
 	}
 
-	if (authorization.diagnostic) {
-		emitAuthorityDiagnostic(context, authorization.diagnostic);
-	}
-
 	return openGuardedCall(name, context, authorization.mutating, turn);
+}
+
+/**
+ * The per-call facts a destructive resolver reads (AIB3). `staged` is exactly
+ * the predicate {@link applyToolOps} stages on, so it is never claimed for a
+ * call that will land: a turn suggest mode stages while its bound mode is
+ * direct reads as direct, the conservative direction.
+ */
+function toolAuthorityContext(context: ToolContext): ToolAuthorityContext {
+	const editor = resolveToolEditor(context);
+	return {
+		staged:
+			editor != null &&
+			stagesAsSuggestions(toolApplyMutationModes.get(editor)),
+	};
 }
 
 export async function executeAITool(

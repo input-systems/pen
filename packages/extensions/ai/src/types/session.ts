@@ -7,7 +7,7 @@ import type {
 	ModelOperationSelectionTarget,
 	TextSelection,
 } from "@input/pen-types";
-import type { AIToolConfirmFn } from "../tools";
+import type { AIToolConfirmFn, AIUnconfirmedDestructivePolicy } from "../tools";
 import type { EditDocumentPreviewUpdate } from "../runtime/editDocumentPreview";
 import type {
 	AIMutationMode,
@@ -32,6 +32,13 @@ export interface AIExtensionConfig {
 	maxAgenticSteps?: number;
 	allowedMutatingTools?: readonly string[];
 	confirm?: AIToolConfirmFn;
+	/**
+	 * What happens to a destructive tool call when no `confirm` resolver is
+	 * installed (AIB3). `"allow"` (default) runs it and emits
+	 * `ai-tool-unconfirmed`; `"refuse"` blocks it with the document unchanged —
+	 * the setting for a production host that exposes the external tools.
+	 */
+	unconfirmedDestructive?: AIUnconfirmedDestructivePolicy;
 	author?: string;
 	contentFormat?: AIContentFormatOptions;
 	/**

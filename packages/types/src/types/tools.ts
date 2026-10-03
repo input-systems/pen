@@ -21,6 +21,21 @@ export interface ToolRuntime extends ToolRegistry {
 }
 export type ToolExecutionResult = Promise<unknown> | AsyncIterable<unknown>;
 
+/** Per-call facts a destructive resolver may read (AIB3). */
+export interface ToolAuthorityContext {
+	/** True when this call's writes stage as suggestions instead of landing (RS2, EC11). */
+	readonly staged: boolean;
+}
+
+/**
+ * Classifies one call from its complete input (AIB3). `true` routes the call
+ * through the confirmation seam.
+ */
+export type ToolDestructiveResolver = (
+	input: unknown,
+	context: ToolAuthorityContext,
+) => boolean;
+
 export interface ToolDefinition {
 	name: string;
 	description: string;
@@ -32,14 +47,20 @@ export interface ToolDefinition {
 	/**
 	 * Tool authority (AIB3). A tool that writes to the document declares
 	 * `mutating: true` and is default-denied unless the grant allowlists it;
-	 * `destructive: true` additionally marks irreversible effects.
+	 * `destructive` additionally marks calls that remove or replace content
+	 * and so pass through the confirmation seam.
 	 *
 	 * Left undefined, authority falls back to name-based classification, which
 	 * is a heuristic — declare these on any tool whose name is not obviously
 	 * read-only.
 	 */
 	mutating?: boolean;
-	destructive?: boolean;
+	/**
+	 * AIB3. `true` or `false` classifies every call. A resolver classifies
+	 * each call from its complete input and context; a resolver that throws
+	 * or returns a non-boolean classifies the call as destructive.
+	 */
+	destructive?: boolean | ToolDestructiveResolver;
 }
 
 // ── Model Adapter ───────────────────────────────────────────

@@ -55,6 +55,7 @@ export async function runGenerationLoop(
 				: 1,
 			allowedMutatingTools: controller._allowedMutatingTools,
 			confirm: controller._confirmAITool,
+			unconfirmedDestructive: controller._unconfirmedDestructive,
 			signal: abortController.signal,
 			requestMode: resolveGenerationRequestMode({
 				...context,

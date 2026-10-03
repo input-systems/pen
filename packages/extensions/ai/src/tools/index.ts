@@ -40,4 +40,5 @@ export type {
 	AIToolGrant,
 	AIToolTurn,
 	AIToolTurnOptions,
+	AIUnconfirmedDestructivePolicy,
 } from "./authority";

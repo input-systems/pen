@@ -310,8 +310,10 @@
 - TextSelection
 - TextSplice
 - TextStreamWriter
+- ToolAuthorityContext
 - ToolContext
 - ToolDefinition
+- ToolDestructiveResolver
 - ToolErrorPart
 - ToolExecutionResult
 - ToolInputAvailablePart

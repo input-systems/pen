@@ -242,6 +242,7 @@
 - AIToolRuntimeImpl
 - AIToolTurn
 - AIToolTurnOptions
+- AIUnconfirmedDestructivePolicy
 - authorizeAIToolCall
 - createAIToolTurn
 - isAIToolCallDenied
