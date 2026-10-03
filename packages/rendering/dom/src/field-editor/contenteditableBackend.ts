@@ -727,7 +727,6 @@ export class ContentEditableBackend {
 		if (!this.ytext) return;
 		if (isNavigationSelectionKey(event)) {
 			this.fieldEditor.clearBackendSelectionAuthority("programmatic");
-			this.fieldEditor.clearBackendSelectionAuthority("user-dom");
 		}
 
 		const handled = handleFieldEditorKeyDown({
@@ -814,12 +813,9 @@ export class ContentEditableBackend {
 	}
 
 	private projectedOffsets(blockId: string) {
-		return (
-			this.fieldEditor.getBackendSelectionAuthority(
-				"programmatic",
-				blockId,
-			) ??
-			this.fieldEditor.getBackendSelectionAuthority("user-dom", blockId)
+		return this.fieldEditor.getBackendSelectionAuthority(
+			"programmatic",
+			blockId,
 		);
 	}
 

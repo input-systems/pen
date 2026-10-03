@@ -1,9 +1,6 @@
 export type FieldEditorSelectionSource =
-	| "user-dom"
 	| "programmatic"
 	| "edit-context-textupdate"
-	| "history"
-	| "composition"
 	| "cell";
 
 export type FieldEditorSelectionCell = {
@@ -115,10 +112,7 @@ export function resolveRestoreCellEndpoints(
 const DEFAULT_PRECEDENCE: readonly FieldEditorSelectionSource[] = [
 	"programmatic",
 	"edit-context-textupdate",
-	"composition",
 	"cell",
-	"user-dom",
-	"history",
 ];
 
 export class FieldEditorSelectionAuthority {

@@ -790,10 +790,6 @@ export class EditContextBackend {
 			focusOffset: offsets.focus,
 		};
 		this.fieldEditor.setEditContextSelectionSnapshot(nextSelection);
-		this.fieldEditor.setBackendSelectionAuthority(
-			"user-dom",
-			nextSelection,
-		);
 		this.fieldEditor.readDomSelection?.({
 			type: "text",
 			anchor: { blockId, offset: offsets.anchor },
