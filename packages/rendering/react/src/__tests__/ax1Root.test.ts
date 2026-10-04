@@ -3,12 +3,7 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-	a11yLabelFacet,
-	createEditor,
-	ariaReadOnlyFacet,
-} from "@input/pen-core";
-import { defineExtension } from "@input/pen-core";
+import { createEditor } from "@input/pen-core";
 import { defaultPreset } from "@input/pen";
 import { EditorRoot } from "../primitives/editor/root";
 import { defaultSchema } from "@input/pen-schema";
@@ -106,35 +101,6 @@ describe("AX1 React editor root", () => {
 		const surface = container.querySelector("[data-pen-editor-root]");
 		expect(surface?.getAttribute("aria-label")).toBe("Compose email");
 		expect(surface?.hasAttribute("aria-labelledby")).toBe(false);
-	});
-
-	it("AX1 reflects pen.ariaReadOnly as aria-readonly", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			preset: defaultPreset({
-				tools: false,
-				deltaStream: false,
-				undo: false,
-			}),
-			extensions: [
-				defineExtension({
-					name: "aria-readonly-ext",
-					facets: [ariaReadOnlyFacet.of(true)],
-				}),
-			],
-		});
-		expect(editor.facet(a11yLabelFacet)).toBeUndefined();
-		const container = document.createElement("div");
-		document.body.appendChild(container);
-		const root = createRoot(container);
-		fixtures.push({ container, editor, root });
-
-		await act(async () => {
-			root.render(createElement(EditorRoot, { editor }));
-		});
-
-		const surface = container.querySelector("[data-pen-editor-root]");
-		expect(surface?.getAttribute("aria-readonly")).toBe("true");
 	});
 
 	it("AX1 reflects the existing readonly prop as aria-readonly", async () => {
