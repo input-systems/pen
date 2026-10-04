@@ -1,5 +1,5 @@
 import type { Editor, SelectionRecord } from "@input/pen-types";
-import { getRootGeometry } from "../geometry/rootGeometry";
+import { holdRootGeometry } from "../geometry/rootGeometry";
 import {
 	OverlayController,
 	type OverlayFieldSource,
@@ -7,7 +7,43 @@ import {
 import { createSelectionOverlayContributor } from "./selectionOverlay";
 import type { RootOverlay } from "./types";
 
+/** Attached overlays, by root. */
 const overlays = new WeakMap<HTMLElement, OverlayController>();
+
+/**
+ * Detached overlays, by editor and then root. A detach moves the overlay
+ * here so a root that outlives its editor holds no path to the editor or
+ * its field editor; a re-attach of the same root by the same editor (React
+ * Strict Mode) takes it back, contributors and holds intact. Keyed on the
+ * editor first, so the whole entry goes once the host drops the editor.
+ */
+const detachedOverlays = new WeakMap<
+	Editor,
+	WeakMap<HTMLElement, OverlayController>
+>();
+
+function takeDetachedOverlay(
+	editor: Editor,
+	root: HTMLElement,
+): OverlayController | undefined {
+	const byRoot = detachedOverlays.get(editor);
+	const controller = byRoot?.get(root);
+	byRoot?.delete(root);
+	return controller;
+}
+
+function keepDetachedOverlay(
+	editor: Editor,
+	root: HTMLElement,
+	controller: OverlayController,
+): void {
+	let byRoot = detachedOverlays.get(editor);
+	if (!byRoot) {
+		byRoot = new WeakMap();
+		detachedOverlays.set(editor, byRoot);
+	}
+	byRoot.set(root, controller);
+}
 
 /**
  * Attach the root's overlay (OV2, SCH3): append the layer as the root's last
@@ -32,26 +68,27 @@ export function attachRootOverlay(options: {
 	notifyInputsChanged(): void;
 	detach(): void;
 } {
-	const { root } = options;
+	const { root, editor } = options;
 	let controller = overlays.get(root);
-	if (controller && controller.editorInstance !== options.editor) {
+	if (controller && controller.editorInstance !== editor) {
 		controller.dispose();
 		controller = undefined;
 	}
+	controller ??= takeDetachedOverlay(editor, root);
+	const geometryHold = holdRootGeometry(root);
 	if (!controller) {
-		const { reader, scheduler } = getRootGeometry(root);
 		controller = new OverlayController({
 			root,
-			editor: options.editor,
+			editor,
 			field: options.fieldEditor,
-			reader,
-			scheduler,
+			reader: geometryHold.geometry.reader,
+			scheduler: geometryHold.geometry.scheduler,
 		});
 		controller.registerContributor(createSelectionOverlayContributor());
-		overlays.set(root, controller);
 	}
+	overlays.set(root, controller);
 	const attached = controller;
-	attached.attach(options.fieldEditor);
+	attached.attach(options.fieldEditor, geometryHold.geometry);
 
 	let detached = false;
 	return {
@@ -77,6 +114,11 @@ export function attachRootOverlay(options: {
 			}
 			detached = true;
 			attached.detach();
+			if (overlays.get(root) === attached) {
+				overlays.delete(root);
+				keepDetachedOverlay(editor, root, attached);
+			}
+			geometryHold.release();
 		},
 	};
 }

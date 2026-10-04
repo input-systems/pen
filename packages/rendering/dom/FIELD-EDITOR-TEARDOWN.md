@@ -99,7 +99,7 @@ Host `focusin` / `focusout` / document `keydown` (React root, Vue `PenEditor`): 
 
 `DomScheduler` is the only owner of `requestAnimationFrame` in production DOM code (FE3), held by a `no-restricted-syntax` rule in `eslint.config.mjs` that excepts `scheduler.ts` and bans the member forms (`window.` / `globalThis.`) as well as the bare call. The frames below are the scheduler's own, reached through `read` / `write`.
 
-The field editor does not construct the scheduler: `_ensureScheduler()` resolves the one that belongs to the editor root through `getRootGeometry(root)` and feeds it every commit (FE4). The root owns the scheduler and geometry reader; `destroy()` releases the field editor's hold on them (commit feed unsubscribed) but does not dispose them, because a second field editor on the same root still needs them.
+The field editor does not construct the scheduler: `_ensureScheduler()` resolves the one that belongs to the editor root through `getRootGeometry(root)` and feeds it every commit (FE4). The root owns the scheduler and geometry reader. Each root attach holds them through `holdRootGeometry(root)` (taken by the root overlay), and `destroy()` / `setRootElement(null)` releases that hold with the commit feed; the last release disposes the reader and drops the root's entry, so a second field editor on the same root keeps them alive and a re-attach (React Strict Mode) starts a fresh pair.
 
 | Resource | Status |
 | --- | --- |
@@ -128,9 +128,9 @@ The field editor does not construct the scheduler: `_ensureScheduler()` resolves
 
 `dispose()` exists. It does **not** cancel `document.fonts.ready` (the promise has no abort; the callback is only guarded). `blockCommitIds` is not cleared (harmless once disposed).
 
-Because nothing in production calls `dispose()`, the `scroll` listener also removes itself the first time it fires with a disconnected root. The document outlives the root, so a listener that only waited for `dispose()` would keep an unmounted root and its cache alive.
+The last `holdRootGeometry` release calls `dispose()`; as a backstop for a reader created by a stray read after that, the `scroll` listener also removes itself the first time it fires with a disconnected root. The document outlives the root, so a listener that only waited for `dispose()` would keep an unmounted root and its cache alive.
 
-The reader belongs to the editor root, not to the field editor: `getRootGeometry(root)` creates one reader and one scheduler per root and caches them against the root element. Whoever owns the root disposes them. The field editor's commit feed keeps the reader's caches honest while it is attached (FE4) and stops feeding on `destroy()`.
+The reader belongs to the editor root, not to the field editor: `getRootGeometry(root)` creates one reader and one scheduler per root and caches them against the root element. The last released root hold disposes them. The field editor's commit feed keeps the reader's caches honest while it is attached (FE4) and stops feeding on `destroy()`.
 
 ### Adjacent modules (not field-editor owned)
 

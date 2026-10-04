@@ -92,8 +92,8 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 	private readonly root: HTMLElement;
 	private readonly editor: Editor;
 	private field: OverlayFieldSource;
-	private readonly reader: GeometryReaderHost;
-	private readonly scheduler: DomScheduler;
+	private reader: GeometryReaderHost;
+	private scheduler: DomScheduler;
 	private readonly sharedReducedMotion: ReducedMotionSignal | null;
 	private reducedMotion: ReducedMotionSignal | null = null;
 	private readonly painter: OverlayLayerPainter;
@@ -143,15 +143,27 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 	 * child, install the painter, and subscribe to geometry and motion.
 	 * Contributors and holds survive a detach and re-attach of the same root,
 	 * so a binding that registered against this overlay keeps working when the
-	 * field editor re-attaches the root (React Strict Mode does).
+	 * field editor re-attaches the root (React Strict Mode does). `geometry`
+	 * is the root's current reader and scheduler: a detach releases them, so
+	 * a re-attach brings the fresh pair.
 	 */
-	attach(field: OverlayFieldSource): void {
+	attach(
+		field: OverlayFieldSource,
+		geometry?: {
+			readonly reader: GeometryReaderHost;
+			readonly scheduler: DomScheduler;
+		},
+	): void {
 		if (this.disposed) {
 			return;
 		}
 		this.field = field;
 		if (this.attached) {
 			return;
+		}
+		if (geometry) {
+			this.reader = geometry.reader;
+			this.scheduler = geometry.scheduler;
 		}
 		this.attached = true;
 		this.root.appendChild(this.layer);

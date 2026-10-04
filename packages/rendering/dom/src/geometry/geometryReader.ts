@@ -321,9 +321,10 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	 * invalidates them (G2). `scroll` does not bubble; capture on the document
 	 * is the only listener that sees every scroller, including nested ones.
 	 *
-	 * The document outlives the root and nothing calls `dispose()` in
-	 * production (FIELD-EDITOR-TEARDOWN.md), so the listener drops itself once
-	 * the root leaves the tree rather than pinning it here forever. A root that
+	 * The document outlives the root. The last `holdRootGeometry` release
+	 * disposes the reader (FIELD-EDITOR-TEARDOWN.md); a reader created by a
+	 * stray read after that has no holder, so the listener also drops itself
+	 * once the root leaves the tree rather than pinning it here forever. A root that
 	 * came back would be re-measured off the ResizeObserver anyway.
 	 */
 	private listenForScroll(): () => void {
