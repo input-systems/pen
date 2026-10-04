@@ -251,8 +251,11 @@ describe("CRDT integrity", () => {
 				b1.set("meta", new Y.Map<unknown>());
 				b1.set("content", new Y.Text());
 				blocks.set("b1", b1);
+				blocks.set("ghost", new Y.Map<unknown>());
 				blockOrder.push(["b1", "ghost"]);
 			});
+			// Only a deleted block map makes its entry dangling (COL4).
+			blocks.delete("ghost");
 
 			const result = validateDocument(ydoc);
 			const danglingWarns = result.errors.filter(
@@ -275,12 +278,35 @@ describe("CRDT integrity", () => {
 				b1.set("meta", new Y.Map<unknown>());
 				b1.set("content", new Y.Text());
 				blocks.set("b1", b1);
+				blocks.set("ghost", new Y.Map<unknown>());
 				blockOrder.push(["b1", "ghost"]);
 			});
+			// Only a deleted block map makes its entry dangling (COL4).
+			blocks.delete("ghost");
 
 			const result = validateDocument(ydoc, { repair: true });
 			expect(result.repaired).toBe(true);
 			expect(blockOrder.toArray()).toEqual(["b1"]);
+		});
+
+		it("COL4: keeps an entry whose block map was never received", () => {
+			const ydoc = new Y.Doc();
+			ydoc.getMap("apps");
+			ydoc.getMap("metadata");
+			const blocks = ydoc.getMap<Y.Map<unknown>>(BLOCKS);
+			const blockOrder = ydoc.getArray<string>(BLOCK_ORDER);
+
+			ydoc.transact(() => {
+				initBlockMap(blocks, "b1", "paragraph", "inline");
+				blockOrder.push(["b1", "in-flight"]);
+			});
+
+			const result = validateDocument(ydoc, { repair: true });
+			expect(result.repaired).toBe(false);
+			expect(
+				result.errors.filter((e) => e.blockId === "in-flight"),
+			).toEqual([]);
+			expect(blockOrder.toArray()).toEqual(["b1", "in-flight"]);
 		});
 	});
 

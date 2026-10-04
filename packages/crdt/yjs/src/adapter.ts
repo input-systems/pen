@@ -9,6 +9,7 @@ import * as Y from "yjs";
 
 import {
 	BLOCKS,
+	isMapKeyDeleted,
 	asYjsDoc,
 	createYjsDocument,
 	getDocumentProfile as getPersistedDocumentProfile,
@@ -266,15 +267,4 @@ export function yjsAdapter(options?: YjsAdapterOptions): CRDTAdapter {
 	}
 
 	return adapter;
-}
-
-/**
- * A Y.Map keeps the item that last wrote each key, deleted or not; a key it
- * has never integrated — a block map still in flight from another client —
- * has no item at all. `_map` is the Yjs field `Y.Map#has` itself reads.
- */
-function isMapKeyDeleted(map: Y.Map<unknown>, key: string): boolean {
-	const item = (map as unknown as { _map: Map<string, { deleted: boolean }> })
-		._map.get(key);
-	return item !== undefined && item.deleted;
 }

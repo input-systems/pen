@@ -262,11 +262,18 @@ export function validateDocument(
 		repaired = true;
 	}
 
-	// 3b: Dangling references (in blockOrder but not blocks)
+	// 3b: Dangling references (in blockOrder, block map deleted). An absent
+	// block map that was never deleted is still in flight: out-of-order
+	// delivery can land an order entry one client wrote before the block map
+	// another client wrote, and removing the entry would leave the block in no
+	// array when its map arrives (COL4).
 	const currentOrder = blockOrder.toArray();
 	const danglingIndices: number[] = [];
 	for (let i = 0; i < currentOrder.length; i++) {
-		if (!blockIds.has(currentOrder[i])) {
+		if (
+			!blockIds.has(currentOrder[i]) &&
+			isMapKeyDeleted(blocks, currentOrder[i])
+		) {
 			danglingIndices.push(i);
 			errors.push({
 				code: "ORPHAN_BLOCK",
@@ -310,6 +317,18 @@ export function validateDocument(
 
 	const hasErrors = errors.some((e) => e.severity === "error");
 	return { valid: !hasErrors, errors, repaired };
+}
+
+/**
+ * A Y.Map keeps the item that last wrote each key, deleted or not; a key it
+ * has never integrated — a block map still in flight from another client —
+ * has no item at all. `_map` is the Yjs field `Y.Map#has` itself reads.
+ */
+export function isMapKeyDeleted<T>(map: Y.Map<T>, key: string): boolean {
+	const item = (
+		map as unknown as { _map: Map<string, { deleted: boolean }> }
+	)._map.get(key);
+	return item !== undefined && item.deleted;
 }
 
 // ── Document Creation ───────────────────────────────────────
