@@ -143,4 +143,47 @@ describe("keyed undo capture (AIB4)", () => {
 		expect(undo.undo()).toBe(true);
 		expect(ytext.toString()).toBe("b");
 	});
+
+	it("AIB4: a group write after a user edit that deletes the group's text starts a new step instead of resurrecting it", () => {
+		const { undo, ytext, write } = setup();
+		const step = (key: CRDTUndoCaptureKey, run: () => void) => {
+			undo.setCaptureKey?.(key);
+			const doc = ytext.doc!;
+			doc.transact(run, "user");
+			undo.setCaptureKey?.(null);
+		};
+		step(U, () => ytext.insert(0, "Base"));
+		undo.stopCapturing();
+		write(G, " AI");
+		step(U, () => ytext.delete(4, 3));
+		write(G, " more");
+		expect(ytext.toString()).toBe("Base more");
+
+		const seen: string[] = [];
+		while (undo.undo()) {
+			seen.push(ytext.toString());
+		}
+		expect(seen).toEqual(["Base", "Base AI", "Base", ""]);
+	});
+
+	it("AIB4: a group write after user typing elsewhere in the text still joins the group's one step", () => {
+		const { undo, ytext } = setup();
+		const step = (key: CRDTUndoCaptureKey, run: () => void) => {
+			undo.setCaptureKey?.(key);
+			ytext.doc!.transact(run, "user");
+			undo.setCaptureKey?.(null);
+		};
+		step(U, () => ytext.insert(0, "Base"));
+		undo.stopCapturing();
+		step(G, () => ytext.insert(4, " AI"));
+		step(U, () => ytext.insert(0, "x"));
+		step(G, () => ytext.insert(ytext.length, " more"));
+		expect(ytext.toString()).toBe("xBase AI more");
+
+		const seen: string[] = [];
+		while (undo.undo()) {
+			seen.push(ytext.toString());
+		}
+		expect(seen).toEqual(["xBase", "Base", ""]);
+	});
 });

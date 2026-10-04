@@ -110,4 +110,23 @@ describe("@input/pen-undo AIB4 interleaving", () => {
 		expect(text(editor, "b2")).toBe("");
 		expect(editor.undoManager.canUndo()).toBe(false);
 	});
+
+	it("AIB4: a user deleting AI text between two writes of its group never lets undo bring that text back", () => {
+		const { editor } = setup();
+		typeAtEnd(editor, "b1", "Base");
+		editor.undoManager.stopCapturing();
+		aiAtEnd(editor, "b1", " AI");
+		editor.apply(
+			[{ type: "splice-text", blockId: "b1", from: 4, to: 7, insert: "" }],
+			{ origin: "user" },
+		);
+		aiAtEnd(editor, "b1", " more");
+		expect(text(editor, "b1")).toBe("Base more");
+
+		const seen: string[] = [];
+		while (editor.undoManager.undo()) {
+			seen.push(text(editor, "b1"));
+		}
+		expect(seen).toEqual(["Base", "Base AI", "Base", ""]);
+	});
 });

@@ -35,7 +35,7 @@ The apply pipeline passes a freshly built structured origin object into `adapter
 
 `createYjsUndoManager()` therefore installs a `TrackedOriginSet` (`packages/crdt/yjs/src/undo.ts`) that extends `Set` and overrides `has()`: identity still wins, and a structured object also matches when its `type` string is in the set. Default tracked types are `"user"` and `"ai"`. The class is adapter-local, not a public export.
 
-Capture is keyed (AIB4): `Y.UndoManager` runs with `captureTimeout: 0`, and the adapter merges stack items per key (`setCaptureKey`, or a key derived from the transaction's structured origin: `group:<groupId>` when it carries one, `origin:<type>` otherwise). An explicit group's item collects every write of its key and moves to the top; an origin key joins only the item directly beneath the new one within the capture window. Undo and redo close every key, `stopCapturing()` closes the origin keys, and `maxDepth` trimming drops the keys of trimmed items.
+Capture is keyed (AIB4): `Y.UndoManager` runs with `captureTimeout: 0`, and the adapter merges stack items per key (`setCaptureKey`, or a key derived from the transaction's structured origin: `group:<groupId>` when it carries one, `origin:<type>` otherwise). An explicit group's item collects every write of its key and moves to the top, unless a step above it deleted content the item inserted, in which case the key's item closes and the write starts a new one; an origin key joins only the item directly beneath the new one within the capture window. Undo and redo close every key, `stopCapturing()` closes the origin keys, and `maxDepth` trimming drops the keys of trimmed items.
 
 ## Data Flow / Runtime Model
 

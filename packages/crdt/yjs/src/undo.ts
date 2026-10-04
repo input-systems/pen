@@ -93,15 +93,19 @@ export function createYjsUndoManager(
 		const now = Date.now();
 		const open = openItems.get(key.key);
 		const stack = undoManager.undoStack;
-		// An explicit group joins its item wherever it sits; an origin key only
-		// joins the item directly beneath the new one, so typing never merges
-		// across another action's step and undo stays in time order.
+		// An explicit group joins its item wherever it sits, unless a later step
+		// deleted text the group inserted: moving the group past that step would
+		// let undoing it bring the deleted text back, so the group closes and
+		// this write starts its next step. An origin key only joins the item
+		// directly beneath the new one, so typing never merges across another
+		// action's step and undo stays in time order.
 		const beneath = stack[stack.length - 2];
 		const joinable =
 			open != null &&
 			stack.includes(open.item) &&
-			(open.explicit ||
-				(beneath === open.item && now - open.lastChange < windowMs));
+			(open.explicit
+				? !laterStepDeletesInsertions(stack, open.item, added)
+				: beneath === open.item && now - open.lastChange < windowMs);
 		if (!joinable) {
 			openItems.set(key.key, { item: added, lastChange: now, explicit: key.explicit });
 			return null;
@@ -287,6 +291,45 @@ function captureKeyFromOrigin(origin: unknown): CRDTUndoCaptureKey {
 	const type =
 		typeof origin === "string" ? origin : String(structured?.type ?? "unknown");
 	return { key: `origin:${type}`, explicit: false };
+}
+
+/**
+ * Whether a step between `item` and the newly added `added` deleted content
+ * that `item` inserted (AIB4).
+ */
+function laterStepDeletesInsertions(
+	stack: StackItem[],
+	item: StackItem,
+	added: StackItem,
+): boolean {
+	const from = stack.indexOf(item) + 1;
+	const to = stack.indexOf(added);
+	for (let index = from; index < to; index += 1) {
+		if (deleteSetsOverlap(stack[index]!.deletions, item.insertions)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function deleteSetsOverlap(a: Y.DeleteSet, b: Y.DeleteSet): boolean {
+	for (const [client, rangesA] of a.clients) {
+		const rangesB = b.clients.get(client);
+		if (rangesB == null) {
+			continue;
+		}
+		for (const rangeA of rangesA) {
+			for (const rangeB of rangesB) {
+				if (
+					rangeA.clock < rangeB.clock + rangeB.len &&
+					rangeB.clock < rangeA.clock + rangeA.len
+				) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
 }
 
 /** Folds `source` into `target`; `target.meta` (owned by pen-undo) is kept. */
