@@ -46,9 +46,9 @@
     {
       "name": "@input/pen-bench",
       "path": "packages/tooling/bench/dist/index.mjs",
-      "baselineBytes": 53969,
-      "limitBytes": 53969,
-      "note": "Re-recorded baseline 2026-10-03 (SCALE1, SCALE3; W1.R8, W2.R7, W2.R11). Recorded when size-limit joined the pull-request gates (W8.R6), which found bench over its ceiling. Cumulative since the 2026-08-21 record, not measured per commit: the realistic SCALE3 variant gated on document-read counts (8ba9ddcd), the SCALE1 envelope re-record (52bf68d7), and the W2 envelope rows for keystroke, caret and structural work (84691326, 58595a78, f0985260). 27000 \u2192 53969. Byte total reproduced across two rebuilds. Previously: re-recorded twice on 2026-08-21, 1421 \u2192 25779 \u2192 27000, when the envelope and harness floor landed."
+      "baselineBytes": 61140,
+      "limitBytes": 61140,
+      "note": "Re-recorded baseline 2026-10-04 (SCALE1, SCALE3; W1.R6, W5.R6). The renderer-row importer and envelope table for the ENVELOPE Renderer section (f40801cf) and the synced-peer SCALE3 report (98be431e). 53969 -> 61140. Byte total reproduced across two rebuilds. Previously: Re-recorded baseline 2026-10-03 (SCALE1, SCALE3; W1.R8, W2.R7, W2.R11). Recorded when size-limit joined the pull-request gates (W8.R6), which found bench over its ceiling. Cumulative since the 2026-08-21 record, not measured per commit: the realistic SCALE3 variant gated on document-read counts (8ba9ddcd), the SCALE1 envelope re-record (52bf68d7), and the W2 envelope rows for keystroke, caret and structural work (84691326, 58595a78, f0985260). 27000 \u2192 53969. Byte total reproduced across two rebuilds. Previously: re-recorded twice on 2026-08-21, 1421 \u2192 25779 \u2192 27000, when the envelope and harness floor landed."
     },
     {
       "name": "@input/pen-ingest",
@@ -81,9 +81,9 @@
     {
       "name": "@input/pen-dom",
       "path": "packages/rendering/dom/dist/*.mjs",
-      "baselineBytes": 603987,
-      "limitBytes": 603987,
-      "note": "Re-recorded baseline 2026-10-03 (API7, SF6; W8.R6). Budgeted as the whole shipped ESM closure, not dist/index.mjs: the package is code-split into 40 .mjs files, so a change landing in a shared chunk never moved the old budget. This is a measurement change with no code movement. dist/index.mjs baseline 99033 (live 100503) \u2192 closure 603987. Byte total reproduced across two rebuilds. Previously: re-recorded 2026-09-22, AX1 keyboard focus and tab navigation, 89969 \u2192 99033."
+      "baselineBytes": 670848,
+      "limitBytes": 670848,
+      "note": "Re-recorded baseline 2026-10-04 (O1, O2, O3, O4, OV3, AX1, AX3, AX6, S1, S2, FE6; W35.R1-R18, W6.R5, W6.R9, W6.R11, W3.R17, W3.R18, W3.R26). Cumulative over the closure since the 2026-10-03 record: the overlay paint plan, local and remote caret contributors and atom-side activation (72a5179a, ca541fcc, ff4235a1), focus return (b40f7792), list groups and the notifier list slice (2bbf2402), the D5 substitute states and sink routing (b9abd705), the native-range window (13f5b551) and CellSelection.text projection (cbcf34e5), net of the deleted selection authority, coordinators and echo restores (e56d8ac0) and the field-editor cleanup (11180b11). 603987 -> 670848. Byte total reproduced across two rebuilds. Previously: Re-recorded baseline 2026-10-03 (API7, SF6; W8.R6). Budgeted as the whole shipped ESM closure, not dist/index.mjs: the package is code-split into 40 .mjs files, so a change landing in a shared chunk never moved the old budget. This is a measurement change with no code movement. dist/index.mjs baseline 99033 (live 100503) \u2192 closure 603987. Byte total reproduced across two rebuilds. Previously: re-recorded 2026-09-22, AX1 keyboard focus and tab navigation, 89969 \u2192 99033."
     },
     {
       "name": "@input/pen-interop",
@@ -151,9 +151,9 @@
     {
       "name": "@input/pen-test",
       "path": "packages/tooling/test/dist/index.mjs",
-      "baselineBytes": 50732,
-      "limitBytes": 50732,
-      "note": "Re-recorded baseline 2026-10-03 (SCALE1, SCALE3; W1.R1, W1.R7). Recorded when size-limit joined the pull-request gates (W8.R6), which found pen-test over its ceiling. The deterministic mixed scale fixture (145d348d) and the test-only scan probe that counts document reads (78527a3a) landed here. 40505 \u2192 50732. Byte total reproduced across two rebuilds."
+      "baselineBytes": 66274,
+      "limitBytes": 66274,
+      "note": "Re-recorded baseline 2026-10-04 (COL4, SCALE1, SCALE3; W5.R1-R3, W5.R6). createPeerHarness(n), the seeded delivery schedules, the COL4 N-peer structural oracle and the synced-peer SCALE3 fixtures landed here (98be431e). 50732 -> 66274. Byte total reproduced across two rebuilds. Previously: Re-recorded baseline 2026-10-03 (SCALE1, SCALE3; W1.R1, W1.R7). Recorded when size-limit joined the pull-request gates (W8.R6), which found pen-test over its ceiling. The deterministic mixed scale fixture (145d348d) and the test-only scan probe that counts document reads (78527a3a) landed here. 40505 \u2192 50732. Byte total reproduced across two rebuilds."
     },
     {
       "name": "@input/pen-vue",
