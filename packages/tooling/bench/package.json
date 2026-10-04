@@ -39,7 +39,7 @@
     "LICENSE.md"
   ],
   "engines": {
-    "node": ">=22"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "sideEffects": false,
   "scripts": {
@@ -73,11 +73,11 @@
     "@input/pen-types": "workspace:*",
     "@input/pen-undo": "workspace:*",
     "@input/pen-yjs": "workspace:*",
-    "@types/node": "^25.4.0",
+    "@types/node": "^25.9.9",
     "tsup": "^8.4.0",
-    "tsx": "^4.23.12",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.3",
-    "vitest": "^3.2.7",
-    "yjs": "^13.6.32"
+    "vitest": "^4.1.11",
+    "yjs": "^13.6.33"
   }
 }

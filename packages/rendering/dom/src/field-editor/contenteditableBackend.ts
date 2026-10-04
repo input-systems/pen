@@ -37,6 +37,7 @@ import {
 } from "./contenteditableDomHelpers";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
+import { bindSurfaceTabStop } from "./surfaceTabStop";
 import { mapBeforeInput } from "./beforeinputMap";
 import { applyBeforeInputPolicy } from "./commandDispatch";
 import { handleFieldEditorKeyDown } from "./keyHandling";
@@ -80,7 +81,7 @@ export class ContentEditableBackend {
 		this.ytext = activeYText;
 
 		element.contentEditable = "true";
-		element.tabIndex = -1;
+		bindSurfaceTabStop(this.attachment, element);
 		this.isComposing = false;
 		this.ignoreBrowserMutations = false;
 		this.lastWatchdogMismatch = null;

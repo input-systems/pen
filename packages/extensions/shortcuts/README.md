@@ -12,7 +12,7 @@ This package does not render a surface, handle link UI, or own the keymap facet 
 pnpm add @input/pen-core @input/pen-schema @input/pen-shortcuts
 ```
 
-`engines.node` is `>=22`.
+`engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`.
 
 ## Usage
 

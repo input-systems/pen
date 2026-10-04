@@ -1,0 +1,6 @@
+Release notes for Desktop and the changelog
+• Desktop
+    ◦ Open mailto links
+        ▪︎ Behind a flag
+• Agent
+    a. Faster replies

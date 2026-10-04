@@ -13,6 +13,7 @@ export const PASTE_CORPUS_SOURCE_IDS = [
   "google-docs",
   "apple-notes",
   "notion",
+  "slack",
   "vscode",
   "article",
   "excel-sheets",

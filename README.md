@@ -335,14 +335,14 @@ The current-state specs in [`spec/README.md`](spec/README.md) are the contract: 
 
 ## Browser And Node Support
 
-| Runtime         | Minimum | Input backend                                                                           |
-| --------------- | ------- | --------------------------------------------------------------------------------------- |
-| Node            | `>=22`  | n/a (headless)                                                                          |
-| Chromium        | 93      | contenteditable on 93–120; EditContext when `EditContext` is a function (Chromium 121+) |
-| Firefox         | 92      | contenteditable                                                                         |
-| Safari / WebKit | 15.4    | contenteditable                                                                         |
+| Runtime         | Minimum                                | Input backend                                                                           |
+| --------------- | -------------------------------------- | --------------------------------------------------------------------------------------- |
+| Node            | `^22.22.2 \|\| ^24.15.0 \|\| >=26.0.0` | n/a (headless)                                                                          |
+| Chromium        | 93                                     | contenteditable on 93–120; EditContext when `EditContext` is a function (Chromium 121+) |
+| Firefox         | 92                                     | contenteditable                                                                         |
+| Safari / WebKit | 15.4                                   | contenteditable                                                                         |
 
-Expanded field-editor mode and table-cell editing always use contenteditable, even when EditContext is present. APIs newer than this floor (EditContext, `structuredClone`, `ResizeObserver`, `color-mix()`, `crypto.randomUUID`) are feature-detected with a documented fallback and do not raise the minimum. Published packages declare `engines.node: ">=22"`, and CI verifies both declared endpoints (Node 22 and current Node 26) plus one non-Linux runner in [`.github/workflows/node-matrix.yml`](.github/workflows/node-matrix.yml). Raising the floor is a minor-version change; lowering it is never silent. The reasoning is in [`spec/rules/host.md`](spec/rules/host.md) (HOST3, HOST4).
+Expanded field-editor mode and table-cell editing always use contenteditable, even when EditContext is present. APIs newer than this floor (EditContext, `structuredClone`, `ResizeObserver`, `color-mix()`, `crypto.randomUUID`) are feature-detected with a documented fallback and do not raise the minimum. Published packages declare `engines.node: "^22.22.2 || ^24.15.0 || >=26.0.0"`, the range jsdom 30 declares (the Node sanitizer behind `@input/pen-interop` runs on it), and CI verifies both declared endpoints (current Node 22 and current Node 26) plus one non-Linux runner in [`.github/workflows/node-matrix.yml`](.github/workflows/node-matrix.yml). Raising the floor is a minor-version change; lowering it is never silent. The reasoning is in [`spec/rules/host.md`](spec/rules/host.md) (HOST3, HOST4).
 
 ## Docs And Examples
 

@@ -74,6 +74,43 @@ export function admitClipboardBlocks(
 	};
 }
 
+/** IOP5: bound literal recovery before allocating blocks or replacing selection. */
+export function admitClipboardPlainText(
+	text: string,
+	blockType: string,
+	editor: Editor,
+): ClipboardIngestResult {
+	const drops: ClipboardIngestDrop[] = [];
+	let source = text;
+	if (source.length > CLIPBOARD_INGEST_MAX_TEXT_SIZE) {
+		source = source.slice(0, CLIPBOARD_INGEST_MAX_TEXT_SIZE);
+		const boundary = source.lastIndexOf("\n");
+		if (boundary > 0) source = source.slice(0, boundary).replace(/\r$/, "");
+		drops.push({
+			reason: "text-size-exceeded",
+			count: 1,
+			bound: "CLIPBOARD_INGEST_MAX_TEXT_SIZE",
+		});
+	}
+	const lines = source.split(/\r?\n/);
+	if (lines.length > CLIPBOARD_INGEST_MAX_NODE_COUNT) {
+		drops.push({
+			reason: "count-exceeded",
+			count: lines.length - CLIPBOARD_INGEST_MAX_NODE_COUNT,
+			bound: "CLIPBOARD_INGEST_MAX_NODE_COUNT",
+		});
+		lines.length = CLIPBOARD_INGEST_MAX_NODE_COUNT;
+	}
+	const admitted = admitClipboardBlocks(
+		lines.map((content) => ({ type: blockType, props: {}, content })),
+		editor,
+	);
+	return {
+		blocks: admitted.blocks,
+		droppedByReason: [...drops, ...admitted.droppedByReason],
+	};
+}
+
 export function withForbiddenKeyDrops(
 	report: ClipboardIngestResult,
 	forbiddenKeyCount: number,

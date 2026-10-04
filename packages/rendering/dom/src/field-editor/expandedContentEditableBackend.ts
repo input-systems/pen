@@ -3,6 +3,7 @@ import { writeNativeRange } from "./selectionProjector";
 import { getPasteImporters, handlePaste } from "./clipboard";
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
+import { bindSurfaceTabStop } from "./surfaceTabStop";
 import type {
 	FieldEditorInputController,
 	PenFieldEditorFocusOptions,
@@ -58,7 +59,7 @@ export class ExpandedContentEditableBackend {
 	): void {
 		this.element = element;
 		element.contentEditable = "true";
-		element.tabIndex = -1;
+		bindSurfaceTabStop(this.attachment, element);
 
 		this.attachment.listen(element, "beforeinput", this.handleBeforeInput);
 		this.attachment.listen(element, "keydown", this.handleKeyDown);

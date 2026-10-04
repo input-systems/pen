@@ -20,7 +20,7 @@ pnpm add @input/pen-yjs yjs
 # collaboration (awareness): also y-protocols
 ```
 
-The required peer is `yjs` (`^13.6`). `y-protocols` (`^1.0.7`) is an optional peer, needed only by the `@input/pen-yjs/awareness` subpath; `yjsAdapter()` creates no awareness unless you pass `yjsAdapter({ awareness: createYjsAwareness })`, and the multiplayer extension ensures one for its scope. `engines.node` is `>=22`.
+The required peer is `yjs` (`^13.6`). `y-protocols` (`^1.0.7`) is an optional peer, needed only by the `@input/pen-yjs/awareness` subpath; `yjsAdapter()` creates no awareness unless you pass `yjsAdapter({ awareness: createYjsAwareness })`, and the multiplayer extension ensures one for its scope. `engines.node` is `>=22`. `engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`.
 
 ## State barriers
 

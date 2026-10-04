@@ -18,7 +18,7 @@ It does **not** own transport, reconnect, auth, or Yjs wire protocol behavior.
 pnpm add @input/pen-multiplayer yjs y-protocols
 ```
 
-Peers are `yjs` (`^13.6`) and `y-protocols` (`^1.0.7`). On activation the extension creates its scope's awareness (`createYjsAwareness` from `@input/pen-yjs/awareness`), so the editor needs no adapter option. `engines.node` is `>=22`.
+Peers are `yjs` (`^13.6`) and `y-protocols` (`^1.0.7`). On activation the extension creates its scope's awareness (`createYjsAwareness` from `@input/pen-yjs/awareness`), so the editor needs no adapter option. `engines.node` is `>=22`. `engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`.
 
 ## Presence is host-provided and untrusted
 

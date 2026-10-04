@@ -8,6 +8,7 @@ import type { PendingBlock } from "@input/pen-core";
 import type { FieldEditorTransferController } from "./controller";
 import {
 	admitClipboardBlocks,
+	admitClipboardPlainText,
 	emitClipboardIngestReport,
 	withForbiddenKeyDrops,
 	type ClipboardIngestResult,
@@ -172,29 +173,43 @@ export async function executePasteTransfer(
 				surface: parsedSurface,
 				undoGroup: false,
 			});
-			if (handled) {
+			if (handled === "handled") {
 				return true;
 			}
 
-			const { position, emptyBlockToRemove } = deleteSelectionForTransfer(
-				editor,
-				cursorBefore,
-			);
-			const blockCountBefore = editor.documentState.blockOrder.length;
-			importers.html.import(html, editor, {
-				position,
-				undoGroup: false,
-			});
-			const removed = removeLegacyEmptyPlaceholderIfNeeded({
-				editor,
-				fieldEditor,
-				emptyBlockToRemove,
-				blockCountBefore,
-			});
-			if (!removed) {
-				placeCursorAfterImport(editor, fieldEditor);
+			// IOP11: recovery is literal text, never another potentially lossy parse.
+			// With no replacement content, leave the user's selection intact.
+			if (Array.isArray(parsedBlocks)) {
+				if (plainText) {
+					pastePlainTextFallback({
+						editor,
+						fieldEditor,
+						text: plainText,
+						cursorBefore,
+						surface: "paste-html:plain-fallback",
+						undoGroup: false,
+					});
+				}
+				return true;
+			} else {
+				const { position, emptyBlockToRemove } =
+					deleteSelectionForTransfer(editor, cursorBefore);
+				const blockCountBefore = editor.documentState.blockOrder.length;
+				importers.html.import(html, editor, {
+					position,
+					undoGroup: false,
+				});
+				const removed = removeLegacyEmptyPlaceholderIfNeeded({
+					editor,
+					fieldEditor,
+					emptyBlockToRemove,
+					blockCountBefore,
+				});
+				if (!removed) {
+					placeCursorAfterImport(editor, fieldEditor);
+				}
+				return true;
 			}
-			return true;
 		}
 	}
 
@@ -330,7 +345,7 @@ async function applyParsedImporterPaste(options: {
 	}
 
 	const blocks = await parseImportedBlocks(importer, input, editor);
-	return applyParsedBlocksPaste({
+	const result = applyParsedBlocksPaste({
 		editor,
 		fieldEditor,
 		blocks,
@@ -338,6 +353,17 @@ async function applyParsedImporterPaste(options: {
 		surface,
 		undoGroup,
 	});
+	if (result === "empty") {
+		pastePlainTextFallback({
+			editor,
+			fieldEditor,
+			text: input,
+			cursorBefore,
+			surface,
+			undoGroup,
+		});
+	}
+	return result !== "unparsed";
 }
 
 async function parseImportedBlocks(
@@ -365,12 +391,11 @@ function applyParsedBlocksPaste(options: {
 	cursorBefore: ReturnType<typeof getTransferCursorContext>;
 	surface: string;
 	undoGroup: boolean;
-}): boolean {
+}): "unparsed" | "empty" | "handled" {
 	const { editor, fieldEditor, blocks, cursorBefore, surface, undoGroup } =
 		options;
-	if (!Array.isArray(blocks) || blocks.length === 0) {
-		return false;
-	}
+	if (!Array.isArray(blocks)) return "unparsed";
+	if (blocks.length === 0) return "empty";
 
 	const normalized = normalizePendingBlocksForImport(
 		blocks,
@@ -379,14 +404,42 @@ function applyParsedBlocksPaste(options: {
 	);
 	reportPendingBlockImportViolations(editor, normalized.violations, surface);
 	if (normalized.blocks.length === 0) {
-		return true;
+		return "empty";
 	}
 
 	const { cursorAfter } = deleteSelectionForTransfer(editor, cursorBefore);
 	pasteBlocksAtCaret(editor, fieldEditor, normalized.blocks, cursorAfter, {
 		undoGroup,
 	});
-	return true;
+	return "handled";
+}
+
+function pastePlainTextFallback(options: {
+	editor: Editor;
+	fieldEditor: FieldEditorTransferController;
+	text: string;
+	cursorBefore: ReturnType<typeof getTransferCursorContext>;
+	surface: string;
+	undoGroup: boolean;
+}): void {
+	const { editor, cursorBefore, text, ...placement } = options;
+	if (!text) return;
+	const admitted = admitClipboardPlainText(
+		text,
+		cursorBefore?.isInline ? cursorBefore.blockType : "paragraph",
+		editor,
+	);
+	emitClipboardIngestReport(editor, admitted);
+	applyParsedBlocksPaste({
+		...placement,
+		editor,
+		cursorBefore,
+		blocks: admitted.blocks.map((block) => ({
+			type: block.type,
+			content: block.content,
+			props: block.props ?? {},
+		})),
+	});
 }
 
 function shouldPreferMarkdownParagraphPaste(

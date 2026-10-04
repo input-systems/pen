@@ -4,6 +4,7 @@ import type {
 	Editor,
 	PenStreamPart,
 } from "@input/pen-types";
+import type { Mock } from "vitest";
 import { describe, expect, it, vi } from "vitest";
 import { processStream } from "../processStream";
 
@@ -48,7 +49,7 @@ function createReadOnlyTargetEditor(): Editor {
 
 function createToolRuntimeEditor(): {
 	editor: Editor;
-	onPart: ReturnType<typeof vi.fn>;
+	onPart: Mock<(part: PenStreamPart) => void>;
 } {
 	const streamingTarget = {
 		generationZone: null,
@@ -62,7 +63,7 @@ function createToolRuntimeEditor(): {
 			yield { chunk: "two" };
 		}),
 	};
-	const onPart = vi.fn();
+	const onPart = vi.fn<(part: PenStreamPart) => void>();
 
 	return {
 		editor: {

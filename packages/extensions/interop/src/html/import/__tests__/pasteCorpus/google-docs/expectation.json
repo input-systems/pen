@@ -2,13 +2,13 @@
   "id": "google-docs",
   "source": "Google Docs",
   "provenance": "synthetic-until-capture",
-  "approximates": "Google Docs clipboard HTML: <b id=docs-internal-guid-…> wrapper, span-styled marks, semantic headings/lists/tables inside the wrapper. Typical Docs copies also append Apple-interchange-newline.",
+  "approximates": "Google Docs clipboard HTML: <b id=docs-internal-guid-…> wrapper, span-styled marks, semantic headings/lists/tables inside the wrapper, and a nested list emitted as a child of the <ul> rather than of an <li>. Typical Docs copies also append Apple-interchange-newline.",
   "markers": ["docs-internal-guid", "font-weight:700", "Apple-interchange-newline"],
   "imageCount": 0,
   "outcomes": {
-    "headings": "flattened into one paragraph",
-    "lists": "flattened into one paragraph",
-    "tables": "flattened (cell text concatenated)",
+    "headings": "h1",
+    "lists": "nested bullets (indent 0/1)",
+    "tables": "1×2, no header row",
     "code": "none",
     "links": "kept",
     "images": "none",
@@ -16,19 +16,33 @@
     "colors": "span color kept as textColor"
   },
   "intentionalLosses": [
-    "The docs-internal-guid <b> wrapper still collapses headings, lists, and tables into one paragraph",
-    "Adjacent block text is concatenated with no separator"
+    "The docs-internal-guid <b> wrapper is read as a container and adds no mark of its own",
+    "Font family, size, and line-height are discarded"
   ],
   "blocks": [
+    { "type": "heading", "level": 1, "text": "Quarterly notes" },
     {
       "type": "paragraph",
-      "text": "Quarterly notesBold and italic redFirst itemABDocs link",
+      "text": "Bold and italic red",
       "marks": [
         { "type": "bold", "text": "Bold" },
         { "type": "italic", "text": "italic" },
-        { "type": "textColor", "text": " red" },
-        { "type": "link", "text": "Docs link" }
+        { "type": "textColor", "text": " red" }
       ]
+    },
+    { "type": "bulletListItem", "indent": 0, "text": "First item" },
+    { "type": "bulletListItem", "indent": 1, "text": "Nested item" },
+    {
+      "type": "table",
+      "rows": 1,
+      "cols": 2,
+      "hasHeaderRow": false,
+      "cells": [["A", "B"]]
+    },
+    {
+      "type": "paragraph",
+      "text": "Docs link",
+      "marks": [{ "type": "link", "text": "Docs link" }]
     }
   ]
 }
