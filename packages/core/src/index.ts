@@ -104,6 +104,12 @@ export {
 } from "./editor/cellSelection";
 export { getNumberedListItemValue } from "./editor/orderedList";
 export {
+	getListItemSemantics,
+	getListSegments,
+	isListItemType,
+} from "./editor/listRuns";
+export type { ListItemSemantics, ListSegment } from "./editor/listRuns";
+export {
 	createImportResult,
 	filterOpsForDocumentProfile,
 	filterPendingBlocksForDocumentProfile,

@@ -71,6 +71,8 @@
 - getFlowCapabilityFromSchema
 - getFlowCapabilityFromType
 - getInlineCompletionController
+- getListItemSemantics
+- getListSegments
 - getNumberedListItemValue
 - getOpOriginGroupId
 - getOpOriginType
@@ -88,6 +90,7 @@
 - isContainerBlock
 - isContainerBlockType
 - isContinuousTextFlowCapability
+- isListItemType
 - isMultiBlock
 - isPseudoLocaleText
 - keyBindingPriorityToPrecedence
@@ -265,6 +268,8 @@
 - InsertTextParam
 - Keymap
 - KeymapPlatform
+- ListItemSemantics
+- ListSegment
 - MigrationReport
 - NormalPositionSnapshot
 - PendingBlock
