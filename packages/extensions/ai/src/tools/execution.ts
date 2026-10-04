@@ -26,21 +26,36 @@ import {
 import { AI_TOOL_READ_ONLY_MUTATION_CODE } from "./constants";
 import type { AIToolRuntime } from "./types";
 
-const toolApplyMutationModes = new WeakMap<Editor, AIMutationMode>();
+/**
+ * Every live generation's binding, in bind order (AIB3). Generations overlap
+ * — one is cancelled after the next has bound — so each binding is its own
+ * entry and unbinding removes only that entry; the most recent live binding
+ * decides. A single save-and-restore slot would let the earlier generation's
+ * unbind restore over the later one and land its staged writes durably.
+ */
+const toolApplyMutationModes = new WeakMap<
+	Editor,
+	{ readonly mode: AIMutationMode }[]
+>();
 
 export function bindAIToolMutationMode(
 	editor: Editor,
 	mode: AIMutationMode,
 ): () => void {
-	const previous = toolApplyMutationModes.get(editor);
-	toolApplyMutationModes.set(editor, mode);
+	const binding = { mode };
+	const bindings = toolApplyMutationModes.get(editor) ?? [];
+	bindings.push(binding);
+	toolApplyMutationModes.set(editor, bindings);
 	return () => {
-		if (previous === undefined) {
-			toolApplyMutationModes.delete(editor);
-		} else {
-			toolApplyMutationModes.set(editor, previous);
+		const index = bindings.indexOf(binding);
+		if (index >= 0) {
+			bindings.splice(index, 1);
 		}
 	};
+}
+
+function boundMutationMode(editor: Editor): AIMutationMode | undefined {
+	return toolApplyMutationModes.get(editor)?.at(-1)?.mode;
 }
 
 /**
@@ -62,7 +77,7 @@ export function applyAIOpsForBoundMutationMode(
 	if (ops.length === 0) {
 		return;
 	}
-	if (!stagesAsSuggestions(toolApplyMutationModes.get(editor))) {
+	if (!stagesAsSuggestions(boundMutationMode(editor))) {
 		editor.apply(ops, options);
 		return;
 	}
@@ -173,7 +188,7 @@ function toolAuthorityContext(context: ToolContext): ToolAuthorityContext {
 	return {
 		staged:
 			editor != null &&
-			stagesAsSuggestions(toolApplyMutationModes.get(editor)),
+			stagesAsSuggestions(boundMutationMode(editor)),
 	};
 }
 
@@ -496,7 +511,7 @@ function applyToolOps(
 	applyOptions: ApplyOptions | undefined,
 ): void {
 	if (
-		!stagesAsSuggestions(toolApplyMutationModes.get(editor)) ||
+		!stagesAsSuggestions(boundMutationMode(editor)) ||
 		ops.length === 0
 	) {
 		originalApply(ops, applyOptions);
