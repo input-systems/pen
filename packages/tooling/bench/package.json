@@ -60,7 +60,8 @@
     "bench:anchors": "tsx src/anchors/run.cli.ts",
     "bench:anchors:compare": "tsx src/anchors/run.cli.ts --compare",
     "clean": "rm -rf dist *.tsbuildinfo",
-    "bench:scale3:realistic": "tsx src/fixtures/scale3Realistic.cli.ts"
+    "bench:scale3:realistic": "tsx src/fixtures/scale3Realistic.cli.ts",
+    "bench:caches": "tsx src/cacheAudit/run.cli.ts"
   },
   "devDependencies": {
     "@input/pen-ai": "workspace:*",
