@@ -1,4 +1,5 @@
 import type { Editor, Unsubscribe } from "@input/pen-types";
+import { isDomHTMLElement } from "../utils/domNodes";
 import type {
 	FieldEditorFocusReason,
 	FieldEditorFocusRequest,
@@ -73,7 +74,7 @@ export class FocusController {
 		const root = this._getRootElement();
 		if (!root) return;
 		const activeEl = root.ownerDocument?.activeElement;
-		if (activeEl instanceof HTMLElement && root.contains(activeEl)) {
+		if (isDomHTMLElement(activeEl) && root.contains(activeEl)) {
 			activeEl.blur();
 		}
 	}

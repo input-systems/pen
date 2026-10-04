@@ -12,6 +12,7 @@ import { registerVerticalCaretMeasure } from "../geometry/verticalCaretMeasure";
 import { bindEditorDocumentKeyDown } from "../utils/documentShortcuts";
 import { buildDataAttributes, DATA_ATTRS } from "../utils/dataAttributes";
 import { computeDocumentEmpty } from "../utils/editorEmptyState";
+import { isDomNode } from "../utils/domNodes";
 import { createDocumentTree } from "./documentTree";
 import { handleFieldEditorPointerActivate } from "./pointerActivation";
 import { handleFieldEditorRootFocus } from "./rootFocus";
@@ -82,7 +83,7 @@ export function mountEditor(
 	const handleFocusOut = (): void => {
 		const activeElement = root.ownerDocument?.activeElement;
 		const nextFocused =
-			activeElement instanceof Node && root.contains(activeElement);
+			isDomNode(activeElement) && root.contains(activeElement);
 		fieldEditor.setFocused(nextFocused);
 		applyEditorRootAttrs(root, editor, {
 			readonly,

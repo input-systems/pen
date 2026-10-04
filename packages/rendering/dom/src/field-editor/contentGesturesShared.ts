@@ -2,6 +2,7 @@ import { buildTransitionSnapshot } from "@input/pen-core";
 import type { Editor, Point } from "@input/pen-types";
 import { getEditorBlockSelectionLength } from "../utils/blockSelectionSemantics";
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomNode } from "../utils/domNodes";
 import { getPreorderBlockIds } from "../utils/documentPreorder";
 import type { PointerInteractionModel } from "../utils/editorInteractionModel";
 import {
@@ -148,7 +149,7 @@ export function ensureEditorFocus(
 	root: HTMLElement,
 ) {
 	const activeEl = root.ownerDocument?.activeElement;
-	if (activeEl instanceof Node && root.contains(activeEl)) return;
+	if (isDomNode(activeEl) && root.contains(activeEl)) return;
 	ctx.fieldEditor.requestRootFocus(root, "activate", {
 		preventScroll: true,
 	});

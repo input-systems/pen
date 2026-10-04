@@ -59,6 +59,7 @@ import { applyListInputRule } from "./commands";
 import { isFieldEditorTextEditingKey } from "../utils/textEntryTarget";
 import { applyInlineInputRule } from "./inlineInputRules";
 import { applyInlineTextInput } from "./textInputPipeline";
+import { isDomNode } from "../utils/domNodes";
 import type {
 	FieldEditorDelta,
 	FieldEditorObserver,
@@ -872,6 +873,11 @@ export class EditContextBackend {
 	 */
 	private writeBufferCaretIntoDom(): void {
 		if (!this.editContext || !this.element) return;
+		// HOST9: a native range written into a field that does not hold focus
+		// moves focus into it. A remote change while focus is elsewhere (the
+		// body, a host control, another editor) updates the buffer only.
+		const active = this.element.ownerDocument.activeElement;
+		if (!isDomNode(active) || !this.element.contains(active)) return;
 		const start = this.editContext.selectionStart;
 		const end = this.editContext.selectionEnd;
 

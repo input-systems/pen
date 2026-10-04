@@ -3,6 +3,7 @@ import type { Editor, SelectionState } from "@input/pen-types";
 
 import type { S2ExceptionKind } from "../field-editor/selectionProjector";
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomHTMLElement, isDomNode } from "../utils/domNodes";
 import { isForeignNativeTextEntryTarget } from "../utils/textEntryTarget";
 import type { FocusSink } from "./focusSink";
 
@@ -80,7 +81,7 @@ export function syncFocusSink(
  */
 function isEditorSurface(active: Element | null): boolean {
 	return (
-		active instanceof HTMLElement &&
+		isDomHTMLElement(active) &&
 		(active.hasAttribute(DATA_ATTRS.editorBlocksHost) ||
 			active.hasAttribute(DATA_ATTRS.inlineContent))
 	);
@@ -106,10 +107,10 @@ function claimFocus(
 	if (active === target) {
 		return;
 	}
-	if (isForeignNativeTextEntryTarget(active) && !isEditorSurface(active)) {
+	if (isForeignNativeTextEntryTarget(active, root) && !isEditorSurface(active)) {
 		return;
 	}
-	const editorOwnsFocus = active instanceof Node && root.contains(active);
+	const editorOwnsFocus = isDomNode(active) && root.contains(active);
 	const lostToDocument =
 		fromDocument &&
 		(active === null ||

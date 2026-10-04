@@ -1,4 +1,5 @@
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomHTMLElement } from "../utils/domNodes";
 
 /**
  * Safely query a block element by ID, escaping special characters to prevent
@@ -38,7 +39,7 @@ export function findBlockElement(
 	let current: Node | null = node;
 	while (current && current !== root) {
 		if (
-			current instanceof HTMLElement &&
+			isDomHTMLElement(current) &&
 			current.hasAttribute(DATA_ATTRS.editorBlock)
 		) {
 			return current;
@@ -60,7 +61,7 @@ export function findInlineContentElement(
 	for (const candidate of blockEl.querySelectorAll(
 		`[${DATA_ATTRS.inlineContent}]`,
 	)) {
-		if (!(candidate instanceof HTMLElement)) {
+		if (!isDomHTMLElement(candidate)) {
 			continue;
 		}
 		if (candidate.closest(`[${DATA_ATTRS.editorBlock}]`) === blockEl) {

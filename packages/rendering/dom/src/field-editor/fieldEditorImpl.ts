@@ -90,6 +90,7 @@ import {
 } from "../utils/dataAttributes";
 import { getPreorderBlockIds } from "../utils/documentPreorder";
 import { arraysEqual } from "../utils/arraysEqual";
+import { closestDomElement, isDomElement } from "../utils/domNodes";
 
 type FieldEditorOptions = {
 	selectAllBehavior?: EditorSelectAllBehavior;
@@ -322,14 +323,16 @@ export class FieldEditorImpl implements FieldEditorSession {
 				const alreadyProjected =
 					record.version <= this._projector.lastProjectedVersion;
 				// HOST9: the record stays authoritative but is not
-				// written into the DOM while a native control that is
-				// not this field owns focus. the backend write is held
-				// back too — it projects the DOM selection the same way.
+				// written into the DOM while focus is not this editor's
+				// to take — a foreign control or another editor holds
+				// it, or it is elsewhere and the origin does not take
+				// it. the backend write is held back too — it projects
+				// the DOM selection the same way.
 				// C1/C2: the composing field keeps its range until
 				// compositionend-completed releases the projection.
 				const withheld =
 					!alreadyProjected &&
-					(this._projector.isFocusHeldByNativeControlOutsideRoot() ||
+					(this._projector.isFocusHeldElsewhere() ||
 						this._projector.withholdForComposition());
 				// surface first so P1 sees the new focus block. skip is
 				// not delivery — the projector has not run yet.
@@ -1115,6 +1118,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 		return Promise.resolve(this.focus(options));
 	}
 
+	focusSelection(): void {
+		this._projector.project("activation");
+	}
+
 	commitProgrammaticTextSelection(
 		blockId: string,
 		anchorOffset: number,
@@ -1485,11 +1492,16 @@ export class FieldEditorImpl implements FieldEditorSession {
 			this._attachedElement = null;
 		}
 
+		// HOST9: a surface switch for a record that is not this editor's to
+		// focus (a programmatic range while a host control holds focus)
+		// attaches the backend without moving focus into it.
+		const attachOptions: PenFieldEditorFocusOptions =
+			this._projector.isFocusHeldElsewhere() ? { passive: true } : {};
 		if (this._mode === "expanded") {
 			const expandedHost = this._findExpandedHost();
 			this._attachedElement = null;
 			if (expandedHost) {
-				this.attachElement(expandedHost);
+				this.attachElement(expandedHost, attachOptions);
 			}
 			return;
 		}
@@ -1501,7 +1513,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 		if (this._mode === "single") {
 			const inlineEl = this._resolveInlineElement(this._focusBlockId);
 			if (inlineEl) {
-				this.attachElement(inlineEl);
+				this.attachElement(inlineEl, attachOptions);
 				return;
 			}
 		}
@@ -1625,18 +1637,14 @@ function isCoarsePointerType(pointerType: string): boolean {
 
 /** `selectstart` targets the text node where the selection starts. */
 function eventTargetElement(event: Event): Element | null {
-	const target = event.target;
-	if (target instanceof Element) {
-		return target;
-	}
-	return target instanceof Node ? target.parentElement : null;
+	return closestDomElement(event.target);
 }
 
 function isInEditorContentPointerTarget(
 	root: HTMLElement,
 	target: EventTarget | null,
 ): boolean {
-	if (!(target instanceof Element) || !root.contains(target)) {
+	if (!isDomElement(target) || !root.contains(target)) {
 		return false;
 	}
 	const owningRoot = target.closest(`[${DATA_ATTRS.editorRoot}]`);

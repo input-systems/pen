@@ -14,15 +14,17 @@ import {
 	type ReaderSelection,
 } from "./selectionReader";
 import {
+	getClosestEditorRoot,
 	isFieldEditorTextEntryTarget,
 	isForeignNativeTextEntryTarget,
-	isNativeTextEntryTarget,
 } from "../utils/textEntryTarget";
+import { isDomHTMLElement, isDomNode } from "../utils/domNodes";
 import { FOCUS_SINK_ATTR } from "../a11y/focusSink";
 import type { GeometryReader, Rect } from "../geometry/types";
 import { findLogicalDOMPoint } from "./inlineAtomDom";
 import {
 	applyScrollPlan,
+	isLocalUserMapping,
 	measureScrollPlan,
 	resolveProjectionScroll,
 	selectionScrollTarget,
@@ -184,7 +186,7 @@ function writeNativeRangeAt(
 
 	if (trySetBaseAndExtent(selection, anchor, focus, intendedRange)) return;
 
-	const collapseRange = document.createRange();
+	const collapseRange = createRangeFor(anchor.node);
 	collapseRange.setStart(anchor.node, anchor.offset);
 	collapseRange.collapse(true);
 	replaceNativeRange(selection, collapseRange);
@@ -237,12 +239,20 @@ function tryExtend(
 	);
 }
 
+/**
+ * A range from `node`'s own document. A `Selection` ignores a range rooted
+ * in another document, which the host window's is for an iframe's nodes.
+ */
+function createRangeFor(node: Node): Range {
+	return (node.ownerDocument ?? document).createRange();
+}
+
 function orderedRange(anchor: DOMPoint, focus: DOMPoint): Range {
 	const [start, end] =
 		compareDOMPoints(anchor, focus) <= 0
 			? [anchor, focus]
 			: [focus, anchor];
-	const range = document.createRange();
+	const range = createRangeFor(start.node);
 	range.setStart(start.node, start.offset);
 	range.setEnd(end.node, end.offset);
 	return range;
@@ -256,11 +266,11 @@ function compareDOMPoints(
 		return left.offset - right.offset;
 	}
 
-	const leftRange = document.createRange();
+	const leftRange = createRangeFor(left.node);
 	leftRange.setStart(left.node, left.offset);
 	leftRange.collapse(true);
 
-	const rightRange = document.createRange();
+	const rightRange = createRangeFor(right.node);
 	rightRange.setStart(right.node, right.offset);
 	rightRange.collapse(true);
 
@@ -356,6 +366,22 @@ const AUTHORITY_TRIGGERS: ReadonlySet<ProjectionTrigger> = new Set([
 	"mount-ack",
 	"divergence",
 	"target-rebuilt",
+]);
+
+/**
+ * HOST9: the origins whose authority write may take focus into the editor
+ * when focus is outside it but not held by a foreign control — the user's
+ * own gesture, keystroke, composition, or an undo/redo (a host's undo
+ * button). A `mapped` repair takes it only after a local `user` commit (the
+ * user's own edit removed the focused field), as W3.R15 scrolls for it. A
+ * `programmatic` write (a bare `setSelection`), a `mapped` repair after a
+ * collaborator's, the AI's or a history commit, and `gc` never take it.
+ */
+const FOCUS_TAKING_ORIGINS: ReadonlySet<SelectionOrigin> = new Set([
+	"pointer",
+	"keyboard",
+	"ime",
+	"restore",
 ]);
 
 /**
@@ -475,7 +501,7 @@ export class SelectionProjector {
 		if (parked.version !== (this._options.getRecord?.()?.version ?? 0)) {
 			return;
 		}
-		if (this.isFocusHeldByNativeControlOutsideRoot()) {
+		if (this.isFocusHeldElsewhere()) {
 			return;
 		}
 		this.project("mount-ack");
@@ -538,7 +564,7 @@ export class SelectionProjector {
 			return;
 		}
 		this._withheldForComposition = false;
-		if (this.isFocusHeldByNativeControlOutsideRoot()) {
+		if (this.isFocusHeldElsewhere()) {
 			return;
 		}
 		this.project("window-closed");
@@ -550,10 +576,7 @@ export class SelectionProjector {
 	 * engine normalized the write and another write would loop.
 	 */
 	requestDivergenceProjection(read?: ReaderSelection): void {
-		if (
-			this.isFocusHeldByNativeControlOutsideRoot() ||
-			this._isFocusOnChromeInRoot()
-		) {
+		if (this.isFocusHeldElsewhere() || this._isFocusOnChromeInRoot()) {
 			return;
 		}
 		if (read !== undefined && this._isReportedMismatch(read)) {
@@ -947,13 +970,13 @@ export class SelectionProjector {
 	/**
 	 * S2: a block, cell or null selection leaves no native range in the
 	 * root, so its projection clears one. Withheld while a native control
-	 * outside the field owns focus (HOST9).
+	 * outside the field, or another editor, owns focus (HOST9).
 	 */
 	projectNonTextSelection(state: SelectionState | null): void {
 		if (state !== null && state.type !== "block" && state.type !== "cell") {
 			return;
 		}
-		if (this.isFocusHeldByNativeControlOutsideRoot()) {
+		if (this.isFocusHeldByForeignControl()) {
 			return;
 		}
 		const root = this._options.getRootElement();
@@ -1006,47 +1029,80 @@ export class SelectionProjector {
 		}
 	}
 
+	/**
+	 * P3: whether a rebuild of the attached field may write the record back.
+	 * Inside the root only while the field itself holds focus (not editor
+	 * chrome); outside it, under the same HOST9 gate as P1.
+	 */
 	shouldProjectSelectionAfterReconcile(): boolean {
 		const attachedElement = this._options.getAttachedElement();
 		if (!attachedElement) {
 			return false;
 		}
 
-		const ownerDocument = attachedElement.ownerDocument;
-		const activeElement = ownerDocument?.activeElement;
-		if (!(activeElement instanceof Node)) {
-			return true;
-		}
-		if (activeElement === ownerDocument?.body) {
-			return true;
-		}
-
 		const root = this._options.getRootElement();
-		if (!root || !root.contains(activeElement)) {
-			// do not steal from a native control outside this editor
-			return !isNativeTextEntryTarget(activeElement);
+		const activeElement = attachedElement.ownerDocument.activeElement;
+		if (root && isDomNode(activeElement) && root.contains(activeElement)) {
+			return attachedElement.contains(activeElement);
 		}
-
-		return attachedElement.contains(activeElement);
+		return !this.isFocusHeldElsewhere();
 	}
 
 	/**
-	 * HOST9: a native text control that is not this editor's field keeps
-	 * its focus. That includes a host input outside the root and nested
-	 * chrome inside it (a prompt textarea). Authority-driven projections
-	 * (P1, P2, parked mount-ack) that land while one owns focus are not
-	 * written, because writing the DOM selection into a field moves focus
-	 * with it. Gesture and programmatic projections are not gated: a
-	 * mousedown on the editor runs before the browser moves focus, and
-	 * `focus()` moves it explicitly first.
+	 * HOST9: whether an authority-driven projection (P1, P2, P3, a parked
+	 * mount-ack, a released composition) must not run, because writing the
+	 * DOM selection into a field moves focus with it and focus is not this
+	 * editor's to take. True when a foreign control holds focus — a native
+	 * text control that is not this editor's field (a host input, nested
+	 * chrome such as a prompt textarea) or another editor — and, when focus
+	 * is anywhere else outside this root (the body, a host button), unless
+	 * the record is an undelivered write whose origin takes focus
+	 * (`FOCUS_TAKING_ORIGINS`, or a mapping of a local `user` commit). The
+	 * record stays authoritative; the next
+	 * trigger that finds focus in the editor, or an activation, projects it.
+	 * Gesture and programmatic activations are not gated: a mousedown on the
+	 * editor runs before the browser moves focus, and `focus()` moves it
+	 * explicitly first.
 	 */
-	isFocusHeldByNativeControlOutsideRoot(): boolean {
+	isFocusHeldElsewhere(): boolean {
 		const root = this._options.getRootElement();
-		const activeElement = root?.ownerDocument.activeElement;
-		if (!root || !(activeElement instanceof Node)) {
+		if (!root) {
 			return false;
 		}
-		return isForeignNativeTextEntryTarget(activeElement);
+		const active = root.ownerDocument.activeElement;
+		if (isDomNode(active) && root.contains(active)) {
+			return isForeignNativeTextEntryTarget(active, root);
+		}
+		return this.isFocusHeldByForeignControl() || !this._recordTakesFocus();
+	}
+
+	/**
+	 * HOST9: a native text control that is not this editor's field, or
+	 * another editor, owns focus. Nothing this editor projects may take it.
+	 */
+	isFocusHeldByForeignControl(): boolean {
+		const root = this._options.getRootElement();
+		const active = root?.ownerDocument.activeElement;
+		if (!root || !isDomNode(active)) {
+			return false;
+		}
+		if (isForeignNativeTextEntryTarget(active, root)) {
+			return true;
+		}
+		const owner = getClosestEditorRoot(active);
+		return owner !== null && owner !== root;
+	}
+
+	/** HOST9: the record is a write not yet projected, from an origin that takes focus. */
+	private _recordTakesFocus(): boolean {
+		const record = this._options.getRecord?.();
+		if (record == null || record.version <= this._lastProjectedVersion) {
+			return false;
+		}
+		return (
+			FOCUS_TAKING_ORIGINS.has(record.origin) ||
+			isLocalUserMapping(record, this._options.getLastCommit?.() ?? null)
+		);
 	}
 
 	/**
@@ -1061,7 +1117,7 @@ export class SelectionProjector {
 		const active = root?.ownerDocument.activeElement;
 		if (
 			!root ||
-			!(active instanceof HTMLElement) ||
+			!isDomHTMLElement(active) ||
 			active === root ||
 			!root.contains(active)
 		) {

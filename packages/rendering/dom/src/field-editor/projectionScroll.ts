@@ -44,12 +44,20 @@ export function resolveProjectionScroll(
 	if (AUTO_SCROLL_ORIGINS.has(record.origin)) {
 		return { align: "nearest" };
 	}
-	const isLocalUserMapping =
+	return isLocalUserMapping(record, commit) ? { align: "nearest" } : null;
+}
+
+/** A `mapped` record produced by this editor's own `user`-origin commit. */
+export function isLocalUserMapping(
+	record: SelectionRecord,
+	commit: ProjectionCommit | null,
+): boolean {
+	return (
 		record.origin === "mapped" &&
 		commit !== null &&
 		commit.commitId === record.commitId &&
-		commit.originType === "user";
-	return isLocalUserMapping ? { align: "nearest" } : null;
+		commit.originType === "user"
+	);
 }
 
 /**

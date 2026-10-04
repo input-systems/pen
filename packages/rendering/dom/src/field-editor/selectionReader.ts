@@ -19,6 +19,7 @@ import {
 import { normalizeSelectionFormation } from "../utils/selectionFormation";
 import { resolveCellInlineElement } from "./contentResolution";
 import { arraysEqual } from "../utils/arraysEqual";
+import { isDomNode } from "../utils/domNodes";
 
 export type ReaderPoint = Point;
 
@@ -306,7 +307,7 @@ export function readBackProjection(
 			buildLazyNormalPositionSnapshot(editor),
 		),
 		focusOnTarget:
-			active instanceof Node &&
+			isDomNode(active) &&
 			(active === target || target.contains(active)),
 		expected,
 		actual,

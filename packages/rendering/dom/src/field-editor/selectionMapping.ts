@@ -4,6 +4,7 @@
  */
 
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomElement, isDomHTMLElement } from "../utils/domNodes";
 import {
 	getBlockSelectionRoleFromType,
 	getSelectionLengthForRole,
@@ -181,7 +182,7 @@ function resolveBlockGapPoint(
 	offset: number,
 	rangeEdge: SelectionBoundary | undefined,
 ): SelectionPoint | null {
-	if (!(node instanceof Element) || !root.contains(node)) return null;
+	if (!isDomElement(node) || !root.contains(node)) return null;
 	const before = node.childNodes[offset - 1];
 	const after = node.childNodes[offset];
 	const blockBefore = asBlockElement(before);
@@ -209,7 +210,7 @@ function isUnitBlockElement(blockEl: HTMLElement): boolean {
 }
 
 function asBlockElement(node: Node | undefined): HTMLElement | null {
-	return node instanceof HTMLElement && node.hasAttribute(DATA_ATTRS.editorBlock)
+	return isDomHTMLElement(node) && node.hasAttribute(DATA_ATTRS.editorBlock)
 		? node
 		: null;
 }

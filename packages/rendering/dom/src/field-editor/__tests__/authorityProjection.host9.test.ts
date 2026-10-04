@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { createEditor } from "@input/pen-core";
+import { createEditor, getEditorSelectionRecord } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Editor } from "@input/pen-types";
@@ -97,17 +97,69 @@ describe("HOST9: authority writes while a native control outside the editor owns
 		expect(document.activeElement).toBe(input);
 	});
 
-	it("the same write projects once nothing outside the editor owns focus", () => {
+	it("HOST9: a bare setSelection does not take focus that fell to the body", () => {
+		const { editor, blockId, root, input, focusRequests } = mount();
+		input.focus();
+		input.blur();
+		document.getSelection()?.removeAllRanges();
+
+		editor.selectText(blockId, 2, 4);
+
+		expect(editor.selection?.type).toBe("text");
+		expect(focusRequests).toEqual([]);
+		expect(domSelectionIsInside(root)).toBe(false);
+		expect(document.activeElement).toBe(document.body);
+	});
+
+	it("HOST9: a keyboard-origin write projects once nothing outside the editor owns focus", () => {
 		const { editor, blockId, root, input, focusRequests } = mount();
 		input.focus();
 		input.blur();
 
-		editor.selectText(blockId, 2, 4);
+		editor.selectText(blockId, 2, 4, { origin: "keyboard" });
 
 		expect(focusRequests.map((request) => request.action)).toContain(
 			"project-selection",
 		);
 		expect(domSelectionIsInside(root)).toBe(true);
+	});
+
+	it("HOST9: the editor's own user edit that maps the caret takes focus back from the body", () => {
+		const { editor, blockId, root, input, focusRequests } = mount();
+		input.focus();
+		input.blur();
+
+		editor.apply(
+			[{ type: "splice-text", blockId, from: 0, to: 0, insert: "X" }],
+			{ origin: "user" },
+		);
+
+		expect(getEditorSelectionRecord(editor)?.origin).toBe("mapped");
+		expect(focusRequests.map((request) => request.action)).toContain(
+			"project-selection",
+		);
+		expect(domSelectionIsInside(root)).toBe(true);
+	});
+
+	it("HOST9: a collaborator's edit does not take focus from a host button", () => {
+		const { editor, blockId, root, focusRequests } = mount();
+		const button = document.createElement("button");
+		document.body.append(button);
+		button.focus();
+		document.getSelection()?.removeAllRanges();
+
+		editor.apply(
+			[{ type: "splice-text", blockId, from: 0, to: 0, insert: "X" }],
+			{ origin: "collaborator" },
+		);
+
+		expect(getEditorSelectionRecord(editor)?.origin).toBe("mapped");
+		expect(editor.selection).toMatchObject({
+			focus: { blockId, offset: 6 },
+		});
+		expect(focusRequests).toEqual([]);
+		expect(domSelectionIsInside(root)).toBe(false);
+		expect(document.activeElement).toBe(button);
 	});
 
 	it("a gesture activation still projects, since it runs before the browser moves focus", () => {
@@ -149,6 +201,80 @@ describe("HOST9: authority writes while a native control outside the editor owns
 		expect(focusRequests.map((request) => request.action)).toContain(
 			"project-selection",
 		);
+	});
+});
+
+describe("HOST9: two editors on one page", () => {
+	/** Editors A and B, both with an active field; the user is typing in B. */
+	function mountTwo() {
+		const a = mount();
+		const b = mount();
+		const surfaceB = b.root.querySelector<HTMLElement>(
+			"[data-pen-field-editor-surface]",
+		);
+		expect(surfaceB).not.toBeNull();
+		surfaceB!.focus();
+		a.focusRequests.length = 0;
+		b.focusRequests.length = 0;
+		return { a, b, surfaceB: surfaceB! };
+	}
+
+	it("a collaborator edit before A's stale caret does not take focus from B", () => {
+		const { a, surfaceB } = mountTwo();
+
+		a.editor.apply(
+			[
+				{
+					type: "splice-text",
+					blockId: a.blockId,
+					from: 0,
+					to: 0,
+					insert: "X",
+				},
+			],
+			{ origin: "collaborator" },
+		);
+
+		expect(getEditorSelectionRecord(a.editor)?.origin).toBe("mapped");
+		expect(a.editor.selection).toMatchObject({
+			focus: { blockId: a.blockId, offset: 6 },
+		});
+		expect(a.focusRequests).toEqual([]);
+		expect(document.activeElement).toBe(surfaceB);
+	});
+
+	it("a programmatic write in A does not take focus from B", () => {
+		const { a, surfaceB } = mountTwo();
+
+		a.editor.selectText(a.blockId, 2, 4);
+
+		expect(a.focusRequests).toEqual([]);
+		expect(document.activeElement).toBe(surfaceB);
+	});
+
+	it("a rebuild of A's field (P3) does not write while B holds focus", () => {
+		const { a, surfaceB } = mountTwo();
+
+		expect(
+			a.mounted.fieldEditor.shouldProjectSelectionAfterReconcile(),
+		).toBe(false);
+		a.mounted.fieldEditor.projectAfterRebuild([a.blockId]);
+
+		expect(a.focusRequests).toEqual([]);
+		expect(document.activeElement).toBe(surfaceB);
+	});
+
+	it("A still projects its own writes once A owns focus again", () => {
+		const { a } = mountTwo();
+		a.root.focus();
+		a.focusRequests.length = 0;
+
+		a.editor.selectText(a.blockId, 2, 4);
+
+		expect(a.focusRequests.map((request) => request.action)).toContain(
+			"project-selection",
+		);
+		expect(domSelectionIsInside(a.root)).toBe(true);
 	});
 });
 

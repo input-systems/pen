@@ -308,6 +308,51 @@ scenario(
 	},
 );
 
+scenario(
+	"S2: Tab into the root with a three-block range projects it into the expanded host, and a printable key replaces it",
+	async (s, page) => {
+		await s.load("fuzz-large");
+		const end: LogicalPoint = { blockId: "fuzz-large-3", offset: 4 };
+		await page.evaluate(() => {
+			const button = document.createElement("button");
+			button.textContent = "Host control";
+			document.body.prepend(button);
+			button.focus();
+		});
+		// HOST9: the programmatic write is recorded while the host control
+		// keeps focus; Tab into the root then has to project it.
+		await page.evaluate(
+			([anchor, focus]) => {
+				window.__penConformance.selectTextRangeById(anchor, focus);
+			},
+			[ANCHOR, end] as const,
+		);
+		await idle(page);
+		expect(
+			await page.evaluate(() => document.activeElement?.tagName),
+		).toBe("BUTTON");
+		await page.keyboard.press("Tab");
+		await idle(page);
+		expect(
+			await page.evaluate(
+				() =>
+					document.activeElement?.hasAttribute(
+						"data-pen-editor-blocks-host",
+					) ?? false,
+			),
+		).toBe(true);
+		await s.assert.selectionEquals({ anchor: ANCHOR, focus: end });
+		await s.assert.domMatchesAuthority();
+
+		await page.keyboard.press("x");
+		await idle(page);
+		expect(await blockText(page, ANCHOR.blockId)).toBe(
+			"Lix 3 of the large fuzz document.",
+		);
+	},
+	{ axe: false },
+);
+
 scenario("S2: Backspace over a 51-block range deletes it", async (s, page) => {
 	await selectLargeRange(s, page);
 	await page.keyboard.press("Backspace");

@@ -3,6 +3,7 @@ import { FOCUS_SINK_ATTR } from "../a11y/focusSink";
 import type { FieldEditorSession } from "../field-editor/controller";
 import { queryBlockElement } from "../field-editor/selectionDomQueries";
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomHTMLElement, isDomNode } from "../utils/domNodes";
 import { collectHostTextBlocks } from "./pointerActivation";
 
 /** Options for transferring editor-root focus into the active editor surface. */
@@ -11,7 +12,7 @@ export interface FieldEditorRootFocusOptions {
 	editor: Editor;
 	fieldEditor: Pick<
 		FieldEditorSession,
-		"focusTextSelection" | "requestRootFocus"
+		"focusTextSelection" | "focusSelection" | "requestRootFocus"
 	> &
 		Partial<Pick<FieldEditorSession, "getSubstituteState">>;
 	root: HTMLElement;
@@ -30,7 +31,7 @@ export function handleFieldEditorRootFocus(
 	// (P: an app or null record, or a deactivated field), not focus entering
 	// the editor, and stays on the root (D18).
 	const from = event.relatedTarget;
-	if (from instanceof Node && root.contains(from)) {
+	if (isDomNode(from) && root.contains(from)) {
 		return;
 	}
 
@@ -43,7 +44,7 @@ export function handleFieldEditorRootFocus(
 		const focusSink = root.querySelector(
 			`:scope > [${FOCUS_SINK_ATTR}]`,
 		);
-		if (focusSink instanceof HTMLElement) {
+		if (isDomHTMLElement(focusSink)) {
 			fieldEditor.requestRootFocus(focusSink, "selection-project", {
 				preventScroll: true,
 			});
@@ -56,11 +57,16 @@ export function handleFieldEditorRootFocus(
 	}
 
 	if (selection) {
-		if (
-			selection.type === "text" &&
-			selection.anchor.blockId === selection.focus.blockId &&
-			queryBlockElement(root, selection.focus.blockId)
-		) {
+		if (selection.type !== "text") {
+			return;
+		}
+		if (selection.anchor.blockId !== selection.focus.blockId) {
+			// S2: a multi-block range within the block-surface threshold is
+			// a native range in the expanded host, with focus there.
+			fieldEditor.focusSelection();
+			return;
+		}
+		if (queryBlockElement(root, selection.focus.blockId)) {
 			void fieldEditor.focusTextSelection(
 				selection.focus.blockId,
 				selection.anchor.offset,
@@ -72,7 +78,7 @@ export function handleFieldEditorRootFocus(
 	}
 
 	const blocksHost = root.querySelector(`[${DATA_ATTRS.editorBlocksHost}]`);
-	if (!(blocksHost instanceof HTMLElement)) {
+	if (!isDomHTMLElement(blocksHost)) {
 		return;
 	}
 

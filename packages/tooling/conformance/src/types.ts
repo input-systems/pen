@@ -457,6 +457,11 @@ export type PenConformanceBridge = {
 	): void;
 	/** CS10: mount the same one-paragraph probe the jsdom tests used. */
 	mountSelectionProbe(text: string, blockId: string): HTMLElement;
+	/**
+	 * HOST9: mount a second, independent editor (vanilla `mountEditor`) after
+	 * the harness editor, holding one paragraph of `text`. Returns its root.
+	 */
+	mountSecondEditor(text: string): HTMLElement;
 	applyAiRangeReplacement(args: {
 		start: { blockId: string; offset: number };
 		end: { blockId: string; offset: number };

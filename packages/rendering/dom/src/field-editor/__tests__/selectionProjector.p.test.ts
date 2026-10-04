@@ -63,6 +63,7 @@ function createDroppingController(readBack: () => ProjectionReadBack) {
 	return {
 		controller,
 		diagnostics,
+		element,
 		gesture,
 		writes: () => writes,
 		setVersion: (version: number) => {
@@ -139,9 +140,10 @@ describe("selection projector read-back (W3.R1)", () => {
 
 describe("selection projector rebuild projection (P3)", () => {
 	it("P3: a rebuild of the mounted target projects the authority once with trigger target-rebuilt", () => {
-		const { controller, diagnostics, writes } = createDroppingController(
-			() => DROPPED,
-		);
+		const { controller, diagnostics, element, writes } =
+			createDroppingController(() => DROPPED);
+		element.tabIndex = -1;
+		element.focus();
 		controller.projectAfterRebuild(["first"]);
 		expect(writes()).toBe(1);
 		expect(diagnostics.map((event) => event.trigger)).toEqual([

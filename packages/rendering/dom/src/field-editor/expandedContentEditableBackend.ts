@@ -90,13 +90,16 @@ export class ExpandedContentEditableBackend {
 
 		const selection = this.editor.selection;
 		if (selection?.type === "text") {
+			// HOST9: a passive attach leaves focus where it is; a native
+			// range written into an unfocused host would move focus with it.
 			if (
 				this.fieldEditor.requestDomFocus(
 					element,
 					"backend-activate",
 					{ preventScroll: true },
 					focusOptions,
-				)
+				) &&
+				element.contains(element.ownerDocument.activeElement)
 			) {
 				writeNativeRange(element, selection.anchor, selection.focus);
 			}

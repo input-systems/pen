@@ -5,6 +5,7 @@ import { defaultSchema } from "@input/pen-schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
 import { FieldEditorImpl } from "../fieldEditorImpl";
+import { focusEditorRoot } from "./focus.testHelpers";
 
 function installMockRaf(): void {
 	vi.stubGlobal(
@@ -61,6 +62,7 @@ function mountEditor(text: string) {
 	block.appendChild(inline);
 	root.appendChild(block);
 	fieldEditor.setRootElement(root);
+	focusEditorRoot(root);
 	fieldEditor.activate(blockId);
 	fixtures.push({ editor, fieldEditor, root });
 	return { editor, fieldEditor, root, blockId, inline };

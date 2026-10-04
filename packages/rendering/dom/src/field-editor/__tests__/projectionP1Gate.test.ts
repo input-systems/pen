@@ -5,6 +5,7 @@ import { defaultSchema } from "@input/pen-schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getRootGeometry } from "../../geometry/rootGeometry";
 import { FieldEditorImpl } from "../fieldEditorImpl";
+import { focusEditorRoot } from "./focus.testHelpers";
 
 let frameQueue: FrameRequestCallback[] = [];
 
@@ -70,6 +71,7 @@ describe("P1 double-write gate", () => {
 		document.body.appendChild(root);
 		fixtures.push({ editor, fieldEditor, root });
 		fieldEditor.setRootElement(root);
+		focusEditorRoot(root);
 
 		const blockId = editor.firstBlock()!.id;
 		editor.apply([
@@ -97,6 +99,7 @@ describe("P1 double-write gate", () => {
 		document.body.appendChild(root);
 		fixtures.push({ editor, fieldEditor, root });
 		fieldEditor.setRootElement(root);
+		focusEditorRoot(root);
 
 		const firstBlockId = editor.firstBlock()!.id;
 		editor.apply([

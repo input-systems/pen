@@ -138,6 +138,12 @@ export interface FieldEditorRootHandle {
 		focusOffset: number,
 		options?: PenFieldEditorFocusOptions,
 	): Promise<boolean>;
+	/**
+	 * Projects the current record as an activation (P, S2): the native range
+	 * in its surface, with focus. For focus entering the root with a
+	 * multi-block text range, which no single-block call can express.
+	 */
+	focusSelection(): void;
 }
 
 export interface FieldEditorDomController extends FieldEditorSelectionState {

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getRootGeometry } from "../../geometry/rootGeometry";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
 import { FieldEditorImpl } from "../fieldEditorImpl";
+import { focusEditorRoot } from "./focus.testHelpers";
 
 let frameQueue: FrameRequestCallback[] = [];
 
@@ -85,6 +86,7 @@ describe("mount ack and parked projections", () => {
 		document.body.appendChild(root);
 		fixtures.push({ editor, fieldEditor, root });
 		fieldEditor.setRootElement(root);
+		focusEditorRoot(root);
 
 		const diagnostics: DiagnosticEvent[] = [];
 		editor.on("diagnostic", (event) => {
@@ -129,6 +131,7 @@ describe("mount ack and parked projections", () => {
 		document.body.appendChild(root);
 		fixtures.push({ editor, fieldEditor, root });
 		fieldEditor.setRootElement(root);
+		focusEditorRoot(root);
 
 		const diagnostics: DiagnosticEvent[] = [];
 		editor.on("diagnostic", (event) => {
@@ -171,6 +174,7 @@ describe("mount ack and parked projections", () => {
 		document.body.appendChild(root);
 		fixtures.push({ editor, fieldEditor, root });
 		fieldEditor.setRootElement(root);
+		focusEditorRoot(root);
 
 		const blockId = editor.firstBlock()!.id;
 		editor.apply([
@@ -196,6 +200,7 @@ describe("mount ack and parked projections", () => {
 		document.body.appendChild(root);
 		fixtures.push({ editor, fieldEditor, root });
 		fieldEditor.setRootElement(root);
+		focusEditorRoot(root);
 
 		const blockId = editor.firstBlock()!.id;
 		editor.apply([
@@ -222,6 +227,7 @@ describe("mount ack and parked projections", () => {
 		document.body.appendChild(root);
 		fixtures.push({ editor, fieldEditor, root });
 		fieldEditor.setRootElement(root);
+		focusEditorRoot(root);
 
 		const blockId = editor.firstBlock()!.id;
 		editor.apply([
@@ -247,6 +253,7 @@ describe("mount ack and parked projections", () => {
 		document.body.appendChild(root);
 		fixtures.push({ editor, fieldEditor, root });
 		fieldEditor.setRootElement(root);
+		focusEditorRoot(root);
 
 		const blockId = editor.firstBlock()!.id;
 		editor.apply([
@@ -280,6 +287,7 @@ describe("mount ack and parked projections", () => {
 		document.body.appendChild(root);
 		fixtures.push({ editor, fieldEditor, root });
 		fieldEditor.setRootElement(root);
+		focusEditorRoot(root);
 
 		const liveId = editor.firstBlock()!.id;
 		editor.apply([
@@ -332,6 +340,7 @@ describe("mount ack and parked projections", () => {
 		document.body.appendChild(root);
 		fixtures.push({ editor, fieldEditor, root });
 		fieldEditor.setRootElement(root);
+		focusEditorRoot(root);
 
 		const blockId = editor.firstBlock()!.id;
 		fieldEditor.activate(blockId);

@@ -14,6 +14,7 @@ import {
 	isForeignNativeTextEntryTarget,
 	isNativeTextEntryTarget,
 } from "../utils/textEntryTarget";
+import { isDomHTMLElement, isDomNode } from "../utils/domNodes";
 import { FOCUS_SINK_ATTR } from "./focusSink";
 
 export interface FocusReturnToken {
@@ -51,7 +52,7 @@ export function captureFocusReturn(
 	const doc = root.ownerDocument;
 	const active = doc.activeElement;
 	const target =
-		active instanceof HTMLElement &&
+		isDomHTMLElement(active) &&
 		active !== doc.body &&
 		active !== doc.documentElement
 			? active
@@ -77,9 +78,9 @@ export function restoreFocusReturn(
 	const doc = root.ownerDocument;
 	const active = doc.activeElement;
 	if (
-		isForeignNativeTextEntryTarget(active) &&
+		isForeignNativeTextEntryTarget(active, root) &&
 		active !== target &&
-		!(active instanceof Node && options.owner?.contains(active))
+		!(isDomNode(active) && options.owner?.contains(active))
 	) {
 		return "none";
 	}

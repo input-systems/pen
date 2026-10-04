@@ -9,6 +9,7 @@ import {
 	isCollapsed as selectionIsCollapsed,
 } from "@input/pen-core";
 import { wrapYjsDocument, yjsAdapter } from "@input/pen-yjs";
+import { mountEditor } from "@input/pen-dom";
 import {
 	applyYjsAwarenessUpdate,
 	createYjsAwareness,
@@ -535,6 +536,25 @@ function mountSelectionProbe(text: string, blockId: string): HTMLElement {
 	block.append(inline);
 	root.append(block);
 	document.body.append(root);
+	return root;
+}
+
+/**
+ * HOST9: a second, independent editor on the page, after the harness editor
+ * (so `editorRoot()` still finds the harness one first). A scenario types in
+ * it while the harness editor keeps a stale caret.
+ */
+function mountSecondEditor(text: string): HTMLElement {
+	const editor = createEditor({ schema: defaultSchema });
+	const blockId = editor.firstBlock()!.id;
+	editor.apply([{ type: "splice-text", blockId, from: 0, to: 0, insert: text }], {
+		origin: "system",
+	});
+	const root = document.createElement("div");
+	root.setAttribute("data-pen-conformance-second-editor", "");
+	root.setAttribute("aria-label", "Second editor");
+	document.body.append(root);
+	mountEditor(editor, root);
 	return root;
 }
 
@@ -1519,6 +1539,7 @@ function installBridge(): void {
 			writeNativeRange(root, anchor, focus);
 		},
 		mountSelectionProbe,
+		mountSecondEditor,
 		applyAiRangeReplacement,
 		parseClipboardPayload,
 		exerciseInlineAtomDragPreview,

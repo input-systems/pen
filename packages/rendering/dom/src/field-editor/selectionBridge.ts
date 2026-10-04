@@ -4,6 +4,7 @@
  */
 
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomHTMLElement } from "../utils/domNodes";
 import { isInlineAtomNode } from "./inlineAtomDom";
 import { getDistanceToRect } from "../geometry/types";
 import { approximateInlineOffsetFromPoint } from "./selectionBridgeOffsets";
@@ -78,7 +79,7 @@ export function getClosestBlockElementFromPoint(
 	let bestScore = Number.POSITIVE_INFINITY;
 
 	for (const blockElement of blockElements) {
-		if (!(blockElement instanceof HTMLElement)) continue;
+		if (!isDomHTMLElement(blockElement)) continue;
 		const rect = blockElement.getBoundingClientRect();
 		const { dx, dy } = getDistanceToRect(rect, clientX, clientY);
 		const score = dy * 1000 + dx;
@@ -289,7 +290,7 @@ function isInlineBoundaryFallbackPoint(
 		return offset === 0;
 	}
 
-	return node instanceof HTMLElement && node.contains(inlineEl);
+	return isDomHTMLElement(node) && node.contains(inlineEl);
 }
 
 export {
