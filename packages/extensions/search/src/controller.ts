@@ -1,4 +1,8 @@
-import { announceEditorA11y, summaryTouchedBlockIds } from "@input/pen-core";
+import {
+	announceEditorA11y,
+	summaryRemovedBlockIds,
+	summaryTouchedBlockIds,
+} from "@input/pen-core";
 import type { ChangeSummary, Editor } from "@input/pen-types";
 import type {
 	SearchController,
@@ -195,7 +199,12 @@ export class SearchControllerImpl implements SearchController {
 			this.recompute();
 			return;
 		}
-		const touched = findBlockMatches(this.editor, summaryTouchedBlockIds(summary), execution);
+		// A removed block's stored map can outlive it (a `children`-array
+		// descendant of a deleted block), so it is dropped, not rescanned.
+		const removed = new Set(summaryRemovedBlockIds(summary));
+		const rescan = summaryTouchedBlockIds(summary).filter((blockId) => !removed.has(blockId));
+		for (const blockId of removed) this.matchesByBlock.delete(blockId);
+		const touched = findBlockMatches(this.editor, rescan, execution);
 		for (const [blockId, matches] of touched) {
 			if (matches.length > 0) this.matchesByBlock.set(blockId, matches);
 			else this.matchesByBlock.delete(blockId);

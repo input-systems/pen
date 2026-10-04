@@ -9,6 +9,7 @@ import {
 	keyBindingPriorityToPrecedence,
 	keymapFacet,
 	scopedDecorationSource,
+	summaryRemovedBlockIds,
 	summaryTouchedBlockIds,
 	ensureInlineCompletionController,
 	getInlineCompletionController,
@@ -99,7 +100,10 @@ export function aiExtension(config: AIExtensionConfig = {}): Extension {
 		config.suggestionPresentation ?? "track-changes",
 	);
 	const reviewSuggestionSource = scopedDecorationSource({
-		interest: ({ summary }) => summaryTouchedBlockIds(summary),
+		interest: ({ summary }) => {
+			suggestionIndex.drop(summaryRemovedBlockIds(summary));
+			return summaryTouchedBlockIds(summary);
+		},
 		decorate: (blockIds, editor) => suggestionIndex.refresh(editor, blockIds),
 	});
 

@@ -191,4 +191,34 @@ describe("SCALE2 scoped AI review decorations", () => {
 		expect(stepsWithSuggestions).toBeGreaterThan(50);
 		editor.destroy();
 	});
+
+	it("SCALE2: deleting a parent block drops the staged suggestions and decorations of its descendants", () => {
+		const editor = createReviewEditor(2);
+		editor.apply(
+			[
+				{ type: "insert-block", blockId: "t", blockType: "toggle", props: {}, position: "last" },
+				{ type: "splice-text", blockId: "t", from: 0, to: 0, insert: "Toggle" },
+				{
+					type: "insert-block",
+					blockId: "c",
+					blockType: "paragraph",
+					props: {},
+					position: { parent: "t", index: 0 },
+				},
+				{ type: "splice-text", blockId: "c", from: 0, to: 0, insert: "Child" },
+			],
+			{ origin: "system" },
+		);
+		stageSuggestion(editor, "c");
+		expect(getAIController(editor)?.getSuggestions()).toHaveLength(1);
+		expect(reviewDecorationsByBlock(editor).has("c")).toBe(true);
+
+		editor.apply([{ type: "delete-block", blockId: "t" }], { origin: "user" });
+
+		expect(editor.documentState.preorderIndexOf("c")).toBe(-1);
+		expect(getAIController(editor)?.getSuggestions()).toEqual([]);
+		expect(editor.getDecorations().forBlock("c")).toEqual([]);
+		expect(readAllSuggestions(editor)).toEqual([]);
+		editor.destroy();
+	});
 });

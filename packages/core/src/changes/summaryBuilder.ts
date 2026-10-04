@@ -236,16 +236,35 @@ function buildStructuralChanges(
 		});
 	}
 
+	const reported = new Set<string>();
+	const reportRemoved = (
+		blockId: string,
+		parentId: string | null,
+		at: number,
+	) => {
+		if (reported.has(blockId)) return;
+		reported.add(blockId);
+		structural.push({ type: "block-removed", blockId, parentId, index: at });
+		reportRemovedDescendants(blockId);
+	};
+	// A removed block takes its `children`-array subtree out of the document
+	// with it: those entries live in the removed block, so no array edit names
+	// them. Report each descendant the commit did not re-home elsewhere, so a
+	// per-block index drops it. Bounded by the removed subtree (SCALE2).
+	const reportRemovedDescendants = (blockId: string) => {
+		const children = index.childrenByParentId.get(blockId) ?? [];
+		for (let at = 0; at < children.length; at += 1) {
+			const childId = children[at]!;
+			if (insertedIds.has(childId) || childId === splitNewId) continue;
+			reportRemoved(childId, blockId, at);
+		}
+	};
+
 	for (const item of removed) {
 		if (item.id === mergeSourceId) continue;
 		if (insertedIds.has(item.id)) continue;
 		if (item.id === splitNewId) continue;
-		structural.push({
-			type: "block-removed",
-			blockId: item.id,
-			parentId: item.parentId,
-			index: item.index,
-		});
+		reportRemoved(item.id, item.parentId, item.index);
 	}
 
 	const newIds = new Set<string>([
@@ -269,17 +288,16 @@ function buildStructuralChanges(
 			}
 			if (!index.typeById.has(blockId) || blockExists(blockId)) continue;
 			const parentId = index.parentById.get(blockId) ?? null;
-			structural.push({
-				type: "block-removed",
+			reportRemoved(
 				blockId,
 				parentId,
-				index: Math.max(
+				Math.max(
 					0,
 					(index.childrenByParentId.get(parentId) ?? []).indexOf(
 						blockId,
 					),
 				),
-			});
+			);
 		}
 	}
 

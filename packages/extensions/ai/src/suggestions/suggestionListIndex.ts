@@ -1,4 +1,4 @@
-import { summaryTouchedBlockIds } from "@input/pen-core";
+import { summaryRemovedBlockIds, summaryTouchedBlockIds } from "@input/pen-core";
 import type { ChangeSummary, Editor } from "@input/pen-types";
 
 import type { PersistentSuggestion } from "../types";
@@ -32,8 +32,11 @@ export class SuggestionListIndex {
 			return;
 		}
 		for (const summary of summaries) {
+			// A removed block's stored map can outlive it (a `children`-array
+			// descendant of a deleted block), so it is dropped, not re-read.
+			const removed = new Set(summaryRemovedBlockIds(summary));
 			for (const blockId of summaryTouchedBlockIds(summary)) {
-				const block = editor.getBlock(blockId);
+				const block = removed.has(blockId) ? null : editor.getBlock(blockId);
 				this._store(blockId, block ? readBlockSuggestions(editor, block) : []);
 			}
 		}

@@ -115,7 +115,7 @@ export class DecorationCollector {
 	): void {
 		if (isScopedDecorationSource(source)) {
 			const ids = this._scopedIds(source, trigger);
-			if (ids !== null) this._refreshScoped(source, ids, touched);
+			if (ids !== null) this._refreshScoped(source, ids, touched, removedBlockIds(trigger));
 			return;
 		}
 		// A function or static source is recomputed on everything but a scoped request.
@@ -163,9 +163,16 @@ export class DecorationCollector {
 		source: ScopedDecorationSource,
 		ids: readonly string[] | "all",
 		touched: Set<string>,
+		removed: ReadonlySet<string>,
 	): void {
 		const all = ids === "all";
-		const blockIds = all ? this._editor.documentState.preorderBlockIds() : ids;
+		// A removed block's stored map can outlive it (a `children`-array
+		// descendant of a deleted block), so a source must not re-read it.
+		const blockIds = all
+			? this._editor.documentState.preorderBlockIds()
+			: removed.size > 0
+				? ids.filter((blockId) => !removed.has(blockId))
+				: ids;
 		if (blockIds.length === 0) {
 			if (all) this._replaceLists(source, new Map(), touched);
 			return;
@@ -309,4 +316,13 @@ function groupByBlock(decorations: readonly Decoration[]): BlockLists {
 function blockIndexOf(set: DecorationSet): ReadonlyMap<string, readonly Decoration[]> {
 	const index = (set as { blockIndex?: ReadonlyMap<string, readonly Decoration[]> }).blockIndex;
 	return index ?? groupByBlock(set.decorations);
+}
+
+const NO_REMOVED: ReadonlySet<string> = new Set();
+
+/** Blocks a commit removed; a scoped source never re-reads them. */
+function removedBlockIds(trigger: DecorationTrigger): ReadonlySet<string> {
+	if (trigger.kind !== "commit") return NO_REMOVED;
+	const removed = summaryRemovedBlockIds(trigger.summary);
+	return removed.length > 0 ? new Set(removed) : NO_REMOVED;
 }

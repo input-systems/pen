@@ -420,4 +420,30 @@ describe("change summaries — empty commits", () => {
 		expect(summary.structural).toEqual([]);
 		expect(summary.affectedBlockIds).toEqual([]);
 	});
+
+describe("removed subtrees", () => {
+	it("SCALE2: removing a block reports its children-array descendants removed, except those re-homed", () => {
+		const index = createBlockIndexSnapshot({
+			roots: ["t", "b"],
+			typeById: { t: "toggle", c1: "paragraph", c2: "toggle", g: "paragraph", b: "paragraph" },
+			childrenByParentId: new Map<string | null, readonly string[]>([
+				[null, ["t", "b"]],
+				["t", ["c1", "c2"]],
+				["c2", ["g"]],
+			]),
+		});
+		const summary = buildChangeSummary(
+			emptyDelta({ blockOrderDelta: [{ delete: 1 }, { retain: 1 }, { insert: ["c1"] }] }),
+			index,
+			1,
+		);
+		const removed = summary.structural.filter((change) => change.type === "block-removed");
+		expect(removed).toEqual([
+			{ type: "block-removed", blockId: "t", parentId: null, index: 0 },
+			{ type: "block-removed", blockId: "c2", parentId: "t", index: 1 },
+			{ type: "block-removed", blockId: "g", parentId: "c2", index: 0 },
+		]);
+		expect([...summary.affectedBlockIds].sort()).toEqual(["c1", "c2", "g", "t"]);
+	});
+});
 });

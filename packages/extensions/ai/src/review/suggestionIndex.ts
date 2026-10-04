@@ -49,6 +49,18 @@ export class SuggestionDecorationIndex {
 		return decorations;
 	}
 
+	/**
+	 * Forgets blocks a commit removed. Their stored map can outlive them (a
+	 * `children`-array descendant of a deleted block), and the collector does
+	 * not ask a source to re-read a removed block.
+	 */
+	drop(blockIds: readonly string[]): void {
+		for (const blockId of blockIds) {
+			this._decorations.delete(blockId);
+			this._ranges.delete(blockId);
+		}
+	}
+
 	clear(): void {
 		this._decorations.clear();
 		this._ranges.clear();
