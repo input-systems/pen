@@ -136,6 +136,18 @@ Every published package is in one `fixed` changeset group, so all of them move t
 
 ### `@input/pen-dom`
 
+**Programmatic selection writes no longer take focus (HOST9).** `editor.setSelection`, `selectText` and other programmatic or collaborator writes update the selection without moving focus into the editor when focus is elsewhere (the page body, a host control, or another editor). Only user input (`pointer`, `keyboard`, `ime`), undo/redo `restore`, and the user's own edits move focus.
+
+- **Affected:** hosts that called `setSelection` from outside the editor and expected the editor to be focused afterwards.
+- **Do:**
+  ```ts
+  // React
+  const focus = useFocusController();
+  await focus.text({ blockId, offset: "end" });
+  // elsewhere: the field editor's focus()
+  fieldEditor.focus();
+  ```
+
 **9. Overlay caret and block outlines are on by default.** Pen draws carets into `[data-pen-overlay-layer]` and sets `caret-color: transparent` on the field. Block and grid-cell selections get an outline whose default is an inset 2px `Highlight` ring.
 
 - **Do:**
