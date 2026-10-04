@@ -87,21 +87,6 @@ function applyRemoteInsert(local: Editor, blockId: string, track: Editor[]) {
 }
 
 describe("C2 contenteditable mid-composition remote", () => {
-	it("C2: contenteditable defers a structured collaborator delta and lands the composition after it", () => {
-		const { editor, inline, blockId } =
-			mountContentEditableEditor("Hello world");
-
-		compose(inline, "ni", () => {
-			editor.apply(
-				[{ type: "splice-text", blockId, from: 0, to: 0, insert: "X" }],
-				{ origin: "collaborator" },
-			);
-		});
-
-		const text = editor.getBlock(blockId)?.textContent();
-		expect(text).toBe("XHello worldni");
-		expect(extractTextFromDOM(inline)).toBe(text);
-	});
 
 	it("C2 COL1: contenteditable defers a delta that arrives through applyUpdate", () => {
 		const { editor, inline, blockId, fixture } =

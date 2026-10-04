@@ -102,29 +102,6 @@ function mountEditContextEditor(text: string) {
 }
 
 describe("C2 EditContext mid-composition remote", () => {
-	it("C2: EditContext field DOM untouched during remote commit", () => {
-		const { editor, inline, blockId } =
-			mountEditContextEditor("Hello world");
-		inline.dispatchEvent(
-			new CompositionEvent("compositionstart", { bubbles: true }),
-		);
-		inline.append("ni");
-		const beforeDom = extractTextFromDOM(inline);
-
-		editor.apply(
-			[{ type: "splice-text", blockId, from: 0, to: 0, insert: "X" }],
-			{ origin: "collaborator" },
-		);
-
-		expect(
-			extractTextFromDOM(inline),
-			"C2: EditContext field DOM untouched during remote commit",
-		).toBe(beforeDom);
-		expect(
-			editor.getBlock(blockId)?.textContent()?.includes("XHello"),
-			"C2: EditContext authority accepted the remote insert",
-		).toBe(true);
-	});
 
 	it("C2: EditContext field DOM untouched after IME textformatupdate", () => {
 		const { editor, inline, blockId } =

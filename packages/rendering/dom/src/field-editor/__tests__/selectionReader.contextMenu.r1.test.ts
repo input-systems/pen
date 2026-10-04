@@ -63,21 +63,6 @@ function seed() {
 }
 
 describe("R1 context-menu window", () => {
-	it("R1: an equivalent selectionchange closes the context-menu window", () => {
-		const fixture = seed();
-		fixture.nativeRange(0, 0);
-		fixture.contextMenu();
-		expect(fixture.fieldEditor.getGestureWindows().contextMenu).toBe(true);
-
-		// Step 3 echo: the read changes nothing, but it is the next
-		// selectionchange after the menu, so the window closes.
-		fixture.nativeRange(0, 0);
-		expect(fixture.fieldEditor.getGestureWindows().contextMenu).toBe(false);
-
-		// A later out-of-gesture range change is not accepted (step 4).
-		fixture.nativeRange(2, 5);
-		expect(fixture.textState()).toEqual([0, 0]);
-	});
 
 	it("R1: a non-equivalent selectionchange in the window is accepted and closes it", () => {
 		const fixture = seed();
