@@ -261,7 +261,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 				this.projectAfterRebuild(blockIds),
 			shouldProjectSelection: () =>
 				this.shouldProjectSelectionAfterReconcile(),
-			projectSelection: () => this._projector.project("selection-change"),
+			// P3: the reconciler rebuilt the target, so the composing host
+			// keeps its range until compositionend releases it (W3.R6).
+			projectSelection: () => this._projector.project("target-rebuilt"),
 			notifyDomReconciled: (blockId) => this.notifyDomReconciled(blockId),
 			getScheduler: () => this._ensureScheduler(),
 		});
