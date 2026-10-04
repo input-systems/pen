@@ -35,6 +35,10 @@ const KEY_SAMPLES = 20;
 const MOUNT_DEADLINE_MS = 300_000;
 const SCROLL_STEP_PX = 400;
 
+// A Playwright trace snapshots the whole DOM around every action; at 10k
+// blocks that lands inside the key-to-frame window and doubles React's clock.
+test.use({ trace: "off" });
+
 type ClockWindow = Window & {
 	__penConformance: {
 		load(name: string): void;
@@ -43,6 +47,26 @@ type ClockWindow = Window & {
 	};
 	__penClock?: Promise<number>;
 };
+
+/**
+ * Navigates and waits until the surface has rendered its fixture frame and
+ * settled its effects: a `load` sent before the surface subscribes to the
+ * session is lost, and the mount clock then times out.
+ */
+async function gotoHarness(page: Page, url: string): Promise<void> {
+	await page.goto(url);
+	await page.waitForFunction(
+		() =>
+			(window as unknown as Partial<ClockWindow>).__penConformance !== undefined &&
+			document.querySelector("[data-fixture]") !== null,
+	);
+	await page.evaluate(
+		() =>
+			new Promise<void>((resolve) =>
+				requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+			),
+	);
+}
 
 /** One fresh load of `fixture`, timed to the second frame after it is fully mounted. */
 async function timeMount(
@@ -214,7 +238,7 @@ async function measureFloor(
 	page: Page,
 	fixture: ScaleRenderClockFixture,
 ): Promise<ScaleRenderFloorClocks> {
-	await page.goto("/?surface=static");
+	await gotoHarness(page, "/?surface=static");
 	const paragraphs = "[data-pen-conformance-harness] [contenteditable] > p";
 	const blockCount = await page.evaluate((name) => {
 		const w = window as unknown as ClockWindow;
@@ -238,7 +262,7 @@ async function measureSurface(
 	surface: ScaleRenderSurface,
 	fixture: ScaleRenderClockFixture,
 ): Promise<ScaleRenderFixtureClocks | ScaleRenderTimedOut> {
-	await page.goto(`/?surface=${surface}`);
+	await gotoHarness(page, `/?surface=${surface}`);
 	const rootCount = SCALE_RENDER_ROOT_COUNTS[fixture];
 	const { totalBlocks } = mixedFixtureIdentity(rootCount);
 	let mountMs: ClockSample;

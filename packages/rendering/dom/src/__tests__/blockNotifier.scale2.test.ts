@@ -49,6 +49,53 @@ describe("block notifier (SCALE2 fan-out)", () => {
 		editor.destroy();
 	});
 
+	it("SCALE6: reading every block before subscribing walks the block order a bounded number of times", () => {
+		// React renders every block, reading its snapshot, before any
+		// subscription attaches; each detached read must not rebuild root ids.
+		const orderReadsPerBlock = (blockCount: number) => {
+			const editor = createDocument(blockCount);
+			const notifier = createBlockNotifier(editor);
+			const state = editor.documentState;
+			const ids = [...state.blockOrder];
+			const getter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(state), "blockOrder")!.get!;
+			let reads = 0;
+			Object.defineProperty(state, "blockOrder", {
+				configurable: true,
+				get: () =>
+					new Proxy(getter.call(state) as readonly string[], {
+						get(target, key, receiver) {
+							if (typeof key === "string" && /^\d+$/.test(key)) reads += 1;
+							return Reflect.get(target, key, receiver);
+						},
+					}),
+			});
+			for (const id of ids) notifier.getBlockSnapshot(id);
+			delete (state as unknown as Record<string, unknown>).blockOrder;
+			editor.destroy();
+			return reads / blockCount;
+		};
+		expect(orderReadsPerBlock(1_000)).toBeLessThan(5);
+		expect(orderReadsPerBlock(1_000)).toBeCloseTo(orderReadsPerBlock(100), 0);
+	});
+
+	it("SCALE6: a detached document snapshot still follows structural changes", () => {
+		const editor = createDocument(4);
+		const notifier = createBlockNotifier(editor);
+		const first = editor.firstBlock()!.id;
+		expect(notifier.getDocumentSnapshot().rootIds).toEqual([first, "b1", "b2", "b3"]);
+		const unchanged = notifier.getDocumentSnapshot();
+		editor.apply([{ type: "splice-text", blockId: "b1", from: 0, to: 0, insert: "x" }], { origin: "user" });
+		expect(notifier.getDocumentSnapshot()).toBe(unchanged);
+		editor.apply(
+			[{ type: "insert-block", blockId: "b4", blockType: "paragraph", props: {}, position: "last" }],
+			{ origin: "user" },
+		);
+		expect(notifier.getDocumentSnapshot().rootIds).toEqual([first, "b1", "b2", "b3", "b4"]);
+		editor.apply([{ type: "set-props", blockId: "b2", props: { parentId: "b1" } }], { origin: "user" });
+		expect(notifier.getDocumentSnapshot().rootIds).not.toContain("b2");
+		editor.destroy();
+	});
+
 	it("SCALE2: a caret move across one boundary notifies the two blocks it touched", () => {
 		const editor = createDocument(100);
 		const notifier = createBlockNotifier(editor);

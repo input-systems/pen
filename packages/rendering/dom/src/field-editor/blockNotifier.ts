@@ -102,6 +102,8 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _store: FieldEditorStoreSnapshot | null = null;
 	private _surface: SurfaceSnapshot = buildSurfaceSnapshot(null, undefined);
 	private _document: DocumentSnapshot | null = null;
+	/** `documentState.generation` the cached root ids were read at. */
+	private _rootIdsGeneration = -1;
 	/**
 	 * COL4: ids still in an order array whose block a concurrent delete
 	 * removed. Remote commits do not normalize, and a delete that only drops
@@ -159,8 +161,12 @@ class BlockNotifierImpl implements BlockNotifier {
 
 	getDocumentSnapshot(): DocumentSnapshot {
 		// Attached, the snapshot is kept current by commits; detached, read now.
+		// Root ids only move with a structural change, which bumps the
+		// generation: a renderer reading every block before it subscribes
+		// (React) must not walk the order once per block (SCALE6).
 		if (!this._document || this._sources.length === 0) {
-			this._document = this._buildDocument(this._document ?? undefined, true);
+			const structural = this._rootIdsGeneration !== this._editor.documentState.generation;
+			this._document = this._buildDocument(this._document ?? undefined, structural);
 		}
 		return this._document;
 	}
@@ -480,6 +486,7 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	private _liveRootIds(): readonly string[] {
+		this._rootIdsGeneration = this._editor.documentState.generation;
 		const rootIds = getRootBlockIds(this._editor);
 		if (this._deadIds.size === 0) return rootIds;
 		for (const id of this._deadIds) {

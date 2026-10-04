@@ -161,7 +161,7 @@ export function listDomBlockIds(root: HTMLElement): readonly string[] {
 	});
 }
 
-function listDomBlockElements(root: HTMLElement): HTMLElement[] {
+export function listDomBlockElements(root: HTMLElement): HTMLElement[] {
 	return Array.from(
 		root.querySelectorAll(`[${DATA_ATTRS.editorBlock}]`),
 	).filter(

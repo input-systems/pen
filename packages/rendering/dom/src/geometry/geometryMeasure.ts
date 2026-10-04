@@ -165,9 +165,11 @@ export function measureBlockRect(
 	blockId: string,
 ): Rect | null {
 	const blockEl = queryBlockElement(root, blockId);
-	if (!blockEl) {
-		return null;
-	}
+	return blockEl ? measureBlockElementRect(blockEl) : null;
+}
+
+/** A block element's box, or its inline surface's when the block has none. */
+export function measureBlockElementRect(blockEl: HTMLElement): Rect {
 	const rect = elementRect(blockEl);
 	if (isUsefulRect(rect)) {
 		return rect;

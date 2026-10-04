@@ -583,6 +583,71 @@ describe("GeometryReader G5", () => {
 		expect(up?.point.blockId).toBe("a");
 	});
 
+	it("G5: the adjacent block is the next by top, then left, then DOM order", () => {
+		const rects = {
+			c: rect(0, 64, 200, 16),
+			a: rect(0, 0, 200, 16),
+			right: rect(100, 32, 100, 16),
+			left: rect(0, 32, 100, 16),
+			twin: rect(0, 32, 100, 16),
+		};
+		const lines = Object.fromEntries(
+			Object.entries(rects).map(([id, box]) => [
+				id,
+				[line(box.top, box.bottom, 0, 4, box.left, box.width)],
+			]),
+		);
+		const reader = mockReader({ lines, rects, hits: [] });
+		const lineBoxes = vi.spyOn(reader, "lineBoxes");
+		const stepFrom = (blockId: string, direction: "up" | "down") => {
+			lineBoxes.mockClear();
+			verticalCaretTarget(reader, { blockId, offset: 0 }, direction, 1);
+			// The current block's lines, then the neighbour's when there is one.
+			return lineBoxes.mock.calls[1]?.[0];
+		};
+		// Visual order: a, left, twin, right, c — `twin` ties `left` and
+		// follows it in the DOM.
+		expect(stepFrom("a", "down")).toBe("left");
+		expect(stepFrom("left", "down")).toBe("twin");
+		expect(stepFrom("twin", "down")).toBe("right");
+		expect(stepFrom("right", "up")).toBe("twin");
+		expect(stepFrom("twin", "up")).toBe("left");
+		expect(stepFrom("c", "up")).toBe("right");
+		expect(stepFrom("a", "up")).toBeUndefined();
+		expect(stepFrom("c", "down")).toBeUndefined();
+	});
+
+	it("G5, SCALE6: a block-boundary step reads each block box once, with no per-block lookup", () => {
+		const root = mountEditorRoot();
+		const count = 40;
+		for (let index = 0; index < count; index += 1) {
+			mountBlock(root, `b${index}`, "text", mockDOMRect(0, index * 20, 200, 16));
+		}
+		const reader = createReader(root, {
+			measure: {
+				lineBoxes: (blockId) => {
+					const index = Number(blockId.slice(1));
+					return [line(index * 20, index * 20 + 16, 0, 4)];
+				},
+				caretRect: (point) => {
+					const index = Number(point.blockId.slice(1));
+					return collapsedRect(10, index * 20, 16);
+				},
+				pointAt: () => ({ blockId: "b6", offset: 0 }),
+			},
+		});
+		const querySelector = vi.spyOn(root, "querySelector");
+		expect(
+			verticalCaretTarget(reader, { blockId: "b5", offset: 0 }, "down", 10),
+		).toEqual({ point: { blockId: "b6", offset: 0 }, goalX: 10 });
+		// Only the current block and the target are looked up by id.
+		const looked = new Set(querySelector.mock.calls.map(([selector]) => selector));
+		expect([...looked].sort()).toEqual([
+			`[${DATA_ATTRS.blockId}="b5"]`,
+			`[${DATA_ATTRS.blockId}="b6"]`,
+		]);
+	});
+
 	it("G5: persists goalX from the current caret when none is supplied", () => {
 		const reader = mockReader({
 			lines: {

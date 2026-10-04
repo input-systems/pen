@@ -62,7 +62,7 @@
 				"scan.blocksMapIterations": 4199,
 				"scan.blocksMapReads": 65785,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 1109860,
+				"scan.orderArrayReads": 4210,
 				"scan.textFullReads": 3071,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 999,
@@ -233,7 +233,7 @@
 				"scan.blocksMapIterations": 20995,
 				"scan.blocksMapReads": 328845,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 27599260,
+				"scan.orderArrayReads": 21010,
 				"scan.textFullReads": 15355,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 4995,
@@ -406,7 +406,7 @@
 				"scan.blocksMapIterations": 41990,
 				"scan.blocksMapReads": 657670,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 110323510,
+				"scan.orderArrayReads": 42010,
 				"scan.textFullReads": 30710,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 9990,
@@ -435,7 +435,7 @@
 				"scan.blocksMapIterations": 209950,
 				"scan.blocksMapReads": 3288270,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 2756617510,
+				"scan.orderArrayReads": 210010,
 				"scan.textFullReads": 153550,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 49950,
@@ -1303,6 +1303,28 @@
 				"react/scale-5k/enterNumbered/notifier.deliveries: 81 !== 61",
 				"react/scale-5k/remoteInsert/scan.blocksMapReads: 5462 !== 5354",
 				"react/scale-5k/remoteInsert/notifier.deliveries: 15 !== 14"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "SCALE6: React mount read the block order once per block. Its first render reads every block snapshot before any subscription attaches, and the detached block notifier rebuilt the document snapshot (getRootBlockIds over the whole order) on each read. The detached snapshot now reuses its root ids until documentState.generation moves. React mount scan.orderArrayReads: 1k 1109860 -> 4210, 5k 27599260 -> 21010 (now ~4 per block, linear). No other count moves.",
+			"moved": [
+				"react/scale-1k/mount/scan.orderArrayReads: 4210 !== 1109860"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "SCALE6: React mount read the block order once per block. Its first render reads every block snapshot before any subscription attaches, and the detached block notifier rebuilt the document snapshot (getRootBlockIds over the whole order) on each read. The detached snapshot now reuses its root ids until documentState.generation moves. React mount scan.orderArrayReads: 1k 1109860 -> 4210, 5k 27599260 -> 21010 (now ~4 per block, linear). No other count moves.",
+			"moved": [
+				"react/scale-5k/mount/scan.orderArrayReads: 21010 !== 27599260"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "SCALE6 largeCounts (record:scale-render:large counts, React only): the same detached-notifier fix makes React mount order-array reads linear at 10k and 50k.",
+			"moved": [
+				"react/scale-10k/mount/scan.orderArrayReads: 42010 !== 110323510",
+				"react/scale-50k/mount/scan.orderArrayReads: 210010 !== 2756617510"
 			]
 		}
 	]

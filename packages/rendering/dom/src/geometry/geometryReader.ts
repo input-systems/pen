@@ -3,16 +3,29 @@ import {
 	caretRectAtBidiBoundary,
 	rangeRectsFromLineBoxes,
 } from "./bidiRunGeometry";
+import { DATA_ATTRS } from "../utils/dataAttributes";
 import {
 	isPointBesideAtom,
+	measureBlockElementRect,
 	measureBlockRect,
 	measureCaretRect,
 	measureRangeRects,
 	measureRangeSlice,
 } from "./geometryMeasure";
-import { listDomBlockIds, measurePointAt } from "./geometryHitTest";
+import {
+	listDomBlockElements,
+	listDomBlockIds,
+	measurePointAt,
+} from "./geometryHitTest";
 import { measureLineBoxes } from "./lineBoxMeasure";
-import type { Affinity, GeometryReader, LineBox, Point, Rect } from "./types";
+import type {
+	Affinity,
+	BlockRectEntry,
+	GeometryReader,
+	LineBox,
+	Point,
+	Rect,
+} from "./types";
 
 export type { Affinity, GeometryReader, LineBox, Point, Rect } from "./types";
 export { verticalCaretTarget } from "./verticalCaretTarget";
@@ -217,6 +230,24 @@ class GeometryReaderImpl implements GeometryReaderHost {
 			return this.measure.blockIds();
 		}
 		return listDomBlockIds(this.root);
+	}
+
+	/**
+	 * Every mounted block's live box, in DOM order, from one walk of the root.
+	 * `blockRect` per id looks each block up again, which is quadratic over a
+	 * whole document (G5, SCALE6).
+	 */
+	blockRects(): readonly BlockRectEntry[] {
+		if (this.measure?.blockIds || this.measure?.blockRect) {
+			return this.blockIds().flatMap((id) => {
+				const rect = this.blockRect(id);
+				return rect ? [{ id, rect }] : [];
+			});
+		}
+		return listDomBlockElements(this.root).flatMap((element) => {
+			const id = element.getAttribute(DATA_ATTRS.blockId);
+			return id ? [{ id, rect: measureBlockElementRect(element) }] : [];
+		});
 	}
 
 	setCommitId(commitId: number): void {
