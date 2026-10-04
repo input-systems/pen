@@ -3,25 +3,12 @@
 import React, { act } from "react";
 import { describe, expect, it } from "vitest";
 import { createRoot, type Root } from "react-dom/client";
-import { createEditor as createCoreEditor } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
 import { EditorRoot } from "../primitives/editor/root";
-import { defaultSchema } from "@input/pen-schema";
+import { cleanupEditor, createEditor } from "./utils/editorRootTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-function createEditor() {
-	return createCoreEditor({
-		schema: defaultSchema,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
 
 async function renderRoot(
 	editor: ReturnType<typeof createEditor>,
@@ -36,18 +23,6 @@ async function renderRoot(
 	});
 
 	return { container, root: reactRoot };
-}
-
-async function cleanupEditor(
-	editor: ReturnType<typeof createEditor>,
-	root: Root,
-	container: HTMLElement,
-): Promise<void> {
-	await act(async () => {
-		root.unmount();
-	});
-	container.remove();
-	editor.destroy();
 }
 
 function getEditorRoot(container: HTMLElement): HTMLElement {

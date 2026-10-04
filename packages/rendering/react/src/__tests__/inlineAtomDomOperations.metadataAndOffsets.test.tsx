@@ -3,72 +3,28 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import { createEditor } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
-import { createDefaultSchema } from "@input/pen-schema";
-import {
-	moveInlineAtom,
-	replaceInlineAtomWithText,
-} from "@input/pen-dom/field-editor/inlineAtomInteraction";
 import {
 	getInlineAtomElementData,
-	getLogicalTextContent,
-	INLINE_ATOM_REPLACEMENT_TEXT,
 } from "@input/pen-dom/field-editor/inlineAtomDom";
 import {
-	applyDeltaToDOM,
 	fullReconcileDeltasToDOM,
 } from "@input/pen-dom/field-editor/reconciler";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import {
 	domPointToOffset,
 	domSelectionToEditor,
-	pointToEditorSelectionPoint,
 } from "@input/pen-dom/field-editor/selectionBridge";
 import { projectSelectionToDom } from "./utils/projectSelectionToDom";
 import { Pen } from "../primitives/index";
+import {
+	createPresetEditor,
+	flushAnimationFrames,
+	seedInlineAtomDocument,
+} from "./utils/inlineAtomTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-async function flushAnimationFrames(count = 1): Promise<void> {
-	for (let i = 0; i < count; i++) {
-		await new Promise<void>((resolve) => {
-			requestAnimationFrame(() => resolve());
-		});
-	}
-}
-
-function createPresetEditor() {
-	return createEditor({
-		schema: createDefaultSchema(),
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
-
-function seedInlineAtomDocument(editor: ReturnType<typeof createPresetEditor>) {
-	const blockId = editor.firstBlock()!.id;
-	editor.apply([
-		{ type: "splice-text", blockId, from: 0, to: 0, insert: "A" },
-		{
-			type: "splice-text",
-			blockId,
-			from: 1,
-			to: 1,
-			insert: {
-				nodeType: "mention",
-				props: { id: "user-1", label: "Ada" },
-			},
-		},
-		{ type: "splice-text", blockId, from: 2, to: 2, insert: "B" },
-	]);
-	return blockId;
-}
 
 describe("Pen inline atom DOM operations: metadata and selection offsets", () => {
 	it("refreshes inline atom metadata when reconciliation changes atom props", () => {

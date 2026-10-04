@@ -2,10 +2,10 @@
 
 import { createHeadlessEditor } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
-import type { SelectionRecord } from "@input/pen-types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionReconciler } from "../field-editor/sessionReconciler";
 import { DomScheduler } from "../scheduler";
+import { record } from "./scheduler.testHelpers";
 
 let frameQueue: FrameRequestCallback[] = [];
 let rafCalls = 0;
@@ -28,15 +28,6 @@ function flushFrame(): void {
 	for (const callback of batch) {
 		callback(0);
 	}
-}
-
-function record(version: number): SelectionRecord {
-	return {
-		state: null,
-		version,
-		origin: "programmatic",
-		commitId: version,
-	};
 }
 
 describe("DomScheduler CS6 session reconcile", () => {

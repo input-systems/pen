@@ -3,25 +3,8 @@ import { createEditor, getInlineCompletionController } from "@input/pen-core";
 import { FIELD_EDITOR_SLOT_KEY } from "@input/pen-types";
 import { defineExtension } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
-import {
-	autocompleteExtension,
-	createAutocompleteProvider,
-	getAutocompleteController,
-} from "../index";
-
-async function waitForCondition(
-	check: () => boolean,
-	maxTicks = 20,
-): Promise<void> {
-	for (let tick = 0; tick < maxTicks; tick += 1) {
-		if (check()) {
-			return;
-		}
-		await Promise.resolve();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-	}
-	throw new Error("Condition was not met in time.");
-}
+import { autocompleteExtension, getAutocompleteController } from "../index";
+import { waitForCondition } from "./extension.testHelpers";
 
 describe("@input/pen-ai/autocomplete: acceptance and prose normalization", () => {
 	it("accepts the whole visible suggestion and places the caret at the end", async () => {

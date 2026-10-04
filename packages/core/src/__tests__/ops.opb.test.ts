@@ -4,21 +4,12 @@ import type {
 } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
+import { applySplitBlock, filterOpsForDocumentProfile } from "../index";
 import {
-	applySplitBlock,
-	createEditor as createCoreEditor,
-	defineBlock,
-	filterOpsForDocumentProfile,
-	mergeSchemas,
-	SchemaRegistryImpl,
-} from "../index";
-import { createDefaultSchema } from "./fixtures/testSchema";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
+	createEditor,
+	createFlowEditor,
+	flowPolicySchema,
+} from "./ops.testHelpers";
 
 const SPEC_PRIMITIVE_TYPES = [
 	"app",
@@ -59,37 +50,6 @@ const _exactTen: [MissingPrimitiveKey] extends [never]
 		? true
 		: never
 	: never = true;
-
-const flowDisallowedWidget = defineBlock("widget", {
-	content: "none",
-	fieldEditor: "none",
-	authoring: {
-		flowCapability: "flow-disallowed",
-	},
-});
-
-const flowPolicySchema = mergeSchemas(
-	createDefaultSchema(),
-	new SchemaRegistryImpl({
-		blocks: [flowDisallowedWidget],
-		inlines: [],
-	}),
-);
-
-function createEditor() {
-	return createCoreEditor({
-		schema: createDefaultSchema(),
-		preset: noDefaultExtensionsPreset,
-	});
-}
-
-function createFlowEditor() {
-	return createCoreEditor({
-		schema: flowPolicySchema,
-		documentProfile: "flow",
-		preset: noDefaultExtensionsPreset,
-	});
-}
 
 function withRejectedOwnKey<T extends object>(op: T, key: string): T {
 	const next = { ...op };

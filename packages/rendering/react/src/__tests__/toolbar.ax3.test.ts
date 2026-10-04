@@ -3,36 +3,14 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { createEditor, fieldEditorHostFacet } from "@input/pen-core";
+import { fieldEditorHostFacet } from "@input/pen-core";
 import type { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
-import { defaultPreset } from "@input/pen";
 import { Pen } from "../primitives/index";
-import { defaultSchema } from "@input/pen-schema";
+import { createTestEditor, dispatchKey } from "./utils/toolbarTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-function createTestEditor() {
-	return createEditor({
-		schema: defaultSchema,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
-
-function dispatchKey(target: EventTarget, key: string): KeyboardEvent {
-	const event = new KeyboardEvent("keydown", {
-		key,
-		bubbles: true,
-		cancelable: true,
-	});
-	target.dispatchEvent(event);
-	return event;
-}
 
 function toolbarItems(container: HTMLElement): HTMLElement[] {
 	return Array.from(

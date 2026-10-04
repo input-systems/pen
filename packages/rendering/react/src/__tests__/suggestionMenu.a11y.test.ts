@@ -3,12 +3,15 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
-import { createEditor, fieldEditorHostFacet } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
+import { fieldEditorHostFacet } from "@input/pen-core";
 import type { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
 import { useSuggestionMenu } from "../hooks/useSuggestionMenu";
 import { Pen } from "../primitives/index";
-import { defaultSchema } from "@input/pen-schema";
+import {
+	createSuggestionMenuEditor,
+	dispatchKey,
+	waitForCondition,
+} from "./utils/suggestionMenuTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -16,36 +19,12 @@ import { defaultSchema } from "@input/pen-schema";
 
 const h = React.createElement;
 
-async function waitForCondition(
-	check: () => boolean,
-	maxTicks = 20,
-): Promise<void> {
-	for (let tick = 0; tick < maxTicks; tick += 1) {
-		if (check()) {
-			return;
-		}
-		await Promise.resolve();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-	}
-}
-
 async function flushAnimationFrames(count = 1): Promise<void> {
 	for (let i = 0; i < count; i += 1) {
 		await new Promise<void>((resolve) => {
 			requestAnimationFrame(() => resolve());
 		});
 	}
-}
-
-function createSuggestionMenuEditor() {
-	return createEditor({
-		schema: defaultSchema,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
 }
 
 function getFieldEditor(
@@ -58,16 +37,6 @@ function getFieldEditor(
 		throw new Error("Missing attached field editor");
 	}
 	return fieldEditor;
-}
-
-function dispatchKey(key: string, target: EventTarget = document) {
-	target.dispatchEvent(
-		new KeyboardEvent("keydown", {
-			key,
-			bubbles: true,
-			cancelable: true,
-		}),
-	);
 }
 
 function requireElement<T extends Element>(

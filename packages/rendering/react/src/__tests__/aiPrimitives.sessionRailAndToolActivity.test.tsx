@@ -10,80 +10,13 @@ import { aiExtension, getAIController } from "@input/pen-ai";
 import { undoExtension } from "@input/pen-undo";
 import { deltaStreamExtension } from "@input/pen-ai/stream";
 import { toolsExtension } from "@input/pen-tools";
-import { defaultPreset } from "@input/pen";
 import { defaultSchema } from "@input/pen-schema";
-import {
-	Pen,
-	useAIActions,
-	useAISessions,
-	useActiveAISession,
-	useAIDebugLog,
-} from "../index";
+import { Pen } from "../index";
+import { waitForAttributeValue } from "./utils/aiPrimitivesTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-function createKeyDownEvent(
-	key: string,
-	options: KeyboardEventInit = {},
-): KeyboardEvent {
-	return new KeyboardEvent("keydown", {
-		key,
-		bubbles: true,
-		cancelable: true,
-		...options,
-	});
-}
-
-function createDeferred() {
-	let resolve!: () => void;
-	const promise = new Promise<void>((nextResolve) => {
-		resolve = nextResolve;
-	});
-	return { promise, resolve };
-}
-
-function withNavigatorPlatform<T>(platform: string, run: () => T): T {
-	const descriptor = Object.getOwnPropertyDescriptor(navigator, "platform");
-	Object.defineProperty(navigator, "platform", {
-		configurable: true,
-		value: platform,
-	});
-	try {
-		return run();
-	} finally {
-		if (descriptor) {
-			Object.defineProperty(navigator, "platform", descriptor);
-		}
-	}
-}
-
-async function waitForAttributeValue(
-	readValue: () => string | null | undefined,
-	expectedValue: string,
-	maxTicks = 12,
-): Promise<void> {
-	for (let tick = 0; tick < maxTicks; tick += 1) {
-		if (readValue() === expectedValue) {
-			return;
-		}
-		await Promise.resolve();
-	}
-}
-
-async function waitForCondition(
-	check: () => boolean,
-	maxTicks = 20,
-): Promise<void> {
-	for (let tick = 0; tick < maxTicks; tick += 1) {
-		if (check()) {
-			return;
-		}
-		await Promise.resolve();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-	}
-}
 
 function testStreamingToolExtension() {
 	let toolRuntime: ToolRuntime | null = null;

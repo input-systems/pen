@@ -1,70 +1,8 @@
-import { yjsAdapter } from "@input/pen-yjs";
-import { type DocumentSession, type PenStreamPart } from "@input/pen-types";
-import { defineExtension, getOpOriginType } from "@input/pen-core";
-import { describe, expect, it, vi } from "vitest";
+import { defineExtension } from "@input/pen-core";
+import { describe, expect, it } from "vitest";
 
-import { createDefaultSchema } from "./fixtures/testSchema";
-import {
-	createDecorationSet,
-	createDocumentSession,
-	applySplitBlock,
-	createEditor as createCoreEditor,
-	createHeadlessEditor,
-	ensureInlineCompletionController,
-} from "../index";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
-
-function createEditor(options: Parameters<typeof createCoreEditor>[0] = {}) {
-	return createCoreEditor({
-		schema: createDefaultSchema(),
-		...options,
-		preset: options.preset ?? noDefaultExtensionsPreset,
-	});
-}
-
-function createDefaultEditor(
-	options: Parameters<typeof createCoreEditor>[0] = {},
-) {
-	return createCoreEditor({
-		schema: createDefaultSchema(),
-		...options,
-	});
-}
-
-async function* createStream(parts: PenStreamPart[]) {
-	for (const part of parts) {
-		yield part;
-	}
-}
-
-type TestYTextLike = {
-	insert(offset: number, text: string): void;
-};
-
-type TestBlockMapLike = {
-	get(key: string): unknown;
-};
-
-type TestBlocksMapLike = {
-	get(key: string): TestBlockMapLike | undefined;
-};
-
-type TestRawDocLike = {
-	getMap(name: "blocks"): TestBlocksMapLike;
-};
-
-type TestTableRowLike = {
-	get(field: "cells"): { delete(index: number, length: number): void };
-};
-
-type TestTableContentLike = {
-	get(index: number): TestTableRowLike;
-};
+import { applySplitBlock } from "../index";
+import { TestBlockMapLike, createEditor } from "./editorCore.testHelpers";
 
 describe("@input/pen-core createEditor: block splits and commit batching", () => {
 	it("splits at offset zero by inserting an empty block above", () => {

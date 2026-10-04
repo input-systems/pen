@@ -1,75 +1,10 @@
-import { yjsAdapter } from "@input/pen-yjs";
-import { type DocumentSession, type PenStreamPart } from "@input/pen-types";
-import { defineExtension, getOpOriginType } from "@input/pen-core";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { createDefaultSchema } from "./fixtures/testSchema";
 import {
-	createDecorationSet,
-	createDocumentSession,
-	createEditor as createCoreEditor,
-	createHeadlessEditor,
-	ensureInlineCompletionController,
-} from "../index";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
-
-function createEditor(options: Parameters<typeof createCoreEditor>[0] = {}) {
-	return createCoreEditor({
-		schema: createDefaultSchema(),
-		...options,
-		preset: options.preset ?? noDefaultExtensionsPreset,
-	});
-}
-
-function createDefaultEditor(
-	options: Parameters<typeof createCoreEditor>[0] = {},
-) {
-	return createCoreEditor({
-		schema: createDefaultSchema(),
-		...options,
-	});
-}
-
-async function* createStream(parts: PenStreamPart[]) {
-	for (const part of parts) {
-		yield part;
-	}
-}
-
-async function flushMicrotasks(count = 2): Promise<void> {
-	for (let index = 0; index < count; index++) {
-		await Promise.resolve();
-	}
-}
-
-type TestYTextLike = {
-	insert(offset: number, text: string): void;
-};
-
-type TestBlockMapLike = {
-	get(key: string): unknown;
-};
-
-type TestBlocksMapLike = {
-	get(key: string): TestBlockMapLike | undefined;
-};
-
-type TestRawDocLike = {
-	getMap(name: "blocks"): TestBlocksMapLike;
-};
-
-type TestTableRowLike = {
-	get(field: "cells"): { delete(index: number, length: number): void };
-};
-
-type TestTableContentLike = {
-	get(index: number): TestTableRowLike;
-};
+	TestBlockMapLike,
+	TestTableContentLike,
+	createEditor,
+} from "./editorCore.testHelpers";
 
 describe("@input/pen-core table operations: row, column, and cell commands", () => {
 	it("insert-block with table type produces seeded 2x2 grid", () => {

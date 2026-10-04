@@ -1,21 +1,7 @@
 import type { CommitEvent, DiagnosticEvent } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
-import { createEditor as createCoreEditor } from "../index";
-import { createDefaultSchema } from "./fixtures/testSchema";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
-
-function createEditor() {
-	return createCoreEditor({
-		schema: createDefaultSchema(),
-		preset: noDefaultExtensionsPreset,
-	});
-}
+import { createEditor } from "./ops.testHelpers";
 
 describe("ops primitives PR1–PR10", () => {
 	it("PR1: splice-text clamps out-of-range from/to and emits op-clamped", () => {

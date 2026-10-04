@@ -1,61 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createEditor, getNumberedListItemValue } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
-import {
-	applyDeleteBehavior,
-	applyListInputRule,
-	applyBackspaceBehavior,
-	applyEnterBehavior,
-	applyListTabBehavior,
-	getLogicalInlineLength,
-	moveCaretAcrossBlocks,
-	normalizeInlineOffset,
-	resolveBackspaceAction,
-	resolveEnterAction,
-	splitBlockAtOffset,
-	toggleInlineMark,
-} from "@input/pen-dom/field-editor/commands";
-import { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
-import type { FieldEditorTextLike } from "@input/pen-dom/field-editor/crdt";
-
-type BlocksMapLike = {
-	get(key: string): { get(field: string): unknown } | undefined;
-};
-
-type RawDocLike = {
-	getMap(name: string): BlocksMapLike;
-};
-
-function visibleText(text: string): string {
-	return text.replace(/\u200B/g, "");
-}
-
-function getYText(
-	editor: ReturnType<typeof createEditor>,
-	blockId: string,
-): FieldEditorTextLike {
-	const adapter = editor.internals.adapter;
-	const doc = editor.internals.crdtDoc;
-	const ydoc = adapter.raw<RawDocLike>(doc);
-	const ytext = ydoc
-		.getMap("blocks")
-		.get(blockId)
-		?.get("content") as FieldEditorTextLike | null;
-	if (!ytext) {
-		throw new Error(`Missing test Y.Text for block ${blockId}`);
-	}
-	return ytext;
-}
-
-function editorOpts() {
-	return {
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	};
-}
+import { createEditor } from "@input/pen-core";
+import { moveCaretAcrossBlocks } from "@input/pen-dom/field-editor/commands";
+import { editorOpts, getYText } from "./utils/fieldEditorCommandsTestHelpers";
 
 describe("@input/pen-react field-editor commands: block navigation", () => {
 	it("moves to the previous block at the logical start", () => {

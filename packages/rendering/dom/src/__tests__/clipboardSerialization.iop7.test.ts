@@ -8,6 +8,7 @@ import {
 	sliceDeltas,
 } from "../utils/clipboardSerialization";
 import type { Delta } from "../utils/clipboardPayload";
+import { createClipboardEvent } from "./clipboardSerialization.testHelpers";
 
 const noDefaultExtensionsPreset = {
 	resolve() {
@@ -30,25 +31,6 @@ function stubEditor(schema = defaultSchema): Editor {
 		schema,
 		facet: () => undefined,
 	} as unknown as Editor;
-}
-
-function createClipboardEvent(): {
-	event: ClipboardEvent;
-	get: (type: string) => string;
-} {
-	const data = new Map<string, string>();
-	const clipboardData = {
-		setData(type: string, value: string) {
-			data.set(type, value);
-		},
-		getData(type: string) {
-			return data.get(type) ?? "";
-		},
-	} as unknown as DataTransfer;
-	return {
-		event: { clipboardData } as ClipboardEvent,
-		get: (type: string) => data.get(type) ?? "",
-	};
 }
 
 const toolChip: InlineSchema = {

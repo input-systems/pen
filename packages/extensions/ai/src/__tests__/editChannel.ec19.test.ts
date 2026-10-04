@@ -1,29 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { createEditor } from "@input/pen-core";
-import { toolsExtension } from "@input/pen-tools";
-import { defaultSchema } from "@input/pen-schema";
-import { undoExtension } from "@input/pen-undo";
 import type { ModelAdapter, ModelStreamEvent } from "@input/pen-types";
-import { aiExtension, getAIController } from "../index";
-import { deltaStreamExtension } from "../stream";
-
-const PROMPT = "Turn the last paragraph into a bullet list";
-const ORIGINAL = "Revenue grew. Costs fell. Margins improved.";
+import { getAIController } from "../index";
+import {
+	ORIGINAL,
+	PROMPT,
+	annotationsFromRequest,
+	createChatEditor,
+} from "./editChannel.testHelpers";
 const REWRITE = "Revenue grew";
-const BLOCK_ANNOTATION_PATTERN = /<!-- block:(\S+) (\S+) -->/g;
-
-interface Annotation {
-	id: string;
-	type: string;
-}
-
-function annotationsFromRequest(request: { messages: unknown }): Annotation[] {
-	const serialized = JSON.stringify(request.messages);
-	return [...serialized.matchAll(BLOCK_ANNOTATION_PATTERN)].map((match) => ({
-		id: match[1]!,
-		type: match[2]!,
-	}));
-}
 
 function editChannelModel(options?: {
 	beforeFirstYield?: () => Promise<void>;
@@ -63,23 +48,6 @@ function editChannelModel(options?: {
 			yield { type: "done" } as ModelStreamEvent;
 		},
 	};
-}
-
-function createChatEditor(model: ModelAdapter) {
-	return createEditor({
-		schema: defaultSchema,
-		extensions: [
-			undoExtension(),
-			deltaStreamExtension(),
-			toolsExtension(),
-			aiExtension({
-				model,
-				contentFormat: { blockGeneration: "markdown" },
-				mutationPreference: "direct",
-				allowedMutatingTools: ["edit_document"],
-			}),
-		],
-	});
 }
 
 function seedDocument(editor: ReturnType<typeof createEditor>): string {

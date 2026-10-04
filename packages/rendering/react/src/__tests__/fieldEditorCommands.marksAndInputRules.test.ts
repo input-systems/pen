@@ -1,65 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { createEditor, getNumberedListItemValue } from "@input/pen-core";
+import { createEditor } from "@input/pen-core";
 import {
 	FIELD_EDITOR_SLOT_KEY,
 	INPUT_RULES_ENGINE_SLOT_KEY,
 } from "@input/pen-types";
-import { defaultPreset } from "@input/pen";
 import {
-	applyDeleteBehavior,
 	applyListInputRule,
 	applyBackspaceBehavior,
 	applyEnterBehavior,
-	applyListTabBehavior,
 	getLogicalInlineLength,
-	moveCaretAcrossBlocks,
 	normalizeInlineOffset,
-	resolveBackspaceAction,
-	resolveEnterAction,
 	splitBlockAtOffset,
 	toggleInlineMark,
 } from "@input/pen-dom/field-editor/commands";
 import { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
-import type { FieldEditorTextLike } from "@input/pen-dom/field-editor/crdt";
-
-type BlocksMapLike = {
-	get(key: string): { get(field: string): unknown } | undefined;
-};
-
-type RawDocLike = {
-	getMap(name: string): BlocksMapLike;
-};
-
-function visibleText(text: string): string {
-	return text.replace(/\u200B/g, "");
-}
-
-function getYText(
-	editor: ReturnType<typeof createEditor>,
-	blockId: string,
-): FieldEditorTextLike {
-	const adapter = editor.internals.adapter;
-	const doc = editor.internals.crdtDoc;
-	const ydoc = adapter.raw<RawDocLike>(doc);
-	const ytext = ydoc
-		.getMap("blocks")
-		.get(blockId)
-		?.get("content") as FieldEditorTextLike | null;
-	if (!ytext) {
-		throw new Error(`Missing test Y.Text for block ${blockId}`);
-	}
-	return ytext;
-}
-
-function editorOpts() {
-	return {
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	};
-}
+import {
+	editorOpts,
+	getYText,
+	visibleText,
+} from "./utils/fieldEditorCommandsTestHelpers";
 
 describe("@input/pen-react field-editor commands: inline marks and input rules", () => {
 	it("toggles an inline mark across a single-block text selection", () => {

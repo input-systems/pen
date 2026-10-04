@@ -5,15 +5,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { createEditor as createCoreEditor } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
-import { defaultSchema } from "@input/pen-schema";
 import { describe, expect, it } from "vitest";
 import { EditorRoot } from "../primitives/editor/root";
 import {
 	buildDataAttributes,
 	DATA_ATTRS,
 } from "@input/pen-dom/utils/dataAttributes";
+import { cleanupEditor, createEditor } from "./utils/editorRootTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -121,17 +119,6 @@ describe("editor root data-attribute catalog pin", () => {
 	});
 });
 
-function createEditor() {
-	return createCoreEditor({
-		schema: defaultSchema,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
-
 async function renderRoot(
 	editor: ReturnType<typeof createEditor>,
 	readonly?: boolean,
@@ -149,18 +136,6 @@ async function renderRoot(
 		throw new Error("Missing editor root host");
 	}
 	return { container, root: reactRoot, host };
-}
-
-async function cleanupEditor(
-	editor: ReturnType<typeof createEditor>,
-	root: Root,
-	container: HTMLElement,
-): Promise<void> {
-	await act(async () => {
-		root.unmount();
-	});
-	container.remove();
-	editor.destroy();
 }
 
 describe("HOST6 boolean data-attribute form", () => {

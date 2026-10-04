@@ -7,26 +7,11 @@ import type { ModelAdapter, ModelStreamEvent } from "@input/pen-types";
 import type { AIMutationPreference } from "../runtime/contracts";
 import { aiExtension, getAIController } from "../index";
 import { deltaStreamExtension } from "../stream";
-
-const PROMPT = "Turn the last paragraph into a bullet list";
-const BLOCK_ANNOTATION_PATTERN = /<!-- block:(\S+) (\S+) -->/g;
-
-interface Annotation {
-	id: string;
-	type: string;
-}
+import { PROMPT, annotationsFromRequest } from "./editChannel.testHelpers";
 
 interface CapturedRequest {
 	messages: unknown;
 	tools: Array<{ name: string; inputSchema?: unknown }>;
-}
-
-function annotationsFromRequest(request: { messages: unknown }): Annotation[] {
-	const serialized = JSON.stringify(request.messages);
-	return [...serialized.matchAll(BLOCK_ANNOTATION_PATTERN)].map((match) => ({
-		id: match[1]!,
-		type: match[2]!,
-	}));
 }
 
 function editDocumentTool(request: CapturedRequest) {

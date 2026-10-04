@@ -3,25 +3,16 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { createEditor } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
 import { Pen } from "../primitives/index";
-import { defaultSchema } from "@input/pen-schema";
+import {
+	createTestEditor,
+	dispatchKey,
+	fixtures,
+} from "./utils/toolbarTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-function createTestEditor() {
-	return createEditor({
-		schema: defaultSchema,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
 
 function toolbarItems(container: HTMLElement): HTMLElement[] {
 	return Array.from(
@@ -29,16 +20,6 @@ function toolbarItems(container: HTMLElement): HTMLElement[] {
 			"[data-pen-toolbar-button], [data-pen-toolbar-toggle]",
 		),
 	);
-}
-
-function dispatchKey(target: EventTarget, key: string): KeyboardEvent {
-	const event = new KeyboardEvent("keydown", {
-		key,
-		bubbles: true,
-		cancelable: true,
-	});
-	target.dispatchEvent(event);
-	return event;
 }
 
 async function renderToolbar() {
@@ -71,12 +52,6 @@ async function renderToolbar() {
 	fixtures.push(fixture);
 	return fixture;
 }
-
-const fixtures: Array<{
-	container: HTMLElement;
-	editor: ReturnType<typeof createTestEditor>;
-	root: ReturnType<typeof createRoot>;
-}> = [];
 
 afterEach(async () => {
 	while (fixtures.length > 0) {

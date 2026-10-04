@@ -3,93 +3,20 @@
 import React, { act } from "react";
 import { describe, expect, it } from "vitest";
 import { createRoot } from "react-dom/client";
-import {
-	createEditor as createCoreEditor,
-	DocumentRangeImpl,
-	ensureInlineCompletionController,
-	fieldEditorHostFacet,
-} from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
-import type { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
+import { DocumentRangeImpl } from "@input/pen-core";
 import { Pen } from "../primitives/index";
 import { domSelectionToEditor } from "@input/pen-dom/field-editor/selectionBridge";
-import { projectSelectionToDom } from "./utils/projectSelectionToDom";
-import { FakeEditContext } from "./utils/fakeEditContext";
-import { defaultSchema } from "@input/pen-schema";
+import {
+	createEditor,
+	createEscapeEvent,
+	createSelectAllEvent,
+	flushAnimationFrames,
+	getFieldEditor,
+} from "./utils/crossBlockSelectionTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-function createEditor(options: Parameters<typeof createCoreEditor>[0] = {}) {
-	return createCoreEditor({
-		schema: defaultSchema,
-		...options,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
-
-function createEscapeEvent(): KeyboardEvent {
-	return new KeyboardEvent("keydown", {
-		key: "Escape",
-		bubbles: true,
-	});
-}
-
-function createSelectAllEvent(): KeyboardEvent {
-	return new KeyboardEvent("keydown", {
-		key: "a",
-		metaKey: true,
-		bubbles: true,
-		cancelable: true,
-	});
-}
-
-async function flushAnimationFrames(count = 1): Promise<void> {
-	for (let i = 0; i < count; i++) {
-		await new Promise<void>((resolve) => {
-			requestAnimationFrame(() => resolve());
-		});
-	}
-}
-
-function getFieldEditor(
-	editor: ReturnType<typeof createEditor>,
-): FieldEditorImpl {
-	const fieldEditor = editor.facet(
-		fieldEditorHostFacet,
-	) as FieldEditorImpl | null;
-	if (!fieldEditor) {
-		throw new Error("Missing attached field editor");
-	}
-	return fieldEditor;
-}
-
-function setNativeSelectionRange(
-	startElement: HTMLElement,
-	startOffset: number,
-	endElement: HTMLElement,
-	endOffset: number,
-): void {
-	const selection = document.getSelection();
-	const range = document.createRange();
-	range.setStart(startElement.firstChild ?? startElement, startOffset);
-	range.setEnd(endElement.firstChild ?? endElement, endOffset);
-	selection?.removeAllRanges();
-	selection?.addRange(range);
-}
-
-function createMouseUpEvent(clientX = 40, clientY = 40): MouseEvent {
-	return new MouseEvent("mouseup", {
-		bubbles: true,
-		clientX,
-		clientY,
-	});
-}
 
 describe("@input/pen-react Escape: collapsing cross-block selections", () => {
 	it("collapses cross-block selections to the focus caret", async () => {

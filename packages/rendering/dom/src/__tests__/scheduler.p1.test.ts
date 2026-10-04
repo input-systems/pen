@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import type { SelectionRecord } from "@input/pen-types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DomScheduler } from "../scheduler";
+import { record } from "./scheduler.testHelpers";
 
 let frameQueue: FrameRequestCallback[] = [];
 
@@ -22,15 +22,6 @@ function flushFrame(): void {
 	for (const callback of batch) {
 		callback(0);
 	}
-}
-
-function record(version: number): SelectionRecord {
-	return {
-		state: null,
-		version,
-		origin: "programmatic",
-		commitId: version,
-	};
 }
 
 describe("DomScheduler without a projector slot (W3.R8)", () => {

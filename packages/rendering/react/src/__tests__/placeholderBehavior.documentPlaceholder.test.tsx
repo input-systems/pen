@@ -12,32 +12,14 @@ import {
 } from "@input/pen-core";
 import { type BlockHandle, type BlockRenderContext } from "@input/pen-types";
 import { defaultPreset } from "@input/pen";
-import { InlineContent } from "../primitives/editor/inlineContent";
 import { Pen } from "../primitives/index";
 import { ParagraphRenderer, registerRenderer } from "../renderers/index";
 import { defaultSchema } from "@input/pen-schema";
+import { PlaceholderParagraphRenderer } from "./utils/placeholderTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-function PlaceholderParagraphRenderer(
-	block: BlockHandle,
-	ctx: BlockRenderContext,
-): React.ReactElement {
-	return (
-		<div
-			ref={ctx.ref as React.Ref<HTMLDivElement>}
-			data-block-type="paragraph"
-			data-selected={ctx.selected ? "" : undefined}
-		>
-			<InlineContent
-				blockId={block.id}
-				placeholder="Type ⌘I for AI Agent, or / for commands"
-			/>
-		</div>
-	);
-}
 
 /**
  * An email signature: chrome the host puts in the document, which the user did
