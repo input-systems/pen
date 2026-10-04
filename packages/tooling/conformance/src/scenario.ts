@@ -86,8 +86,10 @@ function createScenario(page: Page): ScenarioApi {
 	const expectedDiagnostics = new Set<string>();
 
 	async function standing(): Promise<void> {
-		await assertStandingDomMatchesAuthority(page);
+		// OV4 runs a flush first, so a D5 substitute's overlay paint (part of
+		// the S2 check, W3.R2) is on the layer when S2 reads it.
 		await assertStandingOverlayMatchesAuthority(page);
+		await assertStandingDomMatchesAuthority(page);
 		await assertStandingDiagnostics(page, expectedDiagnostics);
 	}
 

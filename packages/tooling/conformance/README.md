@@ -27,7 +27,7 @@ pnpm --filter @input/pen-conformance run test:host4
 - `harness/` — Vite app: one v1-preset editor, fixture loader, `window.__penConformance`
 - `src/` — scenario DSL, standing assertions, and lint scripts
 - `scenarios/` — scripted journeys (hello-world, harness self-test, feature suites)
-- `suites/` — selection (live I4/P1/S3/S5/S6), input (K1/K2/K4/B1/B2), ime (C1–C4 plus `MANUAL.md`), bidi (M2/M3/DIR2), overlays (O1/O2), geometry (G2), fuzz (the W3.R19 DOM fuzzer: seeded S2/S5/S6 walks over `fuzz-mixed`, `pnpm run fuzz:dom -- --project <engine>`, traces in `test-results/fuzz-dom/`). Other live wiring stays in `scenarios/` and `harness-live.spec.ts`.
+- `suites/` — selection (live I4/P1/S3/S5/S6), input (K1/K2/K4/B1/B2), ime (C1–C4 plus `MANUAL.md`), bidi (M2/M3/DIR2), overlays (O1/O2), geometry (G2), fuzz (the W3.R19 DOM fuzzer: seeded S2/S5/S6 walks over `fuzz-mixed` and, with `long-drag` across more than 50 blocks, `fuzz-large` (the D5 substitute check), `pnpm run fuzz:dom -- --project <engine>`, traces in `test-results/fuzz-dom/`). Other live wiring stays in `scenarios/` and `harness-live.spec.ts`.
 - `fixtures/` — documents plus the diagnostics allowlist
 - `fixtures/hostile/` — attacker corpus (`window.__xssProbe` canary)
 

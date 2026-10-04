@@ -89,6 +89,7 @@ import {
 	pointsEqual,
 	resolveDomAuthorityCheck,
 	type ExtendedS2Observations,
+	type SubstitutePaint,
 } from "./domAuthorityCompare";
 import {
 	isLogicallyEquivalent,
@@ -562,12 +563,189 @@ function checkDomMatchesAuthority(): DomAuthorityCheck {
 
 /** W3.R2: what the extended standing S2 check needs from the page. */
 function observeExtendedS2(editor: Editor, root: HTMLElement): ExtendedS2Observations {
+	const substitute = substituteState(editor);
 	return {
 		composing: isFieldComposing(editor),
 		nativeRangeInRoot: hasNativeRangeIn(root),
 		focusedSinkRole: focusedSinkRole(root),
 		equivalent: isDomEquivalentToText(editor, root),
+		substitute,
+		substitutePaint: substitute ? observeSubstitutePaint(root) : null,
 	};
+}
+
+/** D5: the field editor's substitute state (`getSubstituteState`), or null. */
+function substituteState(
+	editor: Editor,
+): PenConformanceBridge["substituteState"] {
+	const fieldEditor = editor.facet(fieldEditorHostFacet) as {
+		getSubstituteState?: () => PenConformanceBridge["substituteState"];
+	} | null;
+	return fieldEditor?.getSubstituteState?.() ?? null;
+}
+
+/** D5: the overlay layer's endpoint carets and range items, as painted. */
+function observeSubstitutePaint(root: HTMLElement): SubstitutePaint {
+	const items = [
+		...root.querySelectorAll<HTMLElement>(
+			"[data-pen-overlay-layer] [data-pen-overlay-item]",
+		),
+	];
+	const endpoints = items
+		.filter(
+			(item) => item.getAttribute("data-pen-overlay-item") === "caret",
+		)
+		.map((item) => item.getAttribute("data-endpoint"))
+		.filter((endpoint): endpoint is string => endpoint !== null)
+		.sort();
+	const kindCount = (kind: string) =>
+		items.filter(
+			(item) => item.getAttribute("data-pen-overlay-item") === kind,
+		).length;
+	return {
+		endpoints,
+		ranges: kindCount("range"),
+		blockSpans: kindCount("block-span"),
+	};
+}
+
+type ConfiningWriteFault = {
+	confined: number;
+	clears: number;
+	laterWrites: number;
+};
+
+/**
+ * W3.R17 fault injection: an engine that confines a multi-block range to
+ * the anchor field. Within the task of the first cross-block write, every
+ * cross-block selection write is clamped to the anchor's node (and
+ * `extend` is refused), as WebKit and Firefox confine select-all. It counts
+ * the clamped writes, the lone `removeAllRanges` calls that task ends with
+ * (the projector's one fallback write), and any write after that task.
+ */
+function installConfiningWriteFault(): void {
+	const counters: ConfiningWriteFault = {
+		confined: 0,
+		clears: 0,
+		laterWrites: 0,
+	};
+	(
+		window as unknown as { __penConfiningWriteFault: ConfiningWriteFault }
+	).__penConfiningWriteFault = counters;
+	const proto = Selection.prototype;
+	const original = {
+		setBaseAndExtent: proto.setBaseAndExtent,
+		extend: proto.extend,
+		addRange: proto.addRange,
+		removeAllRanges: proto.removeAllRanges,
+		collapse: proto.collapse,
+	};
+	let phase: "armed" | "confining" | "done" = "armed";
+	let pendingClear = false;
+	const blockOf = (node: Node) =>
+		(node instanceof Element ? node : node.parentElement)?.closest(
+			"[data-block-id]",
+		) ?? null;
+	const endOf = (node: Node) =>
+		node.nodeType === Node.TEXT_NODE
+			? (node as Text).length
+			: node.childNodes.length;
+	const note = (replacesClear: boolean) => {
+		if (phase === "done") {
+			counters.laterWrites += 1;
+		}
+		if (replacesClear) {
+			pendingClear = false;
+		}
+	};
+	const startConfining = () => {
+		phase = "confining";
+		counters.confined += 1;
+		setTimeout(() => {
+			if (pendingClear) {
+				counters.clears += 1;
+			}
+			pendingClear = false;
+			phase = "done";
+		}, 0);
+	};
+	proto.setBaseAndExtent = function (
+		this: Selection,
+		anchorNode: Node,
+		anchorOffset: number,
+		focusNode: Node,
+		focusOffset: number,
+	) {
+		note(true);
+		if (phase !== "done" && blockOf(anchorNode) !== blockOf(focusNode)) {
+			if (phase === "armed") {
+				startConfining();
+			}
+			return original.setBaseAndExtent.call(
+				this,
+				anchorNode,
+				anchorOffset,
+				anchorNode,
+				endOf(anchorNode),
+			);
+		}
+		return original.setBaseAndExtent.call(
+			this,
+			anchorNode,
+			anchorOffset,
+			focusNode,
+			focusOffset,
+		);
+	};
+	proto.extend = function (this: Selection, node: Node, offset?: number) {
+		note(false);
+		if (phase === "confining") {
+			throw new DOMException(
+				"confined to the anchor field",
+				"InvalidStateError",
+			);
+		}
+		return original.extend.call(this, node, offset);
+	};
+	proto.addRange = function (this: Selection, range: Range) {
+		note(true);
+		if (
+			phase === "confining" &&
+			blockOf(range.startContainer) !== blockOf(range.endContainer)
+		) {
+			range.setEnd(range.startContainer, endOf(range.startContainer));
+		}
+		return original.addRange.call(this, range);
+	};
+	proto.collapse = function (
+		this: Selection,
+		node: Node | null,
+		offset?: number,
+	) {
+		note(true);
+		return original.collapse.call(this, node, offset);
+	};
+	proto.removeAllRanges = function (this: Selection) {
+		note(false);
+		if (phase === "confining") {
+			pendingClear = true;
+		}
+		return original.removeAllRanges.call(this);
+	};
+}
+
+function confiningWriteFaultCounters(): ConfiningWriteFault {
+	return (
+		(
+			window as unknown as {
+				__penConfiningWriteFault?: ConfiningWriteFault;
+			}
+		).__penConfiningWriteFault ?? {
+			confined: 0,
+			clears: 0,
+			laterWrites: 0,
+		}
+	);
 }
 
 function isFieldComposing(editor: Editor): boolean {
@@ -931,6 +1109,11 @@ function selectTextById(
 	getHarnessSession().editor.selectText(blockId, anchorOffset, focusOffset);
 }
 
+/** A programmatic text range between two blocks (D5 scenarios). */
+function selectTextRangeById(anchor: LogicalPoint, focus: LogicalPoint): void {
+	getHarnessSession().editor.selectTextRange(anchor, focus);
+}
+
 /** Clock runs disconnect the in-page peer so its sync is not measured. */
 function setPeersConnected(connected: boolean): void {
 	const current = getHarnessSession();
@@ -1250,6 +1433,10 @@ function installBridge(): void {
 		},
 		setPeersConnected,
 		selectTextById,
+		selectTextRangeById,
+		get substituteState() {
+			return substituteState(getHarnessSession().editor);
+		},
 		selectCaretWithAffinity(blockId, offset, affinity) {
 			const point = { blockId, offset };
 			getHarnessSession().editor.setSelection(
@@ -1320,6 +1507,10 @@ function installBridge(): void {
 		installSelectionWriteFault,
 		get selectionWriteFault() {
 			return selectionWriteFaultCounters();
+		},
+		installConfiningWriteFault,
+		get confiningWriteFault() {
+			return confiningWriteFaultCounters();
 		},
 		forceUnwindowedDomDivergence,
 		domMatchesAuthority: checkDomMatchesAuthority,

@@ -62,6 +62,47 @@ describe("syncFocusSink (AX1)", () => {
 		editor.destroy();
 	});
 
+	it("AX1: a text range in a D5 substitute state reveals the sink as a text range and takes focus", () => {
+		const editor = createHeadlessEditor({ schema: defaultSchema });
+		const first = editor.firstBlock()!.id;
+		const second = "sink-second";
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: second,
+				blockType: "paragraph",
+				props: {},
+				position: "last",
+			},
+		]);
+		const sink = makeSink();
+		const root = document.createElement("div");
+		document.body.append(root);
+		root.append(sink.element);
+		document.body.focus();
+
+		syncFocusSink(
+			sink,
+			editor,
+			{
+				type: "text",
+				anchor: { blockId: first, offset: 0 },
+				focus: { blockId: second, offset: 0 },
+			},
+			{ ...PROJECTION, substitute: "block-surface-range" },
+		);
+
+		expect(sink.element.getAttribute("aria-hidden")).toBeNull();
+		expect(sink.element.tabIndex).toBe(0);
+		expect(sink.element.getAttribute("role")).toBe("group");
+		expect(sink.element.getAttribute("aria-label")).toBe(
+			"Text selected across 2 blocks",
+		);
+		expect(document.activeElement).toBe(sink.element);
+		root.remove();
+		editor.destroy();
+	});
+
 	it("AX1: text selection hides the sink", () => {
 		const editor = createHeadlessEditor({ schema: defaultSchema });
 		const sink = makeSink();

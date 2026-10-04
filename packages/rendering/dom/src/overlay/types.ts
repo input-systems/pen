@@ -5,6 +5,7 @@ import type {
 	Unsubscribe,
 } from "@input/pen-types";
 import type { FieldEditorSurfaceMode } from "../field-editor/crossBlock";
+import type { S2ExceptionKind } from "../field-editor/selectionProjector";
 import type { Affinity, Point } from "../geometry/types";
 
 /**
@@ -132,12 +133,11 @@ export interface OverlayFieldState {
 	readonly mode: FieldEditorSurfaceMode;
 	readonly editingCell: boolean;
 	/**
-	 * The S2 exception in effect. Until W3 exposes its substitute-state
-	 * accessor, the controller computes `"block-surface-range"` from the
-	 * record (a text range over more than fifty blocks) and never reports
-	 * `"engine-confined-range"`.
+	 * The S2 exception in effect (D5), read from the field editor's
+	 * `getSubstituteState()` in the read phase. Either kind is drawn the
+	 * same way: both endpoint carets plus the range items.
 	 */
-	readonly substitute: "block-surface-range" | "engine-confined-range" | null;
+	readonly substitute: S2ExceptionKind | null;
 }
 
 /** The input a contributor's `requests` receives in the read phase. */

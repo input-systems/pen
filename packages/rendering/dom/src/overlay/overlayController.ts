@@ -1,8 +1,4 @@
-import {
-	getEditorSelectionRecord,
-	getOpOriginType,
-	getSelectionBlockRange,
-} from "@input/pen-core";
+import { getEditorSelectionRecord, getOpOriginType } from "@input/pen-core";
 import type {
 	CommitEvent,
 	Editor,
@@ -15,7 +11,7 @@ import {
 	REDUCED_MOTION_ATTR,
 	type ReducedMotionSignal,
 } from "../a11y/motion";
-import { shouldUseBlockSelection } from "../field-editor/crossBlock";
+import type { S2ExceptionKind } from "../field-editor/selectionProjector";
 import type { FieldEditorStoreSnapshot } from "../field-editor/store";
 import { elementRect, measureCellRect } from "../geometry/geometryMeasure";
 import type { GeometryReaderHost } from "../geometry/geometryReader";
@@ -42,6 +38,8 @@ import type {
  */
 export type OverlayFieldSource = {
 	readonly isReadOnly: boolean;
+	/** D5: the projector's substitute state (`FieldEditorImpl.getSubstituteState`). */
+	getSubstituteState(): S2ExceptionKind | null;
 	getSnapshot(): Pick<
 		FieldEditorStoreSnapshot,
 		"isEditing" | "isFocused" | "isComposing" | "mode" | "activeCellCoord"
@@ -115,10 +113,6 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 	private epoch = 0;
 	private caretMoved = false;
 	private paintedLocalCaret: Point | null = null;
-	private substitute: {
-		readonly version: number;
-		readonly value: OverlayFieldState["substitute"];
-	} | null = null;
 	private attached = false;
 	private disposed = false;
 
@@ -131,7 +125,7 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		this.sharedReducedMotion = options.reducedMotion ?? null;
 		this.layer = createOverlayLayerElement(options.root.ownerDocument);
 		this.painter = new OverlayLayerPainter(this.layer);
-		this.fieldKey = fieldStateKey(this.readFieldState(null));
+		this.fieldKey = fieldStateKey(this.readFieldState());
 	}
 
 	/** The editor this overlay draws. A root re-attached to another editor gets a new overlay. */
@@ -173,7 +167,7 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 				this.requestPaintForInputs();
 			}),
 		);
-		this.fieldKey = fieldStateKey(this.readFieldState(null));
+		this.fieldKey = fieldStateKey(this.readFieldState());
 		this.requestPaint();
 	}
 
@@ -282,7 +276,7 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 
 	/** The field editor forwards its state changes here; only overlay-relevant ones repaint. */
 	notifyFieldChange(): void {
-		const key = fieldStateKey(this.readFieldState(null));
+		const key = fieldStateKey(this.readFieldState());
 		if (key === this.fieldKey) {
 			return;
 		}
@@ -314,7 +308,7 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		this.caretMoved = false;
 
 		const selection = getEditorSelectionRecord(this.editor) ?? NULL_RECORD;
-		const field = this.readFieldState(selection);
+		const field = this.readFieldState();
 		const solidCaret = this.reducedMotion?.reduced ?? false;
 		const inputs: ReadInputs = {
 			selectionVersion: selection.version,
@@ -440,9 +434,8 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		this.caretMoved = true;
 	}
 
-	private readFieldState(
-		selection: SelectionRecord | null,
-	): OverlayFieldState {
+	/** The field's state; the D5 substitute is the projector's own (W3.R17). */
+	private readFieldState(): OverlayFieldState {
 		const snapshot = this.field.getSnapshot();
 		return {
 			isEditing: snapshot.isEditing,
@@ -451,37 +444,8 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 			readonly: this.field.isReadOnly,
 			mode: snapshot.mode,
 			editingCell: snapshot.activeCellCoord !== null,
-			substitute: selection ? this.substituteFor(selection) : null,
+			substitute: this.field.getSubstituteState(),
 		};
-	}
-
-	/**
-	 * Until W3's substitute-state accessor lands, the S2 exception drawn here
-	 * is the >50-block text range, computed once per record version.
-	 */
-	private substituteFor(
-		selection: SelectionRecord,
-	): OverlayFieldState["substitute"] {
-		if (this.substitute?.version === selection.version) {
-			return this.substitute.value;
-		}
-		const state = selection.state;
-		let value: OverlayFieldState["substitute"] = null;
-		if (
-			state?.type === "text" &&
-			state.anchor.blockId !== state.focus.blockId
-		) {
-			const range = getSelectionBlockRange(this.editor.documentState, {
-				type: "text",
-				anchor: state.anchor,
-				focus: state.focus,
-			});
-			value = shouldUseBlockSelection(this.editor, range.length)
-				? "block-surface-range"
-				: null;
-		}
-		this.substitute = { version: selection.version, value };
-		return value;
 	}
 
 	private collectRequests(
@@ -752,6 +716,7 @@ function fieldStateKey(field: OverlayFieldState): string {
 		field.readonly,
 		field.mode,
 		field.editingCell,
+		field.substitute,
 	].join("|");
 }
 

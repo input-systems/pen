@@ -31,6 +31,7 @@ import {
 import { findDOMPoint } from "./selectionBridgeOffsets";
 import type { SelectionPoint } from "./selectionBridge";
 import { queryBlockElement } from "./selectionDomQueries";
+import { isSingleFieldNativeLeftover } from "./singleFieldNativeLeftover";
 
 /**
  * The selection writer (S1). Every mutation of the DOM selection or of an
@@ -305,7 +306,25 @@ export type SelectionProjectorOptions = {
 	} | null;
 	/** The last commit, for `"auto"` scroll's local-typing case (W3.R15). */
 	getLastCommit?: () => ProjectionCommit | null;
+	/**
+	 * D5: whether the record is a text range over more than the block-surface
+	 * threshold. Absent, the surface mode `block` answers it.
+	 */
+	isBlockSurfaceRange?: (record: SelectionRecord) => boolean;
+	/** D5: projects focus for a substitute state: the sink, revealed as a text range. */
+	projectSubstituteFocus?: () => void;
+	/** D5: the substitute state changed for the same record version. */
+	onSubstituteChange?: () => void;
 };
+
+/**
+ * The two declared S2 exceptions (D5, `spec/rules/selection.md` S2): a text
+ * range over more than the block-surface threshold, and a multi-block text
+ * range whose write the engine confined to one field. Both show the same
+ * substitute state: no native range in the root, focus on the sink revealed
+ * as a text range, and the overlay painting the range.
+ */
+export type S2ExceptionKind = "block-surface-range" | "engine-confined-range";
 
 /** What asked for a projection, for the mismatch payload and its once-per key. */
 export type ProjectionTrigger =
@@ -366,6 +385,12 @@ export class SelectionProjector {
 		version: number;
 		actual: ReaderSelection | null;
 	} | null = null;
+	/** D5: the block-surface answer for one record version. */
+	private _blockSurface: { version: number; value: boolean } | null = null;
+	/** D5: a block-surface version withheld while the pointer window is open. */
+	private _pointerWithheldVersion: number | null = null;
+	/** D5: the version whose write the engine confined to one field. */
+	private _confinedVersion: number | null = null;
 
 	constructor(options: SelectionProjectorOptions) {
 		this._options = options;
@@ -385,6 +410,41 @@ export class SelectionProjector {
 
 	get parkedProjectionVersion(): number | null {
 		return this._parked?.version ?? null;
+	}
+
+	/**
+	 * D5: the S2 exception in effect for the current record version, or null.
+	 * `block-surface-range` for a text range over the threshold unless a
+	 * pointer gesture withholds it; `engine-confined-range` once the last
+	 * projection of this version fell back after its read-back. A pure state
+	 * read with no DOM access, so the overlay may call it in its read phase.
+	 */
+	getSubstituteState(): S2ExceptionKind | null {
+		const record = this._options.getRecord?.();
+		if (record?.state?.type !== "text") {
+			return null;
+		}
+		if (this._confinedVersion === record.version) {
+			return "engine-confined-range";
+		}
+		if (this._pointerWithheldVersion === record.version) {
+			return null;
+		}
+		return this._isBlockSurfaceRange(record) ? "block-surface-range" : null;
+	}
+
+	private _isBlockSurfaceRange(record: SelectionRecord): boolean {
+		const isBlockSurfaceRange = this._options.isBlockSurfaceRange;
+		if (!isBlockSurfaceRange) {
+			return this._options.getMode() === "block";
+		}
+		if (this._blockSurface?.version !== record.version) {
+			this._blockSurface = {
+				version: record.version,
+				value: isBlockSurfaceRange(record),
+			};
+		}
+		return this._blockSurface.value;
 	}
 
 	/**
@@ -639,20 +699,62 @@ export class SelectionProjector {
 			this._completeProjection();
 			return;
 		}
-		// T3: surface mode `block` skips contenteditable expansion.
-		// projecting a 51-block text range into the focused field clamps
-		// native to that field (empty-p1 0..length) and an open pointer
-		// window accepts the leftover.
-		const target =
-			this._options.getMode() === "block"
-				? { found: true, projected: true }
-				: this._projectIntoTarget(options);
+		if (record && this._projectSubstitute(record)) {
+			return;
+		}
+		const target = this._projectIntoTarget(options);
 		if (target.projected) {
 			this._completeProjection();
 			return;
 		}
 
 		this._parkProjection(target.found);
+	}
+
+	/**
+	 * D5: a block-surface range, or a version whose write the engine confined,
+	 * shows the substitute state instead of a native range. T3: projecting a
+	 * 51-block range into one field would clamp it there. While the pointer
+	 * window is open the user's native range stands, and the pointerup
+	 * projection (`window-closed`) applies the substitute once.
+	 */
+	private _projectSubstitute(record: SelectionRecord): boolean {
+		if (record.state?.type !== "text") {
+			return false;
+		}
+		if (this._confinedVersion === record.version) {
+			this._writeSubstitute();
+			this._completeProjection();
+			return true;
+		}
+		if (!this._isBlockSurfaceRange(record)) {
+			return false;
+		}
+		if (
+			this._trigger !== "window-closed" &&
+			this._options.getGestureWindows().pointer
+		) {
+			this._pointerWithheldVersion = record.version;
+			this._completeProjection();
+			return true;
+		}
+		const released = this._pointerWithheldVersion !== null;
+		this._pointerWithheldVersion = null;
+		this._writeSubstitute();
+		if (released) {
+			this._options.onSubstituteChange?.();
+		}
+		this._completeProjection();
+		return true;
+	}
+
+	/** D5: no native range in the root, and focus on the sink revealed as a text range. */
+	private _writeSubstitute(): void {
+		const root = this._options.getRootElement();
+		if (root) {
+			clearNativeRangeIn(root);
+		}
+		this._options.projectSubstituteFocus?.();
 	}
 
 	/**
@@ -957,7 +1059,16 @@ export class SelectionProjector {
 		if (!readBack || (readBack.equivalent && readBack.focusOnTarget)) {
 			return;
 		}
-		const version = this._options.getRecord?.()?.version ?? 0;
+		const record = this._options.getRecord?.() ?? null;
+		if (record && isConfinedReadBack(record, readBack)) {
+			// D5: the engine confined the multi-block write to one field.
+			// Fall back to the substitute once; it is not a mismatch.
+			this._confinedVersion = record.version;
+			this._writeSubstitute();
+			this._options.onSubstituteChange?.();
+			return;
+		}
+		const version = record?.version ?? 0;
 		this._lastMismatch = {
 			version,
 			actual: readBack.actual,
@@ -1009,6 +1120,19 @@ export class SelectionProjector {
 			surface: this._options.getSurface?.() ?? "text",
 		};
 	}
+}
+
+/** D5: the read-back of a multi-block text write is a range confined to one field. */
+function isConfinedReadBack(
+	record: SelectionRecord,
+	readBack: ProjectionReadBack,
+): boolean {
+	const actual = readBack.actual;
+	return (
+		record.state?.type === "text" &&
+		actual?.type === "text" &&
+		isSingleFieldNativeLeftover(record.state, actual)
+	);
 }
 
 type ReadPoint = { blockId: string; offset: number };

@@ -185,6 +185,24 @@ describe("overlay controller (W35.R1, W35.R11)", () => {
 		expect(readonly).toEqual([false, true]);
 	});
 
+	it("S2: the D5 substitute reaches the read context from the field's getSubstituteState and repaints when it changes", () => {
+		const { controller } = fixture;
+		const substitutes: unknown[] = [];
+		controller.registerContributor({
+			id: "field",
+			requests: ({ field }) => {
+				substitutes.push(field.substitute);
+				return [];
+			},
+		});
+		flushFrame();
+		fixture.setField({ substitute: "engine-confined-range" });
+		flushFrame();
+		fixture.setField({ substitute: null });
+		flushFrame();
+		expect(substitutes).toEqual([null, "engine-confined-range", null]);
+	});
+
 	it("OV2: dispose removes the layer and restores nothing it did not change", () => {
 		const { controller, root } = fixture;
 		expect(root.lastElementChild).toBe(controller.layer);

@@ -1,8 +1,8 @@
 /**
  * AX1 hidden focus sink (`03-selection.md` §5.4).
  *
- * Hidden from AT and out of tab order unless holding block/cell
- * selection; then role + label.
+ * Hidden from AT and out of tab order unless holding a block or cell
+ * selection or a D5 text range; then role + label.
  *
  * Overlay (AX7) stays presentation. The sink is the accessible
  * selection surface for block and cell selections.
@@ -31,7 +31,8 @@ import { hideVisually } from "./hideVisually";
 
 export const FOCUS_SINK_ATTR = "data-pen-focus-sink";
 
-export type FocusSinkKind = "block" | "cell";
+/** `text-range`: a text selection in a D5 substitute state (S2 exception). */
+export type FocusSinkKind = "block" | "cell" | "text-range";
 
 export interface FocusSinkReveal {
 	kind: FocusSinkKind;
@@ -45,8 +46,11 @@ export interface FocusSink {
 	dispose(): void;
 }
 
-const BLOCK_ROLE = "group";
-const CELL_ROLE = "grid";
+const SINK_ROLES: Readonly<Record<FocusSinkKind, string>> = {
+	block: "group",
+	cell: "grid",
+	"text-range": "group",
+};
 
 export function createFocusSink(doc: Document = document): FocusSink {
 	const element = doc.createElement("div");
@@ -89,7 +93,7 @@ function revealSink(element: HTMLElement, selection: FocusSinkReveal): void {
 	// scheduled reveal can focus an unlabeled, still-hidden element;
 	// AT would observe the wrong surface.
 	element.tabIndex = 0;
-	element.role = selection.kind === "cell" ? CELL_ROLE : BLOCK_ROLE;
+	element.role = SINK_ROLES[selection.kind];
 	element.setAttribute("aria-label", selection.label);
 	element.removeAttribute("aria-hidden");
 }

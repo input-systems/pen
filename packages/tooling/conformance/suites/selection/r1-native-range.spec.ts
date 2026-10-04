@@ -76,7 +76,7 @@ async function settled(page: Page) {
 	return page.evaluate(async () => {
 		await window.__penConformance.whenIdle();
 		const record = window.__penConformance.selectionRecord;
-		const state = record?.state.type === "text" ? record.state : null;
+		const state = record?.state?.type === "text" ? record.state : null;
 		return {
 			origin: record?.origin,
 			anchor: state && `${state.anchor.blockId}:${state.anchor.offset}`,

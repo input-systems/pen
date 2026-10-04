@@ -6,6 +6,7 @@ import {
 	generateAction,
 	type FuzzAction,
 	type FuzzActionKind,
+	type FuzzActionSet,
 	type FuzzPoint,
 	type FuzzStep,
 } from "./actions";
@@ -24,7 +25,7 @@ export type FuzzRunOptions = {
 	steps: number;
 	forceFailAt: number | null;
 	/** Default `"pr"`. */
-	actionSet?: "pr" | "full";
+	actionSet?: FuzzActionSet;
 	/** Replay: execute these instead of generating. */
 	replay?: readonly FuzzStep[];
 };

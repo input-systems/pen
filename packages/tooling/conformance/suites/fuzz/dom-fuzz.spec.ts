@@ -18,12 +18,15 @@ import {
 
 /**
  * DOM selection fuzz (W3.R19, `spec/rules/selection.md` S2/S5/S6). The PR
- * job is these four fixed seeds × 40 steps on `fuzz-mixed`; `fuzz:dom`
+ * job is these four fixed seeds × 40 steps on `fuzz-mixed` and on
+ * `fuzz-large` (with `long-drag`, W3.G19); `fuzz:dom`
  * (`src/fuzz/dom/run.mjs`) sets the env for a chosen seed, the nightly soak,
  * or a trace replay.
  */
 /** The PR fixture; the self-test and the recorded defects run on it. */
 const FIXTURE = "fuzz-mixed";
+/** The D5 fixture (60 blocks): its PR run adds `long-drag` to the PR set. */
+const LARGE_FIXTURE = "fuzz-large";
 const config = resolveDomFuzzConfig(process.env);
 
 /**
@@ -118,6 +121,12 @@ if (config.replayPath) {
 		`fuzz:dom seeds ${config.seedLabel} × ${config.steps} steps on ${config.fixtures.join(", ")} (${config.actionSet} actions)`,
 	);
 	for (const fixture of config.fixtures) {
+		// W3.G19: on `fuzz-large` the PR set adds `long-drag`, so its drags
+		// across more than 50 blocks meet the D5 substitute check.
+		const actionSet =
+			fixture === LARGE_FIXTURE && config.actionSet === "pr"
+				? "large"
+				: config.actionSet;
 		for (const seed of config.seeds) {
 			const suffix = fixture === FIXTURE ? "" : ` (${fixture})`;
 			const knownDefect =
@@ -136,7 +145,7 @@ if (config.replayPath) {
 							fixture,
 							steps: config.steps,
 							forceFailAt: config.forceFailAt,
-							actionSet: config.actionSet,
+							actionSet,
 						},
 						file,
 					);

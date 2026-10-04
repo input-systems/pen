@@ -1,4 +1,5 @@
 import {
+	insertText,
 	isCollapsed,
 	isMultiBlock,
 	usesInlineTextSelection,
@@ -8,8 +9,10 @@ import {
 	type Editor,
 	type InteractionModel,
 } from "@input/pen-types";
+import { FOCUS_SINK_ATTR } from "../a11y/focusSink";
 import {
 	activateFieldEditorFromSelection,
+	dispatchAndActivate,
 	keymapContextFromSelection,
 } from "../field-editor/commandDispatch";
 import type { FieldEditorSession } from "../field-editor/controller";
@@ -59,6 +62,10 @@ export function bindEditorDocumentKeyDown(
 				hasMappedDomSelection: () => fieldEditor.hasSelectionInRoot(),
 			})
 		) {
+			return;
+		}
+		// D20: not prevented, so the composition starts in the field.
+		if (handleSubstituteCompositionKeyDown(event, editor, fieldEditor)) {
 			return;
 		}
 		if (
@@ -118,8 +125,118 @@ export function handleEditorDocumentKeyDown(options: {
 			interactionModel,
 		) ||
 		handleBlockSelectionArrow(event, editor, fieldEditor) ||
-		handleHistoryShortcut(editor, event)
+		handleHistoryShortcut(editor, event) ||
+		handleSubstituteRangeKeyDown(event, editor, fieldEditor)
 	);
+}
+
+/**
+ * D5: a text range in a substitute state keeps focus on the sink, which is
+ * not editable, so the sink's keys reach the authority here.
+ */
+function isSubstituteSinkKey(
+	event: KeyboardEvent,
+	editor: Editor,
+	fieldEditor: FieldEditorSession,
+): boolean {
+	const target = event.target as { hasAttribute?: unknown } | null;
+	return (
+		typeof target?.hasAttribute === "function" &&
+		(target as Element).hasAttribute(FOCUS_SINK_ATTR) &&
+		editor.selection?.type === "text" &&
+		fieldEditor.getSubstituteState() !== null
+	);
+}
+
+function isCompositionKeyDown(event: KeyboardEvent): boolean {
+	return (
+		event.isComposing || event.key === "Process" || event.keyCode === 229
+	);
+}
+
+function isPrintableKey(event: KeyboardEvent): boolean {
+	return (
+		!event.metaKey &&
+		!event.ctrlKey &&
+		!event.altKey &&
+		[...event.key].length === 1
+	);
+}
+
+/**
+ * D20: a composition keystroke over a D5 range deletes the range and
+ * projects the caret into its field, focused in this `keydown` turn, so the
+ * composition starts there.
+ */
+function handleSubstituteCompositionKeyDown(
+	event: KeyboardEvent,
+	editor: Editor,
+	fieldEditor: FieldEditorSession,
+): boolean {
+	if (
+		!isCompositionKeyDown(event) ||
+		!isSubstituteSinkKey(event, editor, fieldEditor)
+	) {
+		return false;
+	}
+	deleteTextRangeAndActivate(editor, fieldEditor);
+	return true;
+}
+
+/**
+ * D5: the sink routes the text keymap against the authority, as a field
+ * does with no DOM range. A printable key replaces the range with one
+ * `pen.insertText`, mirroring the cell printable path.
+ */
+function handleSubstituteRangeKeyDown(
+	event: KeyboardEvent,
+	editor: Editor,
+	fieldEditor: FieldEditorSession,
+): boolean {
+	if (!isSubstituteSinkKey(event, editor, fieldEditor)) {
+		return false;
+	}
+	if (isPrintableKey(event)) {
+		return dispatchAndActivate(
+			editor,
+			fieldEditor,
+			insertText,
+			{ text: event.key },
+			{ fromKeymap: true },
+		);
+	}
+	if (
+		!dispatchKeymapEvent(editor, event, {
+			composing: false,
+			context: keymapContextFromSelection(editor.selection, false),
+		})
+	) {
+		return false;
+	}
+	activateFieldEditorFromSelection(editor, fieldEditor);
+	return true;
+}
+
+/** Deletes a non-collapsed text range and projects the resulting caret into its field. */
+function deleteTextRangeAndActivate(
+	editor: Editor,
+	fieldEditor: FieldEditorSession,
+): void {
+	if (editor.selection?.type === "text" && isMultiBlock(editor.selection)) {
+		fieldEditor.deactivate();
+	}
+	editor.deleteSelection({ origin: "user" });
+	const nextSelection = editor.selection;
+	if (nextSelection?.type === "text") {
+		fieldEditor.activateTextSelection(
+			nextSelection.focus.blockId,
+			nextSelection.focus.offset,
+			nextSelection.focus.offset,
+			{ origin: "keyboard" },
+		);
+	} else {
+		fieldEditor.deactivate();
+	}
 }
 
 function handleBlockSelectionArrow(
@@ -247,21 +364,7 @@ function handleDeleteSelectionShortcut(
 		) {
 			return false;
 		}
-		if (isMultiBlock(selection)) {
-			fieldEditor.deactivate();
-		}
-		editor.deleteSelection({ origin: "user" });
-		const nextSelection = editor.selection;
-		if (nextSelection?.type === "text") {
-			fieldEditor.activateTextSelection(
-				nextSelection.focus.blockId,
-				nextSelection.focus.offset,
-				nextSelection.focus.offset,
-				{ origin: "keyboard" },
-			);
-		} else {
-			fieldEditor.deactivate();
-		}
+		deleteTextRangeAndActivate(editor, fieldEditor);
 		return true;
 	}
 

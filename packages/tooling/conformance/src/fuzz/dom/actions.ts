@@ -94,7 +94,25 @@ const FULL_ACTION_WEIGHTS: Readonly<Record<GeneratedKind, number>> = {
 	"long-drag": 1,
 };
 
-export type FuzzActionSet = "pr" | "full";
+/**
+ * The PR job's `fuzz-large` set (W3.G19): the PR kinds plus `long-drag`, so
+ * every PR run drags across more than 50 blocks under the extended S2 check
+ * (the D5 substitute state).
+ */
+const LARGE_ACTION_WEIGHTS: Readonly<Partial<Record<GeneratedKind, number>>> = {
+	...PR_ACTION_WEIGHTS,
+	"long-drag": 3,
+};
+
+export type FuzzActionSet = "pr" | "large" | "full";
+
+const ACTION_WEIGHTS: Readonly<
+	Record<FuzzActionSet, Readonly<Partial<Record<GeneratedKind, number>>>>
+> = {
+	pr: PR_ACTION_WEIGHTS,
+	large: LARGE_ACTION_WEIGHTS,
+	full: FULL_ACTION_WEIGHTS,
+};
 
 const LONG_DRAG_MIN_SPAN = 51;
 
@@ -149,8 +167,7 @@ export type GenerateContext = {
 };
 
 function pickKind(rng: FuzzRng, context: GenerateContext): GeneratedKind {
-	const weights: Readonly<Partial<Record<GeneratedKind, number>>> =
-		context.actionSet === "full" ? FULL_ACTION_WEIGHTS : PR_ACTION_WEIGHTS;
+	const weights = ACTION_WEIGHTS[context.actionSet ?? "pr"];
 	const entries = (Object.entries(weights) as [GeneratedKind, number][]).filter(
 		([kind]) => kind !== "long-drag" || context.blocks.length >= LONG_DRAG_MIN_SPAN,
 	);

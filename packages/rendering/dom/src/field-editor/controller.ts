@@ -13,6 +13,7 @@ import type {
 	GestureWindowState,
 	ReaderSelection,
 } from "./selectionReader";
+import type { S2ExceptionKind } from "./selectionProjector";
 
 export type FieldEditorFocusReason =
 	| "activate"
@@ -110,6 +111,12 @@ export interface FieldEditorRootHandle {
 	 */
 	setReadOnly(readonly: boolean): void;
 	readonly isReadOnly: boolean;
+	/**
+	 * D5: the S2 exception in effect for the current record version, or null
+	 * (the projector's pure state read). The overlay draws it; focus stays
+	 * on the sink while it holds (HOST9).
+	 */
+	getSubstituteState(): S2ExceptionKind | null;
 	setFocusPolicy(focusPolicy: PenFocusPolicy | undefined): void;
 	setSelectAllBehavior(behavior: EditorSelectAllBehavior): void;
 	deactivate(): void;

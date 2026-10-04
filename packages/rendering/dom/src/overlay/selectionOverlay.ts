@@ -1,5 +1,6 @@
 import { getSelectionBlockRange } from "@input/pen-core";
 import type { Editor, SelectionRecordState } from "@input/pen-types";
+import { BLOCK_SURFACE_MODE_THRESHOLD } from "../constants/selection";
 import type { Point } from "../geometry/types";
 import {
 	blockInlineFacts,
@@ -22,7 +23,7 @@ export const SELECTION_OVERLAY_CONTRIBUTOR_ID = "selection";
  * span per contiguous run. Matches `shouldUseBlockSelection` on purpose, so
  * below it every block is outlined and above it a run costs two reads.
  */
-const OVERLAY_BLOCK_OUTLINE_LIMIT = 50;
+const OVERLAY_BLOCK_OUTLINE_LIMIT = BLOCK_SURFACE_MODE_THRESHOLD;
 
 /** The key of the local caret request; its element identity adds the blink epoch. */
 const LOCAL_CARET_KEY = "local-caret";

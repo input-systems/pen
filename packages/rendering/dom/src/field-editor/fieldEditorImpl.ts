@@ -28,7 +28,10 @@ import { ExpandedContentEditableBackend } from "./expandedContentEditableBackend
 import { FocusController } from "./focusController";
 import { PendingMarkController } from "./pendingMarkController";
 import { SessionReconciler } from "./sessionReconciler";
-import { classifySelectionSurface } from "./crossBlock";
+import {
+	classifySelectionSurface,
+	isBlockSurfaceTextRange,
+} from "./crossBlock";
 import type {
 	ActiveCellCoord,
 	FieldEditorFocusReason,
@@ -45,9 +48,11 @@ import { queryBlockElement, queryInlineElement } from "./selectionBridge";
 import type { DirectionalSelectionOffsets } from "./selectionMapping";
 import { areBlockIdsEqual, resolveInputMode } from "./fieldEditorImplHelpers";
 import { isSingleFieldNativeLeftover } from "./singleFieldNativeLeftover";
+import { bindFocusSinkTransferEvents } from "./sinkTransferEvents";
 import {
 	SelectionProjector,
 	type ProjectionMountRequester,
+	type S2ExceptionKind,
 } from "./selectionProjector";
 import type { ProjectionCommit, ProjectionScroll } from "./projectionScroll";
 import {
@@ -255,6 +260,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 				this._backendLifecycle.current?.writeSelectionState?.();
 			},
 			getGestureWindows: () => this._selectionReader.windows,
+			isBlockSurfaceRange: (record) =>
+				isBlockSurfaceTextRange(this._editor, record.state),
+			projectSubstituteFocus: () => this._projectFocusTarget(),
+			onSubstituteChange: () => this._emitStateChange(),
 		});
 		// FE4: the commit feed lives here rather than in a host's mount,
 		// because both the vanilla mount and the framework bindings build a
@@ -598,6 +607,11 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._emitStateChange();
 	}
 
+	/** D5: the projector's substitute state, forwarded for the overlay and root focus. */
+	getSubstituteState(): S2ExceptionKind | null {
+		return this._projector.getSubstituteState();
+	}
+
 	setRootElement(element: HTMLElement | null): void {
 		this._unbindOverlay();
 		this._unbindFocusSink();
@@ -628,16 +642,26 @@ export class FieldEditorImpl implements FieldEditorSession {
 		const sink = createFocusSink(root.ownerDocument);
 		root.appendChild(sink.element);
 		this._focusSink = sink;
-		this._unsubscribeFocusSink = this._editor.onSelectionChange(() => {
+		const unsubscribeSelection = this._editor.onSelectionChange(() => {
 			this._projectFocusTarget();
 		});
+		const unbindTransfer = bindFocusSinkTransferEvents(
+			sink.element,
+			this._editor,
+			this,
+		);
+		this._unsubscribeFocusSink = () => {
+			unsubscribeSelection();
+			unbindTransfer();
+		};
 		this._projectFocusTarget();
 	}
 
 	/**
 	 * P focus targets for the record: the sink for block and cell
-	 * selections, the root for app and `null` (D18). The focus controller
-	 * writes; nothing else in pen-dom calls `focus()` (W3.R16).
+	 * selections and for a D5 text range, the root for app and `null` (D18).
+	 * The focus controller writes; nothing else in pen-dom calls `focus()`
+	 * (W3.R16).
 	 */
 	protected _projectFocusTarget(): void {
 		const sink = this._focusSink;
@@ -650,6 +674,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 					preventScroll: true,
 				});
 			},
+			substitute: this._projector.getSubstituteState(),
 		});
 	}
 

@@ -70,7 +70,10 @@ export type DomFuzzConfig = {
 	shrink: boolean;
 	/** Nightly: the full §3.15 set; else the frozen PR set. `PEN_FUZZ_ACTIONS` overrides. */
 	actionSet: "pr" | "full";
-	/** Nightly: `fuzz-mixed` and `fuzz-large`; else `fuzz-mixed`. `PEN_FUZZ_FIXTURE` overrides. */
+	/**
+	 * `fuzz-mixed` and `fuzz-large` (W3.G19: the PR job drags across more
+	 * than 50 blocks too). `PEN_FUZZ_FIXTURE` overrides.
+	 */
 	fixtures: string[];
 };
 
@@ -129,8 +132,6 @@ export function resolveDomFuzzConfig(env: FuzzEnv): DomFuzzConfig {
 					: "pr",
 		fixtures: env.PEN_FUZZ_FIXTURE
 			? [env.PEN_FUZZ_FIXTURE]
-			: nightly
-				? ["fuzz-mixed", "fuzz-large"]
-				: ["fuzz-mixed"],
+			: ["fuzz-mixed", "fuzz-large"],
 	};
 }

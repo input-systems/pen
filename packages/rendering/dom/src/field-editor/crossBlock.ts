@@ -1,5 +1,6 @@
 import { getSelectionBlockRange, isMultiBlock } from "@input/pen-core";
 import type { Editor, FieldEditor, SelectionState } from "@input/pen-types";
+import { BLOCK_SURFACE_MODE_THRESHOLD } from "../constants/selection";
 import { getBlockSelectionRoleFromSchema } from "../utils/blockSelectionSemantics";
 
 /**
@@ -51,13 +52,28 @@ export function contractFieldEditorRange(
 /**
  * Surface heuristic: a text range over >50 blocks skips contenteditable
  * expansion (`mode: "block"`). This is not an authority-type change.
- * T3: pointer reads never flip to BlockSelection by count.
+ * T3: pointer reads never flip to BlockSelection by count. D5: the range is
+ * shown by the `block-surface-range` substitute state (S2).
  */
 export function shouldUseBlockSelection(
 	_editor: Editor,
 	blockCount: number,
 ): boolean {
-	return blockCount > 50;
+	return blockCount > BLOCK_SURFACE_MODE_THRESHOLD;
+}
+
+/** D5: whether a text selection is a block-surface range (more than the threshold of blocks). */
+export function isBlockSurfaceTextRange(
+	editor: Editor,
+	selection: SelectionState,
+): boolean {
+	if (selection?.type !== "text" || !isMultiBlock(selection)) {
+		return false;
+	}
+	return shouldUseBlockSelection(
+		editor,
+		getSelectionBlockRange(editor.documentState, selection).length,
+	);
 }
 
 export function getExpandedBlockRole(

@@ -12,7 +12,8 @@ export interface FieldEditorRootFocusOptions {
 	fieldEditor: Pick<
 		FieldEditorSession,
 		"focusTextSelection" | "requestRootFocus"
-	>;
+	> &
+		Partial<Pick<FieldEditorSession, "getSubstituteState">>;
 	root: HTMLElement;
 	readonly?: boolean;
 }
@@ -34,7 +35,11 @@ export function handleFieldEditorRootFocus(
 	}
 
 	const selection = editor.selection;
-	if (selection?.type === "block" || selection?.type === "cell") {
+	if (
+		selection?.type === "block" ||
+		selection?.type === "cell" ||
+		fieldEditor.getSubstituteState?.() != null
+	) {
 		const focusSink = root.querySelector(
 			`:scope > [${FOCUS_SINK_ATTR}]`,
 		);

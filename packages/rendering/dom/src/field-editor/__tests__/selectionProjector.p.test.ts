@@ -300,3 +300,176 @@ describe("selection projector equivalence skip (W3.R6)", () => {
 		expect(calls).toEqual({ domWrites: 0, stateWrites: 1 });
 	});
 });
+
+describe("selection projector D5 substitute states (W3.R17)", () => {
+	function rangeRecord(
+		version: number,
+		focusBlockId: string,
+	): SelectionRecord {
+		return {
+			state: {
+				type: "text",
+				anchor: { blockId: "first", offset: 0 },
+				focus: { blockId: focusBlockId, offset: 3 },
+				affinity: "downstream",
+				goalX: null,
+			},
+			version,
+			origin: "programmatic",
+			commitId: 0,
+		};
+	}
+
+	/** A 2-block range the engine confined to its anchor field. */
+	const CONFINED: ProjectionReadBack = {
+		equivalent: false,
+		focusOnTarget: true,
+		expected: {
+			type: "text",
+			anchor: { blockId: "first", offset: 0 },
+			focus: { blockId: "second", offset: 3 },
+		},
+		actual: {
+			type: "text",
+			anchor: { blockId: "first", offset: 0 },
+			focus: { blockId: "first", offset: 5 },
+		},
+	};
+
+	/**
+	 * Every port the projector could reach the DOM through counts its calls;
+	 * the state reads (`getRecord`, `isBlockSurfaceRange`, the windows) do not.
+	 */
+	function createSubstituteProjector(options: {
+		current: SelectionRecord;
+		blockSurface: boolean;
+	}) {
+		const element = document.createElement("span");
+		document.body.append(element);
+		const diagnostics: DiagnosticEvent[] = [];
+		const calls = {
+			domPort: 0,
+			backendWrites: 0,
+			substituteFocus: 0,
+			substituteChanges: 0,
+		};
+		let current = options.current;
+		let windows = CLOSED_GESTURE_WINDOWS;
+		const dom = <T>(value: T): T => {
+			calls.domPort += 1;
+			return value;
+		};
+		const projector = new SelectionProjector({
+			getGestureWindows: () => windows,
+			isEditing: () => true,
+			getMode: () => (options.blockSurface ? "block" : "expanded"),
+			getFocusBlockId: () => "first",
+			getAttachedElement: () => dom(null),
+			getRootElement: () => dom(document.body),
+			findExpandedHost: () => dom(element),
+			resolveInlineElement: () => dom(element),
+			attachElement: () => dom(true),
+			requestDomFocus: () => dom(true),
+			updateBackendSelection: () => {
+				calls.backendWrites += 1;
+			},
+			setTextSelection: () => {},
+			activate: () => {},
+			emitSelectionProjected: () => {},
+			getRecord: () => current,
+			emitDiagnostic: (event) => diagnostics.push(event),
+			readBack: () => dom(CONFINED),
+			isBlockSurfaceRange: () => options.blockSurface,
+			projectSubstituteFocus: () => {
+				calls.substituteFocus += 1;
+			},
+			onSubstituteChange: () => {
+				calls.substituteChanges += 1;
+			},
+		});
+		const gesture = (kind: GestureEventKind) => {
+			windows = nextGestureWindowState(kind, windows);
+			projector.onGesture(kind);
+		};
+		/** The accessor's value, asserting it reached no DOM port. */
+		const substitute = () => {
+			const before = calls.domPort;
+			const value = projector.getSubstituteState();
+			expect(calls.domPort - before).toBe(0);
+			return value;
+		};
+		return {
+			projector,
+			calls,
+			diagnostics,
+			gesture,
+			substitute,
+			setRecord: (next: SelectionRecord) => {
+				current = next;
+			},
+		};
+	}
+
+	it("S2: getSubstituteState reports block-surface-range from the record, engine-confined-range after a fallback, and null while a pointer window withholds", () => {
+		const surface = createSubstituteProjector({
+			current: rangeRecord(1, "block-60"),
+			blockSurface: true,
+		});
+		expect(surface.substitute()).toBe("block-surface-range");
+
+		const dragged = createSubstituteProjector({
+			current: rangeRecord(1, "block-60"),
+			blockSurface: true,
+		});
+		dragged.gesture("pointerdown");
+		dragged.projector.project("selection-change");
+		expect(dragged.substitute()).toBeNull();
+		expect(dragged.calls.substituteFocus).toBe(0);
+		dragged.gesture("pointerup");
+		expect(dragged.substitute()).toBe("block-surface-range");
+
+		const confined = createSubstituteProjector({
+			current: rangeRecord(1, "second"),
+			blockSurface: false,
+		});
+		expect(confined.substitute()).toBeNull();
+		confined.projector.project("selection-change");
+		expect(confined.substitute()).toBe("engine-confined-range");
+		confined.setRecord(rangeRecord(2, "second"));
+		expect(confined.substitute()).toBeNull();
+	});
+
+	it("S2: a block-surface range is never written into a field; the pointerup projection applies the substitute once", () => {
+		const { projector, calls, gesture } = createSubstituteProjector({
+			current: rangeRecord(1, "block-60"),
+			blockSurface: true,
+		});
+		gesture("pointerdown");
+		projector.project("selection-change");
+		expect(calls).toMatchObject({ backendWrites: 0, substituteFocus: 0 });
+		gesture("pointerup");
+		expect(calls).toMatchObject({
+			backendWrites: 0,
+			substituteFocus: 1,
+			substituteChanges: 1,
+		});
+		expect(projector.lastProjectedVersion).toBe(1);
+	});
+
+	it("S2: an engine-confined read-back falls back once with no mismatch diagnostic and is not written again", () => {
+		const { projector, calls, diagnostics } = createSubstituteProjector({
+			current: rangeRecord(1, "second"),
+			blockSurface: false,
+		});
+		projector.project("selection-change");
+		expect(diagnostics).toEqual([]);
+		expect(calls).toMatchObject({
+			backendWrites: 1,
+			substituteFocus: 1,
+			substituteChanges: 1,
+		});
+		projector.project("target-rebuilt");
+		expect(calls.backendWrites).toBe(1);
+		expect(diagnostics).toEqual([]);
+	});
+});

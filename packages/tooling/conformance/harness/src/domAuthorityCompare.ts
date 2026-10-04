@@ -19,6 +19,17 @@ export interface ExtendedS2Observations {
 	readonly focusedSinkRole: string | null;
 	/** Text only: the mapped DOM selection is equivalent to the authority (reader step 3). */
 	readonly equivalent: boolean;
+	/** D5: the field editor's substitute state (`getSubstituteState`), or null. */
+	readonly substitute?: string | null;
+	/** D5: what the overlay painted for the substitute, read only while one holds. */
+	readonly substitutePaint?: SubstitutePaint | null;
+}
+
+/** D5: the overlay layer's endpoint carets (`data-endpoint`, sorted) and range items. */
+export interface SubstitutePaint {
+	readonly endpoints: readonly string[];
+	readonly ranges: number;
+	readonly blockSpans: number;
 }
 
 export function resolveDomAuthorityCheck(input: {
@@ -147,6 +158,49 @@ function checkSinkFocus(authority: SerializedSelection, mapped: Mapped, extended
 		: checked(authority, mapped, false, `focus is not on the revealed sink (role group or grid) for a ${kind} selection`);
 }
 
+/**
+ * D5 (S2 exceptions): a text range in a substitute state has no native range
+ * in the root, focus on the sink revealed as a text range (`role="group"`),
+ * and the overlay painting both endpoint carets plus the range items.
+ */
+function checkSubstitute(
+	authority: SerializedSelection,
+	mapped: Mapped,
+	extended: ExtendedS2Observations,
+): DomAuthorityCheck {
+	const kind = extended.substitute ?? "substitute";
+	if (extended.nativeRangeInRoot) {
+		return checked(
+			authority,
+			mapped,
+			false,
+			`a native range is inside the root in the ${kind} substitute state`,
+		);
+	}
+	if (extended.focusedSinkRole !== "group") {
+		return checked(
+			authority,
+			mapped,
+			false,
+			`focus is not on the sink revealed as a text range in the ${kind} substitute state`,
+		);
+	}
+	const paint = extended.substitutePaint;
+	const endpoints = paint?.endpoints.join(",") ?? "";
+	if (
+		endpoints !== "anchor,focus" ||
+		(paint?.ranges ?? 0) + (paint?.blockSpans ?? 0) === 0
+	) {
+		return checked(
+			authority,
+			mapped,
+			false,
+			`the overlay does not paint the ${kind} substitute (endpoints ${endpoints || "none"}, ranges ${paint?.ranges ?? 0}, block spans ${paint?.blockSpans ?? 0})`,
+		);
+	}
+	return checked(authority, mapped, true, `${kind} substitute state`);
+}
+
 function checkTextEquivalence(
 	input: { hasFocus: boolean; authority: SerializedSelection; mapped: Mapped },
 	extended: ExtendedS2Observations,
@@ -154,6 +208,9 @@ function checkTextEquivalence(
 	const { authority, mapped } = input;
 	if (!input.hasFocus) {
 		return { ok: false, skipped: true, reason: "editor is unfocused", authority, dom: mapped };
+	}
+	if (extended.substitute) {
+		return checkSubstitute(authority, mapped, extended);
 	}
 	return extended.equivalent
 		? checked(authority, mapped, true)

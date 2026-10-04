@@ -395,6 +395,11 @@ export type PenConformanceBridge = {
 	blockText(blockId: string): string;
 	/** Select by block id; scale fixtures address blocks by id, not index. */
 	selectTextById(blockId: string, anchorOffset: number, focusOffset?: number): void;
+	/** A programmatic text range between two blocks, origin `programmatic`. */
+	selectTextRangeById(anchor: LogicalPoint, focus: LogicalPoint): void;
+	/** D5: the field editor's `getSubstituteState()`, or null. */
+	readonly substituteState:
+		"block-surface-range" | "engine-confined-range" | null;
 	/** G3: a collapsed caret with an explicit affinity, origin `keyboard`. */
 	selectCaretWithAffinity(
 		blockId: string,
@@ -429,6 +434,14 @@ export type PenConformanceBridge = {
 	/** W3.R1: drop the next native selection write and count writes from here. */
 	installSelectionWriteFault(): void;
 	readonly selectionWriteFault: { dropped: number; writes: number };
+	/** W3.R17: confine the next multi-block selection write to the anchor field. */
+	installConfiningWriteFault(): void;
+	/** Clamped writes, the lone clears that task ended with, and writes after it. */
+	readonly confiningWriteFault: {
+		confined: number;
+		clears: number;
+		laterWrites: number;
+	};
 	forceUnwindowedDomDivergence(): ForcedDomDivergence;
 	domMatchesAuthority(): DomAuthorityCheck;
 	/** CS10: call `domSelectionToEditor` on a page-owned root. */

@@ -7,6 +7,7 @@ import {
 	createGeometryReader,
 	type GeometryReaderHost,
 } from "../../geometry/geometryReader";
+import type { S2ExceptionKind } from "../../field-editor/selectionProjector";
 import type { Point, Rect } from "../../geometry/types";
 import { DomScheduler } from "../../scheduler";
 import {
@@ -53,7 +54,12 @@ export type OverlayFixture = {
 	readonly measured: { caret: number; block: number };
 	/** Blocks the fake geometry treats as mounted. */
 	readonly mounted: Set<string>;
-	setField(patch: Partial<FieldSnapshot> & { readonly?: boolean }): void;
+	setField(
+		patch: Partial<FieldSnapshot> & {
+			readonly?: boolean;
+			substitute?: S2ExceptionKind | null;
+		},
+	): void;
 	destroy(): void;
 };
 
@@ -119,11 +125,13 @@ export function createOverlayFixture(): OverlayFixture {
 		activeCellCoord: null,
 	};
 	let readonly = false;
+	let substitute: S2ExceptionKind | null = null;
 	const field: OverlayFieldSource = {
 		get isReadOnly() {
 			return readonly;
 		},
 		getSnapshot: () => snapshot,
+		getSubstituteState: () => substitute,
 	};
 	const controller = new OverlayController({
 		root,
@@ -143,10 +151,17 @@ export function createOverlayFixture(): OverlayFixture {
 		measured,
 		mounted,
 		setField(patch) {
-			const { readonly: nextReadonly, ...rest } = patch;
+			const {
+				readonly: nextReadonly,
+				substitute: nextSubstitute,
+				...rest
+			} = patch;
 			snapshot = { ...snapshot, ...rest };
 			if (nextReadonly !== undefined) {
 				readonly = nextReadonly;
+			}
+			if (nextSubstitute !== undefined) {
+				substitute = nextSubstitute;
 			}
 			controller.notifyFieldChange();
 		},
