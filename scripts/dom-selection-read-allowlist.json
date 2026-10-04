@@ -1,4 +1,0 @@
-{
-  "_comment": "S1 selection-read ratchet. Each entry is a DOM selection read outside packages/rendering/dom/src/field-editor/selectionReader.ts, with the requirement that removes it. An entry whose read no longer exists fails (I15); the list only shrinks and W3.G2 closes at entries: [].",
-  "entries": []
-}

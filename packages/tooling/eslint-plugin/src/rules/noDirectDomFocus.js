@@ -1,4 +1,4 @@
-import { memberName, selectionLintTracker } from "./selectionLintShared.js";
+import { memberName, selectionLintReporter } from "./selectionLintShared.js";
 
 /**
  * P focus paragraph (`spec/rules/selection.md`), W3.R16: focus is a
@@ -6,12 +6,10 @@ import { memberName, selectionLintTracker } from "./selectionLintShared.js";
  * calls `HTMLElement.focus`. Calls on the field editor's own `focus()` API
  * (`this`, `fieldEditor`, `ctx.fieldEditor`, `this.fieldEditor`,
  * `options.fieldEditor`) are the API, not a DOM write. React and Vue chrome
- * focusing their own controls (AX3) is out of scope. Exceptions are listed
- * in `scripts/dom-focus-allowlist.json`; an entry with no matching call
- * fails (I15).
+ * focusing their own controls (AX3) is out of scope. There is no allowlist:
+ * every other call is an error.
  */
 
-const ALLOWLIST_PATH = "scripts/dom-focus-allowlist.json";
 const OWNER = "packages/rendering/dom/src/field-editor/focusController.ts";
 const DOM_SCOPE = "packages/rendering/dom/src/";
 const FIELD_EDITOR_RECEIVERS = new Set([
@@ -42,19 +40,9 @@ export const noDirectDomFocus = {
 				"Only the focus controller focuses DOM elements in pen-dom (P, W3.R16)",
 			specRule: "P",
 		},
-		schema: [
-			{
-				type: "object",
-				properties: { allowlist: { type: "array" } },
-				additionalProperties: false,
-			},
-		],
+		schema: [],
 		messages: {
-			focus: "`{{api}}` in `{{symbol}}` ({{file}}) focuses a DOM element outside the focus controller (W3.R16). Route it through the field editor's `requestRootFocus`/`requestDomFocus`, or add an allowlist entry naming the requirement that removes it.",
-			incompleteAllowlist:
-				"Focus allowlist entry is missing `{{field}}`. Every entry needs file, symbol, api, reason and closedBy.",
-			orphanedAllowlist:
-				"Focus allowlist entry for `{{api}}` in `{{symbol}}` ({{file}}) has no matching call. Remove it in the change that moved the call (I15).",
+			focus: "`{{api}}` in `{{symbol}}` ({{file}}) focuses a DOM element outside the focus controller (W3.R16). Route it through the field editor's `requestRootFocus`/`requestDomFocus`.",
 		},
 	},
 	create(context) {
@@ -63,14 +51,12 @@ export const noDirectDomFocus = {
 			"/",
 		);
 		if (!filename.includes(DOM_SCOPE)) return {};
-		const tracker = selectionLintTracker(context, {
+		const reporter = selectionLintReporter(context, {
 			owner: OWNER,
-			allowlistPath: ALLOWLIST_PATH,
 			messageId: "focus",
 		});
-		if (!tracker) return {};
+		if (!reporter) return {};
 		return {
-			...tracker.listeners,
 			CallExpression(node) {
 				const callee =
 					node.callee.type === "ChainExpression"
@@ -78,7 +64,7 @@ export const noDirectDomFocus = {
 						: node.callee;
 				if (memberName(callee) !== "focus") return;
 				if (FIELD_EDITOR_RECEIVERS.has(receiverText(callee.object))) return;
-				tracker.report(node, "focus");
+				reporter.report(node, "focus");
 			},
 		};
 	},

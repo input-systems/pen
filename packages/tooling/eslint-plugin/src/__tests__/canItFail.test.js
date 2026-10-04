@@ -1,26 +1,7 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { RuleTester } from "eslint";
 import tseslint from "typescript-eslint";
 import { describe, expect, it } from "vitest";
 import { rules } from "../index.js";
-
-// Derived, not hardcoded: the unusedAllowlist case needs a waiver that is
-// actually in the allowlist, so naming one directly makes this suite go red
-// whenever a waiver retires — which is exactly what happened to
-// `applySelectionUntilNextFrame`.
-const selectionTimersAllowlist = JSON.parse(
-	readFileSync(
-		path.join(
-			import.meta.dirname,
-			"../rules/no-selection-timers-allowlist.json",
-		),
-		"utf8",
-	),
-);
-const liveTimerWaiver = selectionTimersAllowlist.entries.find(
-	(entry) => entry.kind === "requestAnimationFrame",
-);
 
 const jsxTester = new RuleTester({
 	languageOptions: {
@@ -339,23 +320,6 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 						},
 					},
 				],
-			},
-		);
-	});
-
-	it("no-selection-timers unusedAllowlist errors by name when a waiver is not consumed", () => {
-		if (!liveTimerWaiver) {
-			expect(selectionTimersAllowlist.entries).toEqual([]);
-			return;
-		}
-		expectRuleErrors(
-			tsTester,
-			"no-selection-timers",
-			rules["no-selection-timers"],
-			{
-				code: `export function ${liveTimerWaiver.symbol}() { void 0; }\n`,
-				filename: liveTimerWaiver.file,
-				errors: [{ messageId: "unusedAllowlist" }],
 			},
 		);
 	});

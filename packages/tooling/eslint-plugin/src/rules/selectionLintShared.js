@@ -1,15 +1,10 @@
-import {
-	allowlistLifecycleListeners,
-	loadAllowlistEntries,
-	missingAllowlistField,
-} from "./allowlistLint.js";
 import { repoRelativeFilename } from "./lintPaths.js";
 
 /**
  * Shared by the S1 selection lint pair (`no-dom-selection-write`,
- * `no-dom-selection-read`): renderer scope, the `{file, symbol, api, reason,
- * closedBy}` allowlist, and the per-symbol slot accounting that fails an
- * unconsumed entry (I15).
+ * `no-dom-selection-read`) and the focus rule: renderer scope and the
+ * per-site report. Every site outside the owner is an error; there is no
+ * allowlist.
  */
 
 const SCOPES = [
@@ -17,16 +12,11 @@ const SCOPES = [
 	"packages/rendering/react/src/",
 	"packages/rendering/vue/src/",
 ];
-const REQUIRED_FIELDS = ["file", "symbol", "api", "reason", "closedBy"];
 const NAMED_KEY_TYPES = new Set([
 	"MethodDefinition",
 	"PropertyDefinition",
 	"Property",
 ]);
-
-export function missingSelectionLintField(entry) {
-	return missingAllowlistField(entry, REQUIRED_FIELDS);
-}
 
 /** Repo-relative path when `filename` is a renderer production source, else null. */
 function rendererProductionPath(filename) {
@@ -68,7 +58,7 @@ function scopeName(node) {
 }
 
 /** Nearest named function, method or variable around `node`; "(module)" at top level. */
-function enclosingSymbol(node) {
+export function enclosingSymbol(node) {
 	for (let current = node.parent; current; current = current.parent) {
 		const name = scopeName(current);
 		if (name) return name;
@@ -77,87 +67,36 @@ function enclosingSymbol(node) {
 }
 
 /**
- * Allowlist accounting for one file. `report(node, api)` consumes a matching
- * `{symbol, api}` entry or reports `messageId`; `listeners` reports
- * incomplete entries on entry and unconsumed ones on exit.
- */
-function createSelectionAllowlistTracker(
-	context,
-	relative,
-	allowlist,
-	messageId,
-) {
-	const slots = allowlist
-		.filter(
-			(entry) =>
-				!missingSelectionLintField(entry) && entry.file === relative,
-		)
-		.map((entry) => ({ ...entry, used: false }));
-	const report = (node, api) => {
-		const symbol = enclosingSymbol(node);
-		const slot = slots.find(
-			(entry) => entry.symbol === symbol && entry.api === api,
-		);
-		if (slot) {
-			slot.used = true;
-			return;
-		}
-		context.report({
-			node,
-			messageId,
-			data: { api, symbol, file: relative },
-		});
-	};
-	const listeners = allowlistLifecycleListeners(context, {
-		allowlist,
-		relative,
-		slots,
-		missingField: missingSelectionLintField,
-	});
-	return { report, listeners, file: relative };
-}
-
-/**
  * Rule metadata for one half of the S1 pair. `kind` is "read" or "write";
- * `violation` is the message for an unlisted site.
+ * `violation` is the message for a site outside the owner.
  */
 export function selectionLintMeta({ description, kind, violation }) {
 	return {
 		type: "problem",
 		docs: { description, specRule: "S1" },
-		schema: [
-			{
-				type: "object",
-				properties: { allowlist: { type: "array" } },
-				additionalProperties: false,
-			},
-		],
-		messages: {
-			[kind]: violation,
-			incompleteAllowlist: `S1 selection-${kind} allowlist entry is missing \`{{field}}\`. Every entry needs file, symbol, api, reason and closedBy.`,
-			orphanedAllowlist: `S1 selection-${kind} allowlist entry for \`{{api}}\` in \`{{symbol}}\` ({{file}}) has no matching ${kind}. Remove it in the change that moved the ${kind} (I15).`,
-		},
+		schema: [],
+		messages: { [kind]: violation },
 	};
 }
 
 /**
- * The tracker for a renderer production file other than `owner`, or null
- * when the rule does not apply to this file.
+ * The reporter for a renderer production file other than `owner`, or null
+ * when the rule does not apply to this file. `report(node, api)` reports
+ * `messageId` with the enclosing symbol.
  */
-export function selectionLintTracker(
-	context,
-	{ owner, allowlistPath, messageId },
-) {
+export function selectionLintReporter(context, { owner, messageId }) {
 	const relative = rendererProductionPath(
 		context.filename ?? context.getFilename(),
 	);
 	if (!relative || relative === owner) return null;
-	const allowlist =
-		context.options[0]?.allowlist ?? loadAllowlistEntries(allowlistPath);
-	return createSelectionAllowlistTracker(
-		context,
-		relative,
-		allowlist,
-		messageId,
-	);
+	return {
+		file: relative,
+		report(node, api) {
+			context.report({
+				node,
+				messageId,
+				data: { api, symbol: enclosingSymbol(node), file: relative },
+			});
+		},
+	};
 }

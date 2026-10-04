@@ -1,20 +1,16 @@
 import {
 	isGetSelectionCall,
 	memberName,
-	missingSelectionLintField,
 	selectionLintMeta,
-	selectionLintTracker,
+	selectionLintReporter,
 } from "./selectionLintShared.js";
 
 /**
  * S1 (`spec/rules/selection.md`): one writer. In the renderer packages only
  * the selection projector mutates the DOM selection or an EditContext's
- * selection. Every other site is listed, with the requirement that removes
- * it, in `scripts/dom-selection-write-allowlist.json`; an entry whose site no
- * longer exists fails (I15), so the list only shrinks.
+ * selection. There is no allowlist: every other site is an error.
  */
 
-const ALLOWLIST_PATH = "scripts/dom-selection-write-allowlist.json";
 const OWNER = "packages/rendering/dom/src/field-editor/selectionProjector.ts";
 
 /** Selection mutators no other type shares. */
@@ -39,23 +35,20 @@ function typeName(identifier) {
 		: null;
 }
 
-export const missingSelectionWriteField = missingSelectionLintField;
-
 export const noDomSelectionWrite = {
 	meta: selectionLintMeta({
 		description:
 			"Only the selection projector writes the DOM selection (S1)",
 		kind: "write",
 		violation:
-			"`{{api}}` in `{{symbol}}` ({{file}}) writes the selection outside the projector (S1). Write the selection authority and let the projector project it, or add an allowlist entry naming the requirement that removes this site.",
+			"`{{api}}` in `{{symbol}}` ({{file}}) writes the selection outside the projector (S1). Write the selection authority and let the projector project it.",
 	}),
 	create(context) {
-		const tracker = selectionLintTracker(context, {
+		const reporter = selectionLintReporter(context, {
 			owner: OWNER,
-			allowlistPath: ALLOWLIST_PATH,
 			messageId: "write",
 		});
-		if (!tracker) return {};
+		if (!reporter) return {};
 		const selectionVariables = new Set();
 
 		const isSelectionReceiver = (receiver) => {
@@ -83,7 +76,6 @@ export const noDomSelectionWrite = {
 		};
 
 		return {
-			...tracker.listeners,
 			VariableDeclarator(node) {
 				if (
 					node.id?.type === "Identifier" &&
@@ -98,7 +90,7 @@ export const noDomSelectionWrite = {
 			},
 			CallExpression(node) {
 				const api = writtenApi(node.callee);
-				if (api) tracker.report(node, api);
+				if (api) reporter.report(node, api);
 			},
 		};
 	},

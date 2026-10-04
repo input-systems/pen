@@ -1,11 +1,7 @@
-import { createRequire } from "node:module";
 import js from "@eslint/js";
 import pen from "@input/pen-eslint-plugin";
 import globals from "globals";
 import tseslint from "typescript-eslint";
-
-const require = createRequire(import.meta.url);
-const selectionTimers = require("./packages/tooling/eslint-plugin/src/rules/no-selection-timers-allowlist.json");
 
 // HB2: layout metrics the React and Vue bindings may not read outside the
 // allowlist. Rect and hit-test reads are SCH1's base set in every renderer.
@@ -65,17 +61,11 @@ export default tseslint.config(
 
 			// S4: selection paths get no timers, microtask or promise
 			// deferrals, async/await, setter-calling scheduler callbacks, or
-			// retry counters. Scope is the allowlist's `modules` paths plus a
+			// retry counters. Scope is the rule's module list plus a
 			// basename-contains-`selection` net so a new selectionReader.ts
-			// cannot silently escape.
-			// Do not add a `files:` glob; the rule self-scopes from this list.
-			"pen/no-selection-timers": [
-				"error",
-				{
-					modules: selectionTimers.modules,
-					outOfScope: selectionTimers.outOfScope,
-				},
-			],
+			// cannot silently escape. No allowlist.
+			// Do not add a `files:` glob; the rule self-scopes.
+			"pen/no-selection-timers": "error",
 
 			// HOST4: crypto.randomUUID is secure-context-only, so it throws on plain-HTTP origins
 			// and on Safari < 15.4. generateId owns the feature test and fallback (F24).
@@ -91,8 +81,8 @@ export default tseslint.config(
 		},
 	},
 	{
-		// SCH1 / RI1: geometry reads stay scheduled; marks never introduce
-		// bidi-override. Allowlists live in scripts/.
+		// SCH1 / RI1: geometry reads stay scheduled (allowlist in scripts/);
+		// marks never introduce bidi-override (no allowlist).
 		files: ["packages/rendering/**/*.{ts,tsx,js,jsx}"],
 		ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
 		rules: {
@@ -130,7 +120,7 @@ export default tseslint.config(
 	},
 	{
 		// API4: no @input/pen-* import through /src/, /dist/, or an
-		// unpublished subpath. Allowlist: scripts/pen-deep-imports-allowlist.json.
+		// unpublished subpath. No allowlist.
 		files: [
 			"packages/**/*.{ts,tsx,js,jsx,mjs,cjs}",
 			"examples/**/*.{ts,tsx,js,jsx,mjs,cjs}",
@@ -243,9 +233,8 @@ export default tseslint.config(
 	},
 	{
 		// S1: one selection writer. Outside the projector, every DOM selection
-		// or EditContext selection write is listed with the requirement that
-		// removes it in scripts/dom-selection-write-allowlist.json; an entry with
-		// no live write fails (I15). The rule self-scopes to the renderer sources.
+		// or EditContext selection write is an error; there is no allowlist.
+		// The rule self-scopes to the renderer sources.
 		files: ["packages/rendering/**/src/**/*.{ts,tsx}"],
 		rules: {
 			"pen/no-dom-selection-write": "error",
@@ -253,9 +242,8 @@ export default tseslint.config(
 	},
 	{
 		// W3.R16: focus is a projection concern. In pen-dom only
-		// field-editor/focusController.ts calls HTMLElement.focus; the
-		// allowlist scripts/dom-focus-allowlist.json is empty, and an entry
-		// with no live call fails (I15). The rule self-scopes to pen-dom.
+		// field-editor/focusController.ts calls HTMLElement.focus; there is no
+		// allowlist. The rule self-scopes to pen-dom.
 		files: ["packages/rendering/dom/src/**/*.{ts,tsx}"],
 		rules: {
 			"pen/no-direct-dom-focus": "error",
@@ -264,9 +252,8 @@ export default tseslint.config(
 	{
 		// S1: one selection reader. Outside selectionReader.ts, every
 		// getSelection(), selectionchange listener and live-selection mapping
-		// call is listed with the requirement that removes it in
-		// scripts/dom-selection-read-allowlist.json; an entry with no live read
-		// fails (I15). The rule self-scopes to the renderer sources.
+		// call is an error; there is no allowlist. The rule self-scopes to the
+		// renderer sources.
 		files: ["packages/rendering/**/src/**/*.{ts,tsx}"],
 		rules: {
 			"pen/no-dom-selection-read": "error",

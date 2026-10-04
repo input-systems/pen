@@ -16,25 +16,12 @@ describe("no-bidi-override (RI1)", () => {
 				{
 					code: 'export const style = { unicodeBidi: "isolate" };\n',
 					filename: file,
-					options: [{ allowlist: [] }],
-				},
-				{
-					code: 'export const style = { unicodeBidi: "bidi-override" };\n',
-					filename: file,
-					options: [
-						{
-							allowlist: [
-								{ file, reason: "justified override" },
-							],
-						},
-					],
 				},
 			],
 			invalid: [
 				{
 					code: 'export const style = { unicodeBidi: "bidi-override" };\n',
 					filename: file,
-					options: [{ allowlist: [] }],
 					errors: [{ messageId: "override", data: { file } }],
 				},
 			],

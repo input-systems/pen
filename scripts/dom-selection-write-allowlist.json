@@ -1,4 +1,0 @@
-{
-  "_comment": "S1 (spec/rules/selection.md): one selection writer. Each entry is a DOM selection or EditContext selection write outside the projector, with the W3 step that moves it. pen/no-dom-selection-write fails an entry with no matching write (I15); the list ends empty when W3.R3 closes.",
-  "entries": []
-}

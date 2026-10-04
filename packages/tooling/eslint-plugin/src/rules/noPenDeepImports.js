@@ -1,14 +1,12 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { loadAllowlistEntries } from "./allowlistLint.js";
-import { posixFilename, REPO_ROOT, repoRelativeFilename } from "./lintPaths.js";
+import { REPO_ROOT } from "./lintPaths.js";
 
 /**
  * API4 (`spec/rules/api.md`): no `@input/pen-*` import through `/src/`,
- * `/dist/`, or an unpublished subpath.
+ * `/dist/`, or an unpublished subpath. There is no allowlist: every such
+ * import is an error.
  */
-
-const ALLOWLIST_PATH = "scripts/pen-deep-imports-allowlist.json";
 
 const ESCAPE_HATCH_RE = /\/(?:src|dist)(?:\/|$)/;
 const SKIP_DIRS = new Set([
@@ -138,7 +136,6 @@ export function isDeepImport(specifier, packages) {
 	return !matchesExportKey(exportKey, publishedKeys);
 }
 
-const committedAllowlist = loadAllowlistEntries(ALLOWLIST_PATH);
 const workspacePackages = loadWorkspacePackages(REPO_ROOT);
 
 function specifierFromNode(node) {
@@ -170,7 +167,6 @@ export const noPenDeepImports = {
 			{
 				type: "object",
 				properties: {
-					allowlist: { type: "array" },
 					packages: { type: "object" },
 				},
 				additionalProperties: false,
@@ -178,14 +174,9 @@ export const noPenDeepImports = {
 		],
 		messages: {
 			deep: "`{{specifier}}` is not a published `@input/pen-*` export (API4). Import a documented subpath, not `/src/` or `/dist/`.",
-			unusedAllowlist:
-				"API4 allowlist entry for `{{specifier}}` in {{file}} was not consumed. Remove it in the same change that deleted the import.",
 		},
 	},
 	create(context) {
-		const filename = context.filename ?? context.getFilename();
-		const relative = repoRelativeFilename(filename);
-		const allowlist = context.options[0]?.allowlist ?? committedAllowlist;
 		const packages = context.options[0]?.packages
 			? {
 					names: context.options[0].packages.names,
@@ -196,30 +187,8 @@ export const noPenDeepImports = {
 					),
 				}
 			: workspacePackages;
-		const slots = allowlist
-			.filter(
-				(entry) =>
-					entry &&
-					typeof entry.file === "string" &&
-					typeof entry.specifier === "string" &&
-					posixFilename(entry.file) === relative,
-			)
-			.map((entry) => ({ ...entry, used: false }));
-
-		function consume(specifier) {
-			const slot = slots.find((entry) => entry.specifier === specifier);
-			if (!slot) {
-				return false;
-			}
-			slot.used = true;
-			return true;
-		}
-
 		function checkSpecifier(node, specifier) {
 			if (!isDeepImport(specifier, packages)) {
-				return;
-			}
-			if (consume(specifier)) {
 				return;
 			}
 			context.report({
@@ -230,20 +199,6 @@ export const noPenDeepImports = {
 		}
 
 		return {
-			"Program:exit"() {
-				for (const slot of slots) {
-					if (!slot.used) {
-						context.report({
-							loc: { line: 1, column: 0 },
-							messageId: "unusedAllowlist",
-							data: {
-								file: slot.file,
-								specifier: slot.specifier,
-							},
-						});
-					}
-				}
-			},
 			ImportDeclaration(node) {
 				const specifier = specifierFromNode(node.source);
 				if (specifier) {

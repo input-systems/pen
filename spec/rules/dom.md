@@ -78,7 +78,7 @@ Direction affects which key advances the caret, not how a caret is represented: 
 
 Exporters emit text as stored: Pen inserts no LRM or RLM direction marks on export.
 
-- RI1. The content root gets `unicode-bidi: isolate` per block host, and marks or decorations must not introduce `bidi-override`. The gate is `pen/no-bidi-override` in the root ESLint config over style objects in the DOM and framework renderer packages.
+- RI1. The content root gets `unicode-bidi: isolate` per block host, and marks or decorations must not introduce `bidi-override`. The gate is `pen/no-bidi-override` in the root ESLint config over style objects in the DOM and framework renderer packages, with no allowlist.
 - RI2. IME composition inside an RTL run needs no special handling beyond the ordinary composition rules: composition owns the field, and geometry reads resume after it ends.
 - RI3. Pasted mixed-direction text is plain content. Direction resolution reacts through DIR1 invalidation rather than through a paste-specific path.
 - RI4. The overlay caret measures through `caretRect` and so inherits bidi correctness, and the native caret inside the active field agrees because DIR2 sets `dir` on the same element the browser measures.
