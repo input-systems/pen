@@ -318,6 +318,16 @@
         "default": "./dist/utils/dataAttributes.cjs"
       }
     },
+    "./utils/domNodes": {
+      "import": {
+        "types": "./dist/utils/domNodes.d.ts",
+        "default": "./dist/utils/domNodes.mjs"
+      },
+      "require": {
+        "types": "./dist/utils/domNodes.d.cts",
+        "default": "./dist/utils/domNodes.cjs"
+      }
+    },
     "./utils/editorEmptyState": {
       "import": {
         "types": "./dist/utils/editorEmptyState.d.ts",

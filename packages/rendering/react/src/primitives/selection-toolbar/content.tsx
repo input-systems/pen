@@ -6,6 +6,7 @@ import { useSelectionToolbarContext } from "./root";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { composeRefs } from "../../utils/composeRefs";
 import { captureFocusReturn, restoreFocusReturn } from "@input/pen-dom";
+import { isDomNode } from "@input/pen-dom/utils/domNodes";
 import { useFieldEditorContext } from "../../context/fieldEditorContext";
 import { resolveChromeEditorRoot } from "../../utils/aiDomScope";
 import { getAttachedFieldEditorSession } from "../../utils/fieldEditor";
@@ -180,7 +181,7 @@ export function SelectionToolbarContent(props: SelectionToolbarContentProps) {
 		if (!element?.isConnected) {
 			return;
 		}
-		if (!(next instanceof Node) || !element.contains(next)) {
+		if (!isDomNode(next) || !element.contains(next)) {
 			focusWithinRef.current = false;
 		}
 	};

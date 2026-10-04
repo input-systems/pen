@@ -22,6 +22,7 @@ import {
 	notifyRejected,
 	selectInlineAtomRangeFromShiftClick,
 } from "./inlineAtomDestructure";
+import { isDomDocument, isDomHTMLElement } from "../utils/domNodes";
 
 const DRAG_THRESHOLD_PX = 4;
 
@@ -432,7 +433,7 @@ function resolveTargetFromPoint(
 ): InlineAtomDropTarget | null {
 	const element = doc.elementFromPoint(clientX, clientY);
 	const root =
-		element instanceof HTMLElement
+		isDomHTMLElement(element)
 			? element.closest<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`)
 			: null;
 	if (!root) {
@@ -493,5 +494,5 @@ function getPointerSessionForEvent(event: PointerEvent): PointerSession | null {
 
 function getEventDocument(event: Event): Document | null {
 	const currentTarget = event.currentTarget;
-	return currentTarget instanceof Document ? currentTarget : null;
+	return isDomDocument(currentTarget) ? currentTarget : null;
 }

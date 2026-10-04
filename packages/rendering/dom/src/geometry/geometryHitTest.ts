@@ -13,6 +13,7 @@ import { DATA_ATTRS } from "../utils/dataAttributes";
 import { snapToLogicalOffset } from "./geometryMeasure";
 import type { Point } from "./types";
 import { getDistanceToRect } from "./types";
+import { isDomHTMLElement } from "../utils/domNodes";
 
 export function measurePointAt(
 	root: HTMLElement,
@@ -165,6 +166,6 @@ export function listDomBlockElements(root: HTMLElement): HTMLElement[] {
 	return Array.from(
 		root.querySelectorAll(`[${DATA_ATTRS.editorBlock}]`),
 	).filter(
-		(element): element is HTMLElement => element instanceof HTMLElement,
+		isDomHTMLElement,
 	);
 }

@@ -699,6 +699,22 @@ _no exports_
 - OVERLAY_ITEM_ATTR
 - OVERLAY_LAYER_ATTR
 
+## ./utils/domNodes
+
+`./dist/utils/domNodes.d.ts`
+
+### function
+
+- closestDomElement
+
+### guard
+
+- isDomDocument
+- isDomElement
+- isDomHTMLElement
+- isDomNode
+- isDomText
+
 ## ./utils/editorEmptyState
 
 `./dist/utils/editorEmptyState.d.ts`

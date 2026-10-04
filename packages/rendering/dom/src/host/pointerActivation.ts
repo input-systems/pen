@@ -15,6 +15,7 @@ import { getEditorBlockSelectionLength } from "../utils/blockSelectionSemantics"
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import { getPreorderBlockIds } from "../utils/documentPreorder";
 import { normalizeSelectionFormation } from "../utils/selectionFormation";
+import { closestDomElement, isDomHTMLElement } from "../utils/domNodes";
 
 export interface FieldEditorPointerTarget {
 	getSnapshot(): {
@@ -53,7 +54,7 @@ export function handleFieldEditorPointerActivate(
 		return false;
 	}
 
-	const target = resolveEventElement(event.target);
+	const target = closestDomElement(event.target);
 	if (!target) {
 		return false;
 	}
@@ -72,12 +73,12 @@ export function handleFieldEditorPointerActivate(
 
 	const clickedBlock = target.closest(`[${DATA_ATTRS.editorBlock}]`);
 	const hostFallback =
-		clickedBlock instanceof HTMLElement && blocksHost.contains(clickedBlock)
+		isDomHTMLElement(clickedBlock) && blocksHost.contains(clickedBlock)
 			? null
 			: resolveHostChromeFallbackBlock(event, editor, root, blocksHost);
 	const blockElement =
 		hostFallback?.element ??
-		(clickedBlock instanceof HTMLElement &&
+		(isDomHTMLElement(clickedBlock) &&
 		blocksHost.contains(clickedBlock)
 			? clickedBlock
 			: null);
@@ -148,7 +149,7 @@ export function handleFieldEditorPointerActivate(
 	const inline =
 		target.closest(`[${DATA_ATTRS.inlineContent}]`) ??
 		findInlineContentElement(blockElement);
-	if (inline instanceof HTMLElement) {
+	if (isDomHTMLElement(inline)) {
 		fieldEditor.attachElement(inline);
 	}
 	return true;
@@ -262,16 +263,6 @@ function activateInlineAtomSide(options: {
 	return true;
 }
 
-function resolveEventElement(target: EventTarget | null): Element | null {
-	if (target instanceof Element) {
-		return target;
-	}
-	if (target instanceof Node) {
-		return target.parentElement;
-	}
-	return null;
-}
-
 function isEditorHostChrome(
 	target: Element,
 	root: HTMLElement,
@@ -347,7 +338,7 @@ export function collectHostTextBlocks(
 		`[${DATA_ATTRS.editorBlock}]`,
 	)) {
 		if (
-			!(element instanceof HTMLElement) ||
+			!isDomHTMLElement(element) ||
 			!blocksHost.contains(element)
 		) {
 			continue;

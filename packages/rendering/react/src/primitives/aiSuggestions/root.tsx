@@ -3,6 +3,7 @@ import type { Editor } from "@input/pen-types";
 import { EditorContext } from "../../context/editorContext";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { captureFocusReturn, restoreFocusReturn } from "@input/pen-dom";
+import { isDomElement, isDomNode } from "@input/pen-dom/utils/domNodes";
 import { resolveEditorRootElement } from "../../utils/aiDomScope";
 import { getAttachedFieldEditorSession } from "../../utils/fieldEditor";
 import { useAISuggestionPopover } from "../../hooks/useAISuggestionPopover";
@@ -73,8 +74,7 @@ export function AISuggestionsRoot(props: AISuggestionsRootProps) {
 
 	React.useEffect(() => {
 		const handleClick = (event: MouseEvent) => {
-			const target =
-				event.target instanceof Element ? event.target : null;
+			const target = isDomElement(event.target) ? event.target : null;
 			const anchor = target?.closest(
 				"[data-ai-suggestion-id]",
 			) as HTMLElement | null;
@@ -184,7 +184,7 @@ function restoreEditorFocus(editor: Editor): void {
 		return;
 	}
 	const active = root.ownerDocument.activeElement;
-	if (active instanceof Node && root.contains(active)) {
+	if (isDomNode(active) && root.contains(active)) {
 		return;
 	}
 	restoreFocusReturn(

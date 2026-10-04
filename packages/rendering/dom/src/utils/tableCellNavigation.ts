@@ -13,6 +13,7 @@ import {
 } from "@input/pen-core";
 import type { FieldEditorTableNavigationController } from "../field-editor/controller";
 import { getAdjacentVisibleBlockId } from "./parentIdTree";
+import { closestDomElement, isDomHTMLElement } from "./domNodes";
 
 export function handleTableCellSelectionKeyDown(options: {
 	event: KeyboardEvent;
@@ -259,14 +260,8 @@ function isActiveCellInputHandlingKeys(
 	row: number,
 	col: number,
 ): boolean {
-	const rawTarget = event.target;
-	const target =
-		rawTarget instanceof HTMLElement
-			? rawTarget
-			: rawTarget instanceof Node
-				? rawTarget.parentElement
-				: null;
-	if (!(target instanceof HTMLElement)) {
+	const target = closestDomElement(event.target);
+	if (!isDomHTMLElement(target)) {
 		return false;
 	}
 
@@ -281,7 +276,7 @@ function isActiveCellInputHandlingKeys(
 	const activeCell = target.closest(
 		`[data-block-id="${blockId}"] [data-cell-row="${resolvedCoord.row}"][data-cell-col="${resolvedCoord.col}"]`,
 	);
-	if (!(activeCell instanceof HTMLElement)) {
+	if (!isDomHTMLElement(activeCell)) {
 		return false;
 	}
 

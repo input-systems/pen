@@ -238,6 +238,11 @@
     },
     {
       "package": "@input/pen-dom",
+      "key": "./utils/domNodes",
+      "reason": "Realm-safe node guards shared with the framework bindings, so an editor mounted in an iframe is not misread by window-bound instanceof checks; not a src/dist escape hatch."
+    },
+    {
+      "package": "@input/pen-dom",
       "key": "./utils/pointerSelection",
       "reason": "P.6 relocated pointerSelection, not a src/dist escape hatch."
     },

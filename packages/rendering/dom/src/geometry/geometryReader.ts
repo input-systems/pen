@@ -25,6 +25,7 @@ import type {
 	Point,
 	Rect,
 } from "./types";
+import { isDomNode } from "../utils/domNodes";
 
 export type { Affinity, GeometryReader, LineBox, Point, Rect } from "./types";
 export { verticalCaretTarget } from "./verticalCaretTarget";
@@ -346,7 +347,7 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	}
 
 	private movesRoot(target: EventTarget | null): boolean {
-		if (!(target instanceof Node)) {
+		if (!isDomNode(target)) {
 			return true;
 		}
 		return target.contains(this.root) || this.root.contains(target);

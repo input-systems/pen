@@ -7,6 +7,7 @@ import {
 	resolveInlineAtomInsert,
 	type InlineAtomInsert,
 } from "./inlineAtomModel";
+import { isDomHTMLElement } from "../utils/domNodes";
 export {
 	INLINE_ATOM_REPLACEMENT_TEXT,
 	resolveInlineAtomInsert,
@@ -177,21 +178,21 @@ export function isInlineAtomCaretBoundaryNode(
 	node: Node | null,
 ): node is HTMLElement {
 	return (
-		node instanceof HTMLElement &&
+		isDomHTMLElement(node) &&
 		node.hasAttribute(DATA_ATTRS.inlineAtomCaretBoundary)
 	);
 }
 
 export function isInlineAtomHostNode(node: Node | null): node is HTMLElement {
 	return (
-		node instanceof HTMLElement &&
+		isDomHTMLElement(node) &&
 		node.hasAttribute(DATA_ATTRS.inlineAtomHost)
 	);
 }
 
 export function isInlineAtomChipNode(node: Node | null): node is HTMLElement {
 	return (
-		node instanceof HTMLElement &&
+		isDomHTMLElement(node) &&
 		node.hasAttribute(DATA_ATTRS.inlineAtom) &&
 		!isInlineAtomHostNode(node)
 	);
@@ -235,11 +236,11 @@ function definedRecordKeys(record: Record<string, unknown>): string[] {
 }
 
 function getInlineAtomChipElement(element: Element): HTMLElement | null {
-	if (element instanceof HTMLElement && isInlineAtomChipNode(element)) {
+	if (isInlineAtomChipNode(element)) {
 		return element;
 	}
 
-	if (element instanceof HTMLElement && isInlineAtomHostNode(element)) {
+	if (isInlineAtomHostNode(element)) {
 		for (const child of Array.from(element.childNodes)) {
 			if (isInlineAtomChipNode(child)) {
 				return child;

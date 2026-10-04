@@ -24,6 +24,7 @@ import {
 	rectFromDOMRect,
 	unionRects,
 } from "./types";
+import { isDomHTMLElement } from "../utils/domNodes";
 
 export const LINE_TOP_EPSILON = 1;
 
@@ -429,7 +430,7 @@ export function findAtomHost(node: Node): HTMLElement | null {
 		}
 		if (isInlineAtomNode(current)) {
 			const host = current.closest(`[${DATA_ATTRS.inlineAtomHost}]`);
-			return host instanceof HTMLElement ? host : current;
+			return isDomHTMLElement(host) ? host : current;
 		}
 		current = current.parentNode;
 	}

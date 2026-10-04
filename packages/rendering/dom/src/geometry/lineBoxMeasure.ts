@@ -23,6 +23,7 @@ import {
 } from "./geometryMeasure";
 import type { BidiRun, LineBox, Rect } from "./types";
 import { isUsefulRect, rectFromDOMRect, unionRects } from "./types";
+import { isDomText } from "../utils/domNodes";
 
 export function measureLineBoxes(
 	root: HTMLElement,
@@ -139,7 +140,7 @@ function collectLineFragments(
 
 		if (node.nodeType === Node.TEXT_NODE) {
 			const length = getLogicalNodeLength(node);
-			if (length > 0 && node instanceof Text) {
+			if (length > 0 && isDomText(node)) {
 				fragments.push(
 					...fragmentsForTextNode(
 						root,

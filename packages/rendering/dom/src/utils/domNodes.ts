@@ -6,6 +6,8 @@
  */
 
 const ELEMENT_NODE = 1;
+const TEXT_NODE = 3;
+const DOCUMENT_NODE = 9;
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 
 /** `value instanceof Node`, for a node from any window. */
@@ -25,6 +27,16 @@ export function isDomElement(value: unknown): value is Element {
 /** `value instanceof HTMLElement`, for an element from any window. */
 export function isDomHTMLElement(value: unknown): value is HTMLElement {
 	return isDomElement(value) && value.namespaceURI === XHTML_NAMESPACE;
+}
+
+/** `value instanceof Text`, for a text node from any window. */
+export function isDomText(value: unknown): value is Text {
+	return isDomNode(value) && value.nodeType === TEXT_NODE;
+}
+
+/** `value instanceof Document`, for a document from any window. */
+export function isDomDocument(value: unknown): value is Document {
+	return isDomNode(value) && value.nodeType === DOCUMENT_NODE;
 }
 
 /** The element `target` is, or the parent element of a non-element node. */

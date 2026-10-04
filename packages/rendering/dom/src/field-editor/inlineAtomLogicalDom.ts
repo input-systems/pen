@@ -8,6 +8,7 @@ import {
 	isInlineAtomNode,
 	type InlineAtomCaretBoundarySide,
 } from "./inlineAtomDom";
+import { isDomHTMLElement } from "../utils/domNodes";
 
 const VIRTUAL_INLINE_DECORATION_ATTRIBUTE = "data-pen-virtual-inline";
 
@@ -95,7 +96,7 @@ export function getInlineAtomPointerOffset(
 	const atomElements = Array.from(
 		container.querySelectorAll(`[${DATA_ATTRS.inlineAtom}]`),
 	).filter(
-		(element): element is HTMLElement => element instanceof HTMLElement,
+		isDomHTMLElement,
 	);
 	if (atomElements.length === 0) {
 		return null;
@@ -209,7 +210,7 @@ export function getLogicalNodeText(node: Node): string {
 
 function isVirtualInlineDecorationNode(node: Node | null): node is HTMLElement {
 	return (
-		node instanceof HTMLElement &&
+		isDomHTMLElement(node) &&
 		node.hasAttribute(VIRTUAL_INLINE_DECORATION_ATTRIBUTE)
 	);
 }
@@ -409,7 +410,7 @@ function findLogicalDOMPointInElement(
 			continue;
 		}
 
-		if (remaining <= length && child instanceof HTMLElement) {
+		if (remaining <= length && isDomHTMLElement(child)) {
 			return findLogicalDOMPointInElement(child, remaining);
 		}
 
