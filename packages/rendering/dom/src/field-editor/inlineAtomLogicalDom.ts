@@ -104,6 +104,12 @@ export function getInlineAtomPointerOffset(
 
 	let bestOffset: number | null = null;
 	let bestScore = Number.POSITIVE_INFINITY;
+	// The half a click lands on is the side it takes (O1): the visual left
+	// half is the atom's logical start in left-to-right text, its end in
+	// right-to-left text.
+	const rtl =
+		container.ownerDocument.defaultView?.getComputedStyle(container)
+			.direction === "rtl";
 
 	for (const atomElement of atomElements) {
 		const rect = atomElement.getBoundingClientRect();
@@ -126,8 +132,8 @@ export function getInlineAtomPointerOffset(
 
 		const logicalAtom = resolveLogicalInlineAtomUnit(atomElement);
 		const atomOffset = getOffsetBeforeNode(container, logicalAtom);
-		bestOffset =
-			clientX <= rect.left + rect.width / 2 ? atomOffset : atomOffset + 1;
+		const inLeftHalf = clientX <= rect.left + rect.width / 2;
+		bestOffset = inLeftHalf !== rtl ? atomOffset : atomOffset + 1;
 		bestScore = score;
 	}
 

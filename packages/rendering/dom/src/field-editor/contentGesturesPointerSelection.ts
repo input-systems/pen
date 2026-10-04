@@ -116,7 +116,9 @@ export function createPointerSelectionGestures<
 		}
 
 		return insertParagraphAndActivate(
-			clickedAbove ? { before: adjacentBlock.id } : { after: adjacentBlock.id },
+			clickedAbove
+				? { before: adjacentBlock.id }
+				: { after: adjacentBlock.id },
 		);
 	};
 
@@ -162,10 +164,26 @@ export function createPointerSelectionGestures<
 			blockId,
 		);
 		if (selectingForward === null) return;
+		// The focus is the offset under the pointer, the point a plain click
+		// collapses to (T5), with an atom's side taken from the half the
+		// click lands on (O1); the far edge only when geometry resolves none.
+		const pointerPoint = currentEditorRoot
+			? pointToEditorSelectionPoint(
+					currentEditorRoot,
+					event.clientX,
+					event.clientY,
+				)
+			: null;
 		activateCanonicalSelection(
 			ctx,
 			anchorPoint,
-			getBoundaryPoint(ctx, blockId, selectingForward ? "end" : "start"),
+			pointerPoint?.blockId === blockId
+				? { blockId, offset: pointerPoint.offset }
+				: getBoundaryPoint(
+						ctx,
+						blockId,
+						selectingForward ? "end" : "start",
+					),
 		);
 		event.preventDefault();
 	};

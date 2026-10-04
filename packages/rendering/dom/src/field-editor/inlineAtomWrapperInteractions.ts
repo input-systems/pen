@@ -100,8 +100,10 @@ export function attachInlineAtomWrapperInteractions(
 			if (selectInlineAtomRangeFromShiftClick(options)) {
 				event.preventDefault();
 				event.stopPropagation();
-				return;
 			}
+			// Otherwise a cross-block extend, left to the content gestures;
+			// a shift press never starts an atom drag.
+			return;
 		}
 
 		if (
@@ -432,10 +434,9 @@ function resolveTargetFromPoint(
 	clientY: number,
 ): InlineAtomDropTarget | null {
 	const element = doc.elementFromPoint(clientX, clientY);
-	const root =
-		isDomHTMLElement(element)
-			? element.closest<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`)
-			: null;
+	const root = isDomHTMLElement(element)
+		? element.closest<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`)
+		: null;
 	if (!root) {
 		return null;
 	}

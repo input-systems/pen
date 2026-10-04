@@ -78,8 +78,7 @@ export function handleFieldEditorPointerActivate(
 			: resolveHostChromeFallbackBlock(event, editor, root, blocksHost);
 	const blockElement =
 		hostFallback?.element ??
-		(isDomHTMLElement(clickedBlock) &&
-		blocksHost.contains(clickedBlock)
+		(isDomHTMLElement(clickedBlock) && blocksHost.contains(clickedBlock)
 			? clickedBlock
 			: null);
 	if (!blockElement) {
@@ -100,7 +99,7 @@ export function handleFieldEditorPointerActivate(
 	if (
 		event.shiftKey &&
 		!hostFallback &&
-		extendSelectionToBlock({ editor, fieldEditor, root, blockId })
+		extendSelectionToPointer({ event, editor, fieldEditor, root, blockId })
 	) {
 		event.preventDefault();
 		return true;
@@ -157,17 +156,22 @@ export function handleFieldEditorPointerActivate(
 
 /**
  * A shift-click in another block extends the selection from its anchor to
- * that block's far edge, the same range the React content gestures form
- * (`contentGesturesPointerSelection`), ordered by the nested document walk.
- * A shift-click in the anchor's own block stays the browser's native extend.
+ * the logical offset under the pointer, the point a plain click there
+ * collapses to (T5): the same range the React content gestures form
+ * (`contentGesturesPointerSelection`). A click inside an inline atom takes
+ * the side of the half it lands on (O1). Where geometry resolves no point in
+ * the clicked block, the focus is that block's far edge in the nested
+ * document walk. A shift-click in the anchor's own block stays the
+ * browser's native extend.
  */
-function extendSelectionToBlock(options: {
+function extendSelectionToPointer(options: {
+	event: MouseEvent;
 	editor: Editor;
 	fieldEditor: FieldEditorPointerTarget;
 	root: HTMLElement;
 	blockId: string;
 }): boolean {
-	const { editor, fieldEditor, root, blockId } = options;
+	const { event, editor, fieldEditor, root, blockId } = options;
 	if (!fieldEditor.applyDocumentTextSelection) {
 		return false;
 	}
@@ -181,14 +185,26 @@ function extendSelectionToBlock(options: {
 	if (anchorIndex < 0 || targetIndex < 0) {
 		return false;
 	}
-	const focus = blockBoundaryPoint(
-		editor,
+	const pointerPoint = pointToEditorSelectionPoint(
 		root,
-		blockId,
-		anchorIndex < targetIndex ? "end" : "start",
+		event.clientX,
+		event.clientY,
 	);
+	const focus =
+		pointerPoint?.blockId === blockId
+			? { blockId, offset: pointerPoint.offset }
+			: blockBoundaryPoint(
+					editor,
+					root,
+					blockId,
+					anchorIndex < targetIndex ? "end" : "start",
+				);
 	const formed = normalizeSelectionFormation(editor, { anchor, focus });
-	fieldEditor.applyDocumentTextSelection(formed.anchor, formed.focus, "pointer");
+	fieldEditor.applyDocumentTextSelection(
+		formed.anchor,
+		formed.focus,
+		"pointer",
+	);
 	return true;
 }
 
@@ -220,7 +236,9 @@ function blockBoundaryPoint(
 		getBlockBoundaryPoint(root, blockId, side) ?? {
 			blockId,
 			offset:
-				side === "start" ? 0 : getEditorBlockSelectionLength(editor, blockId),
+				side === "start"
+					? 0
+					: getEditorBlockSelectionLength(editor, blockId),
 		}
 	);
 }
@@ -337,10 +355,7 @@ export function collectHostTextBlocks(
 	for (const element of blocksHost.querySelectorAll(
 		`[${DATA_ATTRS.editorBlock}]`,
 	)) {
-		if (
-			!isDomHTMLElement(element) ||
-			!blocksHost.contains(element)
-		) {
+		if (!isDomHTMLElement(element) || !blocksHost.contains(element)) {
 			continue;
 		}
 		const owningRoot = element.closest(`[${DATA_ATTRS.editorRoot}]`);

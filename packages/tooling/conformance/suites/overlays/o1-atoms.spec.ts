@@ -353,6 +353,13 @@ for (const surface of SURFACES) {
 		await expectAtomCaret(s, page, { blockId: ID.mid, offset: 6, edge: "leading" });
 		await page.mouse.click(chip.left + chip.width / 2 + 2, y);
 		await expectAtomCaret(s, page, { blockId: ID.mid, offset: 7, edge: "trailing" });
+		// Right to left, the visual right half is the logical start.
+		const rtlChip = await atomBox(page, ID.rtl);
+		const rtlY = rtlChip.top + rtlChip.height / 2;
+		await page.mouse.click(rtlChip.left + rtlChip.width / 2 + 2, rtlY);
+		await expectAtomCaret(s, page, { blockId: ID.rtl, offset: 6, edge: "leading" });
+		await page.mouse.click(rtlChip.left + rtlChip.width / 2 - 2, rtlY);
+		await expectAtomCaret(s, page, { blockId: ID.rtl, offset: 7, edge: "trailing" });
 	}, options);
 
 	scenario(on("O1: clicking the empty tail after a block-final atom puts the caret after it"), async (s, page) => {

@@ -135,9 +135,22 @@ export function resolveShiftClickInlineAtomSelection(
 	};
 }
 
+/**
+ * A shift-click on an atom whose block holds the selection's anchor. One
+ * anchored in another block is a cross-block extend to the pointer (T5),
+ * which the content gestures or the host's pointer activation form, so this
+ * returns `false` and writes nothing.
+ */
 export function selectInlineAtomRangeFromShiftClick(
 	options: InlineAtomWrapperInteractionOptions,
 ): boolean {
+	const selection = options.editor.selection;
+	if (
+		selection?.type === "text" &&
+		selection.anchor.blockId !== options.blockId
+	) {
+		return false;
+	}
 	const target = resolveShiftClickInlineAtomSelection(
 		options.editor,
 		options.blockId,
