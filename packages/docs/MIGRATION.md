@@ -257,6 +257,24 @@ store.applyDomTextSelection(anchor, focus, "pointer");
 
 **17. Arrow keys beside inline atoms go through the keymap.** The DOM-range path `selectInlineAtomWithArrowKey` is removed. In right-to-left blocks, ArrowLeft and ArrowRight follow visual direction (M2), not "previous" and "next" atom. There is no API change.
 
+**18. The input backends share a base class (CS5).** `ContentEditableBackend`, `EditContextBackend` and `ExpandedContentEditableBackend` keep their public methods. Only a host that subclasses one of them is affected:
+
+- **Affected:** subclasses that call or override `fullReconcileActiveField`, `reconcileFromModelDiscardingMutations`, `applyTextDiffAsOps(…, deferredRemoteDeltas, …)` (contenteditable), or `resolveEditorSelectionRange`, `resolveCollapsedEditorSelectionRange`, `getAuthoritativeTextInputSelection`, `resolveKeyDownRange`, `trustedCaretIn` (EditContext).
+- **Do:**
+  ```ts
+  // before
+  this.fullReconcileActiveField(blockId);
+  this.reconcileFromModelDiscardingMutations(this.ytext, this.element);
+  this.applyTextDiffAsOps(blockId, diff, deferredRemoteDeltas, caret);
+  this.getAuthoritativeTextInputSelection(blockId); // EditContextSelection | null
+  // after
+  this.rebuildField(undefined, blockId);
+  this.rebuildField();
+  this.applyTextDiffAsOps(blockId, diff, caret);
+  this.trustedCaretIn(blockId); // the collapsed trusted offset, or null
+  this.authorityRangeIn(blockId); // the record's { start, end } in the field
+  ```
+
 ### `@input/pen-react`
 
 **18. `Pen.Editor.CaretOverlay` (`EditorCaretOverlay`) binds to pen-dom's overlay.**

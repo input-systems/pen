@@ -1,4 +1,3 @@
-import { isCollapsed } from "@input/pen-core";
 import type { PenFieldEditorFocusOptions } from "./controller";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
 import { FieldInputBackendBase } from "./inputBackendBase";
@@ -24,7 +23,7 @@ import {
 	resolveEditContextTextUpdateRange,
 	type EditContextRange,
 	type EditContextSelection,
-	type KeyDownRangeResolution,
+	type TextUpdateRangeResolution,
 } from "./editContextSelectionAuthority";
 import {
 	applyEditContextTextFormats,
@@ -41,7 +40,6 @@ import type {
 	EditContextTextUpdateEvent,
 } from "./editContextTypes";
 import { authorityOffsetsInBlock } from "./selectionReader";
-import type { DirectionalSelectionOffsets } from "./selectionMapping";
 import { handleEditContextBeforeInput } from "./editContextBeforeInput";
 import { handleFieldEditorKeyDown } from "./keyHandling";
 import { isHistoryTransactionOrigin } from "./transactionOrigin";
@@ -614,34 +612,15 @@ export class EditContextBackend extends FieldInputBackendBase {
 		return true;
 	}
 
-	protected resolveTextUpdateRange(input: {
-		blockId: string;
-		updateRangeStart: number;
-		updateRangeEnd: number;
-		text: string;
-		selectionStart?: number;
-		selectionEnd?: number;
-	}): {
-		range: { start: number; end: number };
-		selection: EditContextSelection | null;
-	} {
-		const selection = this.fieldEditor.selection;
-		const editorCaret =
-			selection?.type === "text" &&
-			isCollapsed(selection) &&
-			selection.focus.blockId === input.blockId
-				? selection.focus.offset
-				: null;
-
+	protected resolveTextUpdateRange(
+		input: EditContextTextUpdateInput,
+	): TextUpdateRangeResolution {
 		return resolveEditContextTextUpdateRange({
 			...input,
 			// `length` counts inline embeds: an atom-only field is not empty (N1).
 			isLogicallyEmpty: (this.ytext?.length ?? 0) === 0,
-			editorSelectionRange: this.resolveEditorSelectionRange(
-				input.blockId,
-			),
-			authoritativeTextInputSelection: this.trustedCaretIn(input.blockId),
-			editorCaret,
+			authority: this.authorityRangeIn(input.blockId),
+			trustedCaret: this.trustedCaretIn(input.blockId),
 		});
 	}
 
@@ -699,23 +678,12 @@ export class EditContextBackend extends FieldInputBackendBase {
 		);
 	}
 
-	protected resolveEditorSelectionRange(
-		blockId: string,
-	): EditContextRange | null {
-		const selection = this.fieldEditor.selection;
-		if (
-			selection?.type !== "text" ||
-			isCollapsed(selection) ||
-			selection.anchor.blockId !== blockId ||
-			selection.focus.blockId !== blockId
-		) {
-			return null;
-		}
-
-		return {
-			start: Math.min(selection.anchor.offset, selection.focus.offset),
-			end: Math.max(selection.anchor.offset, selection.focus.offset),
-		};
+	/** The authority's selection in `blockId` (W3.R5). */
+	protected authorityRangeIn(blockId: string | null): EditContextRange | null {
+		const offsets = blockId
+			? authorityOffsetsInBlock(this.editor, blockId)
+			: null;
+		return offsets && { start: offsets.start, end: offsets.end };
 	}
 
 	protected handleTextFormatUpdate = (event: Event): void => {
@@ -820,11 +788,13 @@ export class EditContextBackend extends FieldInputBackendBase {
 		const blockId = this.fieldEditor.focusBlockId;
 		// W3.R5: the reader catches up first; the key then edits the authority.
 		this.fieldEditor.syncDomSelectionRead?.();
-		const liveDomOffsets = blockId
-			? authorityOffsetsInBlock(this.editor, blockId)
-			: null;
 		const { range, shouldSyncEditContextSelection } =
-			this.resolveKeyDownRange(blockId, event, liveDomOffsets);
+			resolveEditContextKeyDownRange({
+				authority: this.authorityRangeIn(blockId),
+				trustedCaret: this.trustedCaretIn(blockId),
+				isTextEditingKey: isFieldEditorTextEditingKey(event),
+				bufferRange: this.resolveEditContextSelectionRange(),
+			});
 
 		if (shouldSyncEditContextSelection) {
 			writeEditContextSelection(this.editContext, range.start, range.end);
@@ -842,29 +812,6 @@ export class EditContextBackend extends FieldInputBackendBase {
 		}
 	};
 
-	protected resolveKeyDownRange(
-		blockId: string | null,
-		event: KeyboardEvent,
-		liveDomOffsets: DirectionalSelectionOffsets | null,
-	): KeyDownRangeResolution {
-		const isTextEditingKey = isFieldEditorTextEditingKey(event);
-		return resolveEditContextKeyDownRange({
-			blockId,
-			isTextEditingKey,
-			liveDomOffsets,
-			editContextRange: this.resolveEditContextSelectionRange(),
-			editorSelectionRange: blockId
-				? this.resolveEditorSelectionRange(blockId)
-				: null,
-			authoritativeTextInputSelection: blockId
-				? this.getAuthoritativeTextInputSelection(blockId)
-				: null,
-			collapsedEditorSelectionRange: blockId
-				? this.resolveCollapsedEditorSelectionRange(blockId)
-				: null,
-		});
-	}
-
 	protected resolveEditContextSelectionRange(): EditContextRange {
 		if (!this.editContext) {
 			return { start: 0, end: 0 };
@@ -880,24 +827,6 @@ export class EditContextBackend extends FieldInputBackendBase {
 				this.editContext.selectionEnd,
 			),
 		};
-	}
-
-	protected resolveCollapsedEditorSelectionRange(
-		blockId: string,
-	): EditContextRange | null {
-		const selection = this.fieldEditor.selection;
-		if (
-			selection?.type === "text" &&
-			isCollapsed(selection) &&
-			selection.focus.blockId === blockId
-		) {
-			return {
-				start: selection.focus.offset,
-				end: selection.focus.offset,
-			};
-		}
-
-		return null;
 	}
 
 	protected handleBeforeInput = (event: InputEvent): void => {
@@ -928,17 +857,13 @@ export class EditContextBackend extends FieldInputBackendBase {
 		this.trustedTypingCaret = null;
 	};
 
-	protected trustedCaretIn(blockId: string): EditContextSelection | null {
+	/** FE9: the trusted typing caret in `blockId`, when it is collapsed. */
+	protected trustedCaretIn(blockId: string | null): number | null {
 		const caret = this.trustedTypingCaret;
-		return caret?.blockId === blockId ? caret : null;
-	}
-
-	/** The trusted typing caret in `blockId`, when it is collapsed. */
-	protected getAuthoritativeTextInputSelection(
-		blockId: string,
-	): EditContextSelection | null {
-		const caret = this.trustedCaretIn(blockId);
-		return caret && caret.anchorOffset === caret.focusOffset ? caret : null;
+		return caret?.blockId === blockId &&
+			caret.anchorOffset === caret.focusOffset
+			? caret.focusOffset
+			: null;
 	}
 }
 
