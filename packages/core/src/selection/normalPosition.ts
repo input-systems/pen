@@ -16,7 +16,6 @@ const GRAPHEME_LOCALE = "und";
 
 export type NormalPositionDirection = -1 | 1;
 
-export type { Point };
 
 export interface BlockBoundary {
 	readonly blockBoundary: string;

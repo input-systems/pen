@@ -6,7 +6,6 @@ import type {
 } from "./serialization";
 import type { LayoutSchema } from "./layout";
 import type { KeyBinding } from "./input";
-import type { SelectionState } from "./selection";
 import type { BlockA11ySpec } from "./a11y";
 
 // ── Prop Schema (JSON Schema subset) ────────────────────────

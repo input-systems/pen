@@ -2,7 +2,7 @@
 
 Normative (`spec/rules/dom.md` FE6). This document declares which field-editor capabilities apply while the caret is inside a table cell. A capability outside the supported set must fail closed — no-op plus diagnostic — never half-work.
 
-Cell editing always uses `ContentEditableBackend`, never EditContext (`FIELD_EDITOR_BACKEND_SPLIT` in `src/field-editor/fieldEditorImpl.ts` lists `table-cell` under `alwaysContentEditable`). Two modes are distinct throughout, and conflating them is the most common source of wrong expectations here:
+Cell editing always uses `ContentEditableBackend`, never EditContext (`_resolveBackendClass` in `src/field-editor/fieldEditorImpl.ts` returns `ContentEditableBackend` while a cell is being edited). Two modes are distinct throughout, and conflating them is the most common source of wrong expectations here:
 
 - **Grid selection** — the table is selected, one or more cells are highlighted, no field editor is attached. `editor.selection.type` is `"cell"` and `activeCellCoord` is unset.
 - **Cell editing** — a double-click or Enter attached a field editor to one cell's text. `activeCellCoord` names the cell.

@@ -1,6 +1,5 @@
 import {
 	findEmptyBlockPlaceholder,
-	isEmptyBlockPlaceholder,
 } from "../field-editor/emptyBlockPlaceholder";
 import {
 	findLogicalDOMPoint,
@@ -258,7 +257,7 @@ function readClientRects(range: Range): DOMRect[] {
 	return Array.from(getter.call(range)).filter(isUsefulRect);
 }
 
-export function readInkRects(range: Range): DOMRect[] {
+function readInkRects(range: Range): DOMRect[] {
 	return readClientRects(range).filter(isInkRect);
 }
 

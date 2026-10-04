@@ -31,7 +31,6 @@ import {
 	isNoOpBlockMove,
 	resolveBlockDropTarget,
 	resolveDraggedBlockIdsFromEvent,
-	type InlineDropCaretStyle,
 } from "./editorContentDropUtils";
 import {
 	getInlineAtomDragSnapshot,

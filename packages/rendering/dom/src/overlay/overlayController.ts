@@ -696,7 +696,7 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 }
 
 /** OV4: the authority record version the layer last painted. */
-export const OVERLAY_SELECTION_VERSION_ATTR =
+const OVERLAY_SELECTION_VERSION_ATTR =
 	"data-pen-overlay-selection-version";
 const CARET_VISIBLE_ATTR = "data-caret-visible";
 

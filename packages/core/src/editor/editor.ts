@@ -17,7 +17,6 @@ import type {
 	DocumentOp,
 	ApplyOptions,
 	OpOrigin,
-	MutationGroupMetadata,
 	SelectionState,
 	TextSelection,
 	DocumentRange,
@@ -26,9 +25,6 @@ import type {
 	DocumentState,
 	UndoManager,
 	Unsubscribe,
-	CRDTMap,
-	CRDTArray,
-	Position,
 	DecorationSet,
 	EditorViewMode,
 	ChangeSummary,
@@ -44,26 +40,13 @@ import type {
 	SelectAllBehavior,
 	DecorationUpdateScope,
 } from "@input/pen-types";
-import {
-	MUTATION_GROUP_METADATA_KEY,
-	UNDO_HISTORY_METADATA_CONTROLLER_SLOT_KEY,
-	generateId,
-} from "@input/pen-types";
+import { generateId } from "@input/pen-types";
 import { yjsAdapter } from "@input/pen-yjs";
 import { resolveEditorSchema } from "../schema/emptySchema";
 import { SchemaEngineImpl } from "../schema/normalize";
-import { createBlockHandle } from "../schema/handles";
 import { EventEmitter } from "./events";
 import { ApplyPipeline } from "./apply";
-import { resolveCellSelectionMatrix } from "./cellSelection";
-import { filterOpsForDocumentProfile } from "./profilePolicy";
 import type { CRDTUnknownMap } from "./crdtShapes";
-import {
-	getTextProp,
-	getTableContent,
-	getCellText as getCellTextFromRow,
-	isCRDTMap,
-} from "./crdtShapes";
 import { ExtensionManagerImpl } from "./extensionManager";
 import { EditorAnchorsImpl } from "./anchors";
 import { SelectionAuthorityImpl } from "./selection";
@@ -74,7 +57,6 @@ import {
 	type DecorationTrigger,
 } from "./decorationCollector";
 import { emptyDecorationSet } from "./decorations";
-import { DocumentRangeImpl } from "./range";
 import { createDocumentSession } from "./documentSession";
 
 import { installEditorCommandRegistry } from "../commands/install";
@@ -151,7 +133,6 @@ import {
 	toTransitionSelection,
 } from "../commands/helpers";
 import { escalateSelectAll } from "../selection/transitions";
-type CRDTBlockMap = CRDTMap<CRDTMap<unknown>>;
 
 
 class EditorImpl implements Editor {

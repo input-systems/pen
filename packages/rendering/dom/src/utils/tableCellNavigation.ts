@@ -4,12 +4,11 @@ import {
 	isPasteShortcut,
 	pasteCellSelection,
 } from "./tableCellClipboard";
-import type { CellSelection, DocumentOp, Editor } from "@input/pen-types";
+import type { CellSelection, Editor } from "@input/pen-types";
 import {
 	delegatesToGridEditing,
 	hasIndexedCellSelectionMetadata,
 	resolveCellSelectionCoord,
-	resolveCellSelectionMatrix,
 	usesInlineTextSelection,
 } from "@input/pen-core";
 import type { FieldEditorTableNavigationController } from "../field-editor/controller";

@@ -1,7 +1,6 @@
 import type {
 	ApplyOptions,
 	Awareness,
-	Block,
 	BlockHandle,
 	ChangeSummary,
 	CRDTAdapter,

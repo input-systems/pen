@@ -25,7 +25,7 @@ import type {
 } from "./ops";
 import type { Decoration, DecorationSet } from "./decorations";
 import type { Extension } from "./extension";
-import type { BlockHandle, AppHandle } from "./handles";
+import type { BlockHandle } from "./handles";
 import type { Unsubscribe } from "./utility";
 import type { SchemaRegistry } from "./schema";
 import type { AssetProvider } from "./persistence";

@@ -3,7 +3,6 @@ import type {
 	BlockSchema,
 	CRDTDocument,
 	DiagnosticEvent,
-	InlineSchema,
 	LayoutSchema,
 	PenDocument,
 	SchemaEngine,
@@ -11,10 +10,7 @@ import type {
 } from "@input/pen-types";
 import {
 	getArrayProp,
-	getCellText,
 	getMapProp,
-	getRowCells,
-	getTableContent,
 	getTextProp,
 	isCRDTMap,
 	type CRDTUnknownArray,
@@ -63,14 +59,6 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 			(b as Record<string, unknown>)[k],
 		),
 	);
-}
-
-function arraysEqual(a: readonly unknown[], b: readonly unknown[]): boolean {
-	if (a.length !== b.length) return false;
-	for (let i = 0; i < a.length; i++) {
-		if (a[i] !== b[i]) return false;
-	}
-	return true;
 }
 
 function getMapEntries(

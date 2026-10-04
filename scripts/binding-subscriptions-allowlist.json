@@ -17,11 +17,6 @@
       "reason": "editor-level subscription, not per block (HB2): whether the document is empty, one listener per editor."
     },
     {
-      "file": "packages/rendering/react/src/hooks/useDocumentEmptyState.ts",
-      "symbol": "useDocumentPlaceholderTarget",
-      "reason": "editor-level subscription, not per block (HB2): the document placeholder target is computed once per editor (W2.R5's per-editor placeholder rule), not per block."
-    },
-    {
       "file": "packages/rendering/react/src/hooks/useSelection.ts",
       "symbol": "useSelection",
       "reason": "editor-level subscription, not per block (HB2): the public selection hook returns the editor selection."

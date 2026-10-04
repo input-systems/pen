@@ -1,8 +1,4 @@
-import {
-	type BlockSchema,
-	type ContentType,
-	isNestedContent,
-} from "@input/pen-types";
+import { type BlockSchema, isNestedContent } from "@input/pen-types";
 
 type RuntimeContentType =
 	| "inline"

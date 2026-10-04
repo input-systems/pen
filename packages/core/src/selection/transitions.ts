@@ -9,7 +9,6 @@ import type { Point, SelectAllBehavior } from "@input/pen-types";
 
 export type Affinity = "upstream" | "downstream";
 
-export type { Point };
 
 export interface TextSelection {
 	readonly type: "text";

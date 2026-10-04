@@ -1,35 +1,14 @@
 import type {
 	EditorInternals,
-	CreateEditorOptions,
-	PenEventMap,
-	CRDTAdapter,
 	CRDTDocument,
-	CRDTEvent,
-	PenDocument,
-	SchemaRegistry,
-	Awareness,
-	DocumentSession,
-	DocumentScope,
-	DocumentScopeReplacementEvent,
-	DocumentProfile,
-	Extension,
 	DocumentOp,
 	ApplyOptions,
 	OpOrigin,
 	MutationGroupMetadata,
-	SelectionState,
-	TextSelection,
-	DocumentRange,
 	BlockHandle,
-	Block,
-	DocumentState,
 	UndoManager,
-	Unsubscribe,
 	CRDTMap,
 	CRDTArray,
-	Position,
-	DecorationSet,
-	EditorViewMode,
 } from "@input/pen-types";
 import {
 	AI_AUTOCOMPLETE_CONTROLLER_SLOT,
@@ -75,10 +54,7 @@ import {
 import { a11yLabelFacet } from "../facets/a11yFacets";
 import { localeFacet, messagesFacet } from "../facets/i18nFacets";
 import { getDocumentLoadReport } from "@input/pen-yjs";
-import { SchemaEngineImpl } from "../schema/normalize";
 import { createBlockHandle } from "../schema/handles";
-import { resolveCellSelectionMatrix } from "./cellSelection";
-import { filterOpsForDocumentProfile } from "./profilePolicy";
 import type { CRDTUnknownMap } from "./crdtShapes";
 import {
 	getTextProp,
@@ -88,7 +64,6 @@ import {
 } from "./crdtShapes";
 import { createEmptyBlockIndex } from "../changes/blockIndex";
 import { emptyDecorationSet } from "./decorations";
-import { DocumentStateImpl } from "./documentState";
 import { createDocumentSession } from "./documentSession";
 
 import type { Editor } from "@input/pen-types";

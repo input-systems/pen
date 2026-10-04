@@ -1,5 +1,4 @@
 import {
-	attachBidiRunsToLines,
 	caretRectAtBidiBoundary,
 	rangeRectsFromLineBoxes,
 } from "./bidiRunGeometry";

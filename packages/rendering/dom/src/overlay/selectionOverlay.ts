@@ -16,7 +16,7 @@ import type {
 } from "./types";
 
 /** The built-in local-selection contributor's id. */
-export const SELECTION_OVERLAY_CONTRIBUTOR_ID = "selection";
+const SELECTION_OVERLAY_CONTRIBUTOR_ID = "selection";
 
 /**
  * O3: up to this many selected blocks get one outline each; above it, one

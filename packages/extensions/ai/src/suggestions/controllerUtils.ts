@@ -7,7 +7,7 @@ import type {
 
 // a document scope's hash is the whole body, so keying dismissal on it would let a dismissed
 // fix return after any edit anywhere; the whole document shares one dismissal namespace instead
-export const DOCUMENT_SCOPE_FINGERPRINT_HASH = "document";
+const DOCUMENT_SCOPE_FINGERPRINT_HASH = "document";
 
 export function resolveFingerprintScopeHash(scope: AISuggestionScope): string {
 	return scope.segments ? DOCUMENT_SCOPE_FINGERPRINT_HASH : scope.hash;

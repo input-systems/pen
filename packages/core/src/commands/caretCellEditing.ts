@@ -7,7 +7,6 @@ import {
 	previousWordBoundary,
 } from "../editor/textSegmentation";
 import {
-	arrowFromBlockSelection,
 	type ArrowDirection,
 	transitionCellSelection,
 } from "../selection/transitions";

@@ -5,7 +5,6 @@ export {
 	emitCommandDiagnostic,
 	getAdjacentEditableBlock,
 	getAdjacentVisibleBlockId,
-	getAtomRangeAtOffset,
 	getBlockInputMode,
 	getEditorFlowCapability,
 	getEditorLocale,

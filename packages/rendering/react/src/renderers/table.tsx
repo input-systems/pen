@@ -1,10 +1,6 @@
 import React, { useRef } from "react";
 import { resolveEditorMessage } from "@input/pen-core";
-import type {
-	BlockHandle,
-	BlockRenderContext,
-	CellSelection,
-} from "@input/pen-types";
+import type { BlockHandle, BlockRenderContext } from "@input/pen-types";
 import { useEditorContext } from "../context/editorContext";
 import { useFieldEditorContext } from "../context/fieldEditorContext";
 import { useBlockSlice } from "../hooks/useBlockNotifier";

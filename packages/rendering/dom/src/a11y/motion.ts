@@ -26,8 +26,6 @@ export const AX6_MOTION_MAPPING = {
 	transitions: "instant",
 } as const;
 
-type Ax6MotionMapping = typeof AX6_MOTION_MAPPING;
-
 export type ReducedMotionListener = () => void;
 
 export interface ReducedMotionSignal {

@@ -80,13 +80,6 @@ function isStructuredOpOrigin(origin: unknown): origin is StructuredOpOrigin {
 	);
 }
 
-function rawOriginSource(origin: unknown): string {
-	if (typeof origin === "string") return origin;
-	if (origin == null) return "absent";
-	if (isStructuredOpOrigin(origin)) return origin.type;
-	return "unrecognized";
-}
-
 function unknownOriginDiagnostic(source: string): CRDTDiagnostic {
 	return {
 		code: ORIGIN_UNKNOWN_CODE,

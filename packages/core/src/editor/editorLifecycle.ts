@@ -1,54 +1,23 @@
 import type {
-	EditorInternals,
 	CreateEditorOptions,
-	PenEventMap,
-	CRDTAdapter,
 	CRDTDocument,
 	CRDTEvent,
 	DiagnosticEvent,
 	PenDocument,
 	PipelinePhase,
 	DocumentSession,
-	DocumentScope,
 	DocumentScopeReplacementEvent,
 	DocumentProfile,
 	Extension,
 	DocumentOp,
-	ApplyOptions,
-	OpOrigin,
-	MutationGroupMetadata,
-	SelectionState,
-	TextSelection,
-	DocumentRange,
-	BlockHandle,
-	Block,
-	DocumentState,
 	UndoManager,
-	Unsubscribe,
 	CRDTMap,
 	CRDTArray,
-	Position,
-	DecorationSet,
-	EditorViewMode,
 	ChangeSummary,
 } from "@input/pen-types";
-import {
-	MUTATION_GROUP_METADATA_KEY,
-	UNDO_HISTORY_METADATA_CONTROLLER_SLOT_KEY,
-	generateId,
-} from "@input/pen-types";
+import { generateId } from "@input/pen-types";
 import { SchemaEngineImpl } from "../schema/normalize";
-import { createBlockHandle } from "../schema/handles";
-import { resolveCellSelectionMatrix } from "./cellSelection";
 import { filterOpsForDocumentProfile } from "./profilePolicy";
-import type { CRDTUnknownMap } from "./crdtShapes";
-import {
-	getTextProp,
-	getTableContent,
-	getCellText as getCellTextFromRow,
-	isCRDTMap,
-} from "./crdtShapes";
-import { DocumentStateImpl } from "./documentState";
 import {
 	installChangeSummaries,
 	teardownChangeSummaries,
@@ -59,7 +28,6 @@ import {
 	resolveCommitSource,
 	snapshotSelectionRecord,
 } from "./commitEvent";
-import { createDocumentSession } from "./documentSession";
 import { runPendingEmptyBlockMigrations } from "../migrations/runPendingEmptyBlockMigrations";
 
 import type { Editor } from "@input/pen-types";
@@ -69,7 +37,6 @@ import type {
 } from "./editorImplContext";
 
 type EditorImplRuntime = EditorImplInternal;
-type CRDTBlockMap = CRDTMap<CRDTMap<unknown>>;
 type RawPenDocumentLike = {
 	getArray?(name: "blockOrder"): CRDTArray<string>;
 	getMap?(name: "blocks" | "apps" | "metadata"): CRDTMap<unknown>;

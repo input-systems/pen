@@ -143,44 +143,6 @@ export function getCellText(
 	return cell ? getTextProp(cell, "content") : null;
 }
 
-function findColumnIndexById(
-	blockMap: CRDTUnknownMap,
-	columnId: string,
-): number {
-	const tableColumns = getTableColumns(blockMap);
-	if (!tableColumns) return -1;
-	for (let index = 0; index < tableColumns.length; index++) {
-		const columnMap = tableColumns.get(index);
-		if (!columnMap || !isCRDTMap(columnMap)) continue;
-		if (getStringProp(columnMap, "id") === columnId) return index;
-	}
-	return -1;
-}
-
-function findColumnMapById(
-	blockMap: CRDTUnknownMap,
-	columnId: string,
-): CRDTUnknownMap | null {
-	const columnIndex = findColumnIndexById(blockMap, columnId);
-	if (columnIndex < 0) return null;
-	const tableColumns = getTableColumns(blockMap);
-	if (!tableColumns) return null;
-	const columnMap = tableColumns.get(columnIndex);
-	return columnMap && isCRDTMap(columnMap) ? columnMap : null;
-}
-
-function findRowIndexById(
-	tableContent: TableContentArray,
-	rowId: string,
-): number {
-	for (let index = 0; index < tableContent.length; index++) {
-		const rowMap = tableContent.get(index);
-		if (!rowMap || !isCRDTMap(rowMap)) continue;
-		if (getStringProp(rowMap, "id") === rowId) return index;
-	}
-	return -1;
-}
-
 export function crdtMapToPlainRecord(
 	value: unknown,
 ): Record<string, unknown> | null {

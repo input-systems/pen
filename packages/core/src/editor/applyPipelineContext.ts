@@ -1,6 +1,5 @@
 import type {
 	CRDTAdapter,
-	CRDTArray,
 	CRDTDocument,
 	CRDTEvent,
 	CRDTMap,

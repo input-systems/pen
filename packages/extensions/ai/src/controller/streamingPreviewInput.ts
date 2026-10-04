@@ -15,11 +15,11 @@ import type {
  * the fidelity RS6 measures is between the preview and what accept writes,
  * not between the preview and the raw model output.
  */
-export function markdownStreamingPreviewText(text: string): string {
+function markdownStreamingPreviewText(text: string): string {
 	return toStreamingPreviewText(normalizeFlowMarkdownOutput(text));
 }
 
-export function streamingPreviewDisplayText(
+function streamingPreviewDisplayText(
 	text: string,
 	format: "plain" | "markdown",
 ): string {
@@ -33,7 +33,7 @@ export function streamingPreviewDisplayText(
  * target block, and appending at an offset; the preview has to name the same
  * region or it strikes through text the commit will keep.
  */
-export function resolveMarkdownPreviewTarget(
+function resolveMarkdownPreviewTarget(
 	editor: Editor,
 	target: {
 		blockId: string;

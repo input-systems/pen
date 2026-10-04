@@ -13,7 +13,7 @@ export type OverlayInlineStyle = Readonly<Record<string, string>>;
 export type OverlayCaretVariant = "default" | "macos";
 
 /** Custom properties the overlay reads. Hosts set them on the root or above. */
-export const OVERLAY_TOKENS = {
+const OVERLAY_TOKENS = {
 	zIndex: "--pen-overlay-z-index",
 	caretWidth: "--pen-editor-caret-width",
 	caretRadius: "--pen-editor-caret-radius",
@@ -37,7 +37,7 @@ export const OVERLAY_TOKENS = {
 } as const;
 
 /** O2: local and remote carets are never shorter than this, so an empty line still shows one. */
-export const OVERLAY_CARET_MIN_HEIGHT = 16;
+const OVERLAY_CARET_MIN_HEIGHT = 16;
 
 /** Gap between a remote caret's top and its name label's bottom edge. */
 const REMOTE_LABEL_GAP = 8;

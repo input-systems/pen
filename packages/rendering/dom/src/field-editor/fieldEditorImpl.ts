@@ -97,29 +97,6 @@ type FieldEditorOptions = {
 };
 
 /**
- * HOST4 backend split (`spec/rules/host.md`). See
- * `FIELD-EDITOR-BACKENDS.md`.
- *
- * `_resolveBackendClass` feature-detects `globalThis.EditContext` as a
- * constructor and falls back to contenteditable. Expanded (multi-block)
- * surfaces and table-cell editing always use contenteditable, even when
- * EditContext exists.
- *
- * Degradation when EditContext is absent: IME uses the composition-event
- * path instead of EditContext `textupdate`, resolving a commit from the event
- * sequence — live DOM against the recorded start text, then the following
- * mutation or the next `compositionstart` for Safari's late `compositionend`.
- * Composition underline and IME window bounds follow the native contenteditable
- * caret rather than `textformatupdate` / `characterboundsupdate`. The field
- * stays editable — typing, paste, and undo still apply.
- */
-const FIELD_EDITOR_BACKEND_SPLIT = {
-	preferred: "edit-context",
-	fallback: "contenteditable",
-	alwaysContentEditable: ["expanded", "table-cell"],
-} as const;
-
-/**
  * FE9: the origins a backend's own text input writes (`inputOrigin()`).
  * Every other authority write supersedes the backend's trusted input state.
  */
@@ -1416,10 +1393,22 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	// ── Internal ─────────────────────────────────────────────
 
-	// HOST4: EditContext is above the HOST3 floor. Detect the constructor;
-	// contenteditable is the real fallback. Expanded and table-cell surfaces
-	// always use contenteditable even when EditContext exists. See
-	// FIELD_EDITOR_BACKEND_SPLIT and FIELD-EDITOR-BACKENDS.md.
+	/**
+	 * HOST4 backend split (`spec/rules/host.md`, `FIELD-EDITOR-BACKENDS.md`).
+	 * EditContext is above the HOST3 floor: detect the constructor, with
+	 * contenteditable as the real fallback. Expanded (multi-block) surfaces
+	 * and table-cell editing always use contenteditable, even when
+	 * EditContext exists.
+	 *
+	 * Degradation when EditContext is absent: IME uses the composition-event
+	 * path instead of EditContext `textupdate`, resolving a commit from the
+	 * event sequence — live DOM against the recorded start text, then the
+	 * following mutation or the next `compositionstart` for Safari's late
+	 * `compositionend`. Composition underline and IME window bounds follow the
+	 * native contenteditable caret rather than `textformatupdate` /
+	 * `characterboundsupdate`. The field stays editable — typing, paste, and
+	 * undo still apply.
+	 */
 	protected _resolveBackendClass(): InputBackendConstructor {
 		if (this._mode === "expanded") {
 			return ExpandedContentEditableBackend;

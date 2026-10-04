@@ -258,21 +258,6 @@ export function getInlineNodeRange(
 	return null;
 }
 
-export function getAtomRangeAtOffset(
-	block: BlockHandle,
-	offset: number,
-): { start: number; end: number } | null {
-	for (const atom of logicalInline(block).atoms) {
-		if (offset >= atom.start && offset < atom.end) {
-			return atom;
-		}
-		if (offset === atom.end) {
-			return atom;
-		}
-	}
-	return null;
-}
-
 export function marksAtOffset(
 	block: BlockHandle,
 	offset: number,

@@ -34,7 +34,6 @@ export {
 	resolveSessionTarget,
 } from "./session";
 export {
-	appendUniqueString,
 	areAIControllerStatesEqual,
 	areInlineHistorySnapshotsEqual,
 	areInlineShortcutHistoryStatesEqual,
