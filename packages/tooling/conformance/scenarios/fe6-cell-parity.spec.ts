@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../src/checkReport";
 import { scenario } from "../src/scenario";
-import { snapshotBytes } from "../src/specHelpers";
+import { snapshotBytes } from "../suites/specHelpers";
 
 /**
  * FE6: the cell-parity contract, in a real browser.

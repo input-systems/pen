@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { scenario } from "../src/scenario";
-import { blockInlineText, collectPageErrors } from "../src/specHelpers";
+import { blockInlineText, collectPageErrors } from "../suites/specHelpers";
 
 scenario(
 	"HOST4: missing structuredClone degrades to JSON clone and still types",

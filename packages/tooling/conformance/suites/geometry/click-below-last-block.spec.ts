@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
-import { FocusPoint, logLoad, readBlockIds } from "../../src/specHelpers";
+import { FocusPoint, logLoad, readBlockIds } from "../specHelpers";
 
 const LAST_ID = "two-p2";
 const LAST_TEXT = "Delta echo foxtrot";

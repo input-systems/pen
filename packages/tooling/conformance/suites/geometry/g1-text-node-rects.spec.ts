@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
-import { clickOffset, logLoad } from "../../src/specHelpers";
+import { clickOffset, logLoad } from "../specHelpers";
 
 const HELLO_ID = "hello-p1";
 const HELLO_MID = 5;

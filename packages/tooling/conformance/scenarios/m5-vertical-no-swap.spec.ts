@@ -8,7 +8,7 @@ import {
 import { scenario } from "../src/scenario";
 import { assertDomAuthorityResult } from "../src/standingAssertions";
 import type { DomAuthorityCheck } from "../src/types";
-import { Focus, readFocus } from "../src/specHelpers";
+import { Focus, readFocus } from "../suites/specHelpers";
 
 async function assertRtlLine(
 	page: Page,

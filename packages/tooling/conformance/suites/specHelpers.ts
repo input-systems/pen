@@ -2,9 +2,9 @@ import type {
 	DocumentContentSnapshot,
 	GeometryLineBox,
 	SerializedSelection,
-} from "./types";
+} from "../src/types";
 import { type Page, test } from "@playwright/test";
-import { getInlineOffsetPoint } from "./domGeometry";
+import { getInlineOffsetPoint } from "../src/domGeometry";
 import { loadavg } from "node:os";
 
 export function snapshotBytes(snapshot: DocumentContentSnapshot): string {

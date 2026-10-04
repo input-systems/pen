@@ -16,7 +16,7 @@ import {
 import { formatCheckReport } from "../../src/checkReport";
 import { standingAuthorityHolds } from "../../src/standingFilter";
 import type { SerializedSelectionRecord } from "../../src/types";
-import { clickOffset } from "../../src/specHelpers";
+import { clickOffset } from "../specHelpers";
 
 async function readRecord(page: Page): Promise<SerializedSelectionRecord | null> {
 	return page.evaluate(() => window.__penConformance.selectionRecord);

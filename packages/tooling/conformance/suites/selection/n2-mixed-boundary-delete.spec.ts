@@ -7,7 +7,7 @@ import {
 	attachLoadavg,
 	clickOffset,
 	readSelection,
-} from "../../src/specHelpers";
+} from "../specHelpers";
 
 const P1_ID = "two-p1";
 const P2_ID = "two-p2";

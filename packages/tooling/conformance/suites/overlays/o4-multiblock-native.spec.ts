@@ -6,7 +6,7 @@ import {
 	readSettledLayer,
 } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
-import { logLoad, readSelection } from "../../src/specHelpers";
+import { logLoad, readSelection } from "../specHelpers";
 
 
 type NativeSnapshot = {

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
-import { logLoad, readBlockIds, readSelection } from "../../src/specHelpers";
+import { logLoad, readBlockIds, readSelection } from "../specHelpers";
 
 const FIRST_ID = "two-p1";
 const LAST_ID = "two-p2";

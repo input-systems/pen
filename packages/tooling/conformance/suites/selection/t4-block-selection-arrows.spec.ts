@@ -6,7 +6,7 @@ import {
 	attachLoadavg,
 	clickOffset,
 	readSelection,
-} from "../../src/specHelpers";
+} from "../specHelpers";
 
 const TWO_P2_TEXT = "Delta echo foxtrot";
 const SELECT_ALL = process.platform === "darwin" ? "Meta+a" : "Control+a";

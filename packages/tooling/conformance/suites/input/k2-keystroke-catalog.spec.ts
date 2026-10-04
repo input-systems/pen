@@ -7,7 +7,7 @@ import {
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
 import { readDocumentText, readFocusOffset } from "./keys";
-import { clickOffset } from "../../src/specHelpers";
+import { clickOffset } from "../specHelpers";
 
 scenario(
 	"K2: ArrowRight then Backspace via keystroke delete the first grapheme",

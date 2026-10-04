@@ -2,7 +2,7 @@ import { expect, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
-import { attachJson, logLoad } from "../../src/specHelpers";
+import { attachJson, logLoad } from "../specHelpers";
 
 type OverlaySnapshot = {
 	kind: "present" | "absent" | "unchecked";

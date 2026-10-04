@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { scenario } from "../src/scenario";
-import { blockInlineText, clickOffset } from "../src/specHelpers";
+import { blockInlineText, clickOffset } from "../suites/specHelpers";
 
 function historyBridge(page: Page) {
 	return {

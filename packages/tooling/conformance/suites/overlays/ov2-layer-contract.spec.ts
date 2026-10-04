@@ -4,7 +4,7 @@ import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { localCarets, readSettledLayer } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
 import type { ScenarioApi } from "../../src/types";
-import { clickOffset, logLoad } from "../../src/specHelpers";
+import { clickOffset, logLoad } from "../specHelpers";
 
 const HELLO_ID = "hello-p1";
 

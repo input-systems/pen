@@ -7,7 +7,7 @@ import {
 	MAX_TRACKED_PEERS,
 } from "../../../extensions/multiplayer/src/presence/constants";
 import { scenario } from "../src/scenario";
-import { collectPageErrors } from "../src/specHelpers";
+import { collectPageErrors } from "../suites/specHelpers";
 
 const GOOD_PEER_ID = 77;
 const STALE_PEER_ID = 78;

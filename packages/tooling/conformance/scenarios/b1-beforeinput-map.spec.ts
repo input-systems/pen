@@ -8,7 +8,7 @@ import {
 } from "@input/pen-dom/field-editor/beforeinputMap";
 import { expect, type Page } from "@playwright/test";
 import { scenario } from "../src/scenario";
-import { snapshotBytes } from "../src/specHelpers";
+import { snapshotBytes } from "../suites/specHelpers";
 
 const UNKNOWN_INPUT_TYPES = [
 	"insertOrderedList",

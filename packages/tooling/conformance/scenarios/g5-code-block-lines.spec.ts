@@ -5,7 +5,7 @@ import {
 } from "../fixtures/catalog";
 import { scenario } from "../src/scenario";
 import type { GeometryLineBox, ScenarioApi } from "../src/types";
-import { readFocus } from "../src/specHelpers";
+import { readFocus } from "../suites/specHelpers";
 
 async function expectFocus(
 	page: Page,

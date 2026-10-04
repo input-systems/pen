@@ -11,7 +11,7 @@ import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
 import { authorityCheckKind } from "../../src/standingAssertions";
 import type { DomAuthorityCheck } from "../../src/types";
-import { attachJson, logLoad } from "../../src/specHelpers";
+import { attachJson, logLoad } from "../specHelpers";
 
 type TextCaret = {
 	blockId: string;

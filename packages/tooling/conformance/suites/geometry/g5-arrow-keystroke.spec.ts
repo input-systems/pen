@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
 import { G5_WRAP_BLOCK } from "../../src/g5Geometry";
-import { FocusPoint, midpoint } from "../../src/specHelpers";
+import { FocusPoint, midpoint } from "../specHelpers";
 
 async function readFocusPoint(page: Page): Promise<FocusPoint> {
 	return page.evaluate(() => {

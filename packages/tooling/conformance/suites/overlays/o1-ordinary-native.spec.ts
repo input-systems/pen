@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
-import { logLoad } from "../../src/specHelpers";
+import { logLoad } from "../specHelpers";
 
 const HELLO_ID = "hello-p1";
 

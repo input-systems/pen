@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { fileURLToPath } from "node:url";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
-import { logLoad, readBlockIds } from "../../src/specHelpers";
+import { logLoad, readBlockIds } from "../specHelpers";
 
 const FIRST_ID = "two-p1";
 const LAST_ID = "two-p2";

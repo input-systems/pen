@@ -11,7 +11,7 @@ import {
 	G5_TAIL_BLOCK,
 	G5_WRAP_BLOCK,
 } from "../src/g5Geometry";
-import { midpoint } from "../src/specHelpers";
+import { midpoint } from "../suites/specHelpers";
 
 async function forceWrap(page: Page): Promise<void> {
 	await page.evaluate(() => {
