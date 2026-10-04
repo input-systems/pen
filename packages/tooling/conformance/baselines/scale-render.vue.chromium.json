@@ -132,7 +132,7 @@
 				"notifier.deliveries": 14
 			},
 			"shiftDown": {
-				"dom.mutationRecords": 20,
+				"dom.mutationRecords": 21,
 				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.outOfFlush": 1581,
 				"geometry.boundingClientRect.total": 1582,
@@ -295,7 +295,7 @@
 				"notifier.deliveries": 14
 			},
 			"shiftDown": {
-				"dom.mutationRecords": 20,
+				"dom.mutationRecords": 21,
 				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.outOfFlush": 7881,
 				"geometry.boundingClientRect.total": 7882,
@@ -1145,6 +1145,20 @@
 				"vue/scale-5k/enterNumbered/notifier.deliveries: 18 !== 15",
 				"vue/scale-5k/remoteInsert/scan.blocksMapReads: 5455 !== 5347",
 				"vue/scale-5k/remoteInsert/notifier.deliveries: 4 !== 3"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "Merge of main (76f2fadd): bindSurfaceTabStop flips the active surface's tabIndex on focus and blur (AX1, Firefox Shift+Tab), so a shift-down extend that moves focus to the next block's surface records one more attribute mutation",
+			"moved": [
+				"vue/scale-1k/shiftDown/dom.mutationRecords: 21 !== 20"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "Merge of main (76f2fadd): bindSurfaceTabStop flips the active surface's tabIndex on focus and blur (AX1, Firefox Shift+Tab), so a shift-down extend that moves focus to the next block's surface records one more attribute mutation",
+			"moved": [
+				"vue/scale-5k/shiftDown/dom.mutationRecords: 21 !== 20"
 			]
 		}
 	]
