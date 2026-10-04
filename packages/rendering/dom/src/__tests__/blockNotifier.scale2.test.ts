@@ -94,7 +94,9 @@ describe("block notifier (SCALE2 fan-out)", () => {
 			[{ type: "insert-block", blockId: "n", blockType: "numberedListItem", props: {}, position: { after: "b1" } }],
 			{ origin: "user" },
 		);
-		expect(probe.notified.sort()).toEqual(["b2", "b3", "b4"]);
+		// b1 keeps its number but its set grew (AX1 aria-setsize); the b7 run is untouched.
+		expect(probe.notified.sort()).toEqual(["b1", "b2", "b3", "b4"]);
+		expect(notifier.getBlockSnapshot("b1").list?.setsize).toBe(5);
 		expect(notifier.getBlockSnapshot("b4").list?.ordinal).toBe(5);
 		expect(notifier.getBlockSnapshot("b7").list?.ordinal).toBe(1);
 		probe.unsubscribeAll();

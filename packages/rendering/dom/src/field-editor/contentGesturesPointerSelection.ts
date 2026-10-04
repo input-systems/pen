@@ -10,6 +10,7 @@ import { getEditorBlockSelectionRole } from "../utils/blockSelectionSemantics";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import { getPreorderBlockIds } from "../utils/documentPreorder";
 import { getDocumentPlaceholderTargetBlockId } from "../utils/editorEmptyState";
+import { getRootBlockEndpoints } from "../utils/parentIdTree";
 import {
 	isRepeatedCellSelection,
 	resolveBlockPointerIntent,
@@ -50,14 +51,12 @@ export function createPointerSelectionGestures<
 	const handleClickOutsideBlocks = (event: MouseEvent): boolean => {
 		const blocksHost = getBlocksHost();
 		if (!blocksHost) return false;
-		const firstBlockEl = blocksHost.querySelector(
-			`[${DATA_ATTRS.editorBlock}]`,
-		) as HTMLElement | null;
-		const lastBlockEl = blocksHost.querySelector(
-			`[${DATA_ATTRS.editorBlock}]:last-child`,
-		) as HTMLElement | null;
+		// The first and last top-level blocks come from model order, resolved
+		// through the root: blocks may sit in AX1 list groups or containers, so
+		// the host's DOM children are not the block list (FE5).
+		const { firstBlockId, lastBlockId } = getRootBlockEndpoints(editor);
 
-		if (!firstBlockEl || !lastBlockEl) {
+		if (!firstBlockId || !lastBlockId) {
 			const newBlockId = generateId();
 			editor.apply(
 				[
@@ -86,13 +85,11 @@ export function createPointerSelectionGestures<
 			return true;
 		}
 
-		const firstBlockId = firstBlockEl.getAttribute("data-block-id");
-		const lastBlockId = lastBlockEl.getAttribute("data-block-id");
 		const measured = measureWithRoot(
 			currentEditorRoot ?? gestureEl,
 			({ reader }) => ({
-				firstRect: firstBlockId ? reader.blockRect(firstBlockId) : null,
-				lastRect: lastBlockId ? reader.blockRect(lastBlockId) : null,
+				firstRect: reader.blockRect(firstBlockId),
+				lastRect: reader.blockRect(lastBlockId),
 			}),
 		);
 		if (!measured.firstRect || !measured.lastRect) return false;

@@ -1,3 +1,4 @@
+import type { ListItemSemantics } from "@input/pen-core";
 import type { Editor, OpOrigin, SelectionState } from "@input/pen-types";
 
 import type {
@@ -237,10 +238,12 @@ export function buildFieldSlice(
 
 export function buildListSlice(
 	ordinal: number | null,
+	semantics: ListItemSemantics | null,
 	previous: BlockListSlice | null | undefined,
 ): BlockListSlice | null {
-	if (ordinal === null) return null;
-	return previous && previous.ordinal === ordinal ? previous : { ordinal };
+	if (semantics === null) return null;
+	const { level, posinset, setsize, groupKey } = semantics;
+	return keepIfEqual(previous ?? undefined, { ordinal, level, posinset, setsize, groupKey });
 }
 
 export function buildSurfaceSnapshot(

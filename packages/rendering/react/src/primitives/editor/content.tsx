@@ -4,7 +4,11 @@ import { EditorContentContext } from "../../context/editorContentContext";
 import { useEditorContext } from "../../context/editorContext";
 import { useFieldEditorContext } from "../../context/fieldEditorContext";
 
-import { useDocumentSnapshot, useSurfaceExpansion } from "../../hooks/useBlockNotifier";
+import {
+	useDocumentSnapshot,
+	useListSegments,
+	useSurfaceExpansion,
+} from "../../hooks/useBlockNotifier";
 import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
 import { useInlineCompletionState } from "../../hooks/useInlineCompletionState";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
@@ -14,7 +18,7 @@ import {
 } from "@input/pen-dom/utils/dataAttributes";
 import { fieldEditorTextEntryAttrs } from "../../utils/fieldEditorTextEntryAttrs";
 import { AutocompletePreviewBlock } from "./autocompletePreviewBlock";
-import { EditorBlock } from "./block";
+import { renderListSegments } from "./listSegments";
 import { DropPreviewProvider } from "./dropPreviewContext";
 import { buildMoveBlockOps, useBlockDragSession } from "./blockDragSession";
 import { useEditorRegionSelectionContext } from "./regionSelectionState";
@@ -58,6 +62,7 @@ export function EditorContent(props: EditorContentProps) {
 	// List-level state only: never the store's domSyncVersion (SCALE6).
 	const surface = useSurfaceExpansion();
 	const documentSnapshot = useDocumentSnapshot();
+	const rootSegments = useListSegments(null);
 	const blockIds = documentSnapshot.rootIds;
 	const visibleSuggestion = useInlineCompletionState(editor);
 	const blockDragSession = useBlockDragSession();
@@ -120,29 +125,27 @@ export function EditorContent(props: EditorContentProps) {
 		clearPointerSelectionState,
 	});
 
-	const blockElements: React.ReactElement[] = [];
 	const previewBlocks = visibleSuggestion?.previewBlocks ?? [];
 	const anchorBlock = visibleSuggestion
 		? editor.getBlock(visibleSuggestion.blockId)
 		: null;
-	for (const blockId of blockIds) {
-		blockElements.push(<EditorBlock key={blockId} blockId={blockId} />);
-		if (previewBlocks.length > 0 && blockId === visibleSuggestion?.blockId) {
-			const previewBlockElements = previewBlocks.map(
-				(previewBlock, previewIndex) => (
-					<AutocompletePreviewBlock
-						key={`autocomplete-preview:${previewBlock.id}`}
-						anchorBlock={anchorBlock}
-						anchorBlockType={anchorBlock?.type}
-						anchorProps={anchorBlock?.props ?? null}
-						block={previewBlock}
-						previewIndex={previewIndex}
-					/>
-				),
-			);
-			blockElements.push(...previewBlockElements);
+	const renderPreviewsAfter = (blockId: string): React.ReactElement[] => {
+		if (previewBlocks.length === 0 || blockId !== visibleSuggestion?.blockId) {
+			return [];
 		}
-	}
+		return previewBlocks.map((previewBlock, previewIndex) => (
+			<AutocompletePreviewBlock
+				key={`autocomplete-preview:${previewBlock.id}`}
+				anchorBlock={anchorBlock}
+				anchorBlockType={anchorBlock?.type}
+				anchorProps={anchorBlock?.props ?? null}
+				block={previewBlock}
+				previewIndex={previewIndex}
+			/>
+		));
+	};
+	// AX1: list runs render inside role="list" groups; previews are not list items.
+	const blockElements = renderListSegments(rootSegments, renderPreviewsAfter);
 
 	const inlineDropCaret =
 		(isDropActive || isInlineAtomDropActive) &&

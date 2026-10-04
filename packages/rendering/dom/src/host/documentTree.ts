@@ -3,13 +3,21 @@ import {
 	resolveBlockDirection,
 	shouldRenderContainerChildren,
 	usesInlineTextSelection,
+	type ListItemSemantics,
+	type ListSegment,
 } from "@input/pen-core";
 import type { BlockHandle, Editor, Unsubscribe } from "@input/pen-types";
+import { createListSemanticsStore } from "../a11y/listSemantics";
 import type { BlockSnapshot } from "../field-editor/blockNotifierTypes";
 import type { FieldEditorImpl } from "../field-editor/fieldEditorImpl";
 import { fullReconcileDeltasToDOM } from "../field-editor/reconciler";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
-import { buildDataAttributes, DATA_ATTRS } from "../utils/dataAttributes";
+import {
+	buildDataAttributes,
+	DATA_ATTRS,
+	LIST_GROUP_ATTRIBUTES,
+	listItemHostAttributes,
+} from "../utils/dataAttributes";
 import { resolveBlockTextAlignment } from "../utils/blockTextAlignment";
 
 export interface DocumentTree {
@@ -21,26 +29,34 @@ export interface DocumentTree {
 	destroy(): void;
 }
 
+/** One rendered sibling list: its host element, its list group wrappers, and what it last rendered. */
+interface SiblingHost {
+	readonly element: HTMLElement;
+	/** AX1 group wrappers by segment key. */
+	readonly groups: Map<string, HTMLElement>;
+	segments: readonly ListSegment[];
+}
+
 interface BlockNodes {
 	element: HTMLElement;
 	inline: HTMLElement | null;
-	childrenHost: HTMLElement | null;
-	/** The child ids last rendered into `childrenHost`. */
-	renderedChildIds: readonly string[];
+	children: SiblingHost | null;
 	/** The block revision the inline content was last reconciled at; -1 forces one. */
 	reconciledRevision: number;
 	unsubscribe: Unsubscribe;
 }
 
-const NO_CHILD_IDS: readonly string[] = Object.freeze([]);
+const NO_SEGMENTS: readonly ListSegment[] = Object.freeze([]);
 
 /**
  * The vanilla `mountEditor` document tree (SCALE6). Each block node listens
  * to its own block in the field editor's notifier and updates only itself;
- * a parent re-syncs its own child list when its children change, and the
- * root list re-syncs when the root ids change. Attributes and styles are
- * written only when they differ, inline content is reconciled only when the
- * block's revision moved, and a reorder moves only the nodes out of place.
+ * a parent re-syncs its own child list when its list segments change, and
+ * the root list re-syncs when the root segments change. Each run of list
+ * items renders inside a `div[data-pen-list-group][role="list"]` (AX1).
+ * Attributes and styles are written only when they differ, inline content is
+ * reconciled only when the block's revision moved, and a reorder moves only
+ * the nodes out of place, never recreating them.
  */
 export function createDocumentTree(
 	editor: Editor,
@@ -56,8 +72,9 @@ export function createDocumentTree(
 	parent.append(content);
 
 	const notifier = fieldEditor.blockNotifier;
+	const listSemantics = createListSemanticsStore(notifier);
 	const nodesByBlockId = new Map<string, BlockNodes>();
-	let renderedRootIds: readonly string[] = NO_CHILD_IDS;
+	const root: SiblingHost = { element: blocksHost, groups: new Map(), segments: NO_SEGMENTS };
 	let syncDepth = 0;
 	const pendingAcks: string[] = [];
 
@@ -67,16 +84,17 @@ export function createDocumentTree(
 		nodesByBlockId.delete(blockId);
 		nodes.unsubscribe();
 		nodes.element.remove();
-		for (const childId of nodes.renderedChildIds) destroyNodes(childId);
+		for (const childId of segmentBlockIds(nodes.children?.segments ?? NO_SEGMENTS)) {
+			destroyNodes(childId);
+		}
 	};
 
-	const syncList = (
-		host: HTMLElement,
-		blockIds: readonly string[],
-		previous: readonly string[],
-	): void => {
+	const syncList = (host: SiblingHost, segments: readonly ListSegment[]): void => {
+		const previous = host.segments;
+		host.segments = segments;
+		const blockIds = segmentBlockIds(segments);
 		const next = new Set(blockIds);
-		for (const blockId of previous) {
+		for (const blockId of segmentBlockIds(previous)) {
 			if (!next.has(blockId)) destroyNodes(blockId);
 		}
 		syncDepth += 1;
@@ -86,7 +104,7 @@ export function createDocumentTree(
 				pendingAcks.push(blockId);
 			}
 		}
-		reorderChildren(host, blockIds, nodesByBlockId);
+		reorderSegments(host, segments, nodesByBlockId, ownerDocument);
 		syncDepth -= 1;
 		if (syncDepth === 0) flushAcks();
 	};
@@ -106,42 +124,47 @@ export function createDocumentTree(
 		const nodes = nodesByBlockId.get(blockId);
 		const block = editor.getBlock(blockId);
 		if (!nodes || !block) return;
-		const snapshot = notifier.getBlockSnapshot(blockId);
-		updateBlockNodes(editor, nodes, block, snapshot);
-		if (nodes.childrenHost) {
-			const childIds = visibleChildBlockIds(editor, block, snapshot);
-			if (!sameIds(childIds, nodes.renderedChildIds)) {
-				const previous = nodes.renderedChildIds;
-				nodes.renderedChildIds = childIds;
-				syncList(nodes.childrenHost, childIds, previous);
-			}
+		updateBlockNodes(editor, nodes, block, notifier.getBlockSnapshot(blockId));
+		writeListItemAttributes(nodes.element, listSemantics.getItem(blockId));
+		if (nodes.children) {
+			const segments = shouldRenderContainerChildren(editor, block)
+				? listSemantics.getSegments(blockId)
+				: NO_SEGMENTS;
+			if (segments !== nodes.children.segments) syncList(nodes.children, segments);
 		}
 	};
 
 	const mountNodes = (blockId: string): void => {
 		const nodes = createBlockNodes(editor, blockId, ownerDocument);
 		nodesByBlockId.set(blockId, nodes);
-		nodes.unsubscribe = notifier.subscribeBlock(blockId, () =>
-			updateBlock(blockId),
-		);
+		const update = () => updateBlock(blockId);
+		const unsubscribeBlock = notifier.subscribeBlock(blockId, update);
+		// A container also hears its own sibling list's segments: a child's list
+		// type can change without its child ids changing.
+		const unsubscribeSegments = nodes.children
+			? notifier.subscribeListSegments(blockId, update)
+			: null;
+		nodes.unsubscribe = () => {
+			unsubscribeBlock();
+			unsubscribeSegments?.();
+		};
 		updateBlock(blockId);
 	};
 
 	const syncRoots = (): void => {
-		const rootIds = notifier.getDocumentSnapshot().rootIds;
-		if (rootIds === renderedRootIds) return;
-		const previous = renderedRootIds;
-		renderedRootIds = rootIds;
-		syncList(blocksHost, rootIds, previous);
+		const segments = listSemantics.getSegments(null);
+		if (segments !== root.segments) syncList(root, segments);
 	};
 
 	const sync = (): void => {
-		renderedRootIds = NO_CHILD_IDS;
+		root.segments = NO_SEGMENTS;
 		for (const blockId of [...nodesByBlockId.keys()]) destroyNodes(blockId);
 		syncRoots();
 	};
 
-	const unsubscribeDocument = notifier.subscribeDocument(syncRoots);
+	// Root ids change only on structural commits, which also refresh the root
+	// segments, so the segment channel alone keeps the root list current.
+	const unsubscribeRoot = notifier.subscribeListSegments(null, syncRoots);
 	syncRoots();
 
 	return {
@@ -149,9 +172,10 @@ export function createDocumentTree(
 		blocksHost,
 		sync,
 		destroy() {
-			unsubscribeDocument();
+			unsubscribeRoot();
 			for (const nodes of nodesByBlockId.values()) nodes.unsubscribe();
 			nodesByBlockId.clear();
+			listSemantics.dispose();
 		},
 	};
 }
@@ -197,12 +221,31 @@ function createBlockNodes(
 	return {
 		element,
 		inline,
-		childrenHost,
-		renderedChildIds: NO_CHILD_IDS,
+		children: childrenHost
+			? { element: childrenHost, groups: new Map(), segments: NO_SEGMENTS }
+			: null,
 		reconciledRevision: -1,
 		unsubscribe: () => {},
 	};
 }
+
+/** AX1: the list-item role and position on the block host; removed when the block leaves a list. */
+function writeListItemAttributes(
+	element: HTMLElement,
+	item: ListItemSemantics | null,
+): void {
+	const attributes = listItemHostAttributes(item);
+	for (const name of LIST_ITEM_ATTRIBUTE_NAMES) {
+		setAttr(element, name, attributes?.[name] ?? null);
+	}
+}
+
+const LIST_ITEM_ATTRIBUTE_NAMES = [
+	"role",
+	"aria-level",
+	"aria-posinset",
+	"aria-setsize",
+] as const;
 
 function updateBlockNodes(
 	editor: Editor,
@@ -265,44 +308,73 @@ function reconcileInline(
 	});
 }
 
-function visibleChildBlockIds(
-	editor: Editor,
-	block: BlockHandle,
-	snapshot: BlockSnapshot,
-): readonly string[] {
-	return shouldRenderContainerChildren(editor, block)
-		? snapshot.childIds
-		: NO_CHILD_IDS;
-}
-
 function isFieldEditorOwned(snapshot: BlockSnapshot): boolean {
 	return snapshot.field.expandedRole !== null || snapshot.field.isEditing;
 }
 
-/** One forward walk; only nodes out of place are moved. */
-function reorderChildren(
-	host: HTMLElement,
-	blockIds: readonly string[],
+function segmentBlockIds(segments: readonly ListSegment[]): string[] {
+	const blockIds: string[] = [];
+	for (const segment of segments) {
+		if (segment.kind === "block") blockIds.push(segment.blockId);
+		else blockIds.push(...segment.blockIds);
+	}
+	return blockIds;
+}
+
+/**
+ * Puts a sibling list's segment elements (group wrappers and block elements)
+ * in segment order, then each group's block elements in group order. A
+ * wrapper is reused by its key; nodes move, they are never recreated, and
+ * only nodes out of place are moved. Wrappers no segment names are removed.
+ */
+function reorderSegments(
+	host: SiblingHost,
+	segments: readonly ListSegment[],
 	nodesByBlockId: Map<string, BlockNodes>,
+	ownerDocument: Document,
 ): void {
-	let index = 0;
-	for (const blockId of blockIds) {
-		const nodes = nodesByBlockId.get(blockId);
-		if (!nodes) continue;
-		const current = host.children[index];
-		if (current !== nodes.element) {
-			host.insertBefore(nodes.element, current ?? null);
+	const liveGroups = new Set<string>();
+	const elements: HTMLElement[] = [];
+	for (const segment of segments) {
+		if (segment.kind === "block") {
+			const nodes = nodesByBlockId.get(segment.blockId);
+			if (nodes) elements.push(nodes.element);
+			continue;
 		}
-		index += 1;
+		liveGroups.add(segment.key);
+		let group = host.groups.get(segment.key);
+		if (!group) {
+			group = ownerDocument.createElement("div");
+			for (const [name, value] of Object.entries(LIST_GROUP_ATTRIBUTES)) {
+				group.setAttribute(name, value);
+			}
+			host.groups.set(segment.key, group);
+		}
+		elements.push(group);
+		placeInOrder(
+			group,
+			segment.blockIds.flatMap((blockId) => {
+				const element = nodesByBlockId.get(blockId)?.element;
+				return element ? [element] : [];
+			}),
+		);
+	}
+	placeInOrder(host.element, elements);
+	for (const [key, group] of host.groups) {
+		if (liveGroups.has(key)) continue;
+		host.groups.delete(key);
+		group.remove();
 	}
 }
 
-function sameIds(left: readonly string[], right: readonly string[]): boolean {
-	return (
-		left === right ||
-		(left.length === right.length &&
-			left.every((id, index) => id === right[index]))
-	);
+/** One forward walk over `parent`'s element children; only nodes out of place are moved. */
+function placeInOrder(parent: HTMLElement, elements: readonly HTMLElement[]): void {
+	let index = 0;
+	for (const element of elements) {
+		const current = parent.children[index];
+		if (current !== element) parent.insertBefore(element, current ?? null);
+		index += 1;
+	}
 }
 
 /** Writes only when the value differs; null removes. */

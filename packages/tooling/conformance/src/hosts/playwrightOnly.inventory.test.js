@@ -175,7 +175,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// g3-affinity,ax7-overlay-presentation,o-focus-composition,ov1-paint-counts}.spec.ts.
 	// 88 -> 89 is W35.G7's atom and chip caret set: suites/overlays/o1-atoms.spec.ts.
 	// 89 -> 90 is W5.R10's two-editor relay set: scenarios/col-two-editors.spec.ts.
-	const expectedPlaywrightSpecs = 91;
+	// 91 -> 92 is W6 step 3's list editing set: scenarios/ax1-list-editing.spec.ts.
+	const expectedPlaywrightSpecs = 92;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

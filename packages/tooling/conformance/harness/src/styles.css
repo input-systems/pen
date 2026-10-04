@@ -55,7 +55,18 @@ body {
 	position: relative;
 }
 
-[data-pen-editor-block] + [data-pen-editor-block] {
+/* WCAG 2.5.8: the host sizes the check-list checkbox; the library ships it unstyled. */
+[data-pen-list-item-marker] input[type="checkbox"] {
+	width: 24px;
+	height: 24px;
+	margin: 0;
+}
+
+/* AX1 list groups wrap runs of list items: the block gap also crosses a group boundary. */
+[data-pen-editor-block] + [data-pen-editor-block],
+[data-pen-editor-block] + [data-pen-list-group],
+[data-pen-list-group] + [data-pen-editor-block],
+[data-pen-list-group] + [data-pen-list-group] {
 	margin-top: 0.72rem;
 }
 

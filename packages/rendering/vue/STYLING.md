@@ -97,6 +97,9 @@ Every default-rendered block is wrapped in a `div` with:
 | `data-selected`         | present                                          | Block is in the current selection.             |
 | `data-focused`          | present                                          | Field-editor focus is on this block.           |
 | `data-surface-role`     | `editable-inline` \| `structural` \| `delegated` | Expanded-mode role. Omitted when not expanded. |
+| `role`, `aria-level`, `aria-posinset`, `aria-setsize` | `listitem`, numbers | List items only (AX1): position in the item's set. |
+
+Each run of list items in a sibling list renders inside a `div[data-pen-list-group][role="list"]` (AX1). A sibling combinator between blocks (`[data-pen-editor-block] + [data-pen-editor-block]`) does not cross a group boundary; add `[data-pen-list-group]` to the selector for spacing that should.
 
 The wrapper also sets `dir="ltr"` or `dir="rtl"` when the block's `direction` prop is one of those values (DIR2/DIR3). That is a bidi attribute, not a class hook.
 

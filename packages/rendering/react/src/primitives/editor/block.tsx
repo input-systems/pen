@@ -14,6 +14,7 @@ import { useBlockEditingState } from "../../hooks/useBlockEditingState";
 import { useBlockModel } from "../../hooks/useBlockModel";
 import { useBlockSelectionState } from "../../hooks/useBlockSelectionState";
 import { useBlockSurfaceRole } from "../../hooks/useBlockSurfaceRole";
+import { useListItemSemantics } from "../../hooks/useListItemSemantics";
 import { resolveRenderer } from "../../renderers/index";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import {
@@ -41,6 +42,7 @@ export const EditorBlock = memo(function EditorBlock(props: EditorBlockProps) {
 	const isSelected = useBlockSelectionState(blockId);
 	const surfaceRole = useBlockSurfaceRole(blockId);
 	const blockDecorations = useBlockDecorations(blockId);
+	const listItemAttributes = useListItemSemantics(blockId, blockModel.type);
 	const externalDropPosition = useBlockDropPreview(blockId);
 	const blockRef = useRef<HTMLElement>(null);
 	const ackedRef = useRef<{ element: HTMLElement; fieldEditor: object } | null>(null);
@@ -127,6 +129,8 @@ export const EditorBlock = memo(function EditorBlock(props: EditorBlockProps) {
 		spellCheck: isBlockEditable ? false : undefined,
 		autoCorrect: isBlockEditable ? "off" : undefined,
 		autoCapitalize: isBlockEditable ? "off" : undefined,
+		// AX1: list semantics live on the block host, never on ListItemLayout (HB8).
+		...listItemAttributes,
 		...blockDecorationAttributes,
 	};
 

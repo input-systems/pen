@@ -1,4 +1,4 @@
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { analyzeEditorSurface, formatAxeViolations } from "../src/axeSurface";
 import { FIXTURE_NAMES } from "../fixtures/catalog";
 import { scenario } from "../src/scenario";
@@ -12,6 +12,102 @@ for (const fixture of FIXTURE_NAMES) {
 			formatAxeViolations(results.violations),
 		).toEqual([]);
 	});
+}
+
+/** The committed AX1 tree for the `semantics` fixture (W6 §6.2), React surface. */
+const SEMANTICS_ARIA_SNAPSHOT = `
+- textbox "Editor":
+  - heading "Semantics" [level=1]
+  - heading "Lists" [level=2]
+  - list:
+    - listitem [level=1]: First bullet
+    - listitem [level=2]: Nested bullet
+    - listitem [level=1]: Second bullet
+  - list:
+    - listitem [level=1]: Second list bullet
+  - list:
+    - listitem [level=1]: Third
+    - listitem [level=1]: Fourth
+  - heading "Other blocks" [level=3]
+  - list:
+    - listitem [level=1]:
+      - checkbox [checked]
+      - text: Done
+    - listitem [level=1]:
+      - checkbox
+      - text: Open
+  - blockquote: A quote Quoted child
+  - code: const answer = 42;
+  - note: A callout
+  - table:
+    - rowgroup:
+      - row:
+        - columnheader "Heading 1"
+        - columnheader "Heading 2"
+        - columnheader "Heading 3"
+    - rowgroup:
+      - row:
+        - cell "r1c0"
+        - cell "r1c1"
+        - cell "r1c2"
+      - row:
+        - cell "r2c0"
+        - cell "r2c1"
+        - cell "r2c2"
+`;
+
+/** Every list item's role, level, position and set size, in document order. */
+async function listItemSequence(page: Page): Promise<string[]> {
+	return page.evaluate(() =>
+		[...document.querySelectorAll("[data-pen-list-group] > [data-pen-editor-block]")].map(
+			(item) =>
+				[
+					item.parentElement?.getAttribute("role"),
+					item.getAttribute("role"),
+					item.getAttribute("aria-level"),
+					item.getAttribute("aria-posinset"),
+					item.getAttribute("aria-setsize"),
+				].join(":"),
+		),
+	);
+}
+
+scenario(
+	"AX1: the semantics fixture exposes headings, two bullet lists, a numbered list, a table with column headers, a quote and code in the accessibility tree",
+	async (s, page) => {
+		await s.load("semantics");
+		await expect(page.locator("[data-pen-editor-root]")).toMatchAriaSnapshot(
+			SEMANTICS_ARIA_SNAPSHOT,
+		);
+		// D7: div groups only; positions on the block host, never on the item layout (HB8).
+		await expect(page.locator("[data-pen-editor-root] :is(ul, ol, li)")).toHaveCount(0);
+		await expect(
+			page.locator("[data-pen-list-item-layout]:is([role], [aria-posinset], [aria-setsize], [aria-level])"),
+		).toHaveCount(0);
+	},
+);
+
+for (const surface of ["vue", "vanilla"] as const) {
+	scenario(
+		`AX1: ${surface} exposes the same list semantics as React for the semantics fixture`,
+		async (s, page) => {
+			await s.load("semantics");
+			const sequence = await listItemSequence(page);
+			expect(sequence).toEqual([
+				"list:listitem:1:1:2",
+				"list:listitem:2:1:1",
+				"list:listitem:1:2:2",
+				"list:listitem:1:1:1",
+				"list:listitem:1:1:2",
+				"list:listitem:1:2:2",
+				"list:listitem:1:1:2",
+				"list:listitem:1:2:2",
+			]);
+			const results = await analyzeEditorSurface(page);
+			expect(results.violations, formatAxeViolations(results.violations)).toEqual([]);
+		},
+		{ url: `/?surface=${surface}` },
+	);
 }
 
 scenario(

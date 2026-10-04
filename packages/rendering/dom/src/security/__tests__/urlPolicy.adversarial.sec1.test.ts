@@ -199,11 +199,14 @@ describe("SEC1 documentTree render path", () => {
 			commit: { exists: true, type: "paragraph", props: {}, revision: 1, lastOrigin: null, lastCommitId: 0 },
 			field: { isFieldFocus: false, isEditing: false, isComposing: false, expandedRole: null, domSyncVersion: 0, activeCell: null },
 			childIds: [],
+			list: null,
 		};
+		const rootSegments = [{ kind: "block", blockId: "p1" }];
 		const fieldEditor = {
 			blockNotifier: {
-				subscribeDocument: () => () => {},
-				getDocumentSnapshot: () => ({ rootIds: ["p1"], isEmpty: false, placeholderTargetBlockId: null }),
+				// The root list arrives as AX1 list segments (W6.R5).
+				subscribeListSegments: () => () => {},
+				getListSegments: () => rootSegments,
 				subscribeBlock: () => () => {},
 				getBlockSnapshot: () => blockSnapshot,
 			},

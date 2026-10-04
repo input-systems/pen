@@ -59,6 +59,7 @@ import {
 	isLocalFixtureName,
 	isScaleFixtureName,
 	SCALE_FIXTURE_ROOT_COUNTS,
+	LOCAL_FIXTURE_OPS,
 	LOCAL_FIXTURES,
 	WINDOWED_WINDOW_SIZE,
 } from "../../fixtures/catalog";
@@ -352,6 +353,10 @@ function createSession(fixtureName: string, seed?: SessionSeed): Session {
 	// A seeded peer already holds the fixture's ops in its forked state.
 	if (isFuzzFixtureName(fixtureName) && !seed) {
 		editor.apply(FUZZ_FIXTURES[fixtureName].ops(), { origin: "system" });
+	}
+	const localOps = isLocalFixtureName(fixtureName) ? LOCAL_FIXTURE_OPS[fixtureName] : undefined;
+	if (localOps && !seed) {
+		editor.apply(localOps(), { origin: "system" });
 	}
 	return next;
 }

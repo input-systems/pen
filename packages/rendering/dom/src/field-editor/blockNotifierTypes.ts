@@ -1,3 +1,4 @@
+import type { ListItemSemantics, ListSegment } from "@input/pen-core";
 import type {
 	CellSelection,
 	Decoration,
@@ -46,16 +47,17 @@ export interface BlockFieldSlice {
 	readonly activeCell: { readonly row: number; readonly col: number } | null;
 }
 
-/** List-run state of one block. W6 adds its run fields here. */
-export interface BlockListSlice {
+/**
+ * List-run state of one list item: its number, and its AX1 semantics from
+ * `getListItemSemantics` over the sibling list it renders in.
+ */
+export interface BlockListSlice extends ListItemSemantics {
 	/** `numberedListItem` value with `getNumberedListItemValue`'s semantics; null for other types. */
 	readonly ordinal: number | null;
 }
 
-/** One list segment of a sibling list. */
-export type BlockListSegment =
-	| { readonly kind: "list"; readonly key: string; readonly blockIds: readonly string[] }
-	| { readonly kind: "block"; readonly blockId: string };
+/** One list segment of a sibling list (`getListSegments`). */
+export type BlockListSegment = ListSegment;
 
 /**
  * Everything one block's renderer needs, rebuilt only when that block's own
@@ -70,7 +72,7 @@ export interface BlockSnapshot {
 	readonly decorations: readonly Decoration[];
 	/** Identity-stable copy of `documentState.childrenOf(blockId)`. */
 	readonly childIds: readonly string[];
-	/** null for blocks that are not list items. */
+	/** null for blocks that are not list items (core's `isListItemBlock`). */
 	readonly list: BlockListSlice | null;
 	readonly isPlaceholderTarget: boolean;
 	/** The visible inline completion when it targets this block, else null. */

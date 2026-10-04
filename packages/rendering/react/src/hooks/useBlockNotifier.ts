@@ -1,4 +1,5 @@
 import type {
+	BlockListSegment,
 	BlockNotifier,
 	BlockSnapshot,
 	DocumentSnapshot,
@@ -96,6 +97,25 @@ export function useBlockSlice<K extends Exclude<keyof BlockSnapshot, "blockId">>
 // HOST5: SSR renders the shell only, so the server snapshots are empty.
 const serverSurface = (): SurfaceSnapshot => EMPTY_SURFACE;
 const serverDocument = (): DocumentSnapshot => EMPTY_DOCUMENT;
+const NO_SEGMENTS: readonly BlockListSegment[] = Object.freeze([]);
+const serverSegments = (): readonly BlockListSegment[] => NO_SEGMENTS;
+
+/**
+ * A sibling list as AX1 segments — list groups and other blocks — for the
+ * root (`null`) or a container; re-renders only when the segments change.
+ */
+export function useListSegments(parentId: string | null): readonly BlockListSegment[] {
+	const notifier = useBlockNotifier();
+	const subscribe = useCallback(
+		(onChange: () => void) => notifier?.subscribeListSegments(parentId, onChange) ?? NO_SUBSCRIPTION(),
+		[notifier, parentId],
+	);
+	const getSnapshot = useCallback(
+		() => notifier?.getListSegments(parentId) ?? NO_SEGMENTS,
+		[notifier, parentId],
+	);
+	return useSyncExternalStore(subscribe, getSnapshot, serverSegments);
+}
 
 /** Root ids, emptiness and the placeholder target; recomputed only when they change. */
 export function useDocumentSnapshot(): DocumentSnapshot {

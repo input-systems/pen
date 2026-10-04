@@ -114,8 +114,16 @@
 /* Each renderer also stamps `data-block-type` on its own root, so type
  * chrome hangs off the inner node and rhythm hangs off the wrapper. */
 
-[data-pen-editor-block] + [data-pen-editor-block] {
+/* AX1 list groups wrap each run of list items, so the rhythm crosses them too. */
+[data-pen-editor-block] + [data-pen-editor-block],
+[data-pen-editor-block] + [data-pen-list-group],
+[data-pen-list-group] + [data-pen-editor-block] {
 	margin-top: var(--spacing-lg);
+}
+
+/* Two adjacent lists (a top-level list type change starts a new group). */
+[data-pen-list-group] + [data-pen-list-group] {
+	margin-top: var(--spacing-md);
 }
 
 [data-pen-editor-block]:is(

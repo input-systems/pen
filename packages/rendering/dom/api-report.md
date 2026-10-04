@@ -685,11 +685,14 @@ _no exports_
 ### function
 
 - buildDataAttributes
+- listGroupKey
+- listItemHostAttributes
 - penDataAttr
 
 ### value
 
 - DATA_ATTRS
+- LIST_GROUP_ATTRIBUTES
 - OVERLAY_ITEM_ATTR
 - OVERLAY_LAYER_ATTR
 
@@ -755,10 +758,12 @@ _no exports_
 ### function
 
 - appendParentIdChildBlock
+- areAdjacentSiblingBlocks
 - getAdjacentVisibleBlockId
 - getChildBlockIds
 - getInsertSiblingBlockOp
 - getLastDescendantBlockId
+- getRootBlockEndpoints
 - getRootBlockIds
 - getVisibleBlockIds
 - isInsideParentIdContainer

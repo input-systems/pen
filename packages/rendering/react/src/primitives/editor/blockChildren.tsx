@@ -1,7 +1,6 @@
 import React from "react";
-import { useEditorContext } from "../../context/editorContext";
-import { useChildBlockIds } from "../../hooks/useChildBlockIds";
-import { EditorBlock } from "./block";
+import { useListSegments } from "../../hooks/useBlockNotifier";
+import { renderListSegments } from "./listSegments";
 
 /** Props for {@link BlockChildren}, the React outlet for a container's child blocks. */
 export interface BlockChildrenProps {
@@ -11,7 +10,8 @@ export interface BlockChildrenProps {
 }
 
 /**
- * Renders a container block's child blocks, by either nesting route.
+ * Renders a container block's child blocks, by either nesting route, with
+ * each run of list items in a `role="list"` group (AX1).
  *
  * Custom container renderers compose this to get an editable children outlet;
  * without it a host-defined container can hold children that never render.
@@ -20,16 +20,13 @@ export function BlockChildren(
 	props: BlockChildrenProps,
 ): React.ReactElement | null {
 	const { parentBlockId, containerProps } = props;
-	const { editor } = useEditorContext();
-	const childBlockIds = useChildBlockIds(parentBlockId);
+	const childSegments = useListSegments(parentBlockId);
 
-	if (childBlockIds.length === 0) {
+	if (childSegments.length === 0) {
 		return null;
 	}
 
-	const childBlocks = childBlockIds.map((blockId) => (
-		<EditorBlock key={blockId} blockId={blockId} />
-	));
+	const childBlocks = renderListSegments(childSegments);
 
 	return <div {...containerProps}>{childBlocks}</div>;
 }

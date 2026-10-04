@@ -18,6 +18,9 @@ import {
 	type ContentGesturesContext,
 } from "./contentGesturesShared";
 
+/** FE5: the blocks host's top-level blocks, including those inside an AX1 list group. */
+const TOP_LEVEL_BLOCK_SELECTOR = `:scope > [${DATA_ATTRS.editorBlock}], :scope > [${DATA_ATTRS.listGroup}] > [${DATA_ATTRS.editorBlock}]`;
+
 export function createRegionGestures<
 	InteractionModel extends PointerInteractionModel,
 >(ctx: ContentGesturesContext<InteractionModel>) {
@@ -61,13 +64,10 @@ export function createRegionGestures<
 		if (!blocksHost) return [];
 		return measureWithRoot(currentEditorRoot ?? gestureEl, ({ reader }) => {
 			const selectedIds: string[] = [];
-			for (const child of Array.from(blocksHost.children)) {
-				if (
-					!(child instanceof HTMLElement) ||
-					!child.hasAttribute(DATA_ATTRS.editorBlock)
-				) {
-					continue;
-				}
+			// Top-level blocks sit directly in the host or in an AX1 list group.
+			for (const child of Array.from(
+				blocksHost.querySelectorAll(TOP_LEVEL_BLOCK_SELECTOR),
+			)) {
 				const blockId = child.getAttribute(DATA_ATTRS.blockId);
 				if (!blockId) continue;
 				const blockRect = reader.blockRect(blockId);

@@ -10,6 +10,7 @@ import {
 import {
 	buildDataAttributes,
 	DATA_ATTRS,
+	listItemHostAttributes,
 } from "@input/pen-dom/utils/dataAttributes";
 import { isCellInSelection } from "@input/pen-dom/utils/cellSelection";
 import type { BlockHandle, CellSelection } from "@input/pen-types";
@@ -23,7 +24,8 @@ import {
 	type VNode,
 	type VNodeChild,
 } from "vue";
-import { useBlockSnapshot } from "../internal/blockNotifier";
+import { useBlockSnapshot, useListSegments } from "../internal/blockNotifier";
+import { renderListSegments } from "../internal/listSegments";
 import { useEditorContext } from "../internal/editorContext";
 import { useFieldEditorContext } from "../internal/fieldEditorContext";
 import type { PenBlockRenderContext } from "../types";
@@ -52,6 +54,11 @@ export const PenBlock = defineComponent({
 		// This block's notifier slices only (SCALE6): a keystroke or caret move
 		// elsewhere re-renders nothing here.
 		const slices = useBlockSnapshot(props.blockId);
+		// Only a block with children holds the segment channel.
+		const childSegments = useListSegments(
+			props.blockId,
+			() => slices.childIds.value.length > 0,
+		);
 		const blockElement = ref<HTMLElement | null>(null);
 
 		const ackMounted = () => {
@@ -77,7 +84,9 @@ export const PenBlock = defineComponent({
 			const isSelected = slices.selection.value.inSelection;
 			const isFocused = slices.field.value.isFieldFocus;
 			const surfaceRole = slices.field.value.expandedRole;
-			const childNodes: VNode[] = slices.childIds.value.map(
+			// AX1: a container's list runs render inside role="list" groups.
+			const childNodes: VNode[] = renderListSegments(
+				childSegments.value,
 				(childBlockId) =>
 					h(PenBlock, {
 						key: childBlockId,
@@ -128,6 +137,8 @@ export const PenBlock = defineComponent({
 						isFocused,
 						surfaceRole,
 					}),
+					// AX1: list semantics live on the block host, never on the item layout (HB8).
+					...listItemHostAttributes(slices.list.value),
 				},
 				[blockBody],
 			);

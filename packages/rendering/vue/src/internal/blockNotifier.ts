@@ -1,4 +1,5 @@
 import type {
+  BlockListSegment,
   BlockNotifier,
   BlockSnapshot,
   DocumentSnapshot,
@@ -10,6 +11,7 @@ import {
   onScopeDispose,
   readonly,
   shallowRef,
+  watch,
   type ComputedRef,
   type ShallowRef,
 } from "vue";
@@ -122,6 +124,40 @@ export function useDocumentSnapshot(): Readonly<ShallowRef<DocumentSnapshot>> {
     () => notifier?.getDocumentSnapshot() ?? EMPTY_DOCUMENT,
     notifier ? (onChange) => notifier.subscribeDocument(onChange) : null,
   );
+}
+
+const NO_SEGMENTS: readonly BlockListSegment[] = Object.freeze([]);
+
+/**
+ * A sibling list as AX1 segments — list groups and other blocks — for the
+ * root (`null`) or a container. The channel is held only while `enabled`
+ * is true, so a block without children holds no subscription.
+ */
+export function useListSegments(
+  parentId: string | null,
+  enabled: () => boolean = () => true,
+): Readonly<ShallowRef<readonly BlockListSegment[]>> {
+  const notifier = useBlockNotifier();
+  const value: ShallowRef<readonly BlockListSegment[]> = shallowRef(NO_SEGMENTS);
+  if (notifier) {
+    watch(
+      enabled,
+      (isEnabled, _previous, onCleanup) => {
+        if (!isEnabled) {
+          value.value = NO_SEGMENTS;
+          return;
+        }
+        const read = () => {
+          const next = notifier.getListSegments(parentId);
+          if (next !== value.value) value.value = next;
+        };
+        read();
+        onCleanup(notifier.subscribeListSegments(parentId, read));
+      },
+      { immediate: true },
+    );
+  }
+  return readonly(value) as Readonly<ShallowRef<readonly BlockListSegment[]>>;
 }
 
 /** List-level field state; never changes on a DOM sync. */

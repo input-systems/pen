@@ -5,6 +5,7 @@ import { ATOM_CARET_BLOCKS, atomCaretOps } from "./atomCaret";
 import { FUZZ_LARGE_BLOCKS, fuzzLargeOps } from "./fuzzLarge";
 import { FUZZ_MIXED_BLOCKS, fuzzMixedOps } from "./fuzzMixed";
 import { GRAPHEME_CLUSTER_BLOCKS } from "./grapheme";
+import { SEMANTICS_BLOCKS, semanticsOps } from "./semantics";
 
 /** Large mixed fixtures (`@input/pen-test` mixed scale fixture), built on demand. */
 export type ScaleFixtureName = "scale-1k" | "scale-5k" | "scale-10k" | "scale-50k";
@@ -49,7 +50,8 @@ export type FixtureName =
 	| "bidi-mixed"
 	| "nested-toggle"
 	| "grapheme-clusters"
-	| "code-block";
+	| "code-block"
+	| "semantics";
 
 export const CODE_BLOCK_LINES_ID = "code-lines";
 export const CODE_BLOCK_TRAILING_ID = "code-trailing";
@@ -76,6 +78,7 @@ const FIXTURE_PRESENT = {
 	"nested-toggle": true,
 	"grapheme-clusters": true,
 	"code-block": true,
+	semantics: true,
 } as const satisfies Record<Exclude<FixtureName, BuiltFixtureName>, true>;
 
 /**
@@ -208,6 +211,17 @@ export const LOCAL_FIXTURES: Record<
 			content: "hey\n\n",
 		},
 	],
+	semantics: SEMANTICS_BLOCKS,
+};
+
+/**
+ * Ops a local fixture applies through `editor.apply` before any surface
+ * mounts, for content `populateYDoc` cannot write (tables, inline atoms).
+ */
+export const LOCAL_FIXTURE_OPS: Partial<
+	Record<Exclude<FixtureName, "deterministic" | BuiltFixtureName>, () => DocumentOp[]>
+> = {
+	semantics: semanticsOps,
 };
 
 export function isLocalFixtureName(

@@ -184,7 +184,21 @@ function isEditorHostChrome(
 	return (
 		target === root ||
 		target === blocksHost ||
-		target === blocksHost.parentElement
+		target === blocksHost.parentElement ||
+		isOwnListGroup(target, root, blocksHost)
+	);
+}
+
+/** An AX1 list group wrapper of this root is host chrome, like the blocks host (W6.R6). */
+function isOwnListGroup(
+	target: Element,
+	root: HTMLElement,
+	blocksHost: HTMLElement,
+): boolean {
+	return (
+		target.hasAttribute(DATA_ATTRS.listGroup) &&
+		blocksHost.contains(target) &&
+		target.closest(`[${DATA_ATTRS.editorRoot}]`) === root
 	);
 }
 

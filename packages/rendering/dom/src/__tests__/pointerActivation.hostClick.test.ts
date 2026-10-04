@@ -212,4 +212,42 @@ describe("handleFieldEditorPointerActivate host chrome", () => {
 		expect(handled).toBe(false);
 		expect(target.activations).toEqual([]);
 	});
+
+	it("HOST6: a click on a list group wrapper is host chrome", () => {
+		const { root, blocksHost, first, last } = mountTallEditor();
+		const group = document.createElement("div");
+		group.setAttribute(DATA_ATTRS.listGroup, "");
+		group.setAttribute("role", "list");
+		group.append(first, last);
+		blocksHost.append(group);
+		const editor = stubEditor({
+			p1: { type: "bulletListItem", length: 4 },
+			p2: { type: "bulletListItem", length: 7 },
+		});
+		const click = (clientY: number) => {
+			const target = createTarget({ isEditing: false, focusBlockId: null });
+			const handled = handleFieldEditorPointerActivate({
+				event: mouseEvent(group, { clientY }),
+				editor,
+				fieldEditor: target.fieldEditor,
+				root,
+				blocksHost,
+			});
+			return { handled, activations: target.activations };
+		};
+
+		// below the last item activates it at its end
+		expect(click(80)).toEqual({
+			handled: true,
+			activations: [{ blockId: "p2", anchorOffset: 7, focusOffset: 7 }],
+		});
+		// the gap between items stays inactive
+		expect(click(20)).toEqual({ handled: false, activations: [] });
+		// above the first item activates it at its start
+		stubRect(first, { top: 40, bottom: 60 });
+		stubRect(last, { top: 60, bottom: 80 });
+		const above = click(10);
+		expect(above.handled).toBe(true);
+		expect(above.activations[0]?.blockId).toBe("p1");
+	});
 });

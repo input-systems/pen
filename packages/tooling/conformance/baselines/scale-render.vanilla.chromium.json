@@ -57,7 +57,7 @@
 				"listeners.invoked.diagnostic": 1,
 				"scan.blockOrderReads": 3675,
 				"scan.blocksMapIterations": 4199,
-				"scan.blocksMapReads": 30820,
+				"scan.blocksMapReads": 33820,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1052,
 				"scan.textFullReads": 2048,
@@ -149,7 +149,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3680,
 				"scan.blocksMapIterations": 4203,
-				"scan.blocksMapReads": 2363,
+				"scan.blocksMapReads": 2371,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
 				"scan.textFullReads": 26,
@@ -159,7 +159,7 @@
 			},
 			"enterNumbered": {
 				"commit.affectedBlockIds": 2,
-				"dom.mutationRecords": 27,
+				"dom.mutationRecords": 29,
 				"geometry.boundingClientRect.inFlush": 11,
 				"geometry.boundingClientRect.total": 11,
 				"listeners.invoked.commit": 6,
@@ -167,13 +167,13 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3690,
 				"scan.blocksMapIterations": 4203,
-				"scan.blocksMapReads": 2783,
+				"scan.blocksMapReads": 2931,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
-				"scan.textFullReads": 26,
+				"scan.textFullReads": 27,
 				"scheduler.measureNow": 0,
-				"dom.blocksTouched": 2,
-				"notifier.deliveries": 8
+				"dom.blocksTouched": 3,
+				"notifier.deliveries": 9
 			},
 			"remoteInsert": {
 				"commit.affectedBlockIds": 1,
@@ -182,7 +182,7 @@
 				"listeners.invoked.store": 1,
 				"scan.blockOrderReads": 2102,
 				"scan.blocksMapIterations": 2102,
-				"scan.blocksMapReads": 1153,
+				"scan.blocksMapReads": 1261,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
 				"scan.textFullReads": 7,
@@ -198,7 +198,7 @@
 				"listeners.invoked.diagnostic": 1,
 				"scan.blockOrderReads": 28875,
 				"scan.blocksMapIterations": 20995,
-				"scan.blocksMapReads": 154084,
+				"scan.blocksMapReads": 169084,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5252,
 				"scan.textFullReads": 10240,
@@ -290,7 +290,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 18380,
 				"scan.blocksMapIterations": 21003,
-				"scan.blocksMapReads": 10763,
+				"scan.blocksMapReads": 10771,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
 				"scan.textFullReads": 26,
@@ -300,7 +300,7 @@
 			},
 			"enterNumbered": {
 				"commit.affectedBlockIds": 2,
-				"dom.mutationRecords": 27,
+				"dom.mutationRecords": 29,
 				"geometry.boundingClientRect.inFlush": 11,
 				"geometry.boundingClientRect.total": 11,
 				"listeners.invoked.commit": 6,
@@ -308,13 +308,13 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 18390,
 				"scan.blocksMapIterations": 21003,
-				"scan.blocksMapReads": 11183,
+				"scan.blocksMapReads": 11331,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
-				"scan.textFullReads": 26,
+				"scan.textFullReads": 27,
 				"scheduler.measureNow": 0,
-				"dom.blocksTouched": 2,
-				"notifier.deliveries": 8
+				"dom.blocksTouched": 3,
+				"notifier.deliveries": 9
 			},
 			"remoteInsert": {
 				"commit.affectedBlockIds": 1,
@@ -323,7 +323,7 @@
 				"listeners.invoked.store": 1,
 				"scan.blockOrderReads": 10502,
 				"scan.blocksMapIterations": 10502,
-				"scan.blocksMapReads": 5353,
+				"scan.blocksMapReads": 5461,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
 				"scan.textFullReads": 7,
@@ -1075,6 +1075,34 @@
 				"vanilla/scale-5k/shiftDown/scan.textFullReads: 7 !== 11",
 				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 10763 !== 10803",
 				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 11183 !== 11223"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W6 step 3 (W6.R4/R5): AX1 list semantics. Structural commits walk the list runs around each change (+8 map reads on enterParagraph, +108 on remoteInsert next to a run, +113..152 on enterNumbered) and re-segment the touched sibling list; React and Vue sibling loops now hear the list-segment channel (+1 delivery per structural commit); Enter in a numbered item re-renders the set sibling whose aria-setsize moved (+1 block, D7); React list items hold one more block subscription; mount walks each list run once (+3 map reads per block on Vue and vanilla, +25 on React, whose first render reads the notifier detached). Keystroke and caret counts are unchanged.",
+			"moved": [
+				"vanilla/scale-1k/mount/scan.blocksMapReads: 33820 !== 30820",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 2371 !== 2363",
+				"vanilla/scale-1k/enterNumbered/dom.mutationRecords: 29 !== 27",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 2931 !== 2783",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 27 !== 26",
+				"vanilla/scale-1k/enterNumbered/dom.blocksTouched: 3 !== 2",
+				"vanilla/scale-1k/enterNumbered/notifier.deliveries: 9 !== 8",
+				"vanilla/scale-1k/remoteInsert/scan.blocksMapReads: 1261 !== 1153"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W6 step 3 (W6.R4/R5): AX1 list semantics. Structural commits walk the list runs around each change (+8 map reads on enterParagraph, +108 on remoteInsert next to a run, +113..152 on enterNumbered) and re-segment the touched sibling list; React and Vue sibling loops now hear the list-segment channel (+1 delivery per structural commit); Enter in a numbered item re-renders the set sibling whose aria-setsize moved (+1 block, D7); React list items hold one more block subscription; mount walks each list run once (+3 map reads per block on Vue and vanilla, +25 on React, whose first render reads the notifier detached). Keystroke and caret counts are unchanged.",
+			"moved": [
+				"vanilla/scale-5k/mount/scan.blocksMapReads: 169084 !== 154084",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 10771 !== 10763",
+				"vanilla/scale-5k/enterNumbered/dom.mutationRecords: 29 !== 27",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 11331 !== 11183",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 27 !== 26",
+				"vanilla/scale-5k/enterNumbered/dom.blocksTouched: 3 !== 2",
+				"vanilla/scale-5k/enterNumbered/notifier.deliveries: 9 !== 8",
+				"vanilla/scale-5k/remoteInsert/scan.blocksMapReads: 5461 !== 5353"
 			]
 		}
 	]

@@ -14,10 +14,12 @@ import {
 } from "vue";
 import {
   useDocumentSnapshot,
+  useListSegments,
   useSurfaceSnapshot,
 } from "../internal/blockNotifier";
 import { useEditorContext } from "../internal/editorContext";
 import { useFieldEditorContext } from "../internal/fieldEditorContext";
+import { renderListSegments } from "../internal/listSegments";
 import { PenBlock } from "./PenBlock";
 
 /**
@@ -40,7 +42,7 @@ export const PenContent = defineComponent({
     // surface is expanded. Each PenBlock acknowledges its own mount.
     const documentSnapshot = useDocumentSnapshot();
     const surface = useSurfaceSnapshot();
-    const blockIds = computed(() => documentSnapshot.value.rootIds);
+    const rootSegments = useListSegments(null);
     const isEmpty = computed(() => documentSnapshot.value.isEmpty);
     const isExpanded = computed(() => surface.value.mode === "expanded");
     const expandedBlockIds = computed(() =>
@@ -59,7 +61,8 @@ export const PenContent = defineComponent({
     );
 
     return () => {
-      const blockNodes = blockIds.value.map((blockId) =>
+      // AX1: each run of list items renders inside a role="list" group.
+      const blockNodes = renderListSegments(rootSegments.value, (blockId) =>
         h(PenBlock, {
           key: blockId,
           blockId,
