@@ -99,14 +99,26 @@ export function classifySelectionSurface(
 		return { mode: "inactive", blockIds: [] };
 	}
 
-	if (selection?.type === "text" && isMultiBlock(selection)) {
+	if (selection?.type === "text") {
 		const blockRange = getSelectionBlockRange(editor.documentState, selection);
-		return {
-			mode: shouldUseBlockSelection(editor, blockRange.length)
-				? "block"
-				: "expanded",
-			blockIds: [...blockRange],
-		};
+		if (isMultiBlock(selection)) {
+			return {
+				mode: shouldUseBlockSelection(editor, blockRange.length)
+					? "block"
+					: "expanded",
+				blockIds: [...blockRange],
+			};
+		}
+
+		if (!focusBlockId) {
+			return { mode: "inactive", blockIds: [] };
+		}
+
+		if (!blockRange.includes(focusBlockId)) {
+			return { mode: "single", blockIds: [focusBlockId] };
+		}
+
+		return { mode: "single", blockIds: [focusBlockId] };
 	}
 
 	if (!focusBlockId) {
