@@ -148,16 +148,7 @@ function parseBlockSuggestionMeta(meta: unknown): BlockSuggestionMeta | null {
 		author: record.author,
 		authorType: record.authorType === "ai" ? "ai" : "user",
 		createdAt: record.createdAt,
-		model: typeof record.model === "string" ? record.model : undefined,
-		sessionId:
-			typeof record.sessionId === "string" ? record.sessionId : undefined,
-		requestId:
-			typeof record.requestId === "string" ? record.requestId : undefined,
-		turnId: typeof record.turnId === "string" ? record.turnId : undefined,
-		generationId:
-			typeof record.generationId === "string"
-				? record.generationId
-				: undefined,
+		...readSuggestionProvenance(record),
 		previousState: readPreviousState(record.previousState),
 	};
 }
@@ -274,6 +265,19 @@ function asSuggestion(value: unknown): {
 		author: record.author,
 		authorType,
 		createdAt: record.createdAt,
+		...readSuggestionProvenance(record),
+	};
+}
+
+/** The optional string provenance fields a stored suggestion record carries. */
+function readSuggestionProvenance(record: Record<string, unknown>): {
+	model: string | undefined;
+	sessionId: string | undefined;
+	requestId: string | undefined;
+	turnId: string | undefined;
+	generationId: string | undefined;
+} {
+	return {
 		model: typeof record.model === "string" ? record.model : undefined,
 		sessionId:
 			typeof record.sessionId === "string" ? record.sessionId : undefined,

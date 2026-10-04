@@ -711,31 +711,15 @@ export class AIControllerSessionState {
 					: undefined,
 			});
 		}
-		if (options?.finalizeSession === false) {
-			if (undoHistoryBeforeSnapshot) {
-				this._undoHistoryMetadata?.setCurrentEntryMetadata(
-					AI_UNDO_HISTORY_METADATA_KEY,
-					{
-						before: undoHistoryBeforeSnapshot,
-						after: createInlineHistorySnapshot(
-							this._editor,
-							this._state.sessions,
-							this._state.activeSessionId ?? null,
-							this._documentVersion,
-							{ kind: "document-coupled" },
-						),
-					},
-				);
-			}
-			return true;
+		if (options?.finalizeSession !== false) {
+			const nextSession =
+				this._state.sessions.find((item) => item.id === sessionId) ??
+				session;
+			this._updateSession(sessionId, {
+				status: "complete",
+				contextualPrompt: closeInlineSessionPrompt(nextSession),
+			});
 		}
-		const nextSession =
-			this._state.sessions.find((item) => item.id === sessionId) ??
-			session;
-		this._updateSession(sessionId, {
-			status: "complete",
-			contextualPrompt: closeInlineSessionPrompt(nextSession),
-		});
 		if (undoHistoryBeforeSnapshot) {
 			this._undoHistoryMetadata?.setCurrentEntryMetadata(
 				AI_UNDO_HISTORY_METADATA_KEY,

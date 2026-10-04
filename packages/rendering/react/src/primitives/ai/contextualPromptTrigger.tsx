@@ -1,7 +1,7 @@
 import React from "react";
 import { isCollapsed } from "@input/pen-core";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
-import { matchesShortcut } from "../../utils/matchesShortcut";
+import { matchesShortcut } from "./selectionTrigger";
 import { useAIContext } from "./root";
 
 export interface AIContextualPromptTriggerProps extends AsChildProps {

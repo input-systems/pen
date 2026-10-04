@@ -277,6 +277,24 @@ function appendEmptyParagraphsBetween(
   return count;
 }
 
+/** The item's own inline content; nested lists become their own blocks. */
+function collectListItemInline(item: MdastListItem): {
+  text: string;
+  marks: InlineMark[];
+  offset: number;
+} {
+  const ctx = { text: "", marks: [] as InlineMark[], offset: 0 };
+  const inlineChildren = (item.children ?? []).filter(
+    (child) => child.type !== "list",
+  );
+  for (const child of inlineChildren) {
+    if (child.children) {
+      processInlineNodes(child.children, ctx);
+    }
+  }
+  return ctx;
+}
+
 function listItemToBlock(
   item: MdastListItem,
   indent: number,
@@ -284,15 +302,7 @@ function listItemToBlock(
   index?: number,
 ): PendingBlock {
   if (item.checked !== undefined && item.checked !== null) {
-    const ctx = { text: "", marks: [] as InlineMark[], offset: 0 };
-    const inlineChildren = (item.children ?? []).filter(
-      (child) => child.type !== "list",
-    );
-    for (const child of inlineChildren) {
-      if (child.children) {
-        processInlineNodes(child.children, ctx);
-      }
-    }
+    const ctx = collectListItemInline(item);
     return {
       type: "checkListItem",
       props: { indent, checked: item.checked },
@@ -302,15 +312,7 @@ function listItemToBlock(
   }
 
   if (list?.ordered) {
-    const ctx = { text: "", marks: [] as InlineMark[], offset: 0 };
-    const inlineChildren = (item.children ?? []).filter(
-      (child) => child.type !== "list",
-    );
-    for (const child of inlineChildren) {
-      if (child.children) {
-        processInlineNodes(child.children, ctx);
-      }
-    }
+    const ctx = collectListItemInline(item);
     return {
       type: "numberedListItem",
       props: {
@@ -322,15 +324,7 @@ function listItemToBlock(
     };
   }
 
-  const ctx = { text: "", marks: [] as InlineMark[], offset: 0 };
-  const inlineChildren = (item.children ?? []).filter(
-    (child) => child.type !== "list",
-  );
-  for (const child of inlineChildren) {
-    if (child.children) {
-      processInlineNodes(child.children, ctx);
-    }
-  }
+  const ctx = collectListItemInline(item);
   return {
     type: "bulletListItem",
     props: { indent },

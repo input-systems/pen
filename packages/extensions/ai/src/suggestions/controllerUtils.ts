@@ -2,6 +2,7 @@ import type { Editor } from "@input/pen-types";
 import type {
 	AISuggestion,
 	AISuggestionCandidate,
+	AISuggestionKind,
 	AISuggestionScope,
 } from "./types";
 
@@ -61,22 +62,26 @@ export function compareCandidatesForDisplay(
 	left: AISuggestionCandidate,
 	right: AISuggestionCandidate,
 ): number {
+	return (
+		compareByConfidenceThenKind(left, right) ||
+		left.originalText.length - right.originalText.length
+	);
+}
+
+/** Higher confidence first, then spelling, grammar, clarity, rephrase; 0 on a tie. */
+export function compareByConfidenceThenKind(
+	left: { readonly confidence?: number; readonly kind: AISuggestionKind },
+	right: { readonly confidence?: number; readonly kind: AISuggestionKind },
+): number {
 	const leftConfidence = left.confidence ?? 0;
 	const rightConfidence = right.confidence ?? 0;
 	if (leftConfidence !== rightConfidence) {
 		return rightConfidence - leftConfidence;
 	}
-
-	const leftPriority = resolveKindPriority(left.kind);
-	const rightPriority = resolveKindPriority(right.kind);
-	if (leftPriority !== rightPriority) {
-		return leftPriority - rightPriority;
-	}
-
-	return left.originalText.length - right.originalText.length;
+	return resolveKindPriority(left.kind) - resolveKindPriority(right.kind);
 }
 
-function resolveKindPriority(kind: AISuggestionCandidate["kind"]): number {
+function resolveKindPriority(kind: AISuggestionKind): number {
 	switch (kind) {
 		case "spelling":
 			return 1;

@@ -1,7 +1,7 @@
 import React from "react";
 import { useSuggestions } from "../../hooks/useSuggestions";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
-import { describeBlockSuggestion } from "./changeListUtils";
+import { describeSuggestionText } from "./changeListUtils";
 import { useAIContext } from "./root";
 
 export interface AIDiffViewProps extends AsChildProps {
@@ -15,20 +15,7 @@ export function AIDiffView(props: AIDiffViewProps) {
 	const suggestions = useSuggestions(editor);
 	const mode = modeProp ?? "inline";
 	const defaultItems = suggestions.map((suggestion) => {
-		const block = editor.getBlock(suggestion.blockId);
-		const text =
-			suggestion.kind === "text"
-				? (block
-						?.textContent()
-						.slice(
-							suggestion.offset,
-							suggestion.offset + suggestion.length,
-						) ?? "")
-				: describeBlockSuggestion(
-						editor,
-						suggestion.action,
-						block?.type ?? null,
-					);
+		const text = describeSuggestionText(editor, suggestion);
 		const beforeText =
 			suggestion.action === "delete" ||
 			suggestion.action === "delete-block"
