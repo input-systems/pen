@@ -3,7 +3,7 @@ import {
 	reportPendingBlockImportViolations,
 	resolveBlockFlowCapability,
 } from "@input/pen-core";
-import type { DiagnosticEvent, Editor } from "@input/pen-types";
+import type { DiagnosticEvent, Editor, Importer } from "@input/pen-types";
 import type { PendingBlock } from "@input/pen-core";
 import type { FieldEditorTransferController } from "./controller";
 import {
@@ -192,22 +192,13 @@ export async function executePasteTransfer(
 				}
 				return true;
 			} else {
-				const { position, emptyBlockToRemove } =
-					deleteSelectionForTransfer(editor, cursorBefore);
-				const blockCountBefore = editor.documentState.blockOrder.length;
-				importers.html.import(html, editor, {
-					position,
-					undoGroup: false,
-				});
-				const removed = removeLegacyEmptyPlaceholderIfNeeded({
+				importReplacingSelection(
 					editor,
 					fieldEditor,
-					emptyBlockToRemove,
-					blockCountBefore,
-				});
-				if (!removed) {
-					placeCursorAfterImport(editor, fieldEditor);
-				}
+					importers.html,
+					html,
+					cursorBefore,
+				);
 				return true;
 			}
 		}
@@ -251,24 +242,13 @@ export async function executePasteTransfer(
 				return true;
 			}
 
-			const { position, emptyBlockToRemove } = deleteSelectionForTransfer(
-				editor,
-				cursorBefore,
-			);
-			const blockCountBefore = editor.documentState.blockOrder.length;
-			importers.markdown.import(plainText, editor, {
-				position,
-				undoGroup: false,
-			});
-			const removed = removeLegacyEmptyPlaceholderIfNeeded({
+			importReplacingSelection(
 				editor,
 				fieldEditor,
-				emptyBlockToRemove,
-				blockCountBefore,
-			});
-			if (!removed) {
-				placeCursorAfterImport(editor, fieldEditor);
-			}
+				importers.markdown,
+				plainText,
+				cursorBefore,
+			);
 			return true;
 		}
 		const { cursorAfter } = deleteSelectionForTransfer(
@@ -300,6 +280,37 @@ function executePasteImageTransfer(options: {
 		undoGroup: false,
 	});
 	return true;
+}
+
+/**
+ * Replaces the selection with `importer`'s blocks for `input`, then drops the
+ * emptied placeholder block or places the caret after the import.
+ */
+function importReplacingSelection(
+	editor: Editor,
+	fieldEditor: FieldEditorTransferController,
+	importer: Importer<string, PendingBlock[]>,
+	input: string,
+	cursorBefore: TransferCursorContext | null,
+): void {
+	const { position, emptyBlockToRemove } = deleteSelectionForTransfer(
+		editor,
+		cursorBefore,
+	);
+	const blockCountBefore = editor.documentState.blockOrder.length;
+	importer.import(input, editor, {
+		position,
+		undoGroup: false,
+	});
+	const removed = removeLegacyEmptyPlaceholderIfNeeded({
+		editor,
+		fieldEditor,
+		emptyBlockToRemove,
+		blockCountBefore,
+	});
+	if (!removed) {
+		placeCursorAfterImport(editor, fieldEditor);
+	}
 }
 
 function placeCursorAfterImport(

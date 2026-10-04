@@ -12,20 +12,13 @@ import {
 const VIRTUAL_INLINE_DECORATION_ATTRIBUTE = "data-pen-virtual-inline";
 
 function getInlineAtomHostElement(node: Node): HTMLElement | null {
-	if (node instanceof HTMLElement && isInlineAtomHostNode(node)) {
+	if (isInlineAtomHostNode(node)) {
 		return node;
 	}
-
-	if (node instanceof HTMLElement && isInlineAtomChipNode(node)) {
+	if (isInlineAtomChipNode(node) || isInlineAtomCaretBoundaryNode(node)) {
 		const parent = node.parentElement;
-		return parent && isInlineAtomHostNode(parent) ? parent : null;
+		return isInlineAtomHostNode(parent) ? parent : null;
 	}
-
-	if (isInlineAtomCaretBoundaryNode(node)) {
-		const parent = node.parentElement;
-		return parent && isInlineAtomHostNode(parent) ? parent : null;
-	}
-
 	return null;
 }
 
@@ -49,22 +42,11 @@ function getInlineAtomCaretBoundaryTextPoint(
 	side: InlineAtomCaretBoundarySide,
 ): { node: Node; offset: number } | null {
 	const boundary = getInlineAtomCaretBoundaryElement(host, side);
-	if (!boundary) {
-		return null;
-	}
-
-	return {
-		node: boundary,
-		offset: 0,
-	};
+	return boundary ? { node: boundary, offset: 0 } : null;
 }
 
 function resolveLogicalInlineAtomUnit(node: HTMLElement): HTMLElement {
-	const host = getInlineAtomHostElement(node);
-	if (host) {
-		return host;
-	}
-	return node;
+	return getInlineAtomHostElement(node) ?? node;
 }
 
 export function getLogicalNodeLength(node: Node): number {
@@ -393,9 +375,6 @@ function findLogicalDOMPointInElement(
 				if (boundaryPoint) {
 					return boundaryPoint;
 				}
-			}
-			if (isEmptyBlockPlaceholder(child)) {
-				return { node: element, offset: index };
 			}
 			if (child.nodeType === Node.TEXT_NODE) {
 				return { node: child, offset: 0 };

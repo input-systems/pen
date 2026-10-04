@@ -77,19 +77,7 @@ function resolveDropTargetFromReader(
 	if (hoveredBlockEl && hoveredBlockId) {
 		const hoveredRect = reader.blockRect(hoveredBlockId);
 		if (hoveredRect && !pointWithinRect(clientX, clientY, hoveredRect)) {
-			const side =
-				clientY <= hoveredRect.top + hoveredRect.height / 2
-					? "before"
-					: "after";
-			return {
-				kind: "block-edge",
-				blockId: hoveredBlockId,
-				side,
-				position:
-					side === "before"
-						? { before: hoveredBlockId }
-						: { after: hoveredBlockId },
-			};
+			return blockEdgeTarget(hoveredBlockId, hoveredRect, clientY);
 		}
 	}
 
@@ -123,17 +111,7 @@ function resolveDropTargetFromReader(
 
 		const rect = reader.blockRect(point.blockId);
 		if (rect) {
-			const side =
-				clientY <= rect.top + rect.height / 2 ? "before" : "after";
-			return {
-				kind: "block-edge",
-				blockId: point.blockId,
-				side,
-				position:
-					side === "before"
-						? { before: point.blockId }
-						: { after: point.blockId },
-			};
+			return blockEdgeTarget(point.blockId, rect, clientY);
 		}
 
 		return {
@@ -142,6 +120,26 @@ function resolveDropTargetFromReader(
 		};
 	}
 
+	return resolveDefaultDropTarget(editor);
+}
+
+/** The edge of `blockId` nearer `clientY`: before its vertical midpoint, else after. */
+function blockEdgeTarget(
+	blockId: string,
+	rect: Rect,
+	clientY: number,
+): ResolvedDropTarget {
+	const side = clientY <= rect.top + rect.height / 2 ? "before" : "after";
+	return {
+		kind: "block-edge",
+		blockId,
+		side,
+		position: side === "before" ? { before: blockId } : { after: blockId },
+	};
+}
+
+/** After the last block, or the document end when there is none. */
+export function resolveDefaultDropTarget(editor: Editor): ResolvedDropTarget {
 	const lastBlock = editor.lastBlock();
 	if (!lastBlock) {
 		return {

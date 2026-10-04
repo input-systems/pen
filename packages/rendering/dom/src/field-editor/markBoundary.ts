@@ -64,14 +64,8 @@ function filterByExpandPolicy(
 			if (expand === "after" || expand === "both") {
 				filtered[mark] = value;
 			}
-		} else {
-			if (
-				expand === "before" ||
-				expand === "both" ||
-				expand === "after"
-			) {
-				filtered[mark] = value;
-			}
+		} else if (expand !== "none") {
+			filtered[mark] = value;
 		}
 	}
 

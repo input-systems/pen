@@ -20,25 +20,15 @@ export function patchDOM(target: HTMLElement, source: DocumentFragment): void {
 			const targetNode = targetNodes[targetIndex];
 
 			if (nodesStructurallyEqual(targetNode, sourceNode)) {
-				if (
-					isInlineAtomHostNode(targetNode) &&
-					isInlineAtomHostNode(sourceNode)
-				) {
-					copyInlineAtomElementData(sourceNode, targetNode);
-				} else if (
-					isInlineAtomNode(targetNode) &&
-					isInlineAtomNode(sourceNode)
-				) {
+				if (isInlineAtomNode(targetNode) && isInlineAtomNode(sourceNode)) {
 					copyInlineAtomElementData(sourceNode, targetNode);
 				}
 				updateTextContent(targetNode, sourceNode);
-				targetIndex++;
-				sourceIndex++;
 			} else {
 				target.replaceChild(sourceNode, targetNode);
-				targetIndex++;
-				sourceIndex++;
 			}
+			targetIndex++;
+			sourceIndex++;
 		} else {
 			target.appendChild(sourceNode);
 			sourceIndex++;

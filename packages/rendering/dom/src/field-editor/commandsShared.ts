@@ -194,23 +194,9 @@ export function getInlineNodeSelectionTarget(
 		const nextOffset = currentOffset + length;
 		const isInlineNode = typeof delta.insert !== "string";
 
-		if (
-			isInlineNode &&
-			options.direction === "backward" &&
-			options.offset === nextOffset
-		) {
-			return {
-				blockId: options.blockId,
-				anchorOffset: currentOffset,
-				focusOffset: nextOffset,
-			};
-		}
-
-		if (
-			isInlineNode &&
-			options.direction === "forward" &&
-			options.offset === currentOffset
-		) {
+		const atomOffset =
+			options.direction === "backward" ? nextOffset : currentOffset;
+		if (isInlineNode && options.offset === atomOffset) {
 			return {
 				blockId: options.blockId,
 				anchorOffset: currentOffset,

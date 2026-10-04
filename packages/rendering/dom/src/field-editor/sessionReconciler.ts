@@ -3,15 +3,10 @@ import {
 	emptyDecorationSet,
 	getOpOriginType,
 } from "@input/pen-core";
-import type {
-	DecorationSet,
-	Editor,
-	InlineDecoration,
-	OpOrigin,
-} from "@input/pen-types";
-import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
+import type { DecorationSet, Editor, OpOrigin } from "@input/pen-types";
 import type { DomScheduler } from "../scheduler";
-import { fullReconcileToDOM } from "./reconciler";
+import { inlineDecorationsForBlock } from "../utils/inlineDecorations";
+import { renderFieldFromModel } from "./fieldDomRebuild";
 import type { FieldEditorTextLike } from "./crdt";
 
 interface SessionSnapshot {
@@ -224,19 +219,13 @@ export class SessionReconciler {
 
 		for (const blockId of blockIds) {
 			if (blockId === snapshot.focusBlockId) {
+				// The focused field is rebuilt only where it is mounted.
 				const element =
 					this.options.getAttachedElement() ??
-					this.options.getInlineElement(snapshot.focusBlockId);
-				const ytext = this.options.getYText(snapshot.focusBlockId);
-				if (!element || !ytext) {
-					continue;
+					this.options.getInlineElement(blockId);
+				if (this.reconcileBlock(blockId, element)) {
+					rebuilt.push(blockId);
 				}
-				fullReconcileToDOM(ytext, element, this.editor.schema, {
-					inlineDecorations: this.getInlineDecorations(blockId),
-					urlPolicy: urlPolicyFromEditor(this.editor),
-				});
-				this.options.notifyDomReconciled?.(blockId);
-				rebuilt.push(blockId);
 				continue;
 			}
 			this.reconcileBlock(blockId);
@@ -259,26 +248,22 @@ export class SessionReconciler {
 		}
 	}
 
-	private reconcileBlock(blockId: string): void {
-		const inlineElement = this.options.getInlineElement(blockId);
+	/** Rebuilds the block's field from the model; false when it is not mounted. */
+	private reconcileBlock(
+		blockId: string,
+		element = this.options.getInlineElement(blockId),
+	): boolean {
 		const ytext = this.options.getYText(blockId);
-		if (!inlineElement || !ytext) {
-			return;
+		if (!element || !ytext) {
+			return false;
 		}
-		fullReconcileToDOM(ytext, inlineElement, this.editor.schema, {
-			inlineDecorations: this.getInlineDecorations(blockId),
-			urlPolicy: urlPolicyFromEditor(this.editor),
-		});
+		renderFieldFromModel(
+			this.editor,
+			ytext,
+			element,
+			inlineDecorationsForBlock(this.editor, blockId),
+		);
 		this.options.notifyDomReconciled?.(blockId);
-	}
-
-	private getInlineDecorations(blockId: string): readonly InlineDecoration[] {
-		return this.editor
-			.getDecorations()
-			.forBlock(blockId)
-			.filter(
-				(decoration): decoration is InlineDecoration =>
-					decoration.type === "inline",
-			);
+		return true;
 	}
 }

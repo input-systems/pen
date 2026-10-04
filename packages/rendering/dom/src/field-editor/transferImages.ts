@@ -231,29 +231,10 @@ export function insertUploadedImages(
 		return { position: null, lastInsertedBlockId: null };
 	}
 
-	const images = admitUploadedImages(editor, uploaded);
-	const ops: DocumentOp[] = [];
-	let previousBlockId: string | null = null;
-	let lastInsertedBlockId: string | null = null;
-
-	for (const image of images) {
-		const blockId = generateId();
-		ops.push({
-			type: "insert-block",
-			blockId,
-			blockType: IMAGE_BLOCK_TYPE,
-			props: {
-				src: image.src,
-				alt: image.alt,
-			},
-			position: previousBlockId
-				? { after: previousBlockId }
-				: resolvedPosition,
-		});
-		previousBlockId = blockId;
-		lastInsertedBlockId = blockId;
-	}
-
+	const { ops, lastInsertedBlockId } = buildImageInsertOps(
+		admitUploadedImages(editor, uploaded),
+		resolvedPosition,
+	);
 	if (ops.length === 0) {
 		return { position: null, lastInsertedBlockId: null };
 	}
@@ -291,23 +272,13 @@ export function insertUploadedImagesAtDropTarget(
 
 	const textLength = block.textContent().length;
 	const clampedOffset = Math.max(0, Math.min(point.offset, textLength));
-	if (clampedOffset === 0) {
+	if (clampedOffset === 0 || clampedOffset >= textLength) {
 		return insertUploadedImages(
 			editor,
 			images,
-			{
-				before: point.blockId,
-			},
-			options,
-		).lastInsertedBlockId;
-	}
-	if (clampedOffset >= textLength) {
-		return insertUploadedImages(
-			editor,
-			images,
-			{
-				after: point.blockId,
-			},
+			clampedOffset === 0
+				? { before: point.blockId }
+				: { after: point.blockId },
 			options,
 		).lastInsertedBlockId;
 	}
@@ -318,10 +289,29 @@ export function insertUploadedImagesAtDropTarget(
 		offset: clampedOffset,
 		newBlockId: tailBlockId,
 	});
-	const ops: DocumentOp[] = [...recipe.ops];
-	let previousInsertedBlockId: string | null = null;
-	let lastInsertedBlockId: string | null = null;
+	const inserted = buildImageInsertOps(images, { before: tailBlockId });
+	const lastInsertedBlockId = inserted.lastInsertedBlockId;
+	if (!lastInsertedBlockId) {
+		return null;
+	}
 
+	editor.apply([...recipe.ops, ...inserted.ops], {
+		origin: "user",
+		structural: recipe.structural,
+		...(options?.undoGroup === false ? {} : { undoGroup: true }),
+	});
+	return lastInsertedBlockId;
+}
+
+export { resolveDefaultDropTarget } from "./dropResolver";
+
+/** One image block per upload, the first at `position` and each next after the previous. */
+function buildImageInsertOps(
+	images: readonly UploadedImage[],
+	position: Position,
+): { ops: DocumentOp[]; lastInsertedBlockId: string | null } {
+	const ops: DocumentOp[] = [];
+	let lastInsertedBlockId: string | null = null;
 	for (const image of images) {
 		const blockId = generateId();
 		ops.push({
@@ -332,41 +322,13 @@ export function insertUploadedImagesAtDropTarget(
 				src: image.src,
 				alt: image.alt,
 			},
-			position: previousInsertedBlockId
-				? { after: previousInsertedBlockId }
-				: { before: tailBlockId },
+			position: lastInsertedBlockId
+				? { after: lastInsertedBlockId }
+				: position,
 		});
-		previousInsertedBlockId = blockId;
 		lastInsertedBlockId = blockId;
 	}
-
-	if (!lastInsertedBlockId) {
-		return null;
-	}
-
-	editor.apply(ops, {
-		origin: "user",
-		structural: recipe.structural,
-		...(options?.undoGroup === false ? {} : { undoGroup: true }),
-	});
-	return lastInsertedBlockId;
-}
-
-export function resolveDefaultDropTarget(editor: Editor): ResolvedDropTarget {
-	const lastBlock = editor.lastBlock();
-	if (!lastBlock) {
-		return {
-			kind: "document-end",
-			position: "last",
-		};
-	}
-
-	return {
-		kind: "block-edge",
-		blockId: lastBlock.id,
-		side: "after",
-		position: { after: lastBlock.id },
-	};
+	return { ops, lastInsertedBlockId };
 }
 
 function resolveValidImageInsertPosition(

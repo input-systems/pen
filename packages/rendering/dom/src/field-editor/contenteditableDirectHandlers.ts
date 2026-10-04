@@ -71,62 +71,49 @@ const insertText: DirectHandler = (
 	);
 };
 
-const deleteLineBackward: DirectHandler = (
-	_event,
-	editor,
-	_ytext,
-	fe,
-	_element,
-	backend,
-) => {
-	const resolved = resolveUndispatchedDelete(
-		editor,
-		fe,
-		backend,
-		deleteBackward,
-		"line",
-	);
-	if (!resolved) return;
-	const { blockId, range } = resolved;
+/**
+ * A word or line delete. Undispatched, it removes a non-collapsed range, else
+ * the span from the caret to `boundary` in the delete's direction.
+ */
+function boundaryDelete(
+	command: typeof deleteBackward | typeof deleteForward,
+	granularity: "word" | "line",
+	boundary: (ytext: FieldEditorTextLike, caret: number, editor: Editor) => number,
+): DirectHandler {
+	return (_event, editor, ytext, fe, _element, backend) => {
+		const resolved = resolveUndispatchedDelete(
+			editor,
+			fe,
+			backend,
+			command,
+			granularity,
+		);
+		if (!resolved) return;
+		const { blockId, range } = resolved;
 
-	if (range.start !== range.end) {
-		deleteInlineRange(backend, blockId, range);
-		return;
-	}
+		if (range.start !== range.end) {
+			deleteInlineRange(backend, blockId, range);
+			return;
+		}
 
-	if (range.start > 0) {
-		deleteInlineRange(backend, blockId, { start: 0, end: range.start });
-	}
-};
+		const caret = range.start;
+		const target = boundary(ytext, caret, editor);
+		if (command === deleteBackward ? target < caret : target > caret) {
+			deleteInlineRange(backend, blockId, {
+				start: Math.min(target, caret),
+				end: Math.max(target, caret),
+			});
+		}
+	};
+}
 
-const deleteLineForward: DirectHandler = (
-	_event,
-	editor,
-	ytext,
-	fe,
-	_element,
-	backend,
-) => {
-	const resolved = resolveUndispatchedDelete(
-		editor,
-		fe,
-		backend,
-		deleteForward,
-		"line",
-	);
-	if (!resolved) return;
-	const { blockId, range } = resolved;
+const deleteLineBackward = boundaryDelete(deleteBackward, "line", () => 0);
 
-	if (range.start !== range.end) {
-		deleteInlineRange(backend, blockId, range);
-		return;
-	}
-
-	const end = getLogicalInlineText(ytext).length;
-	if (end > range.end) {
-		deleteInlineRange(backend, blockId, { start: range.end, end });
-	}
-};
+const deleteLineForward = boundaryDelete(
+	deleteForward,
+	"line",
+	(ytext) => getLogicalInlineText(ytext).length,
+);
 
 // command-policy implementations; preventDefault / allow / block live in BEFOREINPUT_MAP
 export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
@@ -220,31 +207,16 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 		}
 	},
 
-	deleteWordBackward: (_event, editor, ytext, fe, element, backend) => {
-		const resolved = resolveUndispatchedDelete(
-			editor,
-			fe,
-			backend,
-			deleteBackward,
-			"word",
-		);
-		if (!resolved) return;
-		const { blockId, range } = resolved;
-
-		if (range.start !== range.end) {
-			deleteInlineRange(backend, blockId, range);
-			return;
-		}
-
-		const start = previousWordBoundary(
-			getLogicalInlineText(ytext),
-			range.start,
-			resolveEditorLocale(editor),
-		);
-		if (start < range.start) {
-			deleteInlineRange(backend, blockId, { start, end: range.start });
-		}
-	},
+	deleteWordBackward: boundaryDelete(
+		deleteBackward,
+		"word",
+		(ytext, caret, editor) =>
+			previousWordBoundary(
+				getLogicalInlineText(ytext),
+				caret,
+				resolveEditorLocale(editor),
+			),
+	),
 
 	deleteSoftLineBackward: deleteLineBackward,
 	deleteHardLineBackward: deleteLineBackward,
@@ -252,31 +224,16 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 	deleteSoftLineForward: deleteLineForward,
 	deleteHardLineForward: deleteLineForward,
 
-	deleteWordForward: (_event, editor, ytext, fe, element, backend) => {
-		const resolved = resolveUndispatchedDelete(
-			editor,
-			fe,
-			backend,
-			deleteForward,
-			"word",
-		);
-		if (!resolved) return;
-		const { blockId, range } = resolved;
-
-		if (range.start !== range.end) {
-			deleteInlineRange(backend, blockId, range);
-			return;
-		}
-
-		const end = nextWordBoundary(
-			getLogicalInlineText(ytext),
-			range.end,
-			resolveEditorLocale(editor),
-		);
-		if (end > range.end) {
-			deleteInlineRange(backend, blockId, { start: range.end, end });
-		}
-	},
+	deleteWordForward: boundaryDelete(
+		deleteForward,
+		"word",
+		(ytext, caret, editor) =>
+			nextWordBoundary(
+				getLogicalInlineText(ytext),
+				caret,
+				resolveEditorLocale(editor),
+			),
+	),
 
 	insertParagraph: (_event, editor, ytext, fe, element, backend) => {
 		const blockId = fe.focusBlockId;

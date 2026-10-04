@@ -18,7 +18,7 @@ export function runMatchingKeyBinding(
 	editor: Editor,
 	event: KeyboardEvent,
 ): boolean {
-	const bindings = collectKeyBindings(editor);
+	const bindings = collectEditorKeyBindings(editor);
 	for (const binding of bindings) {
 		if (
 			matchesBindingContext(editor, binding.context) &&
@@ -30,14 +30,6 @@ export function runMatchingKeyBinding(
 	}
 
 	return false;
-}
-
-function collectKeyBindings(editor: Editor): ReadonlyArray<{
-	key: string;
-	context?: KeyBindingContext;
-	handler: (editor: Editor, event: KeyboardEvent) => boolean;
-}> {
-	return collectEditorKeyBindings(editor);
 }
 
 function matchesBindingContext(
