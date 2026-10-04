@@ -64,7 +64,7 @@ export function attachRootOverlay(options: {
 	notifySelectionChange(record: SelectionRecord): void;
 	/** Forwarded from the field editor's state emitter: focus, composition, read-only, mode. */
 	notifyFieldChange(): void;
-	/** A mount ack or similar input change: repaint only when something could be painted. */
+	/** A mount ack or similar input change: repaint only when something is painted or unresolved. */
 	notifyInputsChanged(): void;
 	detach(): void;
 } {

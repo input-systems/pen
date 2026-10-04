@@ -27,6 +27,46 @@ async function measure(page: Page, run: () => Promise<void>): Promise<OverlayPro
 }
 
 scenario(
+	"OV1: a scroll that moves the root while the layer is empty costs no flush and no overlay read",
+	async (s, page) => {
+		await s.load("hello-world");
+		await page.evaluate(() => {
+			document.body.style.paddingBottom = "3000px";
+		});
+		const before = await readSettledLayer(page);
+		expect(before.items, "precondition: nothing is painted").toEqual([]);
+
+		const scroll = await measure(page, async () => {
+			await page.evaluate(() => {
+				window.scrollTo(0, 200);
+			});
+			await idleFrames(page);
+		});
+		const scrolled = await page.evaluate(() => window.scrollY);
+		await test.info().attach("ov1-empty-scroll", {
+			body: JSON.stringify({ scroll, scrolled }, null, 2),
+			contentType: "application/json",
+		});
+
+		expect(scrolled, "precondition: the page scrolled the root").toBeGreaterThan(0);
+		expect(
+			scroll,
+			formatCheckReport(
+				"OV1: an empty layer ignores a root-moving scroll",
+				scroll.flushes === 0 ? "passed" : "failed",
+				JSON.stringify(scroll),
+			),
+		).toMatchObject({
+			flushes: 0,
+			paints: 0,
+			caretRectReads: 0,
+			blockRectReads: 0,
+			layerMutations: 0,
+		});
+	},
+);
+
+scenario(
 	"OV1: a caret move next to an atom costs at most two flushes, at most two caretRect reads per flush and at most two layer mutations, and an idle frame costs none",
 	async (s, page) => {
 		await s.load("hello-world");

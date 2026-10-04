@@ -304,16 +304,23 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 			return;
 		}
 		this.fieldKey = key;
-		this.requestPaintForInputs();
+		// A focus, composition or mode change can turn requests on, so it
+		// repaints whenever a contributor could answer it.
+		if (this.contributors.length === 0 && !this._plan?.items.length) {
+			return;
+		}
+		this.requestPaint();
 	}
 
 	/**
-	 * Mount acks and geometry, focus or motion changes only matter when
-	 * something could be painted: with no contributor and an empty layer
-	 * they cost no flush.
+	 * Mount acks and geometry or motion changes change no request: they only
+	 * move or restyle what is painted, or resolve what was unresolved. With
+	 * neither (the built-in selection contributor alone asks nothing of an
+	 * unfocused field) they cost no flush (OV1).
 	 */
 	requestPaintForInputs(): void {
-		if (this.contributors.length === 0 && !this._plan?.items.length) {
+		const plan = this._plan;
+		if (!plan?.items.length && !plan?.unresolved.length) {
 			return;
 		}
 		this.requestPaint();
