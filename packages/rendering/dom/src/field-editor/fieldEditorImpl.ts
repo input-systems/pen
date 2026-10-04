@@ -505,7 +505,13 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._isEditing = false;
 		this._isComposing = false;
 		this._projector.reset();
-		this._selectionReader.resetGestures();
+		// C1: the composition this field owned ends with it. Every other
+		// window is root-level reader state and outlives the session (R1–R3):
+		// a press in another block deactivates this field in the gesture
+		// that opened the window.
+		if (this._selectionReader.windows.ime) {
+			this._selectionReader.notifyGesture("compositionend-completed");
+		}
 		this._inputMode = "none";
 		this._mode = "inactive";
 		this._pendingMarkController.reset();
@@ -1352,6 +1358,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 	destroy(): void {
 		this._selectionReader.detach();
 		this._unbindRoot();
+		// Nothing projects into, or activates for, a root this instance has
+		// let go; a re-install binds it again through setRootElement.
+		this._rootElement = null;
 		this._unsubscribeSelection?.();
 		this._unsubscribeSelection = null;
 		this._unsubscribeCommit?.();

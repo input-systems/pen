@@ -178,7 +178,7 @@ describe("reader gesture windows (R1–R3)", () => {
 		reader.notifyGesture("compositionend-completed");
 		expect(reader.windows.ime).toBe(false);
 		expect(reader.windows.pointer).toBe(true);
-		reader.resetGestures();
+		reader.detach();
 		expect(reader.isAdmissibleRead()).toBe(false);
 	});
 });

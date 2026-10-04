@@ -416,6 +416,9 @@ export interface SelectionReaderDomPort {
 	getSelection(doc: Document): Selection | null;
 }
 
+/** R1: the native events that end a pointer gesture, mapped onto `pointerup`. */
+const POINTER_END_EVENTS = ["pointerup", "pointercancel"] as const;
+
 const DOCUMENT_SELECTION: SelectionReaderDomPort = {
 	getSelection: (doc) => doc.getSelection(),
 };
@@ -432,6 +435,10 @@ export interface SelectionReaderOptions {
 export interface SelectionReader {
 	/** Binds the one `selectionchange` listener for `root`. Idempotent per root. */
 	attach(root: HTMLElement): void;
+	/**
+	 * Releases the root: its `selectionchange` listener and any pointer
+	 * gesture's document listeners, and closes every window.
+	 */
 	detach(): void;
 	/** Runs the R algorithm on the live selection now, as a `selectionchange` would. */
 	sync(): DomSelectionReadDecision;
@@ -458,8 +465,6 @@ export interface SelectionReader {
 	readonly windows: GestureWindowState;
 	/** Whether a `selectionchange` now would be admissible (any window open). */
 	isAdmissibleRead(): boolean;
-	/** Closes every window, as a session reset does. */
-	resetGestures(): void;
 }
 
 export type FieldEditorSelectionCell = {
@@ -570,7 +575,9 @@ export function createSelectionReader(
 	const dom = options.dom ?? DOCUMENT_SELECTION;
 	let root: HTMLElement | null = null;
 	let windows: GestureWindowState = CLOSED_GESTURE_WINDOWS;
-	let pointerSettledBound = false;
+	// The document listeners that end the current pointer gesture; null
+	// while none is bound.
+	let unbindPointerSettled: (() => void) | null = null;
 	// The raw native range at the press, so pointerup reads only a range the
 	// gesture moved; a click on chrome or a cell leaves the old one standing.
 	let pressRange: RawNativeRange | null = null;
@@ -588,19 +595,19 @@ export function createSelectionReader(
 	};
 
 	// R1: a pointerup anywhere in the document ends the pointer gesture,
-	// which may have started in the content and ended outside it.
+	// which may have started in the content and ended outside it. A
+	// pointercancel ends it the same way: a touch pan or a drag the engine
+	// took over sends no pointerup after it.
 	const bindPointerSettled = (): void => {
-		if (pointerSettledBound) {
+		if (unbindPointerSettled) {
 			return;
 		}
 		const doc = root?.ownerDocument ?? globalThis.document;
 		if (typeof doc?.addEventListener !== "function") {
 			return;
 		}
-		pointerSettledBound = true;
-		const onUp = (): void => {
-			doc.removeEventListener("pointerup", onUp);
-			pointerSettledBound = false;
+		const onEnd = (): void => {
+			unbindPointerSettled?.();
 			// The gesture's last native range — a drag's end, or the word or
 			// paragraph a multi-click expanded on press — is in the DOM now,
 			// but its selectionchange is queued behind pointer-settled. Read
@@ -611,11 +618,19 @@ export function createSelectionReader(
 			pressRange = null;
 			notifyGesture("pointerup");
 		};
-		doc.addEventListener("pointerup", onUp);
+		for (const type of POINTER_END_EVENTS) {
+			doc.addEventListener(type, onEnd);
+		}
+		unbindPointerSettled = () => {
+			for (const type of POINTER_END_EVENTS) {
+				doc.removeEventListener(type, onEnd);
+			}
+			unbindPointerSettled = null;
+		};
 	};
 	const notifyGesture = (kind: GestureEventKind): void => {
 		if (kind === "pointerdown") {
-			if (!pointerSettledBound) {
+			if (!unbindPointerSettled) {
 				pressRange = rawRange();
 			}
 			bindPointerSettled();
@@ -684,11 +699,16 @@ export function createSelectionReader(
 			notifyGesture("authority-superseded");
 		}
 	};
+	// Windows are root-level state (R1–R3): only a closing input or the
+	// root going away changes them, never a field session.
 	const detach = (): void => {
 		root?.ownerDocument.removeEventListener(
 			"selectionchange",
 			onSelectionChange,
 		);
+		unbindPointerSettled?.();
+		pressRange = null;
+		windows = CLOSED_GESTURE_WINDOWS;
 		root = null;
 	};
 
@@ -719,10 +739,6 @@ export function createSelectionReader(
 			return windows;
 		},
 		isAdmissibleRead: () => isAdmissibleDomRead("selectionchange", windows),
-		resetGestures() {
-			windows = CLOSED_GESTURE_WINDOWS;
-			pointerSettledBound = false;
-		},
 	};
 }
 

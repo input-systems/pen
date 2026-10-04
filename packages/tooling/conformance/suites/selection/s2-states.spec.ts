@@ -153,6 +153,100 @@ scenario(
 );
 
 scenario(
+	"S2: a 51-block drag started outside the focused field withholds the substitute until pointerup (R1)",
+	async (s, page) => {
+		await page.setViewportSize(TALL_VIEWPORT);
+		await s.load("fuzz-large");
+		// Editing a block outside the range, so the press switches sessions.
+		const editing: LogicalPoint = { blockId: "fuzz-large-55", offset: 3 };
+		const caret = await getInlineOffsetPoint(page, editing);
+		await page.mouse.click(caret.x, caret.y);
+		await idle(page);
+		await s.assert.selectionEquals({ anchor: editing, focus: editing });
+
+		const anchor = await getInlineOffsetPoint(page, ANCHOR);
+		await page.mouse.move(anchor.x, anchor.y);
+		await page.mouse.down();
+		await idle(page);
+		const focus = await getInlineOffsetPoint(page, FOCUS);
+		await page.mouse.move(focus.x, focus.y, { steps: 24 });
+		await idle(page);
+		// Mid-drag: the pointer window the press opened is still open, so
+		// the user's native range stands and no substitute is written. The
+		// record is read directly: S2's standing check applies at flushes
+		// with editor focus, not mid-gesture.
+		expect(
+			await page.evaluate(() => window.__penConformance.selection),
+		).toMatchObject({ type: "text", anchor: ANCHOR, focus: FOCUS });
+		expect(
+			await page.evaluate(() => window.__penConformance.substituteState),
+		).toBeNull();
+		expect(await nativeRangeCountInRoot(page)).toBe(1);
+
+		await page.mouse.up();
+		await idle(page);
+		await s.assert.selectionEquals({ anchor: ANCHOR, focus: FOCUS });
+		expect(
+			await page.evaluate(() => window.__penConformance.substituteState),
+		).toBe("block-surface-range");
+		expect(await nativeRangeCountInRoot(page)).toBe(0);
+		await s.assert.domMatchesAuthority();
+	},
+);
+
+scenario(
+	"S2: a click in a table cell over a dragged text range selects the cell, not a caret on the table",
+	async (s, page) => {
+		const tableId = "s2-table";
+		await s.load("hello-world");
+		await s.apply([
+			{
+				type: "insert-block",
+				blockId: tableId,
+				blockType: "table",
+				props: {},
+				position: "last",
+			},
+		]);
+		// A range dragged inside the paragraph: the press reads it (R1).
+		const from = await getInlineOffsetPoint(page, {
+			blockId: "hello-p1",
+			offset: 1,
+		});
+		const to = await getInlineOffsetPoint(page, {
+			blockId: "hello-p1",
+			offset: 7,
+		});
+		await page.mouse.move(from.x, from.y);
+		await page.mouse.down();
+		await page.mouse.move(to.x, to.y, { steps: 8 });
+		await page.mouse.up();
+		await idle(page);
+		await s.assert.selectionEquals({
+			anchor: { blockId: "hello-p1", offset: 1 },
+			focus: { blockId: "hello-p1", offset: 7 },
+		});
+
+		const cell = page
+			.locator(
+				`[data-pen-editor-block][data-block-id="${tableId}"] [data-pen-table-cell][data-cell-row="0"][data-cell-col="0"]`,
+			)
+			.first();
+		await cell.click();
+		await idle(page);
+		expect(
+			await page.evaluate(() => window.__penConformance.selection),
+		).toMatchObject({
+			type: "cell",
+			blockId: tableId,
+			anchor: { row: 0, col: 0 },
+			head: { row: 0, col: 0 },
+		});
+		await s.assert.domMatchesAuthority();
+	},
+);
+
+scenario(
 	"S2: an engine-confined multi-block range falls back once to the substitute state",
 	async (s, page) => {
 		await s.load("two-paragraph");

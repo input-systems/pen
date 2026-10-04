@@ -253,6 +253,13 @@ export function createPointerSelectionGestures<
 			if (!root) {
 				return false;
 			}
+			// A cell gesture is the cell handler's, a click that collapses a
+			// text range included: the pointer point in a table is no caret
+			// a field can show. An authority the reader did not write in this
+			// gesture is no native range to keep.
+			if (resolveClickedCellCoord(ctx, event)) {
+				return false;
+			}
 			const startedWithExpandedTextSelection =
 				gesture.startSelection?.type === "text" &&
 				!isCollapsed(gesture.startSelection);
@@ -277,11 +284,6 @@ export function createPointerSelectionGestures<
 				return true;
 			}
 
-			// A cell gesture is the cell handler's, and an authority the
-			// reader did not write in this gesture is no native range to keep.
-			if (resolveClickedCellCoord(ctx, event)) {
-				return false;
-			}
 			const selection = editor.selection;
 			if (selection?.type !== "text") {
 				return false;

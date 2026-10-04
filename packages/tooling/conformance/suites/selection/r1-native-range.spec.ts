@@ -104,11 +104,18 @@ async function touchPress(
 		.catch(() => {});
 }
 
-/** Stands in for a handle drag in block 0: the native range moves, nothing else fires. */
-async function handleExtend(page: Page, anchor: number, focus: number) {
+/** Stands in for a handle drag in `block`: the native range moves, nothing else fires. */
+async function handleExtend(
+	page: Page,
+	anchor: number,
+	focus: number,
+	block = 0,
+) {
 	await page.evaluate(
-		({ anchor, focus }) => {
-			const inline = document.querySelector("[data-pen-inline-content]")!;
+		({ anchor, focus, block }) => {
+			const inline = document.querySelectorAll(
+				"[data-pen-inline-content]",
+			)[block]!;
 			const text = document
 				.createTreeWalker(inline, NodeFilter.SHOW_TEXT)
 				.nextNode()!;
@@ -116,7 +123,7 @@ async function handleExtend(page: Page, anchor: number, focus: number) {
 				.getSelection()!
 				.setBaseAndExtent(text, anchor, text, focus);
 		},
-		{ anchor, focus },
+		{ anchor, focus, block },
 	);
 }
 
@@ -135,15 +142,21 @@ async function settled(page: Page) {
 	});
 }
 
+/** Chromium's touch emulator, so a mouse press is a touch point (see `touchPress`). */
+async function emulateTouch(page: Page): Promise<CDPSession> {
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send("Emulation.setEmitTouchEventsForMouse", {
+		enabled: true,
+		configuration: "mobile",
+	});
+	return cdp;
+}
+
 scenario(
 	"R1: a touch long-press selection is accepted and a handle-style extension keeps it",
 	async (s, page) => {
 		await s.load("two-paragraph", { pointer: false });
-		const cdp = await page.context().newCDPSession(page);
-		await cdp.send("Emulation.setEmitTouchEventsForMouse", {
-			enabled: true,
-			configuration: "mobile",
-		});
+		const cdp = await emulateTouch(page);
 
 		// Long-press "bravo".
 		await touchPress(page, cdp, await textCenter(page, 0, 6, 11), "long");
@@ -189,6 +202,51 @@ scenario(
 		// projected back (I4, P2).
 		await handleExtend(page, 11, 0);
 		await expect.poll(() => settled(page)).toEqual(caret);
+		await s.assert.domMatchesAuthority();
+	},
+);
+
+scenario(
+	"R1: a touch long-press in block B while editing block A keeps the native-range window across the session switch",
+	async (s, page) => {
+		await s.load("two-paragraph", { pointer: false });
+
+		// Editing block A: a click leaves a caret in "bravo". A mouse click
+		// before the emulator is on, because the emulator reads a press soon
+		// after a tap as a double-tap, not a long-press.
+		const caret = await textCenter(page, 0, 6, 11);
+		await page.mouse.click(caret.x, caret.y);
+		const cdp = await emulateTouch(page);
+		await expect
+			.poll(async () => {
+				const { anchor, focus } = await settled(page);
+				return anchor?.startsWith("two-p1:") && anchor === focus;
+			})
+			.toBe(true);
+
+		// Long-press "echo" in block B: the accepted read moves the session
+		// to B in the gesture that opened the window, and the window stays.
+		await touchPress(page, cdp, await textCenter(page, 1, 6, 10), "long");
+		await expect
+			.poll(() => settled(page))
+			.toEqual({
+				origin: "pointer",
+				anchor: "two-p2:6",
+				focus: "two-p2:10",
+				native: "echo",
+			});
+		await s.assert.domMatchesAuthority();
+
+		// The start handle dragged to B's start is accepted, not snapped back.
+		const extended = {
+			origin: "pointer",
+			anchor: "two-p2:10",
+			focus: "two-p2:0",
+			native: "Delta echo",
+		};
+		await handleExtend(page, 10, 0, 1);
+		await expect.poll(() => settled(page)).toEqual(extended);
+		expect(await settled(page)).toEqual(extended);
 		await s.assert.domMatchesAuthority();
 	},
 );
