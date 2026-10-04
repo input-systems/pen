@@ -298,3 +298,5 @@ rules/host#HB5
 rules/ai#RS6
 rules/dom#OV3
 rules/selection#O5
+rules/dom#FE5
+rules/interop#IOP11
