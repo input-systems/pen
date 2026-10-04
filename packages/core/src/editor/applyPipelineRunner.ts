@@ -34,6 +34,7 @@ import {
 import { resolveCommitSource } from "./commitEvent";
 import { snapshotOrigin } from "./origin";
 import { rejectedOwnPropKeys } from "./rejectedOwnKeys";
+import { isJsonEncodable, isStorableMapValue } from "./encodablePayload";
 export function applyInternal(
 	pipeline: ApplyPipelineInternal,
 	ops: DocumentOp[],
@@ -435,10 +436,55 @@ function isInlineInsert(value: unknown): boolean {
 	if (!isRecord(value)) {
 		return false;
 	}
-	return isNonEmptyString(value.nodeType) && isRecord(value.props);
+	return (
+		isNonEmptyString(value.nodeType) &&
+		isRecord(value.props) &&
+		isJsonEncodable(value.props)
+	);
+}
+
+function isPosition(value: unknown): boolean {
+	if (value === "first" || value === "last") {
+		return true;
+	}
+	if (!isRecord(value)) {
+		return false;
+	}
+	if ("parent" in value) {
+		return isNonEmptyString(value.parent) && isNonNegativeInt(value.index);
+	}
+	if ("before" in value) {
+		return isNonEmptyString(value.before);
+	}
+	if ("after" in value) {
+		return isNonEmptyString(value.after);
+	}
+	return false;
+}
+
+function hasStorableValues(record: Record<string, unknown>): boolean {
+	return Object.values(record).every(isStorableMapValue);
+}
+
+/** Mark values are text attributes; `null` removes the mark. */
+function hasEncodableMarks(marks: Record<string, unknown>): boolean {
+	return Object.values(marks).every(isJsonEncodable);
+}
+
+function hasValidCell(cell: unknown): boolean {
+	return (
+		!cell ||
+		(isRecord(cell) &&
+			isNonNegativeInt(cell.row) &&
+			isNonNegativeInt(cell.col))
+	);
 }
 
 function malformedOpMessage(op: DocumentOp): string | null {
+	const shape: unknown = op;
+	if (!isRecord(shape) || typeof shape.type !== "string") {
+		return "op must be an object with a string type";
+	}
 	switch (op.type) {
 		case "splice-text": {
 			if (!isNonEmptyString(op.blockId)) {
@@ -455,15 +501,16 @@ function malformedOpMessage(op: DocumentOp): string | null {
 			}
 			const items = Array.isArray(op.insert) ? op.insert : [op.insert];
 			if (!items.every(isInlineInsert)) {
-				return "splice-text requires string or atom insert";
+				return "splice-text requires string or atom insert with encodable props";
 			}
-			if (op.cell) {
-				if (
-					!isNonNegativeInt(op.cell.row) ||
-					!isNonNegativeInt(op.cell.col)
-				) {
-					return "splice-text cell requires non-negative integer row and col";
-				}
+			if (
+				op.marks !== undefined &&
+				(!isRecord(op.marks) || !hasEncodableMarks(op.marks))
+			) {
+				return "splice-text marks must be an object of JSON-encodable values";
+			}
+			if (!hasValidCell(op.cell)) {
+				return "splice-text cell requires non-negative integer row and col";
 			}
 			return null;
 		}
@@ -483,13 +530,11 @@ function malformedOpMessage(op: DocumentOp): string | null {
 			if (!isRecord(op.marks)) {
 				return "format-text requires a marks object";
 			}
-			if (op.cell) {
-				if (
-					!isNonNegativeInt(op.cell.row) ||
-					!isNonNegativeInt(op.cell.col)
-				) {
-					return "format-text cell requires non-negative integer row and col";
-				}
+			if (!hasEncodableMarks(op.marks)) {
+				return "format-text marks must be JSON-encodable values";
+			}
+			if (!hasValidCell(op.cell)) {
+				return "format-text cell requires non-negative integer row and col";
 			}
 			return null;
 		}
@@ -500,17 +545,47 @@ function malformedOpMessage(op: DocumentOp): string | null {
 			if (!isNonEmptyString(op.blockType)) {
 				return "insert-block requires a non-empty blockType";
 			}
+			if (!isRecord(op.props) || !hasStorableValues(op.props)) {
+				return "insert-block requires a props object of acyclic values";
+			}
+			if (!isPosition(op.position)) {
+				return "insert-block requires a valid position";
+			}
+			return null;
+		case "move-block":
+			if (!isNonEmptyString(op.blockId)) {
+				return "move-block requires a non-empty blockId";
+			}
+			if (!isPosition(op.position)) {
+				return "move-block requires a valid position";
+			}
+			return null;
+		case "set-props":
+			if (!isNonEmptyString(op.blockId)) {
+				return "set-props requires a non-empty blockId";
+			}
+			if (!isRecord(op.props) || !hasStorableValues(op.props)) {
+				return "set-props requires a props object of acyclic values";
+			}
+			return null;
+		case "set-meta":
+			if (!isNonEmptyString(op.blockId)) {
+				return "set-meta requires a non-empty blockId";
+			}
+			if (!isNonEmptyString(op.namespace)) {
+				return "set-meta requires a non-empty string namespace";
+			}
+			if (
+				op.data !== null &&
+				(!isRecord(op.data) || !isStorableMapValue(op.data))
+			) {
+				return "set-meta requires a data object of acyclic values, or null";
+			}
 			return null;
 		case "delete-block":
-		case "move-block":
-		case "set-props":
-		case "set-meta":
 		case "stream-open":
 			if (!isNonEmptyString(op.blockId)) {
 				return `${op.type} requires a non-empty blockId`;
-			}
-			if (op.type === "set-props" && !isRecord(op.props)) {
-				return "set-props requires a props object";
 			}
 			return null;
 		case "grid": {
@@ -533,12 +608,29 @@ function malformedOpMessage(op: DocumentOp): string | null {
 				if (!isNonEmptyString(op.change.appType)) {
 					return "app create requires a non-empty appType";
 				}
+				if (
+					op.change.config !== undefined &&
+					(!isRecord(op.change.config) ||
+						!hasStorableValues(op.change.config))
+				) {
+					return "app create config must be an object of acyclic values";
+				}
+				if (!isStorableMapValue(op.change.placement)) {
+					return "app create placement must be acyclic";
+				}
 			} else if (
 				op.change.kind === "update" ||
 				op.change.kind === "delete"
 			) {
 				if (!isNonEmptyString(op.change.appId)) {
 					return `app ${op.change.kind} requires a non-empty appId`;
+				}
+				if (
+					op.change.kind === "update" &&
+					(!isRecord(op.change.patch) ||
+						!hasStorableValues(op.change.patch))
+				) {
+					return "app update requires a patch object of acyclic values";
 				}
 			}
 			return null;
@@ -603,6 +695,13 @@ function executeOps(
 	const pendingBlockTypes = new Map<string, string>();
 
 	for (const op of transformedOps) {
+		// Shape first: every later check reads op fields, and a malformed
+		// payload written through would leave the document unencodable.
+		if (malformedOpMessage(op)) {
+			emitMalformedOpDiagnostic(pipeline, op);
+			continue;
+		}
+
 		const blockId = opBlockId(pipeline, op);
 
 		if (!validateOp(pipeline, op)) continue;
@@ -653,11 +752,6 @@ function executeOps(
 				source: "apply",
 				message: `apply: skipping ${nextOp.type} into non-existent parent "${missingParent}"`,
 			});
-			continue;
-		}
-
-		if (malformedOpMessage(nextOp)) {
-			emitMalformedOpDiagnostic(pipeline, nextOp);
 			continue;
 		}
 
