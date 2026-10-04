@@ -159,7 +159,7 @@ describe("@input/pen-react multiplayer caret overlay (W35.R12)", () => {
 		expect(caret?.style.left).toBe("0px");
 		expect(caret?.style.pointerEvents).toBe("none");
 		expect(caret?.style.height).toBe("24px");
-		expect(caret?.style.background).toBe("var(--pen-peer-color)");
+		expect(caret?.style.backgroundColor).toBe("var(--pen-peer-color)");
 		expect(caret?.style.getPropertyValue("--pen-peer-color")).toBe(
 			"#abc123",
 		);
