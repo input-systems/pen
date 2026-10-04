@@ -263,6 +263,7 @@ function withHistoryKind(
 }
 
 type StackItem = Y.UndoManager["undoStack"][number];
+type DeleteSet = StackItem["insertions"];
 
 type StackItemListener = (
 	stackItem: CRDTUndoStackItem,
@@ -312,7 +313,7 @@ function laterStepDeletesInsertions(
 	return false;
 }
 
-function deleteSetsOverlap(a: Y.DeleteSet, b: Y.DeleteSet): boolean {
+function deleteSetsOverlap(a: DeleteSet, b: DeleteSet): boolean {
 	for (const [client, rangesA] of a.clients) {
 		const rangesB = b.clients.get(client);
 		if (rangesB == null) {
