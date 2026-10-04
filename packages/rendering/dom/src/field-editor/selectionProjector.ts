@@ -489,6 +489,13 @@ export class SelectionProjector {
 			// pointerup, so project it once more; the equivalence skip makes
 			// this a no-op whenever the DOM already agrees.
 			this.project("window-closed");
+			// A drag that turned into a block selection deactivated the
+			// field, so the text path above does not run, and the engine's
+			// own drag left a caret at the pointer (WebKit). S1: a block
+			// record is projected by clearing it.
+			this.projectNonTextSelection(
+				this._options.getRecord?.()?.state ?? null,
+			);
 		}
 		if (eventKind === "compositionend-completed") {
 			this._releaseCompositionWithholding();
@@ -702,6 +709,11 @@ export class SelectionProjector {
 		if (record && this._projectSubstitute(record)) {
 			return;
 		}
+		const unmountedEndpoint = this._unmountedExpandedEndpoint();
+		if (unmountedEndpoint !== null) {
+			this._parkProjection(false, unmountedEndpoint);
+			return;
+		}
 		const target = this._projectIntoTarget(options);
 		if (target.projected) {
 			this._completeProjection();
@@ -835,9 +847,11 @@ export class SelectionProjector {
 	 * phase of the next flush, that an ack resolved the park. A mounted target
 	 * whose write was refused is not "unmounted" and is not reported.
 	 */
-	private _parkProjection(foundTarget: boolean): void {
+	private _parkProjection(
+		foundTarget: boolean,
+		blockId: string | null = this._projectionTargetBlockId(),
+	): void {
 		const version = this._options.getRecord?.()?.version ?? 0;
-		const blockId = this._projectionTargetBlockId();
 		this._parked = { version, blockId };
 		if (foundTarget || blockId === null) {
 			return;
@@ -875,6 +889,30 @@ export class SelectionProjector {
 				mountRequested,
 			});
 		});
+	}
+
+	/**
+	 * P: projection requires the target block's element. The expanded host
+	 * is always mounted, but a range endpoint's block may not be yet (an undo that restores a block maps the range into it
+	 * before the renderer mounts it). Writing then would put that endpoint
+	 * wherever the engine resolves a missing point, so the projection parks
+	 * on that block and its ack projects.
+	 */
+	private _unmountedExpandedEndpoint(): string | null {
+		if (this._options.getMode() !== "expanded") {
+			return null;
+		}
+		const state = this._options.getRecord?.()?.state;
+		const root = this._options.getRootElement();
+		if (state?.type !== "text" || !root) {
+			return null;
+		}
+		for (const point of [state.anchor, state.focus]) {
+			if (!queryBlockElement(root, point.blockId)) {
+				return point.blockId;
+			}
+		}
+		return null;
 	}
 
 	private _projectionTargetBlockId(): string | null {

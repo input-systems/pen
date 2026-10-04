@@ -1,14 +1,20 @@
+import {
+	nextGraphemeBoundary,
+	previousGraphemeBoundary,
+} from "@input/pen-core";
 import { findEmptyBlockPlaceholder } from "./emptyBlockPlaceholder";
 import {
 	findLogicalDOMPoint,
 	getInlineAtomPointerOffset,
 	getLogicalNodeLength,
+	getLogicalTextContent,
 } from "./inlineAtomDom";
 import {
 	findInlineContentElement,
 	queryBlockElement,
 } from "./selectionDomQueries";
 import type { SelectionPoint } from "./selectionBridge";
+import { getBlockSurfaceRole } from "./selectionMapping";
 
 export function getSelectionPointRect(
 	root: HTMLElement,
@@ -113,15 +119,19 @@ export function findDOMPoint(
 	if (!blockEl) return null;
 
 	const inlineEl = findInlineContentElement(blockEl);
-	if (!inlineEl) return findBlockUnitDOMPoint(blockEl, charOffset);
+	if (!inlineEl || getBlockSurfaceRole(blockEl) !== "editable-inline") {
+		return findBlockUnitDOMPoint(blockEl, charOffset);
+	}
 
 	return findLogicalDOMPoint(inlineEl, charOffset);
 }
 
 /**
- * A block with no inline content — divider, image, a host's sealed region —
- * holds no text position, so its `0..1` unit extent (N2) maps to the DOM
- * points around the element instead of a point inside it.
+ * A block with no text position of its own — divider, image, a host's
+ * sealed region, a table, whose cells are not its offsets — maps its `0..1`
+ * unit extent (N2) to the DOM points around the element instead of a point
+ * inside it. Inside the expanded host such a block is not editable, and
+ * WebKit moves a native endpoint inside it to the nearest editable position.
  */
 function findBlockUnitDOMPoint(
 	blockEl: HTMLElement,
@@ -136,6 +146,8 @@ function findBlockUnitDOMPoint(
 	return { node: parent, offset: charOffset <= 0 ? index : index + 1 };
 }
 
+/** UAX #29 grapheme clusters, as `normalPosition.ts`; locale does not change them. */
+const GRAPHEME_LOCALE = "und";
 const WRAPPED_LINE_HYSTERESIS_PX = 6;
 const WRAPPED_LINE_HORIZONTAL_SLACK_PX = 12;
 const WRAPPED_LINE_DELTA_PX = 1;
@@ -320,6 +332,25 @@ function stabilizeWrappedLineOffset(
 	return shouldPreservePreviousLine ? previousOffset : candidateOffset;
 }
 
+/**
+ * G4: a pointer offset is a normal position. The geometric scan measures
+ * every code unit, so a point over a cluster (a ZWJ emoji, a surrogate
+ * pair) can land inside it; take the nearer of the cluster's two edges.
+ */
+function snapToGraphemeBoundary(
+	inlineEl: HTMLElement,
+	offset: number,
+	scoreAt: (offset: number) => number,
+): number {
+	const text = getLogicalTextContent(inlineEl);
+	const previous = previousGraphemeBoundary(text, offset, GRAPHEME_LOCALE);
+	const next = nextGraphemeBoundary(text, previous, GRAPHEME_LOCALE);
+	if (next === offset || previous === offset) {
+		return offset;
+	}
+	return scoreAt(previous) <= scoreAt(next) ? previous : next;
+}
+
 export function approximateInlineOffsetFromPoint(
 	inlineEl: HTMLElement,
 	clientX: number,
@@ -340,10 +371,13 @@ export function approximateInlineOffsetFromPoint(
 	let bestOffset = 0;
 	let bestScore = Number.POSITIVE_INFINITY;
 
-	for (let offset = 0; offset <= textLength; offset++) {
+	const scoreAt = (offset: number): number => {
 		const rect = getInlineCaretRectFromOffset(inlineEl, offset);
 		const { dx, dy } = getCaretDistanceMetrics(rect, clientX, clientY);
-		const score = dy * 1000 + dx;
+		return dy * 1000 + dx;
+	};
+	for (let offset = 0; offset <= textLength; offset++) {
+		const score = scoreAt(offset);
 		if (score < bestScore) {
 			bestScore = score;
 			bestOffset = offset;
@@ -352,7 +386,7 @@ export function approximateInlineOffsetFromPoint(
 
 	return stabilizeWrappedLineOffset(
 		inlineEl,
-		bestOffset,
+		snapToGraphemeBoundary(inlineEl, bestOffset, scoreAt),
 		clientX,
 		clientY,
 		previousOffset,

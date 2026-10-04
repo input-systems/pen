@@ -32,6 +32,8 @@ export interface DirectionalSelectionOffsets {
 export interface ResolveSelectionPointOptions {
 	preferredBoundary?: SelectionBoundary;
 	previousPoint?: SelectionPoint | null;
+	/** Which edge of a non-collapsed native range the point is. */
+	rangeEdge?: SelectionBoundary;
 }
 
 function fallbackCharacterOffset(
@@ -150,7 +152,9 @@ export function resolveSelectionPoint(
 	options: ResolveSelectionPointOptions = {},
 ): SelectionPoint | null {
 	const blockEl = findBlockElement(node, root);
-	if (!blockEl) return resolveBlockGapPoint(root, node, offset);
+	if (!blockEl) {
+		return resolveBlockGapPoint(root, node, offset, options.rangeEdge);
+	}
 	const blockId = blockEl.getAttribute("data-block-id");
 	if (!blockId) return null;
 
@@ -178,31 +182,46 @@ export function resolveSelectionPoint(
 }
 
 /**
- * The inverse of `findDOMPoint` for a block with no inline content (N2): the
+ * The inverse of `findDOMPoint` for a unit block (N2): the
  * projector writes such a block's `0..1` extent as the gaps around its
  * element, `(parent, index)` and `(parent, index + 1)`. A point in a gap
  * between block elements maps to the unit block on its left at 1, else the
- * unit block on its right at 0, else the nearer edge of a text block.
+ * unit block on its right at 0, else the nearer edge of a text block. The
+ * start of a range prefers the unit block on its right: a gap between two
+ * unit blocks is both "after the first" and "before the second", and the
+ * projector writes a range that starts at the second as that gap.
  */
 function resolveBlockGapPoint(
 	root: HTMLElement,
 	node: Node,
 	offset: number,
+	rangeEdge: SelectionBoundary | undefined,
 ): SelectionPoint | null {
 	if (!(node instanceof Element) || !root.contains(node)) return null;
 	const before = node.childNodes[offset - 1];
 	const after = node.childNodes[offset];
 	const blockBefore = asBlockElement(before);
 	const blockAfter = asBlockElement(after);
-	if (blockBefore && !findInlineContentElement(blockBefore)) {
+	if (rangeEdge === "start" && blockAfter && isUnitBlockElement(blockAfter)) {
+		return getBoundaryPointForBlockElement(blockAfter, "start");
+	}
+	if (blockBefore && isUnitBlockElement(blockBefore)) {
 		return getBoundaryPointForBlockElement(blockBefore, "end");
 	}
-	if (blockAfter && !findInlineContentElement(blockAfter)) {
+	if (blockAfter && isUnitBlockElement(blockAfter)) {
 		return getBoundaryPointForBlockElement(blockAfter, "start");
 	}
 	if (blockBefore) return getBoundaryPointForBlockElement(blockBefore, "end");
 	if (blockAfter) return getBoundaryPointForBlockElement(blockAfter, "start");
 	return null;
+}
+
+/** A block whose `0..1` extent the projector writes as the gaps around it (`findDOMPoint`). */
+function isUnitBlockElement(blockEl: HTMLElement): boolean {
+	return (
+		!findInlineContentElement(blockEl) ||
+		getBlockSurfaceRole(blockEl) !== "editable-inline"
+	);
 }
 
 function asBlockElement(node: Node | undefined): HTMLElement | null {
@@ -227,9 +246,36 @@ export function mapDomSelectionToEditor(
 	if (!anchorNode || !focusNode) return null;
 	if (!root.contains(anchorNode) || !root.contains(focusNode)) return null;
 
-	const anchor = resolveSelectionPoint(root, anchorNode, sel.anchorOffset);
-	const focus = resolveSelectionPoint(root, focusNode, sel.focusOffset);
+	const anchorEdge = anchorRangeEdge(sel);
+	const anchor = resolveSelectionPoint(root, anchorNode, sel.anchorOffset, {
+		rangeEdge: anchorEdge,
+	});
+	const focus = resolveSelectionPoint(root, focusNode, sel.focusOffset, {
+		rangeEdge: oppositeEdge(anchorEdge),
+	});
 	if (!anchor || !focus) return null;
 
 	return { anchor, focus };
+}
+
+/** The range edge the anchor is on; undefined for a collapsed selection. */
+function anchorRangeEdge(sel: Selection): SelectionBoundary | undefined {
+	if (
+		sel.anchorNode === sel.focusNode &&
+		sel.anchorOffset === sel.focusOffset
+	) {
+		return undefined;
+	}
+	const range = sel.getRangeAt(0);
+	return range.startContainer === sel.anchorNode &&
+		range.startOffset === sel.anchorOffset
+		? "start"
+		: "end";
+}
+
+function oppositeEdge(
+	edge: SelectionBoundary | undefined,
+): SelectionBoundary | undefined {
+	if (edge === undefined) return undefined;
+	return edge === "start" ? "end" : "start";
 }

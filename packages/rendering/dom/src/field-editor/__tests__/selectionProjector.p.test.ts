@@ -32,10 +32,11 @@ function createDroppingController(readBack: () => ProjectionReadBack) {
 	const diagnostics: DiagnosticEvent[] = [];
 	let writes = 0;
 	let current = record(1);
+	let editing = true;
 	let windows = CLOSED_GESTURE_WINDOWS;
 	const controller = new SelectionProjector({
 		getGestureWindows: () => windows,
-		isEditing: () => true,
+		isEditing: () => editing,
 		getMode: () => "single",
 		getFocusBlockId: () => "first",
 		getAttachedElement: () => element,
@@ -66,6 +67,12 @@ function createDroppingController(readBack: () => ProjectionReadBack) {
 		writes: () => writes,
 		setVersion: (version: number) => {
 			current = record(version);
+		},
+		setRecord: (next: SelectionRecord) => {
+			current = next;
+		},
+		setEditing: (next: boolean) => {
+			editing = next;
 		},
 	};
 }
@@ -178,6 +185,22 @@ describe("selection projector non-text projection (S2)", () => {
 			type: "block",
 			blockIds: ["first"],
 		});
+		expect(document.getSelection()!.rangeCount).toBe(0);
+		text.remove();
+	});
+
+	it("S2: the pointerup projection clears the caret a drag left under a block record with no active field", () => {
+		const { gesture, setRecord, setEditing } = createDroppingController(
+			() => DROPPED,
+		);
+		setRecord({
+			...record(2),
+			state: { type: "block", blockIds: ["first"], head: "first" },
+		});
+		setEditing(false);
+		gesture("pointerdown");
+		const text = placeNativeCaret();
+		gesture("pointerup");
 		expect(document.getSelection()!.rangeCount).toBe(0);
 		text.remove();
 	});
@@ -336,6 +359,13 @@ describe("selection projector D5 substitute states (W3.R17)", () => {
 		},
 	};
 
+	function mountBlock(blockId: string): HTMLElement {
+		const block = document.createElement("div");
+		block.setAttribute("data-block-id", blockId);
+		document.body.append(block);
+		return block;
+	}
+
 	/**
 	 * Every port the projector could reach the DOM through counts its calls;
 	 * the state reads (`getRecord`, `isBlockSurfaceRange`, the windows) do not.
@@ -346,6 +376,9 @@ describe("selection projector D5 substitute states (W3.R17)", () => {
 	}) {
 		const element = document.createElement("span");
 		document.body.append(element);
+		for (const blockId of ["first", "second"]) {
+			mountBlock(blockId);
+		}
 		const diagnostics: DiagnosticEvent[] = [];
 		const calls = {
 			domPort: 0,
@@ -471,5 +504,20 @@ describe("selection projector D5 substitute states (W3.R17)", () => {
 		projector.project("target-rebuilt");
 		expect(calls.backendWrites).toBe(1);
 		expect(diagnostics).toEqual([]);
+	});
+
+	it("P4: an expanded range whose endpoint block is not mounted parks on that block and projects on its ack", () => {
+		const { projector, calls } = createSubstituteProjector({
+			current: rangeRecord(1, "restored"),
+			blockSurface: false,
+		});
+		projector.project("selection-change");
+		expect(calls.backendWrites).toBe(0);
+		expect(projector.parkedProjectionVersion).toBe(1);
+		const restored = mountBlock("restored");
+		projector.ackBlockMounted("restored", restored);
+		expect(calls.backendWrites).toBe(1);
+		expect(projector.parkedProjectionVersion).toBeNull();
+		restored.remove();
 	});
 });

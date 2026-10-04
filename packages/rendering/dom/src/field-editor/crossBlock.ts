@@ -77,7 +77,16 @@ export function getExpandedBlockRole(
 	const block = editor.getBlock(blockId);
 	if (!block) return null;
 
-	return getBlockSelectionRoleFromSchema(editor.schema.resolve(block.type));
+	const schema = editor.schema.resolve(block.type);
+	const role = getBlockSelectionRoleFromSchema(schema);
+	// G4: a delegated block with one text surface (a code block) holds text
+	// offsets, so the expanded host keeps it editable. Stamped
+	// non-editable, WebKit moves a range endpoint in its text to the
+	// nearest editable position and the projection cannot show the record.
+	if (role === "delegated" && schema?.content === "inline") {
+		return "editable-inline";
+	}
+	return role;
 }
 
 export function classifySelectionSurface(
