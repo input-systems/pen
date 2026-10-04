@@ -1,9 +1,20 @@
 import { usesInlineTextSelection } from "@input/pen-core";
-import type { Editor, FieldEditorFocusOptions } from "@input/pen-types";
-import { pointToEditorSelectionPoint } from "../field-editor/selectionBridge";
+import type {
+	Editor,
+	FieldEditorFocusOptions,
+	Point,
+	SelectionOrigin,
+} from "@input/pen-types";
+import {
+	getBlockBoundaryPoint,
+	pointToEditorSelectionPoint,
+} from "../field-editor/selectionBridge";
 import { isInlineAtomChipNode } from "../field-editor/inlineAtomDom";
 import { findInlineContentElement } from "../field-editor/selectionDomQueries";
+import { getEditorBlockSelectionLength } from "../utils/blockSelectionSemantics";
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { getPreorderBlockIds } from "../utils/documentPreorder";
+import { normalizeSelectionFormation } from "../utils/selectionFormation";
 
 export interface FieldEditorPointerTarget {
 	getSnapshot(): {
@@ -17,6 +28,12 @@ export interface FieldEditorPointerTarget {
 		options?: FieldEditorFocusOptions,
 	): void;
 	attachElement(element: HTMLElement): void;
+	/** A cross-block text range; a shift-click into another block extends through it. */
+	applyDocumentTextSelection?(
+		anchor: Point,
+		focus: Point,
+		origin: SelectionOrigin,
+	): void;
 }
 
 export interface FieldEditorPointerActivateOptions {
@@ -79,6 +96,15 @@ export function handleFieldEditorPointerActivate(
 		return false;
 	}
 
+	if (
+		event.shiftKey &&
+		!hostFallback &&
+		extendSelectionToBlock({ editor, fieldEditor, root, blockId })
+	) {
+		event.preventDefault();
+		return true;
+	}
+
 	const snapshot = fieldEditor.getSnapshot();
 	if (snapshot.isEditing && snapshot.focusBlockId === blockId) {
 		return activateInlineAtomSide({
@@ -126,6 +152,76 @@ export function handleFieldEditorPointerActivate(
 		fieldEditor.attachElement(inline);
 	}
 	return true;
+}
+
+/**
+ * A shift-click in another block extends the selection from its anchor to
+ * that block's far edge, the same range the React content gestures form
+ * (`contentGesturesPointerSelection`), ordered by the nested document walk.
+ * A shift-click in the anchor's own block stays the browser's native extend.
+ */
+function extendSelectionToBlock(options: {
+	editor: Editor;
+	fieldEditor: FieldEditorPointerTarget;
+	root: HTMLElement;
+	blockId: string;
+}): boolean {
+	const { editor, fieldEditor, root, blockId } = options;
+	if (!fieldEditor.applyDocumentTextSelection) {
+		return false;
+	}
+	const anchor = resolveShiftAnchor(editor, fieldEditor, root);
+	if (!anchor || anchor.blockId === blockId) {
+		return false;
+	}
+	const order = getPreorderBlockIds(editor);
+	const anchorIndex = order.indexOf(anchor.blockId);
+	const targetIndex = order.indexOf(blockId);
+	if (anchorIndex < 0 || targetIndex < 0) {
+		return false;
+	}
+	const focus = blockBoundaryPoint(
+		editor,
+		root,
+		blockId,
+		anchorIndex < targetIndex ? "end" : "start",
+	);
+	const formed = normalizeSelectionFormation(editor, { anchor, focus });
+	fieldEditor.applyDocumentTextSelection(formed.anchor, formed.focus, "pointer");
+	return true;
+}
+
+function resolveShiftAnchor(
+	editor: Editor,
+	fieldEditor: FieldEditorPointerTarget,
+	root: HTMLElement,
+): Point | null {
+	const selection = editor.selection;
+	if (selection?.type === "text") {
+		return selection.anchor;
+	}
+	if (selection?.type === "block" && selection.blockIds[0]) {
+		return blockBoundaryPoint(editor, root, selection.blockIds[0], "start");
+	}
+	const focusBlockId = fieldEditor.getSnapshot().focusBlockId;
+	return focusBlockId
+		? blockBoundaryPoint(editor, root, focusBlockId, "start")
+		: null;
+}
+
+function blockBoundaryPoint(
+	editor: Editor,
+	root: HTMLElement,
+	blockId: string,
+	side: "start" | "end",
+): Point {
+	return (
+		getBlockBoundaryPoint(root, blockId, side) ?? {
+			blockId,
+			offset:
+				side === "start" ? 0 : getEditorBlockSelectionLength(editor, blockId),
+		}
+	);
 }
 
 /**

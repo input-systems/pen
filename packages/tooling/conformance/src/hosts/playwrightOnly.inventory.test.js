@@ -180,7 +180,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 96 -> 97: suites/ime/expanded-composition.spec.ts (FE2, Firefox composition over a cross-block range).
 	// 97 -> 98: suites/ime/c-editcontext-multi-update.spec.ts (C2/C4, one EditContext composition lifecycle under real CDP IME input).
 	// 98 -> 99: scenarios/ax3-toolbar-press.spec.ts (AX3, a toolbar press keeps compatibility mouse events).
-	const expectedPlaywrightSpecs = 99;
+	// 99 -> 100: suites/selection/r-shift-click-range.spec.ts (R1/S2, shift-click extends across blocks on React, Vue and vanilla).
+	const expectedPlaywrightSpecs = 100;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,
