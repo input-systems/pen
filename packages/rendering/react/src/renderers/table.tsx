@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { resolveEditorMessage } from "@input/pen-core";
+import { isSafeCssColor, resolveEditorMessage } from "@input/pen-core";
 import type { BlockHandle, BlockRenderContext } from "@input/pen-types";
 import { useEditorContext } from "../context/editorContext";
 import { useFieldEditorContext } from "../context/fieldEditorContext";
@@ -144,7 +144,10 @@ function TableRendererInner(props: {
 			// token as a prop is what lets a peer ring in their own colour.
 			style: peer
 				? ({
-						"--pen-peer-color": peer.user.color ?? "currentColor",
+						// COL2: re-validated at the sink, like the overlay.
+						"--pen-peer-color": isSafeCssColor(peer.user.color)
+							? peer.user.color
+							: "currentColor",
 					} as CellStyle)
 				: undefined,
 		};

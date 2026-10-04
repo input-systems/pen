@@ -79,7 +79,7 @@ A bad `user` drops the whole peer. A bad cursor, selection, or streaming payload
 
 Avatar URLs go through `pen.urlPolicy` (image context) and then a second image-scheme check: `http:`, `https:`, relative, and `data:image` for png/jpeg/gif/webp/avif. Hostile schemes are rejected as `script-bearing`. A host policy that denies a URL strips the avatar and keeps the peer.
 
-`user.color` is admitted only when `normalizeMultiplayerColor` accepts it. A CSS-injectable string such as `red;position:absolute` is stripped at ingest. Presence decorations carry no `style` attribute at all — SEC2 drops one anyway — so style them through `data-user-id` and read the colour off `RemoteCursorState.user.color` when drawing your own caret.
+`user.color` is admitted only when `normalizeMultiplayerColor` accepts it (COL2): a hex colour, a CSS named colour, or `rgb`/`rgba`/`hsl`/`hsla` of plain numbers. A CSS-injectable string such as `red;position:absolute`, `rgb(0,0,0) url(…)`, or `var(--x)` is stripped at ingest. Presence decorations carry no `style` attribute at all — SEC2 drops one anyway — so style them through `data-user-id` and read the colour off `RemoteCursorState.user.color` when drawing your own caret.
 
 Remote cursor `data-user-id` / `data-user-name` are set as attribute values; the display name is capped and rendered as text, never interpolated into markup.
 

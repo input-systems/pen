@@ -696,7 +696,7 @@ th[data-pen-table-cell] {
 	z-index: 1;
 	padding: 1px 5px;
 	border-radius: var(--radius-xxs) var(--radius-xxs) 0 0;
-	background: var(--pen-peer-color, var(--palette-blue));
+	background-color: var(--pen-peer-color, var(--palette-blue));
 	color: var(--pen-peer-label-color, #fff);
 	font-size: var(--font-size-xs);
 	line-height: 1.4;

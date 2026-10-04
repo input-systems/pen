@@ -198,6 +198,7 @@ export type {
 	BlockDirectionSetting,
 } from "./direction/firstStrong";
 export { resolveBlockDirection } from "./direction/resolve";
+export { isSafeCssColor } from "./security/cssColor";
 export {
 	urlPolicy,
 	type UrlContext,

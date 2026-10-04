@@ -26,10 +26,17 @@ describe("assignMultiplayerColor", () => {
 	it("AX8: every palette entry holds 4.5:1 against the white caret label", () => {
 		const luminance = (hex: string) => {
 			const channels = [1, 3, 5].map((start) => {
-				const value = Number.parseInt(hex.slice(start, start + 2), 16) / 255;
-				return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+				const value =
+					Number.parseInt(hex.slice(start, start + 2), 16) / 255;
+				return value <= 0.03928
+					? value / 12.92
+					: ((value + 0.055) / 1.055) ** 2.4;
 			});
-			return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+			return (
+				0.2126 * channels[0]! +
+				0.7152 * channels[1]! +
+				0.0722 * channels[2]!
+			);
 		};
 		const belowAa = MULTIPLAYER_COLORS.filter(
 			(color) => 1.05 / (luminance(color) + 0.05) < 4.5,
@@ -44,15 +51,32 @@ describe("normalizeMultiplayerColor", () => {
 		expect(normalizeMultiplayerColor("rgb(1 2 3)", "#000000")).toBe(
 			"rgb(1 2 3)",
 		);
-		expect(normalizeMultiplayerColor("var(--brand-color)", "#000000")).toBe(
-			"var(--brand-color)",
+		expect(
+			normalizeMultiplayerColor("hsl(210deg 50% 40%)", "#000000"),
+		).toBe("hsl(210deg 50% 40%)");
+		expect(normalizeMultiplayerColor("RebeccaPurple", "#000000")).toBe(
+			"RebeccaPurple",
 		);
 	});
 
+	it.each([
+		"rgb(0,0,0) url(https://evil/x.png)",
+		"image-set(url(https://evil/x.png) 1x)",
+		"var(--brand-color)",
+		"var(--x, url(https://evil/x.png))",
+		"expression(alert(1))",
+		"red}body{background:url(https://evil/x.png)",
+		"rgb(0,0,0)/**/url(https://evil/x.png)",
+		"\\75 rl(https://evil/x.png)",
+		"notacolor",
+	])("COL2: falls back for the hostile colour %j", (color) => {
+		expect(normalizeMultiplayerColor(color, "#000000")).toBe("#000000");
+	});
+
 	it("falls back for invalid colors", () => {
-		expect(normalizeMultiplayerColor("red;position:absolute", "#000000")).toBe(
-			"#000000",
-		);
+		expect(
+			normalizeMultiplayerColor("red;position:absolute", "#000000"),
+		).toBe("#000000");
 		expect(normalizeMultiplayerColor(undefined, "#000000")).toBe("#000000");
 	});
 });

@@ -156,6 +156,10 @@
 - usesInlineTextSelection
 - wordRangeAt
 
+### guard
+
+- isSafeCssColor
+
 ### value
 
 - A11Y_MISSING_LABEL_CODE

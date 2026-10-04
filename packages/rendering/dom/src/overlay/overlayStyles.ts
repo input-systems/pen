@@ -1,3 +1,4 @@
+import { isSafeCssColor } from "@input/pen-core";
 import type { OverlayPaintItem } from "./types";
 
 /**
@@ -168,10 +169,12 @@ function remoteCaretStyle(item: OverlayPaintItem): OverlayInlineStyle {
 		width: `var(${OVERLAY_TOKENS.legacyCaretWidth}, 2px)`,
 		height: `${height}px`,
 		"border-radius": `var(${OVERLAY_TOKENS.legacyCaretRadius}, 999px)`,
-		background: `var(${OVERLAY_TOKENS.peerColor})`,
+		// COL2: `background-color`, never the shorthand, so the peer colour
+		// can only ever be a colour.
+		"background-color": `var(${OVERLAY_TOKENS.peerColor})`,
 		// AX6: only the local caret blinks.
 		animation: "none",
-		[OVERLAY_TOKENS.peerColor]: item.color ?? "currentColor",
+		[OVERLAY_TOKENS.peerColor]: peerColorValue(item.color),
 		[OVERLAY_TOKENS.remoteCaretHeight]: `${height}px`,
 	};
 }
@@ -196,14 +199,25 @@ export function overlayLabelStyle(
 		transform: `translate3d(${item.x}px, ${item.y - REMOTE_LABEL_GAP}px, 0) translateY(-100%)`,
 		padding: "2px 6px",
 		"border-radius": "6px",
-		background: `var(${OVERLAY_TOKENS.peerColor})`,
+		// COL2: `background-color`, never the shorthand, so the peer colour
+		// can only ever be a colour.
+		"background-color": `var(${OVERLAY_TOKENS.peerColor})`,
 		color: `var(${OVERLAY_TOKENS.peerLabelColor}, #fff)`,
 		"font-size": "12px",
 		"line-height": "1.2",
 		"white-space": "nowrap",
 		"pointer-events": "none",
-		[OVERLAY_TOKENS.peerColor]: item.color ?? "currentColor",
+		[OVERLAY_TOKENS.peerColor]: peerColorValue(item.color),
 	};
+}
+
+/**
+ * COL2 defence in depth: multiplayer validates a peer colour at ingest, and
+ * the overlay validates it again where it writes `--pen-peer-color`, because a
+ * host contributor can hand any string to a caret request.
+ */
+function peerColorValue(color: string | undefined): string {
+	return isSafeCssColor(color) ? color : "currentColor";
 }
 
 function outlineStyle(): OverlayInlineStyle {
