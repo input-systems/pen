@@ -58,7 +58,7 @@
     "id": "bench-envelope-drift",
     "command": "node scripts/bench-envelope-drift.mjs",
     "needsBuild": true,
-    "description": "Generated envelope table must match baselines/envelope.json. Table diff only; timing lives in bench.yml."
+    "description": "SCALE1: both generated envelope tables (packages/tooling/bench/ENVELOPE.md with its renderer rows, and the packages/tooling/test/ENVELOPE.md size grades) match their sources. Table diff only; timing lives in bench.yml."
   },
   {
     "id": "version-sync",
@@ -111,11 +111,6 @@
     "id": "readme-sections",
     "command": "node scripts/readme-sections.mjs",
     "description": "Each published package README carries the required sections."
-  },
-  {
-    "id": "envelope-table",
-    "command": "node scripts/envelope-table.mjs && git diff --exit-code -- packages/tooling/test/ENVELOPE.md",
-    "description": "The generated envelope table must match its fixture metadata."
   },
   {
     "id": "dev-ports",

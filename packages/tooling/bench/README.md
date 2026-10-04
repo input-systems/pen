@@ -24,7 +24,7 @@ The concurrent-peers row is verified as a count (2) plus observation: peer A ins
 - `pnpm --filter @input/pen-bench bench:envelope` runs the ladder (median of 21, floor subtracted) and fails if a same-class gated rung exceeds the committed gate. Do not run this to re-record under load.
 - `pnpm --filter @input/pen-bench bench:envelope:write` regenerates `baselines/envelope.json` and `ENVELOPE.md` from a fresh run.
 - Same-class clock gate: rungs whose attributed p50 is at least 0.5ms are gated at `max(attributed × 3, attributed + 1ms)`. Below that the clock is timer noise. P95 is recorded, not gated (CH8). Cross-class (macos-arm64 vs ubuntu-latest) is not compared. Count drift is compared on every class.
-- `.github/workflows/bench.yml` runs `bench:envelope` after `bench:ci`. The size-grade table (`packages/tooling/test/ENVELOPE.md`) is a separate generator-diff job.
+- `.github/workflows/bench.yml` runs `bench:envelope` after `bench:ci`. The size-grade table (`packages/tooling/test/ENVELOPE.md`) is diffed against its generator by the same `bench-envelope-drift` repo gate as this package's table.
 
 ## SCALE3
 
