@@ -1,10 +1,22 @@
 // @vitest-environment jsdom
 
 import type { SelectionRecord } from "@input/pen-types";
-import { describe, expect, it } from "vitest";
-import { resolveProjectionScroll, scrollDelta } from "../projectionScroll";
+import { describe, expect, it, vi } from "vitest";
+import {
+	applyScrollPlan,
+	resolveProjectionScroll,
+	scrollDelta,
+} from "../projectionScroll";
+import type * as ProjectionScrollModule from "../projectionScroll";
 import { SelectionProjector } from "../selectionProjector";
 import { CLOSED_GESTURE_WINDOWS } from "../selectionReader";
+
+vi.mock("../projectionScroll", async (importOriginal) => ({
+	...(await importOriginal<typeof ProjectionScrollModule>()),
+	// jsdom has no layout: every measure finds the target 10px below the view.
+	measureScrollPlan: (root: Element) => ({ container: root, dx: 0, dy: 10 }),
+	applyScrollPlan: vi.fn(),
+}));
 
 function record(
 	origin: SelectionRecord["origin"],
@@ -128,6 +140,8 @@ describe("projection scroll jobs (W3.R15)", () => {
 		const element = document.createElement("span");
 		document.body.append(element);
 		const jobs: string[] = [];
+		const reads: Array<() => void> = [];
+		const writes: Array<() => void> = [];
 		const projector = new SelectionProjector({
 			getGestureWindows: () => CLOSED_GESTURE_WINDOWS,
 			isEditing: () => true,
@@ -145,20 +159,28 @@ describe("projection scroll jobs (W3.R15)", () => {
 			emitSelectionProjected: () => {},
 			getRecord: () => record(origin),
 			getScheduler: () => ({
-				read: async () => {
+				read: async (job: () => void) => {
 					jobs.push("read");
+					reads.push(job);
 				},
-				write: async () => {
+				write: async (job: () => void) => {
 					jobs.push("write");
+					writes.push(job);
 				},
 			}),
 		});
-		return { projector, jobs };
+		/** One scheduler flush: every queued read, then every queued write. */
+		function flush(): void {
+			for (const job of reads.splice(0)) job();
+			for (const job of writes.splice(0)) job();
+		}
+		return { projector, jobs, flush };
 	}
 
 	it("P: a keyboard projection queues one measure read and one scroll write; a pointer projection queues none", () => {
 		const keyboard = projectorFor("keyboard");
 		keyboard.projector.project("selection-change");
+		keyboard.flush();
 		expect(keyboard.jobs).toEqual(["read", "write"]);
 
 		const pointer = projectorFor("pointer");
@@ -166,9 +188,38 @@ describe("projection scroll jobs (W3.R15)", () => {
 		expect(pointer.jobs).toEqual([]);
 	});
 
+	it("P: a version projected twice before the flush scrolls once, not by twice the measured delta", () => {
+		vi.mocked(applyScrollPlan).mockClear();
+		const { projector, flush } = projectorFor("keyboard");
+		// A keyboard move onto another block projects on `selection-change`
+		// and again on the newly active field's `activation`; both queue a
+		// measure against the same layout.
+		projector.project("selection-change");
+		projector.project("activation");
+		flush();
+		expect(vi.mocked(applyScrollPlan)).toHaveBeenCalledTimes(1);
+	});
+
 	it("P: scrollIntoView queues the same read and write for W4's scrollToBlock", () => {
-		const { projector, jobs } = projectorFor("pointer");
+		const { projector, jobs, flush } = projectorFor("pointer");
 		projector.scrollIntoView({ blockId: "first" }, { align: "start" });
+		flush();
 		expect(jobs).toEqual(["read", "write"]);
+	});
+
+	it("P: a scroll scheduled from a write phase writes after its own measure, in the next flush", () => {
+		vi.mocked(applyScrollPlan).mockClear();
+		const { projector, jobs, flush } = projectorFor("restore");
+		projector.project("selection-change");
+		flush();
+		expect(vi.mocked(applyScrollPlan)).toHaveBeenCalledTimes(1);
+		// A rebuilt target re-projects the same version from a write phase;
+		// its write is queued by its read, not beside it.
+		jobs.length = 0;
+		projector.project("target-rebuilt");
+		expect(jobs).toEqual(["read"]);
+		flush();
+		expect(jobs).toEqual(["read", "write"]);
+		expect(vi.mocked(applyScrollPlan)).toHaveBeenCalledTimes(2);
 	});
 });

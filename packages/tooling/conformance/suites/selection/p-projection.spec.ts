@@ -114,8 +114,12 @@ scenario("P: a remote edit that maps the caret does not scroll", async (s, page)
 	for (let press = 0; press < 50; press += 1) {
 		await page.keyboard.press("ArrowDown");
 	}
-	// Let the keyboard scroll land before resetting the viewport.
+	// Let the keyboard scroll land before resetting the viewport. The engine's
+	// own caret scroll can put the caret in view before the last keyboard
+	// record's scheduled measure runs; reset only once the scheduler is idle,
+	// or that measure sees the reset viewport and scrolls back.
 	await expect.poll(async () => (await caretInViewport(page)).inView).toBe(true);
+	await page.evaluate(() => window.__penConformance.whenIdle());
 	await page.evaluate(() => window.scrollTo(0, 0));
 	expect(await scrollY(page)).toBe(0);
 	const caretBlock = await page.evaluate(() => {
@@ -134,6 +138,8 @@ scenario("P: a remote edit that maps the caret does not scroll", async (s, page)
 			}),
 		)
 		.toBeGreaterThanOrEqual("remote ".length);
+	// A scroll the mapped projection scheduled lands in the next flush.
+	await page.evaluate(() => window.__penConformance.whenIdle());
 	expect(await scrollY(page), "a collaborator's edit never moves the viewport").toBe(0);
 });
 
@@ -160,6 +166,8 @@ scenario("P: undo restoring a selection below the fold scrolls it into view", as
 	await s.keyboard.type("x");
 	await page.evaluate(() => window.__penConformance.stopCapturing());
 	await expect.poll(async () => (await caretInViewport(page)).inView).toBe(true);
+	// A late typing scroll landing after the reset would pass for a restore one.
+	await page.evaluate(() => window.__penConformance.whenIdle());
 	await page.evaluate(() => window.scrollTo(0, 0));
 	expect(await scrollY(page)).toBe(0);
 	await s.keyboard.press("ControlOrMeta+z");

@@ -30,7 +30,6 @@ import {
 	selectionScrollTarget,
 	type ProjectionCommit,
 	type ProjectionScroll,
-	type ScrollPlan,
 } from "./projectionScroll";
 import { findDOMPoint } from "./selectionBridgeOffsets";
 import type { SelectionPoint } from "./selectionBridge";
@@ -417,6 +416,12 @@ export class SelectionProjector {
 	private _scroll: ProjectionScroll = "auto";
 	/** Supersedes a pending `scrollIntoView` when a newer one is asked. */
 	private _scrollToken = 0;
+	/**
+	 * Supersedes a pending selection scroll when another projection schedules
+	 * one: a version projected twice in a turn (`selection-change`, then
+	 * `activation` on the newly active field) measures once, not twice.
+	 */
+	private _selectionScrollToken = 0;
 	private _trigger: ProjectionTrigger = "activation";
 	private readonly _reportedMismatches = new Set<string>();
 	/** A projection withheld while composing; released once on compositionend-completed. */
@@ -685,15 +690,23 @@ export class SelectionProjector {
 			return;
 		}
 		const version = record.version;
+		const token = ++this._selectionScrollToken;
 		this._scheduleScroll(
 			scroll.align,
 			(reader, view) =>
 				selectionScrollTarget(reader, record.state, view, scroll.align),
-			() => this._lastProjectedVersion === version,
+			() =>
+				this._lastProjectedVersion === version &&
+				this._selectionScrollToken === token,
 		);
 	}
 
-	/** One read (measure) and one write (scroll), skipped once superseded. */
+	/**
+	 * One read (measure) and one write (scroll), skipped once superseded. The
+	 * read queues the write, so the write always follows its own measure: a
+	 * job scheduled from a write phase (a `target-rebuilt` projection) reads
+	 * in the next flush, and a write queued beside it would run first, empty.
+	 */
 	private _scheduleScroll(
 		align: BlockScrollAlign,
 		measureTarget: (reader: GeometryReader, view: Rect) => Rect | null,
@@ -704,14 +717,18 @@ export class SelectionProjector {
 		if (!root || !scheduler) {
 			return;
 		}
-		let plan: ScrollPlan | null = null;
 		void scheduler.read(() => {
-			plan = isCurrent() ? measureScrollPlan(root, align, measureTarget) : null;
-		});
-		void scheduler.write(() => {
-			if (plan && isCurrent()) {
-				applyScrollPlan(plan);
+			const plan = isCurrent()
+				? measureScrollPlan(root, align, measureTarget)
+				: null;
+			if (!plan) {
+				return;
 			}
+			void scheduler.write(() => {
+				if (isCurrent()) {
+					applyScrollPlan(plan);
+				}
+			});
 		});
 	}
 
