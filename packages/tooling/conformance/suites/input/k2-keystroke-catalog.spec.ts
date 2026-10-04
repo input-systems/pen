@@ -1,22 +1,13 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { loadavg } from "node:os";
 import {
 	NESTED_TOGGLE_CHILD_ID,
 	NESTED_TOGGLE_CHILD_TEXT,
 } from "../../fixtures/catalog";
-import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
 import { readDocumentText, readFocusOffset } from "./keys";
-
-async function clickOffset(
-	page: Page,
-	blockId: string,
-	offset: number,
-): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId, offset });
-	await page.mouse.click(point.x, point.y);
-}
+import { clickOffset } from "../../src/specHelpers";
 
 scenario(
 	"K2: ArrowRight then Backspace via keystroke delete the first grapheme",

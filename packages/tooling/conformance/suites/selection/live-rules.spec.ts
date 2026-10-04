@@ -4,7 +4,6 @@ import {
 	GRAPHEME_ZWJ_ID,
 	GRAPHEME_ZWJ_LINE,
 } from "../../fixtures/grapheme";
-import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { graphemeWalkHolds } from "../../src/graphemeBoundaries";
 import { scenario } from "../../src/scenario";
 import {
@@ -17,18 +16,10 @@ import {
 import { formatCheckReport } from "../../src/checkReport";
 import { standingAuthorityHolds } from "../../src/standingFilter";
 import type { SerializedSelectionRecord } from "../../src/types";
+import { clickOffset } from "../../src/specHelpers";
 
 async function readRecord(page: Page): Promise<SerializedSelectionRecord | null> {
 	return page.evaluate(() => window.__penConformance.selectionRecord);
-}
-
-async function clickOffset(
-	page: Page,
-	blockId: string,
-	offset: number,
-): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId, offset });
-	await page.mouse.click(point.x, point.y);
 }
 
 scenario(

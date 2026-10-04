@@ -5,6 +5,7 @@ import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
 import type { ScenarioApi, SerializedSelection } from "../../src/types";
+import { readSelection } from "../../src/specHelpers";
 
 const BLOCK_COUNT = 51;
 const FIRST_ID = "empty-p1";
@@ -95,10 +96,6 @@ async function shiftClickLast(page: Page): Promise<void> {
 	);
 	await last.scrollIntoViewIfNeeded();
 	await last.click({ modifiers: ["Shift"] });
-}
-
-async function readSelection(page: Page): Promise<SerializedSelection> {
-	return page.evaluate(() => window.__penConformance.selection);
 }
 
 function attachLoadavg(label: string, payload: unknown): Promise<void> {

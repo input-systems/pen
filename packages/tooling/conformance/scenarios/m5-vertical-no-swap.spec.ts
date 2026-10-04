@@ -8,21 +8,7 @@ import {
 import { scenario } from "../src/scenario";
 import { assertDomAuthorityResult } from "../src/standingAssertions";
 import type { DomAuthorityCheck } from "../src/types";
-
-type Focus = { blockId: string; offset: number } | null;
-
-async function readFocus(page: Page): Promise<Focus> {
-	return page.evaluate(() => {
-		const selection = window.__penConformance.selection;
-		if (selection?.type !== "text") {
-			return null;
-		}
-		return {
-			blockId: selection.focus.blockId,
-			offset: selection.focus.offset,
-		};
-	});
-}
+import { Focus, readFocus } from "../src/specHelpers";
 
 async function assertRtlLine(
 	page: Page,

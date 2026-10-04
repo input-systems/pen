@@ -1,13 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { scenario } from "../src/scenario";
-
-function collectPageErrors(page: Page): string[] {
-	const errors: string[] = [];
-	page.on("pageerror", (error) => {
-		errors.push(error.message);
-	});
-	return errors;
-}
+import { blockInlineText, collectPageErrors } from "../src/specHelpers";
 
 scenario(
 	"HOST4: missing structuredClone degrades to JSON clone and still types",
@@ -135,14 +128,6 @@ scenario(
 		},
 	},
 );
-
-async function blockInlineText(page: Page, blockId: string): Promise<string> {
-	return page.evaluate((id) => {
-		const block = document.querySelector(`[data-block-id="${id}"]`);
-		const inline = block?.querySelector("[data-pen-inline-content]");
-		return inline?.textContent ?? "";
-	}, blockId);
-}
 
 async function cellInlineText(
 	page: Page,

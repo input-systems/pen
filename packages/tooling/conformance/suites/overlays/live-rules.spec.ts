@@ -1,8 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
-import { loadavg } from "node:os";
+import { expect, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
+import { attachJson, logLoad } from "../../src/specHelpers";
 
 type OverlaySnapshot = {
 	kind: "present" | "absent" | "unchecked";
@@ -18,20 +18,6 @@ type OverlaySnapshot = {
 	left: number;
 	top: number;
 };
-
-
-function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
-
-async function attachJson(name: string, payload: unknown): Promise<void> {
-	await test.info().attach(name, {
-		body: JSON.stringify({ loadavg: loadavg(), payload }, null, 2),
-		contentType: "application/json",
-	});
-}
 
 async function clickOffset(
 	page: Page,

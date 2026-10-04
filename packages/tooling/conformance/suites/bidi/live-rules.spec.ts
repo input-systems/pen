@@ -1,5 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
-import { loadavg } from "node:os";
+import { expect, type Page } from "@playwright/test";
 import {
 	BIDI_LTR_EMBED_ID,
 	BIDI_LTR_EMBED_TEXT,
@@ -12,6 +11,7 @@ import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
 import { authorityCheckKind } from "../../src/standingAssertions";
 import type { DomAuthorityCheck } from "../../src/types";
+import { attachJson, logLoad } from "../../src/specHelpers";
 
 type TextCaret = {
 	blockId: string;
@@ -47,19 +47,6 @@ type VisualHomeReport = {
 
 const M3_BLOCK_ID = "m3-hello-arabic";
 const M3_TEXT = "Hello مرحبا";
-
-function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
-
-async function attachJson(name: string, payload: unknown): Promise<void> {
-	await test.info().attach(name, {
-		body: JSON.stringify({ loadavg: loadavg(), payload }, null, 2),
-		contentType: "application/json",
-	});
-}
 
 async function readCaret(page: Page): Promise<TextCaret | null> {
 	return page.evaluate(() => {

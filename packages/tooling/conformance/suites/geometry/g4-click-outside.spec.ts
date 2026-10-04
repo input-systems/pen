@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { fileURLToPath } from "node:url";
-import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
+import { logLoad, readBlockIds } from "../../src/specHelpers";
 
 const FIRST_ID = "two-p1";
 const LAST_ID = "two-p2";
@@ -31,16 +31,6 @@ type HostChrome = {
 };
 
 type PointAtHit = { blockId: string; offset: number } | null;
-
-function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
-
-async function readBlockIds(page: Page): Promise<string[]> {
-	return page.evaluate(() => [...window.__penConformance.blockIds]);
-}
 
 async function readBlockChrome(page: Page): Promise<HostChrome> {
 	return page.evaluate(

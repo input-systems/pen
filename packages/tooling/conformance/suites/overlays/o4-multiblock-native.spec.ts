@@ -1,5 +1,4 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import {
 	itemsOfKind,
@@ -7,7 +6,7 @@ import {
 	readSettledLayer,
 } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
-import type { SerializedSelection } from "../../src/types";
+import { logLoad, readSelection } from "../../src/specHelpers";
 
 
 type NativeSnapshot = {
@@ -19,16 +18,6 @@ type OverlaySnapshot = {
 	kind: "present" | "absent" | "unchecked";
 	reason: string;
 };
-
-function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
-
-async function readSelection(page: Page): Promise<SerializedSelection> {
-	return page.evaluate(() => window.__penConformance.selection);
-}
 
 async function readNative(page: Page): Promise<NativeSnapshot> {
 	return page.evaluate(() => {

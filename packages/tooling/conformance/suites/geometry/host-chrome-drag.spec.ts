@@ -1,9 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
-import type { SerializedSelection } from "../../src/types";
+import { logLoad, readBlockIds, readSelection } from "../../src/specHelpers";
 
 const FIRST_ID = "two-p1";
 const LAST_ID = "two-p2";
@@ -31,20 +30,6 @@ type HostChrome = {
 };
 
 type Hit = { isContent: boolean; isBlock: boolean };
-
-function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
-
-async function readSelection(page: Page): Promise<SerializedSelection> {
-	return page.evaluate(() => window.__penConformance.selection);
-}
-
-async function readBlockIds(page: Page): Promise<string[]> {
-	return page.evaluate(() => [...window.__penConformance.blockIds]);
-}
 
 /** Give the column a gutter wide enough to aim at. */
 async function padContent(page: Page): Promise<void> {

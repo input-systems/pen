@@ -11,6 +11,7 @@ import {
 	G5_TAIL_BLOCK,
 	G5_WRAP_BLOCK,
 } from "../src/g5Geometry";
+import { midpoint } from "../src/specHelpers";
 
 async function forceWrap(page: Page): Promise<void> {
 	await page.evaluate(() => {
@@ -46,15 +47,6 @@ function lineContaining(
 			(offset < line.endOffset || (last && offset <= line.endOffset))
 		);
 	});
-}
-
-function midpoint(line: GeometryLineBox): number {
-	if (line.endOffset <= line.startOffset) {
-		return line.startOffset;
-	}
-	return (
-		line.startOffset + Math.floor((line.endOffset - line.startOffset) / 2)
-	);
 }
 
 function assertDeterministic(result: GeometryVerticalMotion): void {

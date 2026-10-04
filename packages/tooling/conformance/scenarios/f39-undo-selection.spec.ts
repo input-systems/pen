@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
-import { getInlineOffsetPoint } from "../src/domGeometry";
 import { scenario } from "../src/scenario";
+import { blockInlineText, clickOffset } from "../src/specHelpers";
 
 function historyBridge(page: Page) {
 	return {
@@ -20,23 +20,6 @@ function historyBridge(page: Page) {
 			});
 		},
 	};
-}
-
-async function clickOffset(
-	page: Page,
-	blockId: string,
-	offset: number,
-): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId, offset });
-	await page.mouse.click(point.x, point.y);
-}
-
-async function blockInlineText(page: Page, blockId: string): Promise<string> {
-	return page.evaluate((id) => {
-		const block = document.querySelector(`[data-block-id="${id}"]`);
-		const inline = block?.querySelector("[data-pen-inline-content]");
-		return inline?.textContent ?? "";
-	}, blockId);
 }
 
 async function focusOffset(page: Page): Promise<number | null> {

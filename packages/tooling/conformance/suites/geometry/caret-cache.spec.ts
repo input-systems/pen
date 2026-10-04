@@ -1,15 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { loadavg } from "node:os";
 import { caretCacheHolds } from "../../harness/src/geometryCompare";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
 import { sampleCaretPoints } from "../../src/g5Geometry";
-
-function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
+import { logLoad } from "../../src/specHelpers";
 
 scenario(
 	"G2: caretRect compare after a click counts MISSING as well as STALE (both-null is not a hold)",

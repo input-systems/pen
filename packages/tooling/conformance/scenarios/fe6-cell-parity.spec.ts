@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../src/checkReport";
 import { scenario } from "../src/scenario";
-import type { DocumentContentSnapshot } from "../src/types";
+import { snapshotBytes } from "../src/specHelpers";
 
 /**
  * FE6: the cell-parity contract, in a real browser.
@@ -30,10 +30,6 @@ import type { DocumentContentSnapshot } from "../src/types";
 
 const TABLE_ID = "fe6-parity-table";
 const CELL_CAPABILITY_UNSUPPORTED = "cell-capability-unsupported";
-
-function snapshotBytes(snapshot: DocumentContentSnapshot): string {
-	return JSON.stringify(snapshot);
-}
 
 async function seedTable(
 	s: Parameters<Parameters<typeof scenario>[1]>[0],

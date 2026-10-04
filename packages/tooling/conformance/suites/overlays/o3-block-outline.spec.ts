@@ -1,5 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
-import { loadavg } from "node:os";
+import { expect, test } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import {
 	blockBox,
@@ -7,21 +6,11 @@ import {
 	readSettledLayer,
 } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
-import type { SerializedSelection } from "../../src/types";
+import { logLoad, readSelection } from "../../src/specHelpers";
 
 const DIVIDER_ID = "o3-d1";
 const AFTER_ID = "two-p1";
 const TABLE_ID = "o3-table";
-
-function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
-
-async function readSelection(page: Page): Promise<SerializedSelection> {
-	return page.evaluate(() => window.__penConformance.selection);
-}
 
 function within(actual: number, expected: number, tolerance: number): boolean {
 	return Math.abs(actual - expected) <= tolerance;

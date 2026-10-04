@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
+import { FocusPoint, logLoad, readBlockIds } from "../../src/specHelpers";
 
 const LAST_ID = "two-p2";
 const LAST_TEXT = "Delta echo foxtrot";
@@ -38,18 +38,6 @@ type Snapshot = {
 	blockOrder: readonly string[];
 	blocks: readonly { id: string; type: string; text: string }[];
 };
-
-type FocusPoint = { blockId: string; offset: number } | null;
-
-function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
-
-async function readBlockIds(page: Page): Promise<string[]> {
-	return page.evaluate(() => [...window.__penConformance.blockIds]);
-}
 
 async function readSnapshot(page: Page): Promise<Snapshot> {
 	return page.evaluate(() => window.__penConformance.documentSnapshot());

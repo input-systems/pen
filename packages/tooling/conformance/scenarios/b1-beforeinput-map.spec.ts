@@ -8,7 +8,7 @@ import {
 } from "@input/pen-dom/field-editor/beforeinputMap";
 import { expect, type Page } from "@playwright/test";
 import { scenario } from "../src/scenario";
-import type { DocumentContentSnapshot } from "../src/types";
+import { snapshotBytes } from "../src/specHelpers";
 
 const UNKNOWN_INPUT_TYPES = [
 	"insertOrderedList",
@@ -40,10 +40,6 @@ function policyKind(
 			return _exhaustive;
 		}
 	}
-}
-
-function snapshotBytes(snapshot: DocumentContentSnapshot): string {
-	return JSON.stringify(snapshot);
 }
 
 async function reloadHello(page: Page): Promise<void> {
