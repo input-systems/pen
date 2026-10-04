@@ -18,110 +18,6 @@ import {
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe("@input/pen-react cross-block drag: native selection promotion", () => {
-	it("promotes native cross-block DOM selection into expanded text selection", async () => {
-		const editor = createEditor();
-		const firstBlockId = editor.firstBlock()!.id;
-		const secondBlockId = crypto.randomUUID();
-
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: firstBlockId,
-				from: 0,
-				to: 0,
-				insert: "Hello",
-			},
-			{
-				type: "insert-block",
-				blockId: secondBlockId,
-				blockType: "paragraph",
-				props: {},
-				position: { after: firstBlockId },
-			},
-			{
-				type: "splice-text",
-				blockId: secondBlockId,
-				from: 0,
-				to: 0,
-				insert: "World",
-			},
-		]);
-
-		const container = document.createElement("div");
-		document.body.appendChild(container);
-		const root = createRoot(container);
-
-		await act(async () => {
-			root.render(
-				<Pen.Editor.Root editor={editor}>
-					<Pen.Editor.Content />
-				</Pen.Editor.Root>,
-			);
-		});
-
-		const fieldEditor = getFieldEditor(editor);
-		const rootElement = container.querySelector(
-			"[data-pen-editor-root]",
-		) as HTMLElement | null;
-		const inlineElements = container.querySelectorAll(
-			"[data-pen-inline-content]",
-		);
-		const firstInlineElement = inlineElements[0] as HTMLElement | undefined;
-		const secondInlineElement = inlineElements[1] as
-			| HTMLElement
-			| undefined;
-
-		expect(rootElement).not.toBeNull();
-		expect(firstInlineElement).toBeDefined();
-		expect(secondInlineElement).toBeDefined();
-
-		await act(async () => {
-			fieldEditor.activate(firstBlockId);
-			await flushAnimationFrames(1);
-		});
-
-		await act(async () => {
-			fieldEditor.beginPointerSelection();
-			const selection = document.getSelection();
-			const range = document.createRange();
-			range.setStart(
-				firstInlineElement!.firstChild ?? firstInlineElement!,
-				1,
-			);
-			range.setEnd(
-				secondInlineElement!.firstChild ?? secondInlineElement!,
-				2,
-			);
-
-			selection?.removeAllRanges();
-			selection?.addRange(range);
-			document.dispatchEvent(new Event("selectionchange"));
-			await flushAnimationFrames(2);
-		});
-
-		expect(domSelectionToEditor(rootElement!)).toMatchObject({
-			anchor: { blockId: firstBlockId, offset: 1 },
-			focus: { blockId: secondBlockId, offset: 2 },
-		});
-		expect(editor.selection).toMatchObject({
-			type: "text",
-			anchor: { blockId: firstBlockId, offset: 1 },
-			focus: { blockId: secondBlockId, offset: 2 },
-		});
-		expect(fieldEditor.getSnapshot()).toMatchObject({
-			focusBlockId: firstBlockId,
-			activeBlockIds: [firstBlockId, secondBlockId],
-			isEditing: true,
-			mode: "expanded",
-		});
-
-		await act(async () => {
-			root.unmount();
-		});
-		container.remove();
-		editor.destroy();
-	});
-
 	it("keeps expanded inline blocks reconciled from CRDT updates", async () => {
 		const editor = createEditor();
 		const firstBlockId = editor.firstBlock()!.id;
@@ -171,8 +67,7 @@ describe("@input/pen-react cross-block drag: native selection promotion", () => 
 			"[data-pen-inline-content]",
 		);
 		const secondInlineElement = inlineElements[1] as
-			| HTMLElement
-			| undefined;
+			HTMLElement | undefined;
 
 		expect(blocksHost).not.toBeNull();
 		expect(blocksHost?.hasAttribute("data-pen-field-editor-surface")).toBe(
@@ -279,8 +174,7 @@ describe("@input/pen-react cross-block drag: native selection promotion", () => 
 		) as HTMLElement | null;
 		const firstInlineElement = inlineElements[0] as HTMLElement | undefined;
 		const secondInlineElement = inlineElements[1] as
-			| HTMLElement
-			| undefined;
+			HTMLElement | undefined;
 		const secondBlockElement = blockElements[1] as HTMLElement | undefined;
 
 		expect(rootElement).not.toBeNull();

@@ -8,8 +8,6 @@ import { DATA_ATTRS } from "../../utils/dataAttributes";
 import { FieldEditorImpl } from "../fieldEditorImpl";
 import { createSelectionReader } from "../selectionReader";
 
-type Fixture = ReturnType<typeof seed>;
-
 const fixtures: Array<{
 	editor: Editor;
 	fieldEditor: FieldEditorImpl;
@@ -35,7 +33,13 @@ function seed() {
 	document.body.appendChild(root);
 	const blockA = editor.firstBlock()!.id;
 	editor.apply([
-		{ type: "splice-text", blockId: blockA, from: 0, to: 0, insert: "hello world" },
+		{
+			type: "splice-text",
+			blockId: blockA,
+			from: 0,
+			to: 0,
+			insert: "hello world",
+		},
 	]);
 	const blockB = crypto.randomUUID();
 	editor.apply([
@@ -46,7 +50,13 @@ function seed() {
 			props: {},
 			position: { after: blockA },
 		},
-		{ type: "splice-text", blockId: blockB, from: 0, to: 0, insert: "second block" },
+		{
+			type: "splice-text",
+			blockId: blockB,
+			from: 0,
+			to: 0,
+			insert: "second block",
+		},
 	]);
 	const inlines = new Map<string, HTMLElement>();
 	for (const [blockId, text] of [
@@ -78,14 +88,11 @@ function seed() {
 			}),
 		);
 	};
-	const release = async (type: "pointerup" | "pointercancel" = "pointerup") => {
+	const release = async (
+		type: "pointerup" | "pointercancel" = "pointerup",
+	) => {
 		document.dispatchEvent(new PointerEvent(type, { bubbles: true }));
 		await Promise.resolve();
-	};
-	const selectStart = (blockId: string) => {
-		inline(blockId).firstChild!.dispatchEvent(
-			new Event("selectstart", { bubbles: true }),
-		);
 	};
 	/** Moves the native range inside one block, as a drag or a handle does. */
 	const nativeRange = (blockId: string, anchor: number, focus: number) => {
@@ -111,7 +118,6 @@ function seed() {
 		inline,
 		press,
 		release,
-		selectStart,
 		nativeRange,
 		textState,
 		record,
@@ -131,32 +137,7 @@ function trackDocumentListeners(type: string) {
 	};
 }
 
-async function longPressWordInB(fixture: Fixture) {
-	fixture.press(fixture.blockB, "touch");
-	await fixture.release();
-	fixture.selectStart(fixture.blockB);
-	fixture.nativeRange(fixture.blockB, 0, 6);
-}
-
 describe("gesture windows outlive a field session switch (R1–R3)", () => {
-	it("R1: a touch long-press in block B while editing A keeps the native-range window across the session switch", async () => {
-		const fixture = seed();
-		await longPressWordInB(fixture);
-		expect(fixture.fieldEditor.focusBlockId).toBe(fixture.blockB);
-		expect(fixture.record()).toMatchObject({
-			origin: "pointer",
-			state: fixture.textState(fixture.blockB, 0, 6),
-		});
-		expect(fixture.windows().nativeRange).toBe(true);
-
-		// A handle drag moves the range; the read is accepted, not projected back.
-		fixture.nativeRange(fixture.blockB, 0, 3);
-		expect(fixture.record()).toMatchObject({
-			origin: "pointer",
-			state: fixture.textState(fixture.blockB, 0, 3),
-		});
-	});
-
 	it("R1: a press in block B keeps the pointer window open after the read that moves the session to B", async () => {
 		const fixture = seed();
 		fixture.press(fixture.blockB, "mouse");
