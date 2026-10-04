@@ -21,6 +21,7 @@ import {
 	handleSelectAllShortcut,
 } from "../field-editor/keyHandling";
 import { dispatchKeymapEvent } from "../field-editor/keymap";
+import { isCompositionKeyDown } from "./compositionKeyDown";
 import { DATA_ATTRS } from "./dataAttributes";
 import { handleEscapeSelectionTransition } from "./escapeSelection";
 import { handleTableCellSelectionKeyDown } from "./tableCellNavigation";
@@ -145,12 +146,6 @@ function isSubstituteSinkKey(
 		(target as Element).hasAttribute(FOCUS_SINK_ATTR) &&
 		editor.selection?.type === "text" &&
 		fieldEditor.getSubstituteState() !== null
-	);
-}
-
-function isCompositionKeyDown(event: KeyboardEvent): boolean {
-	return (
-		event.isComposing || event.key === "Process" || event.keyCode === 229
 	);
 }
 

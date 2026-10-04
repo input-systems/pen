@@ -1,4 +1,4 @@
-import type { Editor } from "@input/pen-types";
+import type { Editor, Point, TextSelection } from "@input/pen-types";
 import { writeNativeRange } from "./selectionProjector";
 import { getPasteImporters, handlePaste } from "./clipboard";
 import { BackendAttachment } from "./backendAttachment";
@@ -34,6 +34,7 @@ import {
 } from "./keyHandling";
 import { dispatchKeymapEvent } from "./keymap";
 import { mapBeforeInput } from "./beforeinputMap";
+import { isCompositionKeyDown } from "../utils/compositionKeyDown";
 
 /**
  * Expanded mode owns the shared cross-block selected state on the real block
@@ -46,6 +47,7 @@ export class ExpandedContentEditableBackend {
 	private readonly attachment = new BackendAttachment();
 	private editor: Editor;
 	private fieldEditor: FieldEditorInputController;
+	private composingOverRange = false;
 
 	constructor(editor: Editor, fieldEditor: FieldEditorInputController) {
 		this.editor = editor;
@@ -63,6 +65,16 @@ export class ExpandedContentEditableBackend {
 
 		this.attachment.listen(element, "beforeinput", this.handleBeforeInput);
 		this.attachment.listen(element, "keydown", this.handleKeyDown);
+		this.attachment.listen(
+			element,
+			"compositionstart",
+			this.handleCompositionStart,
+		);
+		this.attachment.listen(
+			element,
+			"compositionend",
+			this.handleCompositionEnd,
+		);
 		bindBackendTransferEvents(
 			this.attachment,
 			element,
@@ -324,7 +336,71 @@ export class ExpandedContentEditableBackend {
 		}
 	};
 
+	/**
+	 * FE2 D20: the expanded host does not compose. A composition keystroke
+	 * deletes the range and focuses the caret's field in this `keydown` turn,
+	 * so the composition starts there, as the D5 sink does.
+	 */
+	private handleCompositionKeyDown(event: KeyboardEvent): boolean {
+		const selection = this.editor.selection;
+		if (
+			this.composingOverRange ||
+			!isCompositionKeyDown(event) ||
+			selection?.type !== "text"
+		) {
+			return false;
+		}
+		this.fieldEditor.deactivate();
+		this.editor.deleteSelection({ origin: "user" });
+		this.activateSingleBlockTextSelection();
+		return true;
+	}
+
+	/**
+	 * FE2: a composition with no composition keystroke before it (Gecko
+	 * delivers text from a text input processor this way) starts in this
+	 * host. Its `insertCompositionText` cannot be cancelled, and over the
+	 * cross-block range it would move text and remove block elements the
+	 * renderer owns, so the native range collapses to the range start and the
+	 * engine composes inside that block's field DOM. Moving the editing host
+	 * now would make Gecko commit the composition empty. The committed text
+	 * replaces the authority range at `compositionend`, and the caret's field
+	 * rebuilds its DOM from the document.
+	 */
+	private handleCompositionStart = (): void => {
+		const element = this.element;
+		const selection = this.editor.selection;
+		if (!element || selection?.type !== "text") return;
+		const start = rangeStart(this.editor, selection);
+		writeNativeRange(element, start, start);
+		this.composingOverRange = true;
+	};
+
+	private handleCompositionEnd = (event: CompositionEvent): void => {
+		if (!this.composingOverRange) return;
+		this.composingOverRange = false;
+		const text = event.data ?? "";
+		if (!text) {
+			this.projectCurrentSelection();
+			return;
+		}
+		if (
+			!dispatchEditorCommand(
+				this.editor,
+				insertText,
+				{ text },
+				{ origin: "user" },
+			)
+		) {
+			this.editor.replaceSelection(text);
+		}
+		this.activateSingleBlockTextSelection();
+	};
+
 	private handleKeyDown = (event: KeyboardEvent): void => {
+		if (this.handleCompositionKeyDown(event)) {
+			return;
+		}
 		if (
 			!event.defaultPrevented &&
 			handleSelectAllShortcut(this.editor, event, this.fieldEditor)
@@ -378,4 +454,15 @@ function getBlockText(
 			.get(blockId)
 			?.get("content") as FieldEditorTextLike | null) ?? null
 	);
+}
+
+function rangeStart(editor: Editor, selection: TextSelection): Point {
+	const order = editor.documentState;
+	const anchorIndex = order.preorderIndexOf(selection.anchor.blockId);
+	const focusIndex = order.preorderIndexOf(selection.focus.blockId);
+	const anchorFirst =
+		anchorIndex < focusIndex ||
+		(anchorIndex === focusIndex &&
+			selection.anchor.offset <= selection.focus.offset);
+	return anchorFirst ? selection.anchor : selection.focus;
 }
