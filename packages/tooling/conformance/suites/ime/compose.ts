@@ -132,3 +132,52 @@ export async function dispatchComposingKey(
 		return event.defaultPrevented;
 	}, key);
 }
+
+/**
+ * An Android virtual keyboard's non-composition key (Gboard's Backspace or
+ * Enter): `keydown` with `keyCode` 229 and `key` "Unidentified", then the
+ * `beforeinput` it really is, at whatever element owns focus after the
+ * keydown. Returns that element's kind.
+ */
+export async function dispatchUnidentifiedKeyThenInput(
+	page: Page,
+	inputType: string,
+): Promise<{ keydownTarget: string; inputTarget: string }> {
+	return page.evaluate((type) => {
+		const describe = (element: Element | null): string => {
+			if (!(element instanceof HTMLElement)) return "none";
+			if (element.hasAttribute("data-pen-focus-sink")) return "sink";
+			const block = element.closest("[data-block-id]");
+			return block
+				? `field:${block.getAttribute("data-block-id")}`
+				: element.contentEditable === "true"
+					? "host"
+					: element.tagName.toLowerCase();
+		};
+		const keydownTarget = document.activeElement ?? document.body;
+		const keydownTargetKind = describe(keydownTarget);
+		const keydown = new KeyboardEvent("keydown", {
+			key: "Unidentified",
+			bubbles: true,
+			cancelable: true,
+			composed: true,
+		});
+		for (const name of ["keyCode", "which"]) {
+			Object.defineProperty(keydown, name, { configurable: true, value: 229 });
+		}
+		keydownTarget.dispatchEvent(keydown);
+		const inputTarget = document.activeElement ?? document.body;
+		inputTarget.dispatchEvent(
+			new InputEvent("beforeinput", {
+				bubbles: true,
+				cancelable: true,
+				composed: true,
+				inputType: type,
+			}),
+		);
+		return {
+			keydownTarget: keydownTargetKind,
+			inputTarget: describe(inputTarget),
+		};
+	}, inputType);
+}

@@ -21,7 +21,10 @@ import {
 	handleSelectAllShortcut,
 } from "../field-editor/keyHandling";
 import { dispatchKeymapEvent } from "../field-editor/keymap";
-import { isCompositionKeyDown } from "./compositionKeyDown";
+import {
+	isCompositionKeyDown,
+	isUndecidedCompositionKeyDown,
+} from "./compositionKeyDown";
 import { DATA_ATTRS } from "./dataAttributes";
 import { handleEscapeSelectionTransition } from "./escapeSelection";
 import { handleTableCellSelectionKeyDown } from "./tableCellNavigation";
@@ -161,20 +164,26 @@ function isPrintableKey(event: KeyboardEvent): boolean {
 /**
  * D20: a composition keystroke over a D5 range deletes the range and
  * projects the caret into its field, focused in this `keydown` turn, so the
- * composition starts there.
+ * composition starts there. An undecided keystroke (an Android keyboard's
+ * keyCode 229, which may be Backspace) is left alone: the sink is not
+ * editable, so the input that would decide it never reaches the sink, and
+ * deleting on the keydown would let that input delete again.
  */
 function handleSubstituteCompositionKeyDown(
 	event: KeyboardEvent,
 	editor: Editor,
 	fieldEditor: FieldEditorSession,
 ): boolean {
+	const undecided = isUndecidedCompositionKeyDown(event);
 	if (
-		!isCompositionKeyDown(event) ||
+		(!undecided && !isCompositionKeyDown(event)) ||
 		!isSubstituteSinkKey(event, editor, fieldEditor)
 	) {
 		return false;
 	}
-	deleteTextRangeAndActivate(editor, fieldEditor);
+	if (!undecided) {
+		deleteTextRangeAndActivate(editor, fieldEditor);
+	}
 	return true;
 }
 

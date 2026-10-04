@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { scenario } from "../../src/scenario";
-import { readDocumentText } from "./compose";
+import { dispatchUnidentifiedKeyThenInput, readDocumentText } from "./compose";
 
 scenario(
 	"S2 FE2: a composition over a cross-block range deletes the range and composes in the caret's field",
@@ -54,5 +54,39 @@ scenario(
 				true,
 			);
 		},
+	},
+);
+
+async function selectTwoParagraphRange(
+	s: Parameters<Parameters<typeof scenario>[1]>[0],
+	page: Page,
+): Promise<void> {
+	await s.load("two-paragraph");
+	await page.evaluate(() => {
+		window.__penConformance.selectTextRangeById(
+			{ blockId: "two-p1", offset: 6 },
+			{ blockId: "two-p2", offset: 6 },
+		);
+	});
+	await page.evaluate(() => window.__penConformance.whenIdle());
+}
+
+scenario(
+	"FE2 D20: a keyCode 229 keydown that turns out to be deleteContentBackward deletes only the range (expanded host)",
+	async (s, page) => {
+		await selectTwoParagraphRange(s, page);
+		const targets = await dispatchUnidentifiedKeyThenInput(
+			page,
+			"deleteContentBackward",
+		);
+		await page.evaluate(() => window.__penConformance.whenIdle());
+
+		expect(targets.keydownTarget).toBe("host");
+		await expect.poll(() => readDocumentText(page)).toBe("Alpha echo foxtrot");
+		await s.assert.selectionEquals({
+			anchor: { blockId: "two-p1", offset: 6 },
+			focus: { blockId: "two-p1", offset: 6 },
+		});
+		await s.assert.domMatchesAuthority();
 	},
 );

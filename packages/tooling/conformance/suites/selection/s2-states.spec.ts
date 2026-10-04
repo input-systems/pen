@@ -3,6 +3,7 @@ import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { itemsOfKind, readSettledLayer } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
 import type { LogicalPoint, ScenarioApi } from "../../src/types";
+import { dispatchUnidentifiedKeyThenInput } from "../ime/compose";
 
 /**
  * D5, W3.R17: the two declared S2 exceptions and their pinned substitute
@@ -441,5 +442,32 @@ scenario(
 				`${COLLAPSED_TEXT.slice(0, ANCHOR.offset)}你${COLLAPSED_TEXT.slice(ANCHOR.offset)}`,
 			);
 		await expectCaretInAnchorField(s, page, ANCHOR.offset + 1);
+	},
+);
+
+scenario(
+	"S2 D20: a keyCode 229 keydown that is not a composition leaves a 51-block range to the input that follows it",
+	async (s, page) => {
+		await selectLargeRange(s, page);
+		const anchorText = await blockText(page, ANCHOR.blockId);
+		// An Android keyboard's Backspace: keydown 229 "Unidentified", then
+		// the `beforeinput` it really is. The sink is not editable, so no
+		// engine delivers that input to it; the keydown alone must not delete.
+		const targets = await dispatchUnidentifiedKeyThenInput(
+			page,
+			"deleteContentBackward",
+		);
+		await idle(page);
+		expect(targets.keydownTarget).toBe("sink");
+		expect(await blockText(page, ANCHOR.blockId)).toBe(anchorText);
+		expect(
+			await page.evaluate(() => window.__penConformance.substituteState),
+		).toBe("block-surface-range");
+		await s.assert.selectionEquals({ anchor: ANCHOR, focus: FOCUS });
+		await s.assert.domMatchesAuthority();
+		// The real Backspace that follows still deletes the range, once.
+		await page.keyboard.press("Backspace");
+		await expectCaretInAnchorField(s, page, ANCHOR.offset);
+		expect(await blockText(page, ANCHOR.blockId)).toBe(COLLAPSED_TEXT);
 	},
 );

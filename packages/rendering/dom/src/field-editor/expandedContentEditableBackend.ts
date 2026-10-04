@@ -34,7 +34,10 @@ import {
 } from "./keyHandling";
 import { dispatchKeymapEvent } from "./keymap";
 import { mapBeforeInput } from "./beforeinputMap";
-import { isCompositionKeyDown } from "../utils/compositionKeyDown";
+import {
+	isCompositionKeyDown,
+	isUndecidedCompositionKeyDown,
+} from "../utils/compositionKeyDown";
 
 const FORMAT_MARKS = {
 	formatBold: "bold",
@@ -283,15 +286,20 @@ export class ExpandedContentEditableBackend {
 	/**
 	 * FE2 D20: the expanded host does not compose. A composition keystroke
 	 * deletes the range and focuses the caret's field in this `keydown` turn,
-	 * so the composition starts there, as the D5 sink does.
+	 * so the composition starts there, as the D5 sink does. An undecided
+	 * keystroke (an Android keyboard's keyCode 229, which may be Backspace or
+	 * Enter) does nothing here: the `beforeinput` that follows edits the range,
+	 * or the `compositionstart` composes at its start.
 	 */
 	private handleCompositionKeyDown(event: KeyboardEvent): boolean {
 		const selection = this.editor.selection;
-		if (
-			this.composingOverRange ||
-			!isCompositionKeyDown(event) ||
-			selection?.type !== "text"
-		) {
+		if (this.composingOverRange || selection?.type !== "text") {
+			return false;
+		}
+		if (isUndecidedCompositionKeyDown(event)) {
+			return true;
+		}
+		if (!isCompositionKeyDown(event)) {
 			return false;
 		}
 		this.fieldEditor.deactivate();
@@ -301,10 +309,10 @@ export class ExpandedContentEditableBackend {
 	}
 
 	/**
-	 * FE2: a composition with no composition keystroke before it (Gecko
-	 * delivers text from a text input processor this way) starts in this
-	 * host. Its `insertCompositionText` cannot be cancelled, and over the
-	 * cross-block range it would move text and remove block elements the
+	 * FE2: a composition with no decided composition keystroke before it
+	 * (Gecko delivers text from a text input processor this way, and an
+	 * Android keyboard's keystroke is undecided) starts in this host. Its
+	 * `insertCompositionText` cannot be cancelled, and over the cross-block range it would move text and remove block elements the
 	 * renderer owns, so the native range collapses to the range start and the
 	 * engine composes inside that block's field DOM. Moving the editing host
 	 * now would make Gecko commit the composition empty. The committed text
