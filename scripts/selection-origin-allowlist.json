@@ -1,5 +1,5 @@
 {
-  "_comment": "S3 (spec/rules/selection.md), W3.R11: pen-dom and pen-undo selection-setter calls that omit an origin on purpose (host-API forwarding, FieldEditor.focus() re-targeting). Each entry needs file, enclosing symbol, setter and reason; an entry with no matching call fails (I15).",
+  "_comment": "S3 (spec/rules/selection.md), W3.R11: pen-dom and pen-undo selection-setter calls that omit an origin on purpose (host-API forwarding, FieldEditor.focus() re-targeting). Each entry needs file, enclosing symbol, setter and reason; pen/require-selection-origin fails an entry with no matching call (I15).",
   "entries": [
     {
       "file": "packages/rendering/dom/src/field-editor/fieldEditorImpl.ts",

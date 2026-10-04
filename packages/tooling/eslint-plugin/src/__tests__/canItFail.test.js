@@ -453,7 +453,34 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 		);
 	});
 
-	it("plugin ships twenty-five rules and each can-it-fail case is registered", () => {
+	it("require-selection-origin errors by name on an originless editor setter call", () => {
+		expectRuleErrors(
+			tsTester,
+			"require-selection-origin",
+			rules["require-selection-origin"],
+			{
+				code: "export function seeded(editor) {\n\teditor.selectBlock(\"x\");\n}\n",
+				filename: "packages/rendering/dom/src/seeded-origin.ts",
+				errors: [{ messageId: "originless" }],
+			},
+		);
+	});
+
+	it("no-overlay-binding-measure errors by name on a measuring caret binding", () => {
+		expectRuleErrors(
+			tsTester,
+			"no-overlay-binding-measure",
+			rules["no-overlay-binding-measure"],
+			{
+				code: "export function seeded(el) {\n\treturn el.getBoundingClientRect();\n}\n",
+				filename:
+					"packages/rendering/react/src/primitives/editor/seededCaretOverlay.tsx",
+				errors: [{ messageId: "measure" }],
+			},
+		);
+	});
+
+	it("plugin ships twenty-seven rules and each can-it-fail case is registered", () => {
 		expect(Object.keys(rules).sort()).toEqual([
 			"no-above-floor-api",
 			"no-aria-hidden-visible",
@@ -471,6 +498,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 			"no-json-stringify-signatures",
 			"no-module-scope-browser-globals",
 			"no-new-ops",
+			"no-overlay-binding-measure",
 			"no-pen-deep-imports",
 			"no-selection-state-properties",
 			"no-selection-timers",
@@ -480,6 +508,7 @@ describe("per-rule can-it-fail (write a violation, error by name)", () => {
 			"no-unstyled-focus",
 			"no-user-facing-literals",
 			"no-v1-extension-fields",
+			"require-selection-origin",
 		]);
 	});
 });

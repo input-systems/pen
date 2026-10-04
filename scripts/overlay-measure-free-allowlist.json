@@ -1,4 +1,0 @@
-{
-  "_comment": "OV3 (spec/rules/dom.md, W35.G1). React and Vue overlay bindings that still measure or run their own frame driver. Each entry names the file, why it still measures, and closedBy, the requirement that moves it onto getRootOverlay(root). scripts/overlay-measure-free.mjs fails an entry whose file no longer measures (I15), so the list only shrinks.",
-  "entries": []
-}

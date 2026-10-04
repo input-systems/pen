@@ -260,6 +260,32 @@ export default tseslint.config(
 		},
 	},
 	{
+		// S3: pen-dom and pen-undo selection-setter calls name their origin.
+		// Host-API forwarding is listed with a reason in
+		// scripts/selection-origin-allowlist.json; an entry with no live call
+		// fails (I15).
+		files: [
+			"packages/rendering/dom/src/**/*.{ts,tsx}",
+			"packages/extensions/undo/src/**/*.{ts,tsx}",
+		],
+		ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
+		rules: {
+			"pen/require-selection-origin": "error",
+		},
+	},
+	{
+		// OV3: React and Vue overlay bindings (caret, selection rect, overlay
+		// layout and paint hooks) measure nothing and run no frame driver;
+		// there is no allowlist. The rule self-scopes by basename.
+		files: [
+			"packages/rendering/react/src/**/*.{ts,tsx}",
+			"packages/rendering/vue/src/**/*.{ts,tsx}",
+		],
+		rules: {
+			"pen/no-overlay-binding-measure": "error",
+		},
+	},
+	{
 		// SCALE2: function-form decorationsFacet sources recompute in full on
 		// every commit. Remaining sites are listed with a reason in
 		// scripts/unscoped-decoration-source-allowlist.json; an entry with no

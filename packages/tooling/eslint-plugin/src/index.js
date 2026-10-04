@@ -22,7 +22,9 @@ import { noUnstyledFocus } from "./rules/noUnstyledFocus.js";
 import { noUnscopedDecorationSource } from "./rules/noUnscopedDecorationSource.js";
 import { noUserFacingLiterals } from "./rules/noUserFacingLiterals.js";
 import { noNewOps } from "./rules/noNewOps.js";
+import { noOverlayBindingMeasure } from "./rules/noOverlayBindingMeasure.js";
 import { noV1ExtensionFields } from "./rules/noV1ExtensionFields.js";
+import { requireSelectionOrigin } from "./rules/requireSelectionOrigin.js";
 
 export const rules = {
 	"no-above-floor-api": noAboveFloorApi,
@@ -49,7 +51,9 @@ export const rules = {
 	"no-unscoped-decoration-source": noUnscopedDecorationSource,
 	"no-user-facing-literals": noUserFacingLiterals,
 	"no-new-ops": noNewOps,
+	"no-overlay-binding-measure": noOverlayBindingMeasure,
 	"no-v1-extension-fields": noV1ExtensionFields,
+	"require-selection-origin": requireSelectionOrigin,
 };
 
 export default { rules };
