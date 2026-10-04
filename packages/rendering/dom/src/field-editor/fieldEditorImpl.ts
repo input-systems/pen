@@ -1361,6 +1361,30 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._projector.scrollIntoView(target, scroll);
 	}
 
+	/**
+	 * P4: a host moved a mounted block element (a regroup into another AX1
+	 * list group wrapper) and the move dropped the focus `focusTarget` held,
+	 * as any DOM move of a focused node does. That focus was this editor's,
+	 * so it is restored rather than taken (HOST9), and the record projects
+	 * back into the field in the same turn: the native range left with it.
+	 */
+	ackBlockMoved(focusTarget: HTMLElement): void {
+		if (
+			!focusTarget.isConnected ||
+			focusTarget.ownerDocument.activeElement === focusTarget
+		) {
+			return;
+		}
+		if (
+			!this._focusController.requestDomFocus(focusTarget, "restore", {
+				preventScroll: true,
+			})
+		) {
+			return;
+		}
+		this._projector.project("mount-ack");
+	}
+
 	ackBlockMounted(blockId: string, element: HTMLElement): void {
 		this._projector.ackBlockMounted(blockId, element);
 		// A newly mounted block may resolve a request that was unresolved.

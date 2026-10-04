@@ -19,6 +19,7 @@ import {
 	listItemHostAttributes,
 } from "../utils/dataAttributes";
 import { resolveBlockTextAlignment } from "../utils/blockTextAlignment";
+import { isDomHTMLElement } from "../utils/domNodes";
 
 export interface DocumentTree {
 	readonly content: HTMLElement;
@@ -77,6 +78,8 @@ export function createDocumentTree(
 	const root: SiblingHost = { element: blocksHost, groups: new Map(), segments: NO_SEGMENTS };
 	let syncDepth = 0;
 	const pendingAcks: string[] = [];
+	/** The element that held focus in the tree when the outermost list sync began. */
+	let focusBeforeSync: HTMLElement | null = null;
 
 	const destroyNodes = (blockId: string): void => {
 		const nodes = nodesByBlockId.get(blockId);
@@ -97,6 +100,7 @@ export function createDocumentTree(
 		for (const blockId of segmentBlockIds(previous)) {
 			if (!next.has(blockId)) destroyNodes(blockId);
 		}
+		if (syncDepth === 0) focusBeforeSync = focusedElementIn(content);
 		syncDepth += 1;
 		for (const blockId of blockIds) {
 			if (!nodesByBlockId.has(blockId)) {
@@ -111,12 +115,19 @@ export function createDocumentTree(
 
 	// P4 (W3.R8): a new element is acked in this turn, once the outermost
 	// list sync has put it (and any parent mounted with it) in the document.
+	// A move into another list group wrapper blurs the moved element, so a
+	// move that dropped focus held in the tree is acked too.
 	const flushAcks = (): void => {
 		const blockIds = pendingAcks.splice(0);
 		for (const blockId of blockIds) {
 			const element = nodesByBlockId.get(blockId)?.element;
 			if (element?.isConnected)
 				fieldEditor.ackBlockMounted(blockId, element);
+		}
+		const focused = focusBeforeSync;
+		focusBeforeSync = null;
+		if (focused?.isConnected && ownerDocument.activeElement !== focused) {
+			fieldEditor.ackBlockMoved(focused);
 		}
 	};
 
@@ -310,6 +321,12 @@ function reconcileInline(
 
 function isFieldEditorOwned(snapshot: BlockSnapshot): boolean {
 	return snapshot.field.expandedRole !== null || snapshot.field.isEditing;
+}
+
+/** The focused element when it is inside `container`, else null. */
+function focusedElementIn(container: HTMLElement): HTMLElement | null {
+	const active = container.ownerDocument.activeElement;
+	return isDomHTMLElement(active) && container.contains(active) ? active : null;
 }
 
 function segmentBlockIds(segments: readonly ListSegment[]): string[] {
