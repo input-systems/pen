@@ -17,10 +17,7 @@ import {
 	writeNativeRangeFromField,
 } from "./selectionProjector";
 import { applyListInputRule } from "./commands";
-import {
-	isCollaboratorTransaction,
-	isHistoryTransactionOrigin,
-} from "./transactionOrigin";
+import { isHistoryTransactionOrigin } from "./transactionOrigin";
 import {
 	applyInlineTextDiffInput,
 	applyInlineTextInput,
@@ -498,7 +495,9 @@ export class ContentEditableBackend {
 
 	protected handleYTextChange = (event: FieldEditorTextChangeEvent): void => {
 		if (this.isComposing) {
-			this.deferCollaboratorDelta(event);
+			// C2: nothing the composition produces reaches `Y.Text` before
+			// compositionend, so every delta now is someone else's edit.
+			this.deferredRemoteDeltas.push({ delta: event.delta });
 			return;
 		}
 		if (!this.element || !this.ytext) return;
@@ -522,13 +521,6 @@ export class ContentEditableBackend {
 			return;
 		}
 		this.fieldEditor.projectAfterRebuild?.([blockId]);
-	}
-
-	/** C2: a collaborator delta during composition waits for compositionend. */
-	protected deferCollaboratorDelta(event: FieldEditorTextChangeEvent): void {
-		if (isCollaboratorTransaction(event.transaction)) {
-			this.deferredRemoteDeltas.push({ delta: event.delta });
-		}
 	}
 
 	/** Patches the field with `delta`; true when it fell back to a full rebuild. */

@@ -58,3 +58,34 @@ scenario(
 	},
 	{ initScript: disableEditContext },
 );
+
+/**
+ * C2 covers every edit the composition did not produce, not only a
+ * collaborator's: an AI insert ahead of the composition is deferred and the
+ * composition rebased over it on both backends.
+ */
+for (const editContext of [false, true]) {
+	const backend = editContext ? "EditContext" : "contenteditable";
+	scenario(
+		`C2: an AI insert ahead of a composition lands before it and the composition stays at its place (${backend})`,
+		async (s, page) => {
+			test.skip(test.info().project.name !== "chromium", "CDP IME is Chromium-only");
+			await s.load("hello-world");
+			await page.evaluate(() => window.__penConformance.selectTextById("hello-p1", 11, 11));
+			const cdp = await page.context().newCDPSession(page);
+			await cdp.send("Input.imeSetComposition", { text: "ni", selectionStart: 2, selectionEnd: 2 });
+			await s.applyAiRangeReplacement({
+				start: { blockId: "hello-p1", offset: 0 },
+				end: { blockId: "hello-p1", offset: 0 },
+				replacementText: "AI ",
+			});
+			await cdp.send("Input.insertText", { text: "你" });
+
+			await expect.poll(() => readDocumentText(page)).toBe("AI Hello world你");
+			await expect.poll(() => readSurfaceText(page)).toBe("AI Hello world你");
+			expect(await readFocusOffset(page), "the caret ends after the composed text").toBe(15);
+			await s.assert.domMatchesAuthority();
+		},
+		editContext ? undefined : { initScript: disableEditContext },
+	);
+}
