@@ -1,11 +1,10 @@
-import type { ImportResult, Editor } from "@input/pen-types";
+import type { Editor } from "@input/pen-types";
+import { INGEST_FORBIDDEN_KEYS, INGEST_MAX_TEXT_SIZE } from "../../ingestBounds";
 import {
-	INGEST_FORBIDDEN_KEYS,
-	INGEST_MAX_IMAGE_COUNT,
-	INGEST_MAX_NESTING_DEPTH,
-	INGEST_MAX_NODE_COUNT,
-	INGEST_MAX_TEXT_SIZE,
-} from "../../ingestBounds";
+	emitIngestReport as emitSharedIngestReport,
+	type IngestDropCounts,
+	type IngestReport,
+} from "../../ingestReport";
 
 export {
 	INGEST_FORBIDDEN_KEYS,
@@ -15,75 +14,13 @@ export {
 	INGEST_MAX_TEXT_SIZE,
 	INGEST_TIME_BUDGET_MS,
 } from "../../ingestBounds";
-
-export type IngestDropReason =
-	| "unknown-block-type"
-	| "profile-disallowed"
-	| "depth-exceeded"
-	| "count-exceeded"
-	| "text-size-exceeded"
-	| "image-count-exceeded"
-	| "invalid-props"
-	| "forbidden-key";
-
-const BOUND_BY_REASON: Partial<Record<IngestDropReason, string>> = {
-	"depth-exceeded": "INGEST_MAX_NESTING_DEPTH",
-	"count-exceeded": "INGEST_MAX_NODE_COUNT",
-	"text-size-exceeded": "INGEST_MAX_TEXT_SIZE",
-	"image-count-exceeded": "INGEST_MAX_IMAGE_COUNT",
-};
-
-const LIMIT_BY_REASON: Partial<Record<IngestDropReason, number>> = {
-	"depth-exceeded": INGEST_MAX_NESTING_DEPTH,
-	"count-exceeded": INGEST_MAX_NODE_COUNT,
-	"text-size-exceeded": INGEST_MAX_TEXT_SIZE,
-	"image-count-exceeded": INGEST_MAX_IMAGE_COUNT,
-};
-
-export interface IngestDroppedByReason {
-	readonly reason: IngestDropReason;
-	readonly count: number;
-	readonly bound?: string;
-	readonly limit?: number;
-	readonly actual?: number;
-	readonly dropped: string;
-}
-
-export interface IngestReport extends ImportResult {
-	readonly droppedByReason: readonly IngestDroppedByReason[];
-}
-
-export class IngestDropCounts {
-	private readonly counts = new Map<IngestDropReason, number>();
-	private readonly actuals = new Map<IngestDropReason, number>();
-
-	add(reason: IngestDropReason, count = 1, actual?: number): void {
-		this.counts.set(reason, (this.counts.get(reason) ?? 0) + count);
-		if (actual !== undefined) {
-			this.actuals.set(reason, Math.max(this.actuals.get(reason) ?? 0, actual));
-		}
-	}
-
-	toDroppedByReason(): IngestDroppedByReason[] {
-		const reasons = [...this.counts.entries()].sort(([a], [b]) =>
-			a.localeCompare(b, "en"),
-		);
-		return reasons.map(([reason, count]) => {
-			const bound = BOUND_BY_REASON[reason];
-			const limit = LIMIT_BY_REASON[reason];
-			const actual = resolveActual(reason, count, this.actuals.get(reason));
-			const entry: IngestDroppedByReason = {
-				reason,
-				count,
-				dropped: formatDropped(reason, count),
-			};
-			if (bound && limit !== undefined && actual !== undefined) {
-				return { ...entry, bound, limit, actual };
-			}
-			return bound ? { ...entry, bound } : entry;
-		});
-	}
-}
+export {
+	createIngestReport,
+	IngestDropCounts,
+	type IngestDropReason,
+	type IngestDroppedByReason,
+	type IngestReport,
+} from "../../ingestReport";
 
 /**
  * Refuse a JSON source that exceeds the text cap. Slicing would produce
@@ -113,43 +50,13 @@ export function parseJsonSource(source: string): unknown {
 	return JSON.parse(source);
 }
 
-export function createIngestReport(
-	parsedTopLevelBlockCount: number,
-	importedTopLevelBlockCount: number,
-	droppedBlockTypes: readonly string[],
-	drops: IngestDropCounts,
-): IngestReport {
-	const droppedByReason = drops.toDroppedByReason();
-	return {
-		parsedTopLevelBlockCount,
-		importedTopLevelBlockCount,
-		droppedBlockCount: Math.max(
-			0,
-			parsedTopLevelBlockCount - importedTopLevelBlockCount,
-		),
-		droppedBlockTypes: [...droppedBlockTypes],
-		normalized: droppedByReason.length > 0,
-		droppedByReason,
-	};
-}
-
+/** JSON's diagnostic message names the bound but not its measured values. */
 export function emitIngestReport(
 	editor: Pick<Editor, "internals">,
 	report: IngestReport,
 	source: string,
 ): void {
-	if (report.droppedByReason.length === 0) {
-		return;
-	}
-
-	const truncated = report.droppedByReason.some((entry) => entry.bound);
-	editor.internals.emit("diagnostic", {
-		code: truncated ? "import-truncated" : "import-dropped",
-		level: "warn",
-		source,
-		message: formatIngestMessage(report, truncated),
-		droppedByReason: report.droppedByReason,
-	});
+	emitSharedIngestReport(editor, report, source, false);
 }
 
 function isForbiddenKey(key: string): boolean {
@@ -204,52 +111,4 @@ export function copyRecord(
 		);
 	}
 	return record;
-}
-
-function resolveActual(
-	reason: IngestDropReason,
-	count: number,
-	stored: number | undefined,
-): number | undefined {
-	if (stored !== undefined) {
-		return stored;
-	}
-	if (reason === "count-exceeded") {
-		return INGEST_MAX_NODE_COUNT + count;
-	}
-	if (reason === "image-count-exceeded") {
-		return INGEST_MAX_IMAGE_COUNT + count;
-	}
-	return undefined;
-}
-
-function formatIngestMessage(report: IngestReport, truncated: boolean): string {
-	const parts = report.droppedByReason.map((entry) => {
-		const bound = entry.bound ? ` (${entry.bound})` : "";
-		return `${entry.dropped} ${entry.reason}${bound}`;
-	});
-	const verb = truncated ? "truncated" : "dropped";
-	return `import ${verb}: ${parts.join("; ")}`;
-}
-
-function formatDropped(reason: IngestDropReason, count: number): string {
-	switch (reason) {
-		case "text-size-exceeded":
-			return `${count} code unit${count === 1 ? "" : "s"}`;
-		case "image-count-exceeded":
-			return `${count} image${count === 1 ? "" : "s"}`;
-		case "forbidden-key":
-			return `${count} own key${count === 1 ? "" : "s"}`;
-		case "invalid-props":
-			return `${count} prop${count === 1 ? "" : "s"}`;
-		case "unknown-block-type":
-		case "profile-disallowed":
-		case "depth-exceeded":
-		case "count-exceeded":
-			return `${count} block${count === 1 ? "" : "s"}`;
-		default: {
-			const exhaustive: never = reason;
-			return exhaustive;
-		}
-	}
 }

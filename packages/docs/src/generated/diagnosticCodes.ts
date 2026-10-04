@@ -163,12 +163,12 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 	{
 		code: "import-dropped",
 		levels: ["warn"],
-		sources: ["extensions/interop/src/html/import/ingestBounds.ts", "extensions/interop/src/json/import/ingestBounds.ts", "extensions/interop/src/markdown/import/ingestBounds.ts", "rendering/dom/src/utils/clipboardIngest.ts"],
+		sources: ["extensions/interop/src/ingestReport.ts", "rendering/dom/src/utils/clipboardIngest.ts"],
 	},
 	{
 		code: "import-truncated",
 		levels: ["warn"],
-		sources: ["extensions/interop/src/html/import/ingestBounds.ts", "extensions/interop/src/json/import/ingestBounds.ts", "extensions/interop/src/markdown/import/ingestBounds.ts", "extensions/interop/src/xml/importer.ts", "rendering/dom/src/utils/clipboardIngest.ts"],
+		sources: ["extensions/interop/src/ingestReport.ts", "extensions/interop/src/xml/importer.ts", "rendering/dom/src/utils/clipboardIngest.ts"],
 	},
 	{
 		code: "ingest-unexposed-block",

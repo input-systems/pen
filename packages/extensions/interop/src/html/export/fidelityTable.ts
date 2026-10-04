@@ -1,11 +1,7 @@
-export type ExportFidelity = "full" | "degraded" | "dropped";
-
-export interface ExportFidelityRow {
-	kind: "block" | "mark" | "inline-node";
-	type: string;
-	fidelity: ExportFidelity;
-	notes: string;
-}
+import {
+	renderFidelityTable,
+	type ExportFidelityRow,
+} from "../../fidelityTable";
 
 export const HTML_EXPORT_FIDELITY: readonly ExportFidelityRow[] = [
 	{ kind: "block", type: "paragraph", fidelity: "full", notes: "" },
@@ -74,36 +70,11 @@ export const HTML_EXPORT_FIDELITY: readonly ExportFidelityRow[] = [
 	},
 ];
 
-function renderFidelityTable(
-	title: string,
-	intro: string,
-	rows: readonly ExportFidelityRow[],
-): string {
-	const lines = [
-		`# ${title}`,
-		"",
-		intro,
-		"",
-		"Generated from `src/html/export/fidelityTable.ts` and asserted by `src/html/export/__tests__/iop3Fidelity.test.ts`. Do not edit by hand.",
-		"",
-		"| Kind | Type | Fidelity | Notes |",
-		"| --- | --- | --- | --- |",
-	];
-
-	for (const row of rows) {
-		lines.push(
-			`| ${row.kind} | ${row.type} | ${row.fidelity} | ${row.notes} |`,
-		);
-	}
-
-	lines.push("");
-	return lines.join("\n");
-}
-
 export function renderHtmlFidelityTable(): string {
 	return renderFidelityTable(
 		"HTML export fidelity (IOP3)",
 		"What the HTML exporter preserves for each default block, mark, and inline node. Schema `toHTML` attribute interpolations are deferred to a later S.5 slice.",
+		"src/html/export",
 		HTML_EXPORT_FIDELITY,
 	);
 }

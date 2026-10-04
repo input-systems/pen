@@ -15,12 +15,12 @@ function escapeMarkup(value: string): string {
 	);
 }
 
-/** SEC5: escape document text before it enters a markup text node. */
+/** SEC5: escape document text before it enters an HTML or XML text node. */
 export function escapeMarkupText(value: string): string {
 	return escapeMarkup(value);
 }
 
-/** SEC5: escape document values before they enter a markup attribute. */
+/** SEC5: escape document values before they enter an HTML or XML attribute. */
 export function escapeMarkupAttribute(value: string): string {
 	return escapeMarkup(value);
 }

@@ -1,11 +1,7 @@
-export type ExportFidelity = "full" | "degraded" | "dropped";
-
-export interface ExportFidelityRow {
-  kind: "block" | "mark" | "inline-node";
-  type: string;
-  fidelity: ExportFidelity;
-  notes: string;
-}
+import {
+  renderFidelityTable,
+  type ExportFidelityRow,
+} from "../../fidelityTable";
 
 export const MARKDOWN_EXPORT_FIDELITY: readonly ExportFidelityRow[] = [
   { kind: "block", type: "paragraph", fidelity: "full", notes: "" },
@@ -86,34 +82,11 @@ export const MARKDOWN_EXPORT_FIDELITY: readonly ExportFidelityRow[] = [
   },
 ];
 
-function renderFidelityTable(
-  title: string,
-  intro: string,
-  rows: readonly ExportFidelityRow[],
-): string {
-  const lines = [
-    `# ${title}`,
-    "",
-    intro,
-    "",
-    "Generated from `src/markdown/export/fidelityTable.ts` and asserted by `src/markdown/export/__tests__/iop3Fidelity.test.ts`. Do not edit by hand.",
-    "",
-    "| Kind | Type | Fidelity | Notes |",
-    "| --- | --- | --- | --- |",
-  ];
-
-  for (const row of rows) {
-    lines.push(`| ${row.kind} | ${row.type} | ${row.fidelity} | ${row.notes} |`);
-  }
-
-  lines.push("");
-  return lines.join("\n");
-}
-
 export function renderMarkdownFidelityTable(): string {
   return renderFidelityTable(
     "Markdown export fidelity (IOP3)",
     "Pen markdown is GitHub-flavored Markdown for blocks with a standard representation, plus Pen-specific constructs for the rest. A non-Pen reader sees GFM for headings, lists, code, tables, images, and emphasis. Subdocument and toggle become HTML comments or raw HTML.",
+    "src/markdown/export",
     MARKDOWN_EXPORT_FIDELITY,
   );
 }

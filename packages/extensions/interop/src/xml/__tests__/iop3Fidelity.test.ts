@@ -9,8 +9,8 @@ import { xmlExporter } from "../exporter";
 import {
 	XML_EXPORT_FIDELITY,
 	renderXmlFidelityTable,
-	type ExportFidelityRow,
 } from "../fidelityTable";
+import type { ExportFidelityRow } from "../../fidelityTable";
 import { xmlImporter } from "../importer";
 import { defaultSchema } from "@input/pen-schema";
 

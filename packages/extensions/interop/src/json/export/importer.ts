@@ -1,5 +1,6 @@
 import {
   createImportResult,
+  inlineContentToOps,
   normalizePendingBlocksForImport,
   reportPendingBlockImportViolations,
   type PendingBlock,
@@ -19,7 +20,6 @@ import type {
   PenBlockJSON,
   PenDocumentJSON,
   PenInlineSegmentJSON,
-  PenMarkJSON,
 } from "./types";
 
 export const jsonImporter: Importer<string | PenDocumentJSON, PendingBlock[]> = {
@@ -167,7 +167,7 @@ function buildOpsWithIds(
     if (block.type === "table" && block.children) {
       materializeTableChildren(ops, blockId, block.children);
     } else {
-      materializeInlineContent(ops, blockId, block);
+      ops.push(...inlineContentToOps(block, blockId));
 
       if (block.children) {
         const childIdBlocks = idBlock?.children;
@@ -259,80 +259,6 @@ function materializeTableChildren(
 
       materializeTableCellContent(ops, blockId, rowIdx, colIdx, cell);
     }
-  }
-}
-
-function materializeInlineContent(
-  ops: DocumentOp[],
-  blockId: string,
-  block: PendingBlock,
-): void {
-  if (block.segments && block.segments.length > 0) {
-    let offset = 0;
-    for (const segment of block.segments) {
-      if (segment.type === "text") {
-        if (segment.text.length === 0) {
-          continue;
-        }
-        ops.push({
-          type: "splice-text",
-          blockId,
-          from: offset,
-          to: offset,
-          insert: segment.text,
-        });
-        if (segment.attributes) {
-          ops.push({
-            type: "format-text",
-            blockId,
-            from: offset,
-            to: offset + segment.text.length,
-            marks: segment.attributes,
-          });
-        }
-        offset += segment.text.length;
-        continue;
-      }
-
-      ops.push({
-        type: "splice-text",
-        blockId,
-        from: offset,
-        to: offset,
-        insert: {
-          nodeType: segment.nodeType,
-          props: segment.props ?? {},
-        },
-      });
-      offset += 1;
-    }
-    return;
-  }
-
-  if (!block.content) {
-    return;
-  }
-
-  ops.push({
-    type: "splice-text",
-    blockId,
-    from: 0,
-    to: 0,
-    insert: block.content,
-  });
-
-  for (const mark of block.marks ?? []) {
-    if (mark.start >= mark.end) {
-      continue;
-    }
-
-    ops.push({
-      type: "format-text",
-      blockId,
-      from: mark.start,
-      to: mark.end,
-      marks: { [mark.type]: mark.props ?? true },
-    });
   }
 }
 

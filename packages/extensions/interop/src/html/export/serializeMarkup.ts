@@ -1,4 +1,4 @@
-import { escapeMarkupAttribute, escapeMarkupText } from "./escapeMarkup";
+import { escapeMarkupAttribute, escapeMarkupText } from "../../escapeMarkup";
 
 export type MarkupAttributeValue = string | number | boolean | null | undefined;
 

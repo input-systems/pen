@@ -9,8 +9,8 @@ import { jsonExporter } from "../exporter";
 import {
 	JSON_EXPORT_FIDELITY,
 	renderJsonFidelityTable,
-	type ExportFidelityRow,
 } from "../fidelityTable";
+import type { ExportFidelityRow } from "../../../fidelityTable";
 import { jsonImporter } from "../importer";
 import type { PenDocumentJSON } from "../types";
 import { defaultSchema } from "@input/pen-schema";
