@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { getInlineOffsetPoint } from "../src/domGeometry";
 import { disableEditContext } from "../suites/ime/compose";
 import { twoEditorScenario, type EditorPeer, type TwoEditorApi } from "../src/twoEditorScenario";
+import { readModelBlockText } from "../suites/specHelpers";
 
 /**
  * W5.R10: two real editors on two pages, every update through a counted
@@ -21,16 +22,6 @@ async function clickAt(peer: EditorPeer, blockId: string, offset: number): Promi
 
 async function applyOn(peer: EditorPeer, ops: readonly DocumentOp[]): Promise<void> {
 	await peer.page.evaluate((list) => window.__penConformance.apply(list), ops);
-}
-
-async function blockText(page: Page, blockId: string): Promise<string> {
-	return page.evaluate(
-		(id) =>
-			window.__penConformance
-				.documentSnapshot()
-				.blocks.find((block) => block.id === id)?.text ?? "",
-		blockId,
-	);
 }
 
 async function blockOrder(page: Page): Promise<string[]> {
@@ -72,7 +63,7 @@ twoEditorScenario(
 		await relay.release({ order: "reverse" });
 		await standing();
 		await converge();
-		expect(await blockText(a.page, "hello-p1")).toBe("Helloabc worldABC");
+		expect(await readModelBlockText(a.page, "hello-p1")).toBe("Helloabc worldABC");
 		// Each local caret stays after its own typing on both pages.
 		await expect
 			.poll(() => a.page.evaluate(() => window.__penConformance.selection))
@@ -123,7 +114,7 @@ async function imeLeg({ a, b, relay, standing, converge }: TwoEditorApi): Promis
 	await cdp.send("Input.insertText", { text: "漢" });
 	await standing();
 	await converge();
-	expect(await blockText(a.page, "hello-p1")).toBe("XHello world漢");
+	expect(await readModelBlockText(a.page, "hello-p1")).toBe("XHello world漢");
 }
 
 twoEditorScenario(
@@ -173,7 +164,7 @@ twoEditorScenario(
 		// The anchored caret still types where it sits.
 		await a.page.keyboard.type("Z");
 		await converge();
-		expect(await blockText(b.page, "two-p2")).toBe("Delta Zecho foxtrot");
+		expect(await readModelBlockText(b.page, "two-p2")).toBe("Delta Zecho foxtrot");
 	},
 	{ fixture: "two-paragraph" },
 );

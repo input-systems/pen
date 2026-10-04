@@ -185,7 +185,9 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 
 	// 99 -> 101: suites/overlays/{ov2-moved-root,ov2-scroll-clip}.spec.ts (OV2, the root is the layer's containing block).
 	// 101 -> 102: suites/overlays/ov3-rtl-binding.spec.ts (OV2/OV3, binding-rendered carets in an RTL host).
-	const expectedPlaywrightSpecs = 104;
+	// 104 -> 102: scenarios/{m2-arrow-swap,m5-vertical-no-swap}.spec.ts merged into
+	// suites/bidi/{live-rules,m2-shift-word,m5-vertical-no-swap}.spec.ts (same M2/M5 scenarios).
+	const expectedPlaywrightSpecs = 102;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

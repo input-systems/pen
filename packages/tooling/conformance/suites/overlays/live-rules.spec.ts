@@ -1,8 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
-import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
-import { attachJson, logLoad } from "../specHelpers";
+import { attachJson, clickOffsetAndAwaitCaret, logLoad } from "../specHelpers";
 
 type OverlaySnapshot = {
 	kind: "present" | "absent" | "unchecked";
@@ -18,29 +17,6 @@ type OverlaySnapshot = {
 	left: number;
 	top: number;
 };
-
-async function clickOffset(
-	page: Page,
-	blockId: string,
-	offset: number,
-): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId, offset });
-	await page.mouse.click(point.x, point.y);
-	await expect
-		.poll(async () => {
-			return page.evaluate(() => {
-				const selection = window.__penConformance.selection;
-				if (selection?.type !== "text") {
-					return "not-text";
-				}
-				if (!window.__penConformance.isCollapsed()) {
-					return "expanded";
-				}
-				return `${selection.focus.blockId}:${selection.focus.offset}`;
-			});
-		})
-		.toBe(`${blockId}:${offset}`);
-}
 
 async function readOverlay(page: Page): Promise<OverlaySnapshot> {
 	// The overlay paints in the scheduler flush after the selection commit
@@ -132,7 +108,7 @@ scenario(
 			},
 		]);
 		await expect(page.locator("[data-pen-inline-atom]")).toBeVisible();
-		await clickOffset(page, "hello-p1", 5);
+		await clickOffsetAndAwaitCaret(page, "hello-p1", 5);
 		const overlay = await readOverlay(page);
 		const atom = await page.evaluate(() => {
 			const node = document.querySelector("[data-pen-inline-atom]");

@@ -112,7 +112,7 @@ test("scenarios call the bridge helper, not selection.isCollapsed", () => {
 	const files = [
 		"../../scenarios/f39-undo-selection.spec.ts",
 		"../../scenarios/f39-caret-overlay.spec.ts",
-		"../../scenarios/m2-arrow-swap.spec.ts",
+		"../../suites/specHelpers.ts",
 	];
 	for (const rel of files) {
 		const body = readFileSync(new URL(rel, import.meta.url), "utf8");

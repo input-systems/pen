@@ -2,20 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
 import { G5_WRAP_BLOCK } from "../../src/g5Geometry";
-import { FocusPoint, midpoint } from "../specHelpers";
-
-async function readFocusPoint(page: Page): Promise<FocusPoint> {
-	return page.evaluate(() => {
-		const selection = window.__penConformance.selection;
-		if (selection?.type !== "text") {
-			return null;
-		}
-		return {
-			blockId: selection.focus.blockId,
-			offset: selection.focus.offset,
-		};
-	});
-}
+import { midpoint, readFocus } from "../specHelpers";
 
 async function readGeometryDiagnostics(page: Page): Promise<string[]> {
 	return page.evaluate(() =>
@@ -53,9 +40,9 @@ scenario(
 		await s.load("two-paragraph");
 		await s.selectText(0, 6);
 
-		const before = await readFocusPoint(page);
+		const before = await readFocus(page);
 		await page.keyboard.press("ArrowDown");
-		const after = await readFocusPoint(page);
+		const after = await readFocus(page);
 		const diagnostics = await readGeometryDiagnostics(page);
 
 		await test.info().attach("g5-arrow-down-across-blocks", {
@@ -104,9 +91,9 @@ scenario(
 		).toBeTruthy();
 		await s.selectText(0, midpoint(firstLine!));
 
-		const before = await readFocusPoint(page);
+		const before = await readFocus(page);
 		await page.keyboard.press("ArrowDown");
-		const after = await readFocusPoint(page);
+		const after = await readFocus(page);
 		const diagnostics = await readGeometryDiagnostics(page);
 
 		await test.info().attach("g5-arrow-down-wrapped-line", {

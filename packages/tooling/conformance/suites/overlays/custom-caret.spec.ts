@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
-import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
+import { clickOffsetAndAwaitCaret } from "../specHelpers";
 
 const CUSTOM_CARET = "/?customCaret=1";
 
@@ -17,26 +17,6 @@ type CaretSnapshot = {
 	width: number;
 	height: number;
 };
-
-async function clickOffset(
-	page: Page,
-	blockId: string,
-	offset: number,
-): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId, offset });
-	await page.mouse.click(point.x, point.y);
-	await expect
-		.poll(() =>
-			page.evaluate(() => {
-				const selection = window.__penConformance.selection;
-				return selection?.type === "text" &&
-					window.__penConformance.isCollapsed()
-					? `${selection.focus.blockId}:${selection.focus.offset}`
-					: "not-collapsed";
-			}),
-		)
-		.toBe(`${blockId}:${offset}`);
-}
 
 async function readCaret(page: Page): Promise<CaretSnapshot> {
 	return page.evaluate(() => {
@@ -80,7 +60,7 @@ scenario(
 	"O: customCaret paints an ordinary collapsed caret and hides the native caret",
 	async (s, page) => {
 		await s.load("hello-world");
-		await clickOffset(page, "hello-p1", 2);
+		await clickOffsetAndAwaitCaret(page, "hello-p1", 2);
 		// The load already painted a caret at the end of the line, so a caret
 		// count proves nothing about the click; the overlay paints the new
 		// record on the next scheduler flush (OV4), so wait for that flush.
@@ -126,7 +106,7 @@ scenario(
 	"O: customCaret hands the caret back to the native caret for a range",
 	async (s, page) => {
 		await s.load("hello-world");
-		await clickOffset(page, "hello-p1", 1);
+		await clickOffsetAndAwaitCaret(page, "hello-p1", 1);
 		await expect.poll(async () => (await readCaret(page)).caretCount).toBe(1);
 		await page.keyboard.press("Shift+ArrowRight");
 		await expect

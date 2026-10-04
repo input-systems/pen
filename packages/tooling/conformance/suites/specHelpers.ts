@@ -3,7 +3,7 @@ import type {
 	GeometryLineBox,
 	SerializedSelection,
 } from "../src/types";
-import { type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { getInlineOffsetPoint } from "../src/domGeometry";
 import { loadavg } from "node:os";
 
@@ -26,6 +26,40 @@ export async function clickOffset(
 ): Promise<void> {
 	const point = await getInlineOffsetPoint(page, { blockId, offset });
 	await page.mouse.click(point.x, point.y);
+}
+
+/**
+ * Clicks a logical offset and waits until the authority holds a collapsed
+ * text caret there.
+ */
+export async function clickOffsetAndAwaitCaret(
+	page: Page,
+	blockId: string,
+	offset: number,
+): Promise<void> {
+	await clickOffset(page, blockId, offset);
+	await expect
+		.poll(() =>
+			page.evaluate(() => {
+				const selection = window.__penConformance.selection;
+				if (selection?.type !== "text") {
+					return "not-text";
+				}
+				if (!window.__penConformance.isCollapsed()) {
+					return "expanded";
+				}
+				return `${selection.focus.blockId}:${selection.focus.offset}`;
+			}),
+		)
+		.toBe(`${blockId}:${offset}`);
+}
+
+/** The model text of one block (the authority, not the DOM). */
+export async function readModelBlockText(
+	page: Page,
+	blockId: string,
+): Promise<string> {
+	return page.evaluate((id) => window.__penConformance.blockText(id), blockId);
 }
 
 export async function blockInlineText(

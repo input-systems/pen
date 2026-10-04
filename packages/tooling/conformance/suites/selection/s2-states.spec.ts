@@ -4,6 +4,7 @@ import { itemsOfKind, readSettledLayer } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
 import type { LogicalPoint, ScenarioApi } from "../../src/types";
 import { dispatchUnidentifiedKeyThenInput } from "../ime/compose";
+import { readModelBlockText } from "../specHelpers";
 
 /**
  * D5, W3.R17: the two declared S2 exceptions and their pinned substitute
@@ -75,13 +76,6 @@ async function nativeRangeCountInRoot(page: Page): Promise<number> {
 
 async function idle(page: Page): Promise<void> {
 	await page.evaluate(() => window.__penConformance.whenIdle());
-}
-
-async function blockText(page: Page, blockId: string): Promise<string> {
-	return page.evaluate(
-		(id) => window.__penConformance.blockText(id),
-		blockId,
-	);
 }
 
 /** A pointer drag from the anchor to the focus: a real 52-block range. */
@@ -300,7 +294,7 @@ scenario(
 		await selectLargeRange(s, page);
 		await page.keyboard.press("x");
 		await expectCaretInAnchorField(s, page, ANCHOR.offset + 1);
-		expect(await blockText(page, ANCHOR.blockId)).toBe(
+		expect(await readModelBlockText(page, ANCHOR.blockId)).toBe(
 			`${COLLAPSED_TEXT.slice(0, ANCHOR.offset)}x${COLLAPSED_TEXT.slice(ANCHOR.offset)}`,
 		);
 		expect(
@@ -347,7 +341,7 @@ scenario(
 
 		await page.keyboard.press("x");
 		await idle(page);
-		expect(await blockText(page, ANCHOR.blockId)).toBe(
+		expect(await readModelBlockText(page, ANCHOR.blockId)).toBe(
 			"Lix 3 of the large fuzz document.",
 		);
 	},
@@ -358,7 +352,7 @@ scenario("S2: Backspace over a 51-block range deletes it", async (s, page) => {
 	await selectLargeRange(s, page);
 	await page.keyboard.press("Backspace");
 	await expectCaretInAnchorField(s, page, ANCHOR.offset);
-	expect(await blockText(page, ANCHOR.blockId)).toBe(COLLAPSED_TEXT);
+	expect(await readModelBlockText(page, ANCHOR.blockId)).toBe(COLLAPSED_TEXT);
 });
 
 scenario("S2: copy from the sink carries the range", async (s, page) => {
@@ -437,7 +431,7 @@ scenario(
 			nativeVirtualKeyCode: 229,
 		});
 		await expect
-			.poll(() => blockText(page, ANCHOR.blockId))
+			.poll(() => readModelBlockText(page, ANCHOR.blockId))
 			.toBe(
 				`${COLLAPSED_TEXT.slice(0, ANCHOR.offset)}你${COLLAPSED_TEXT.slice(ANCHOR.offset)}`,
 			);
@@ -449,7 +443,7 @@ scenario(
 	"S2 D20: a keyCode 229 keydown that is not a composition leaves a 51-block range to the input that follows it",
 	async (s, page) => {
 		await selectLargeRange(s, page);
-		const anchorText = await blockText(page, ANCHOR.blockId);
+		const anchorText = await readModelBlockText(page, ANCHOR.blockId);
 		// An Android keyboard's Backspace: keydown 229 "Unidentified", then
 		// the `beforeinput` it really is. The sink is not editable, so no
 		// engine delivers that input to it; the keydown alone must not delete.
@@ -459,7 +453,7 @@ scenario(
 		);
 		await idle(page);
 		expect(targets.keydownTarget).toBe("sink");
-		expect(await blockText(page, ANCHOR.blockId)).toBe(anchorText);
+		expect(await readModelBlockText(page, ANCHOR.blockId)).toBe(anchorText);
 		expect(
 			await page.evaluate(() => window.__penConformance.substituteState),
 		).toBe("block-surface-range");
@@ -468,6 +462,6 @@ scenario(
 		// The real Backspace that follows still deletes the range, once.
 		await page.keyboard.press("Backspace");
 		await expectCaretInAnchorField(s, page, ANCHOR.offset);
-		expect(await blockText(page, ANCHOR.blockId)).toBe(COLLAPSED_TEXT);
+		expect(await readModelBlockText(page, ANCHOR.blockId)).toBe(COLLAPSED_TEXT);
 	},
 );

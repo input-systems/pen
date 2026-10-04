@@ -1,8 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
-import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
-import { logLoad } from "../specHelpers";
+import { clickOffsetAndAwaitCaret, logLoad } from "../specHelpers";
 
 const HELLO_ID = "hello-p1";
 
@@ -13,26 +12,6 @@ type OverlaySnapshot = {
 	caretColor: string | null;
 	layerMounted: boolean;
 };
-
-async function clickOffset(
-	page: Page,
-	blockId: string,
-	offset: number,
-): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId, offset });
-	await page.mouse.click(point.x, point.y);
-	await expect
-		.poll(async () => {
-			return page.evaluate(() => {
-				const selection = window.__penConformance.selection;
-				if (selection?.type !== "text") {
-					return "not-text";
-				}
-				return `${selection.focus.blockId}:${selection.focus.offset}`;
-			});
-		})
-		.toBe(`${blockId}:${offset}`);
-}
 
 async function readOverlay(page: Page): Promise<OverlaySnapshot> {
 	return page.evaluate(() => {
@@ -78,7 +57,7 @@ scenario(
 		// Atom-edge overlay ink is the O1 scenario in live-rules.spec.ts.
 		const loads = logLoad("O1-ordinary");
 		await s.load("hello-world");
-		await clickOffset(page, HELLO_ID, 2);
+		await clickOffsetAndAwaitCaret(page, HELLO_ID, 2);
 		const overlay = await readOverlay(page);
 		await test.info().attach("o1-ordinary", {
 			body: JSON.stringify({ loadavg: loads, overlay }, null, 2),

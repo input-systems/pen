@@ -32,6 +32,7 @@ import {
 import { getInlineOffsetPoint } from "../src/domGeometry";
 import { scenario } from "../src/scenario";
 import { assertDomAuthorityResult } from "../src/standingAssertions";
+import { clickOffsetAndAwaitCaret, readModelBlockText } from "../suites/specHelpers";
 
 async function assertRtlEmbed(page: Page): Promise<void> {
 	await expect
@@ -62,25 +63,6 @@ async function assertRtlEmbed(page: Page): Promise<void> {
 		.toBe("ok");
 }
 
-async function clickOffset(page: Page, offset: number): Promise<void> {
-	const point = await getInlineOffsetPoint(page, {
-		blockId: BIDI_RTL_EMBED_ID,
-		offset,
-	});
-	await page.mouse.click(point.x, point.y);
-	await expect
-		.poll(async () => {
-			const selection = await page.evaluate(
-				() => window.__penConformance.selection,
-			);
-			if (selection?.type !== "text") {
-				return "not-text";
-			}
-			return `${selection.focus.blockId}:${selection.focus.offset}`;
-		})
-		.toBe(`${BIDI_RTL_EMBED_ID}:${offset}`);
-}
-
 async function documentText(page: Page): Promise<string> {
 	return page.evaluate(() => window.__penConformance.documentText);
 }
@@ -90,7 +72,7 @@ scenario(
 	async (s, page) => {
 		await s.load("bidi-mixed");
 		await assertRtlEmbed(page);
-		await clickOffset(page, BIDI_RTL_LATIN_MID);
+		await clickOffsetAndAwaitCaret(page, BIDI_RTL_EMBED_ID, BIDI_RTL_LATIN_MID);
 		await page.keyboard.press("Backspace");
 
 		const text = await documentText(page);
@@ -111,7 +93,7 @@ scenario(
 	async (s, page) => {
 		await s.load("bidi-mixed");
 		await assertRtlEmbed(page);
-		await clickOffset(page, BIDI_RTL_LATIN_MID);
+		await clickOffsetAndAwaitCaret(page, BIDI_RTL_EMBED_ID, BIDI_RTL_LATIN_MID);
 		await s.keyboard.press("Delete");
 
 		const text = await documentText(page);
@@ -157,24 +139,13 @@ async function selectBlockOffset(
 		.toBe(`${blockId}:${offset}`);
 }
 
-async function blockText(page: Page, blockId: string): Promise<string> {
-	return page.evaluate((id) => {
-		const snapshot = window.__penConformance.documentSnapshot();
-		const block = snapshot.blocks.find((entry) => entry.id === id);
-		if (!block) {
-			throw new Error(`M6: missing block ${id}`);
-		}
-		return block.text;
-	}, blockId);
-}
-
 scenario(
 	"M6: Backspace deletes a ZWJ family as one logical grapheme",
 	async (s, page) => {
 		await s.load("grapheme-clusters");
 		await selectBlockOffset(page, GRAPHEME_ZWJ_ID, GRAPHEME_ZWJ_AFTER);
 		await page.keyboard.press("Backspace");
-		const text = await blockText(page, GRAPHEME_ZWJ_ID);
+		const text = await readModelBlockText(page, GRAPHEME_ZWJ_ID);
 		expect(
 			text,
 			`M6: ZWJ family must leave as one cluster. text=${JSON.stringify(text)}`,
@@ -194,7 +165,7 @@ scenario(
 			GRAPHEME_COMBINING_AFTER,
 		);
 		await page.keyboard.press("Backspace");
-		const text = await blockText(page, GRAPHEME_COMBINING_ID);
+		const text = await readModelBlockText(page, GRAPHEME_COMBINING_ID);
 		expect(text).toBe(GRAPHEME_COMBINING_AFTER_BACKSPACE);
 		expect(text).not.toContain("\u0301");
 		expect(text).not.toContain(GRAPHEME_COMBINING_LINE);
@@ -207,7 +178,7 @@ scenario(
 		await s.load("grapheme-clusters");
 		await selectBlockOffset(page, GRAPHEME_FLAG_ID, GRAPHEME_FLAG_AFTER);
 		await page.keyboard.press("Backspace");
-		const text = await blockText(page, GRAPHEME_FLAG_ID);
+		const text = await readModelBlockText(page, GRAPHEME_FLAG_ID);
 		expect(text).toBe(GRAPHEME_FLAG_AFTER_BACKSPACE);
 	},
 );
@@ -222,19 +193,19 @@ scenario(
 			GRAPHEME_DEVANAGARI_AFTER,
 		);
 		await page.keyboard.press("Backspace");
-		expect(await blockText(page, GRAPHEME_DEVANAGARI_ID)).toBe(
+		expect(await readModelBlockText(page, GRAPHEME_DEVANAGARI_ID)).toBe(
 			GRAPHEME_DEVANAGARI_AFTER_BACKSPACE,
 		);
-		expect(await blockText(page, GRAPHEME_DEVANAGARI_ID)).not.toContain(
+		expect(await readModelBlockText(page, GRAPHEME_DEVANAGARI_ID)).not.toContain(
 			GRAPHEME_DEVANAGARI,
 		);
 
 		await selectBlockOffset(page, GRAPHEME_THAI_ID, GRAPHEME_THAI_AFTER);
 		await page.keyboard.press("Backspace");
-		expect(await blockText(page, GRAPHEME_THAI_ID)).toBe(
+		expect(await readModelBlockText(page, GRAPHEME_THAI_ID)).toBe(
 			GRAPHEME_THAI_AFTER_BACKSPACE,
 		);
-		expect(await blockText(page, GRAPHEME_THAI_ID)).not.toContain(
+		expect(await readModelBlockText(page, GRAPHEME_THAI_ID)).not.toContain(
 			GRAPHEME_THAI,
 		);
 	},
@@ -246,7 +217,7 @@ scenario(
 		await s.load("grapheme-clusters");
 		await selectBlockOffset(page, GRAPHEME_ZWJ_ID, 1);
 		await s.keyboard.press("Delete");
-		const text = await blockText(page, GRAPHEME_ZWJ_ID);
+		const text = await readModelBlockText(page, GRAPHEME_ZWJ_ID);
 		expect(text).toBe(GRAPHEME_ZWJ_AFTER_BACKSPACE);
 		expect(text).not.toContain("\u200D");
 	},
@@ -287,7 +258,7 @@ scenario(
 			GRAPHEME_RTL_FAMILY_AFTER,
 		);
 		await page.keyboard.press("Backspace");
-		const text = await blockText(page, GRAPHEME_RTL_ID);
+		const text = await readModelBlockText(page, GRAPHEME_RTL_ID);
 		expect(text).toBe(GRAPHEME_RTL_AFTER_BACKSPACE);
 		expect(text).not.toContain("\u200D");
 		expect(text).not.toContain(GRAPHEME_ZWJ_FAMILY);

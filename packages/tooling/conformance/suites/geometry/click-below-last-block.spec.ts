@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
-import { FocusPoint, logLoad, readBlockIds } from "../specHelpers";
+import { logLoad, readBlockIds, readFocus } from "../specHelpers";
 
 const LAST_ID = "two-p2";
 const LAST_TEXT = "Delta echo foxtrot";
@@ -41,19 +41,6 @@ type Snapshot = {
 
 async function readSnapshot(page: Page): Promise<Snapshot> {
 	return page.evaluate(() => window.__penConformance.documentSnapshot());
-}
-
-async function readFocus(page: Page): Promise<FocusPoint> {
-	return page.evaluate(() => {
-		const selection = window.__penConformance.selection;
-		if (selection?.type !== "text") {
-			return null;
-		}
-		return {
-			blockId: selection.focus.blockId,
-			offset: selection.focus.offset,
-		};
-	});
 }
 
 async function stretchCanvas(page: Page): Promise<void> {
