@@ -272,6 +272,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 		});
 		this._unsubscribeSelection = this._editor.onSelectionChange(
 			(record) => {
+				this._selectionReader.notifyAuthorityWrite(record.origin);
 				if (record.origin === "mapped") {
 					this._backendLifecycle.current?.selectionMapped?.();
 				} else {
@@ -683,21 +684,36 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	protected _bindRootPointerGesture(root: HTMLElement): void {
 		this._unbindRootPointerGesture();
+		// R1 native-range: whether the root's latest pointerdown was coarse.
+		let coarsePointer = false;
 		const onPointerDown = (event: PointerEvent): void => {
+			coarsePointer = isCoarsePointerType(event.pointerType);
 			if (!isInEditorContentPointerTarget(root, event.target)) {
 				return;
 			}
 			this._selectionReader.notifyGesture("pointerdown");
 		};
+		// Engines surface a touch long-press as selectstart or contextmenu.
+		const notifyTouchSelectStart = (event: Event): void => {
+			if (
+				coarsePointer &&
+				isInEditorContentPointerTarget(root, eventTargetElement(event))
+			) {
+				this._selectionReader.notifyGesture("touch-selectstart");
+			}
+		};
 		// R1: the context-menu window opens from the root, attached field or not.
-		const onContextMenu = (): void => {
+		const onContextMenu = (event: Event): void => {
 			this._selectionReader.notifyGesture("contextmenu");
+			notifyTouchSelectStart(event);
 		};
 		root.addEventListener("pointerdown", onPointerDown, true);
 		root.addEventListener("contextmenu", onContextMenu);
+		root.addEventListener("selectstart", notifyTouchSelectStart);
 		this._unbindRootPointerWindow = () => {
 			root.removeEventListener("pointerdown", onPointerDown, true);
 			root.removeEventListener("contextmenu", onContextMenu);
+			root.removeEventListener("selectstart", notifyTouchSelectStart);
 			this._unbindRootPointerWindow = null;
 		};
 	}
@@ -1611,6 +1627,19 @@ export class FieldEditorImpl implements FieldEditorSession {
 	): FieldEditorTextLike | null {
 		return getCellYText(this._editor, blockId, row, col);
 	}
+}
+
+function isCoarsePointerType(pointerType: string): boolean {
+	return pointerType === "touch" || pointerType === "pen";
+}
+
+/** `selectstart` targets the text node where the selection starts. */
+function eventTargetElement(event: Event): Element | null {
+	const target = event.target;
+	if (target instanceof Element) {
+		return target;
+	}
+	return target instanceof Node ? target.parentElement : null;
 }
 
 function isInEditorContentPointerTarget(

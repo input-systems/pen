@@ -3,7 +3,12 @@ import {
 	getEditorSelectionRecord,
 	snapToNormalPosition,
 } from "@input/pen-core";
-import type { Editor, Point, SelectionRecordState } from "@input/pen-types";
+import type {
+	Editor,
+	Point,
+	SelectionOrigin,
+	SelectionRecordState,
+} from "@input/pen-types";
 import { toLogicalOffset } from "./offsetDomain";
 import {
 	domPointToOffset,
@@ -60,13 +65,25 @@ export type ReaderSnapshot = {
 	readonly has?: (blockId: string) => boolean;
 };
 
-type GestureWindowKind = "pointer" | "ime" | "context-menu" | "drag";
+type GestureWindowKind =
+	"pointer" | "ime" | "context-menu" | "drag" | "native-range";
 
 export type GestureWindowState = {
 	readonly pointer: boolean;
 	readonly ime: boolean;
 	readonly contextMenu: boolean;
 	readonly drag: boolean;
+	/**
+	 * R1 `native-range` (D21): touch selection handles move the native range
+	 * with no pointer window open. Opened by a coarse-pointer long-press,
+	 * `selectstart` or `contextmenu` once the native range it established is
+	 * a non-collapsed range in one field; closed by the next in-content
+	 * `pointerdown`, the read that collapses the range, or an authority
+	 * write the reader did not make. State only: no timer opens or closes it.
+	 */
+	readonly nativeRange: boolean;
+	/** A `touch-selectstart` waiting for its non-collapsed range to open `nativeRange`. */
+	readonly nativeRangePending: boolean;
 };
 
 export const CLOSED_GESTURE_WINDOWS: GestureWindowState = {
@@ -74,6 +91,8 @@ export const CLOSED_GESTURE_WINDOWS: GestureWindowState = {
 	ime: false,
 	contextMenu: false,
 	drag: false,
+	nativeRange: false,
+	nativeRangePending: false,
 };
 
 export type GestureEventKind =
@@ -88,7 +107,15 @@ export type GestureEventKind =
 	| "drop-completed"
 	| "dragend-completed"
 	| "keydown"
-	| "keyup";
+	| "keyup"
+	/** A long-press, `selectstart` or `contextmenu` in the content from a coarse pointer. */
+	| "touch-selectstart"
+	/** The reader mapped a non-collapsed range in one field after `touch-selectstart`. */
+	| "native-range-established"
+	/** The reader mapped a collapsed range while `nativeRange` was open or pending. */
+	| "native-range-collapsed"
+	/** An authority write the reader did not make superseded the record. */
+	| "authority-superseded";
 
 export type DomSelectionReadDecision =
 	"no-proposal" | "equivalent" | "diverge" | "accept";
@@ -424,6 +451,12 @@ export interface SelectionReader {
 	fieldOffsets(element: HTMLElement): DirectionalSelectionOffsets | null;
 	/** R1–R3 gesture input; the only way window state changes. */
 	notifyGesture(kind: GestureEventKind): void;
+	/**
+	 * Every authority record change, from the field editor's existing
+	 * `onSelectionChange` listener (SCALE6 counts listeners): one whose
+	 * origin the reader did not write closes the `native-range` window.
+	 */
+	notifyAuthorityWrite(origin: SelectionOrigin): void;
 	readonly windows: GestureWindowState;
 	/** Whether a `selectionchange` now would be admissible (any window open). */
 	isAdmissibleRead(): boolean;
@@ -615,14 +648,36 @@ export function createSelectionReader(
 		if (proposal === null) {
 			return "no-proposal";
 		}
-		// Step 3 first: an echo of the record changes nothing.
-		if (isEquivalentToAuthority(options.editor, proposal)) {
-			return "equivalent";
+		// R1 native-range: the range a coarse-pointer long-press
+		// established opens the window, so this read is accepted.
+		if (windows.nativeRangePending && isNonCollapsedFieldRange(proposal)) {
+			notifyGesture("native-range-established");
 		}
-		return options.read(proposal);
+		// Step 3 first: an echo of the record changes nothing.
+		const decision = isEquivalentToAuthority(options.editor, proposal)
+			? "equivalent"
+			: options.read(proposal);
+		// The collapsing read is decided inside the window, then closes it.
+		// A collapsed read also drops a pending long-press: that selectstart
+		// was a tap placing a caret, not a range for handles to move.
+		if (
+			(windows.nativeRange || windows.nativeRangePending) &&
+			isCollapsedRange(proposal)
+		) {
+			notifyGesture("native-range-collapsed");
+		}
+		return decision;
 	};
 	const onSelectionChange = (): void => {
 		sync();
+	};
+	const notifyAuthorityWrite = (origin: SelectionOrigin): void => {
+		if (
+			(windows.nativeRange || windows.nativeRangePending) &&
+			!NATIVE_RANGE_KEEPING_ORIGINS.has(origin)
+		) {
+			notifyGesture("authority-superseded");
+		}
 	};
 	const detach = (): void => {
 		root?.ownerDocument.removeEventListener(
@@ -654,6 +709,7 @@ export function createSelectionReader(
 				dom.getSelection(element.ownerDocument),
 			),
 		notifyGesture,
+		notifyAuthorityWrite,
 		get windows() {
 			return windows;
 		},
@@ -751,7 +807,14 @@ export function nextGestureWindowState(
 ): GestureWindowState {
 	switch (eventKind) {
 		case "pointerdown":
-			return { ...state, pointer: true };
+			// R1 native-range: the next in-content press closes the
+			// handle window and drops a long-press still waiting for its range.
+			return {
+				...state,
+				pointer: true,
+				nativeRange: false,
+				nativeRangePending: false,
+			};
 		case "pointerup":
 			return state;
 		case "pointer-settled":
@@ -772,6 +835,16 @@ export function nextGestureWindowState(
 		case "keydown":
 		case "keyup":
 			return state;
+		case "touch-selectstart":
+			return { ...state, nativeRangePending: true };
+		case "native-range-established":
+			return state.nativeRangePending
+				? { ...state, nativeRange: true, nativeRangePending: false }
+				: state;
+		case "native-range-collapsed":
+			return { ...state, nativeRange: false, nativeRangePending: false };
+		case "authority-superseded":
+			return { ...state, nativeRange: false, nativeRangePending: false };
 		default: {
 			const _exhaustive: never = eventKind;
 			return _exhaustive;
@@ -786,8 +859,51 @@ export function isAdmissibleDomRead(
 	if (eventKind !== "selectionchange") {
 		return false;
 	}
-	return state.pointer || state.ime || state.contextMenu || state.drag;
+	return (
+		state.pointer ||
+		state.ime ||
+		state.contextMenu ||
+		state.drag ||
+		state.nativeRange
+	);
 }
+
+/** A non-collapsed native range inside one field: one block's text, or an edited cell's. */
+function isNonCollapsedFieldRange(proposal: ReaderSelection): boolean {
+	if (proposal?.type === "text") {
+		return (
+			proposal.anchor.blockId === proposal.focus.blockId &&
+			proposal.anchor.offset !== proposal.focus.offset
+		);
+	}
+	if (proposal?.type === "cell" && proposal.text) {
+		return proposal.text.anchor !== proposal.text.focus;
+	}
+	return false;
+}
+
+function isCollapsedRange(proposal: ReaderSelection): boolean {
+	if (proposal?.type === "text") {
+		return (
+			proposal.anchor.blockId === proposal.focus.blockId &&
+			proposal.anchor.offset === proposal.focus.offset
+		);
+	}
+	if (proposal?.type === "cell" && proposal.text) {
+		return proposal.text.anchor === proposal.text.focus;
+	}
+	return false;
+}
+
+/**
+ * The origins of a write that keeps the native-range window open: the
+ * reader's own accept (`pointer` while the window is open) and the mapping
+ * of that record through an edit (`mapped`), which moves it, not replaces it.
+ */
+const NATIVE_RANGE_KEEPING_ORIGINS: ReadonlySet<SelectionOrigin> = new Set([
+	"pointer",
+	"mapped",
+]);
 
 function toReaderSelection(state: SelectionRecordState): ReaderSelection {
 	if (state === null) {
