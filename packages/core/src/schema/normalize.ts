@@ -108,7 +108,7 @@ type NormalizePassIndex = {
 	parentByChild: Map<string, string>;
 	/** Every parent whose `children` lists the id, for ids listed by more than one. */
 	multiParentsByChild: Map<string, string[]>;
-	/** Entries naming a block with no `doc.blocks` entry, found while building. */
+	/** Entries naming a deleted block, found while building. */
 	dangling: DanglingEntry[];
 	/** Ids with a `doc.blocks` entry when the index was built. */
 	liveIds: Set<string>;
@@ -855,7 +855,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 
 		for (let i = 0; i < this.blockOrder.length; i++) {
 			const id = this.blockOrder.get(i);
-			if (!liveIds.has(id)) {
+			if (!liveIds.has(id) && this.isDeletedBlock(id)) {
 				dangling.push({ parentId: null, blockId: id, index: i });
 			}
 			blockOrderSet.add(id);
@@ -870,7 +870,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 		for (const [id, children] of childArrays) {
 			for (let i = 0; i < children.length; i++) {
 				const childId = children.get(i);
-				if (!liveIds.has(childId)) {
+				if (!liveIds.has(childId) && this.isDeletedBlock(childId)) {
 					dangling.push({ parentId: id, blockId: childId, index: i });
 				}
 				const firstParent = parentByChild.get(childId);
@@ -894,4 +894,13 @@ export class SchemaEngineImpl implements SchemaEngine {
 		};
 	}
 
+	/**
+	 * An absent block is dangling only once its block map was deleted: an
+	 * order entry from one client can arrive before the block map another
+	 * client wrote, and removing that entry would orphan the block when its
+	 * map lands (COL4). Asked only for absent ids, so a clean pass asks nothing.
+	 */
+	private isDeletedBlock(blockId: string): boolean {
+		return this.doc.adapter.isBlockDeleted?.(this.crdtDoc, blockId) ?? true;
+	}
 }

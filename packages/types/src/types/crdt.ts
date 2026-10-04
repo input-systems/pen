@@ -69,6 +69,15 @@ export interface CRDTAdapter {
 
 	getClientId(doc: CRDTDocument): number;
 
+	/**
+	 * Whether the blocks map holds a deletion for `blockId`, as opposed to
+	 * never having received it. Out-of-order delivery can land an order entry
+	 * one client wrote before the block map another client wrote, so only a
+	 * deleted block makes an entry dangling (COL4). An adapter without it
+	 * treats every absent block as deleted.
+	 */
+	isBlockDeleted?(doc: CRDTDocument, blockId: string): boolean;
+
 	getDocumentProfile?(doc: CRDTDocument): DocumentProfile | null;
 	setDocumentProfile?(doc: CRDTDocument, profile: DocumentProfile): void;
 
