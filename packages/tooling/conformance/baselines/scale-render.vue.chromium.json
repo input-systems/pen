@@ -59,7 +59,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3675,
 				"scan.blocksMapIterations": 4199,
-				"scan.blocksMapReads": 37192,
+				"scan.blocksMapReads": 37187,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 2104,
 				"scan.textFullReads": 3055,
@@ -163,7 +163,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3680,
 				"scan.blocksMapIterations": 4203,
-				"scan.blocksMapReads": 2307,
+				"scan.blocksMapReads": 2306,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
 				"scan.textFullReads": 24,
@@ -184,7 +184,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3690,
 				"scan.blocksMapIterations": 4203,
-				"scan.blocksMapReads": 2815,
+				"scan.blocksMapReads": 2814,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 1053,
 				"scan.textFullReads": 25,
@@ -222,7 +222,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 28875,
 				"scan.blocksMapIterations": 20995,
-				"scan.blocksMapReads": 185928,
+				"scan.blocksMapReads": 185903,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 10504,
 				"scan.textFullReads": 15275,
@@ -326,7 +326,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 18380,
 				"scan.blocksMapIterations": 21003,
-				"scan.blocksMapReads": 10707,
+				"scan.blocksMapReads": 10706,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
 				"scan.textFullReads": 24,
@@ -347,7 +347,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 18390,
 				"scan.blocksMapIterations": 21003,
-				"scan.blocksMapReads": 11215,
+				"scan.blocksMapReads": 11214,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 5253,
 				"scan.textFullReads": 25,
@@ -1179,6 +1179,24 @@
 				"vue/scale-5k/caretRight/geometry.boundingClientRect.total: 1 !== 2",
 				"vue/scale-5k/caretDown/geometry.boundingClientRect.inFlush: 1 !== 2",
 				"vue/scale-5k/caretDown/geometry.boundingClientRect.total: 7882 !== 7883"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "d87aa054 and 864b6644 validate apply parent targets and op shapes before reading block liveness, so an insert reads one blocks-map entry fewer (Enter -1 per op, mount -5 at 1k / -25 at 5k); no count rises",
+			"moved": [
+				"vue/scale-1k/mount/scan.blocksMapReads: 37187 !== 37192",
+				"vue/scale-1k/enterParagraph/scan.blocksMapReads: 2306 !== 2307",
+				"vue/scale-1k/enterNumbered/scan.blocksMapReads: 2814 !== 2815"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "d87aa054 and 864b6644 validate apply parent targets and op shapes before reading block liveness, so an insert reads one blocks-map entry fewer (Enter -1 per op, mount -5 at 1k / -25 at 5k); no count rises",
+			"moved": [
+				"vue/scale-5k/mount/scan.blocksMapReads: 185903 !== 185928",
+				"vue/scale-5k/enterParagraph/scan.blocksMapReads: 10706 !== 10707",
+				"vue/scale-5k/enterNumbered/scan.blocksMapReads: 11214 !== 11215"
 			]
 		}
 	]
