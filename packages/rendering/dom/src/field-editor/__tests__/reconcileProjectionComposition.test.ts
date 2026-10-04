@@ -131,7 +131,7 @@ describe("session reconciler projection while composing (P3, W3.R6)", () => {
 
 	it("P3: a history rebuild of the composing single field is withheld until compositionend-completed", async () => {
 		const { editor, fieldEditor, first, inline, projected } = mount();
-		editor.selectText(first, 3, 3, "keyboard");
+		editor.selectText(first, 3, 3, { origin: "keyboard" });
 		expect(fieldEditor.getSnapshot().mode).toBe("single");
 		inline.dispatchEvent(
 			new CompositionEvent("compositionstart", { bubbles: true }),

@@ -62,7 +62,7 @@ describe("Pen.Editor.Root under React.StrictMode (HB2)", () => {
 
 		// P1: an authority write projects into the DOM selection.
 		await act(async () => {
-			editor.selectText(first, 2, 2, "programmatic");
+			editor.selectText(first, 2, 2, { origin: "programmatic" });
 			await flushAnimationFrames(2);
 		});
 		const projected = document.getSelection();
