@@ -110,6 +110,8 @@ type NormalizePassIndex = {
 	multiParentsByChild: Map<string, string[]>;
 	/** Entries naming a block with no `doc.blocks` entry, found while building. */
 	dangling: DanglingEntry[];
+	/** Ids with a `doc.blocks` entry when the index was built. */
+	liveIds: Set<string>;
 };
 
 export class SchemaEngineImpl implements SchemaEngine {
@@ -118,6 +120,8 @@ export class SchemaEngineImpl implements SchemaEngine {
 	private readonly crdtDoc: CRDTDocument;
 	private readonly dirtyBlockIds = new Set<string>();
 	private readonly deferredBlockIds = new Set<string>();
+	/** Ids a commit this engine did not normalize placed or re-parented. */
+	private readonly externalStructuralIds = new Set<string>();
 	private onDiagnostic: DiagnosticSink | undefined;
 	private passIndex: NormalizePassIndex | null = null;
 
@@ -151,6 +155,29 @@ export class SchemaEngineImpl implements SchemaEngine {
 		this.invalidatePassIndex();
 	}
 
+	/**
+	 * A remote or undo commit — one this engine did not normalize — placed,
+	 * re-parented, created, or deleted these blocks. The next local pass runs
+	 * the structural rules on them (COL4), because a cycle or a duplicate
+	 * entry such a commit creates is never marked dirty by a local op.
+	 * Proportional to the ids the commit named, never to the document.
+	 */
+	notifyExternalCommit(blockIds: Iterable<string>): void {
+		for (const blockId of blockIds) {
+			this.externalStructuralIds.add(blockId);
+			// A block map arriving or leaving without an array edit (an order
+			// entry delivered before its block map) changes liveness under a
+			// cached index.
+			if (
+				this.passIndex &&
+				this.passIndex.liveIds.has(blockId) !==
+					this.doc.blocks.has(blockId)
+			) {
+				this.invalidatePassIndex();
+			}
+		}
+	}
+
 	deferBlock(blockId: string): void {
 		this.deferredBlockIds.add(blockId);
 	}
@@ -164,6 +191,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 	}
 
 	normalizeDirty(): void {
+		this.normalizeExternalStructure();
 		let iterations = 0;
 
 		while (this.dirtyBlockIds.size > 0 && iterations < MAX_ITERATIONS) {
@@ -211,6 +239,47 @@ export class SchemaEngineImpl implements SchemaEngine {
 		this.normalizeDirty();
 	}
 
+	private normalizeExternalStructure(): void {
+		if (this.externalStructuralIds.size === 0) return;
+		const blockIds = [...this.externalStructuralIds];
+		this.externalStructuralIds.clear();
+		this.doc.adapter.transact(this.crdtDoc, () => {
+			for (const blockId of blockIds) {
+				if (this.deferredBlockIds.has(blockId)) {
+					this.externalStructuralIds.add(blockId);
+					continue;
+				}
+				if (!this.getBlockMap(blockId)) continue;
+				this.normalizeStructure(blockId);
+				this.rehomeOrphan(blockId);
+			}
+		});
+	}
+
+	// ── COL4: Orphan re-home ────────────────────────────────
+	// A repair that removes one entry of a block (Rules 9 and 11, the cycle
+	// break) can meet a peer's concurrent move that removed the other, and
+	// the merge leaves a live block in no array. Only ids an external commit
+	// touched are checked, so a local delete of a container keeps its own
+	// semantics. Every peer appends the block to the root order; the entries
+	// peers append concurrently are duplicates Rule 9 removes once they meet.
+
+	private rehomeOrphan(blockId: string): void {
+		if (this.isInBlockOrder(blockId) || this.findParentWithChild(blockId)) {
+			return;
+		}
+		this.insertIntoBlockOrder(blockId, this.blockOrder.length);
+		this.dirtyBlockIds.add(blockId);
+		this.onDiagnostic?.({
+			code: "orphan-block-rehomed",
+			level: "warn",
+			source: "schema",
+			message: `Block "${blockId}" was in no order or children array; appended it to the root order.`,
+			remediation:
+				"Concurrent structural edits and repairs removed every entry for a live block. Normalization re-homes it at the end of the root order so its content stays reachable on every peer.",
+		});
+	}
+
 	// ── normalizeBlock Pipeline ─────────────────────────────
 
 	private normalizeBlock(blockId: string): void {
@@ -225,10 +294,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 		if (!schema) return;
 
 		// Phase 1: Structural rules
-		this.removeDanglingEntries();
-		this.deduplicateBlockIds(blockId);
-		this.enforceCrossArrayMembership(blockId);
-		this.breakParentCycle(blockId);
+		this.normalizeStructure(blockId);
 
 		// Phase 2: Block-level rules
 		this.stripDefaultProps(blockId, schema);
@@ -242,6 +308,13 @@ export class SchemaEngineImpl implements SchemaEngine {
 		if (schema.content === "inline") {
 			this.stripSuperfluousMarks(blockId);
 		}
+	}
+
+	private normalizeStructure(blockId: string): void {
+		this.removeDanglingEntries();
+		this.deduplicateBlockIds(blockId);
+		this.enforceCrossArrayMembership(blockId);
+		this.breakParentCycle(blockId);
 	}
 
 	// ── Rule 2: Strip Superfluous Wrappers ──────────────────
@@ -525,13 +598,20 @@ export class SchemaEngineImpl implements SchemaEngine {
 		const cycle = this.walkParentCycle(blockId);
 		if (!cycle) return;
 
+		// One block can own two edges of a cycle (its `parentId` and an
+		// entry in its `children`), so the child id breaks a tie: the choice
+		// depends on the cycle alone, never on where the walk entered it.
 		let ownerToClear: string | undefined;
 		let childToClear: string | undefined;
 		for (const childId of cycle) {
 			const parentId = this.parentOf(childId);
 			if (!parentId) continue;
 			const ownerId = this.parentEdgeOwner(childId, parentId);
-			if (ownerToClear === undefined || ownerId < ownerToClear) {
+			if (
+				ownerToClear === undefined ||
+				ownerId < ownerToClear ||
+				(ownerId === ownerToClear && childId < childToClear!)
+			) {
 				ownerToClear = ownerId;
 				childToClear = childId;
 			}
@@ -810,6 +890,8 @@ export class SchemaEngineImpl implements SchemaEngine {
 			parentByChild,
 			multiParentsByChild,
 			dangling,
+			liveIds,
 		};
 	}
+
 }

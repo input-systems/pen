@@ -201,6 +201,11 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		sources: ["core/src/editor/applyInlineAndMetaOps.ts"],
 	},
 	{
+		code: "orphan-block-rehomed",
+		levels: ["warn"],
+		sources: ["core/src/schema/normalize.ts"],
+	},
+	{
 		code: "overlay-contributor-failed",
 		levels: ["warn"],
 		sources: ["rendering/dom/src/overlay/overlayController.ts"],

@@ -1,5 +1,5 @@
 import type { ChangeSummary, CRDTEvent, PenDocument } from "@input/pen-types";
-import { createSummarySource } from "@input/pen-yjs";
+import { createSummarySource, type RawCommitDelta } from "@input/pen-yjs";
 
 import {
 	createBlockIndex,
@@ -18,7 +18,11 @@ export interface ChangeSummaryHost {
 	_blockIndex: BlockIndex;
 	_unsubSummary: (() => void) | null;
 	_deferredCRDTEvent: CRDTEvent | null;
-	_engine: { notifyStructureChanged(): void };
+	_engine: {
+		notifyStructureChanged(): void;
+		notifyExternalCommit(blockIds: Iterable<string>): void;
+	};
+	_pipeline: { readonly suppressObserver: boolean };
 	_dispatchCRDTEvent(event: CRDTEvent): void;
 }
 
@@ -45,7 +49,6 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 				) {
 					host._engine.notifyStructureChanged();
 				}
-
 				const summary = buildChangeSummary(
 					delta,
 					host._blockIndex.snapshot(),
@@ -53,6 +56,12 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 					(blockId) => host._doc.blocks.has(blockId),
 				);
 				host._pendingSummary = summary;
+				// A local apply normalized inside its own transaction; any
+				// other commit hands the next local pass what it touched.
+				if (!host._pipeline.suppressObserver) {
+					const touched = structurallyTouchedBlockIds(delta, summary);
+					if (touched.size > 0) host._engine.notifyExternalCommit(touched);
+				}
 				// A text-only commit moves lengths and nothing else, so the
 				// index advances in place. Rebuilding it from the document
 				// would read every block's text on every keystroke (SCALE2).
@@ -86,6 +95,58 @@ function flushDeferredCRDTEvent(host: ChangeSummaryHost): void {
 	if (!deferred) return;
 	host._deferredCRDTEvent = null;
 	host._dispatchCRDTEvent(deferred);
+}
+
+/** Keys of a block map whose change can move the block in the tree. */
+const STRUCTURAL_BLOCK_KEYS: ReadonlySet<string> = new Set([
+	"parentId",
+	"props",
+	"children",
+]);
+
+/**
+ * Blocks a commit placed, re-parented, created, removed, or deleted: ids
+ * inserted into `blockOrder` or a `children` array, the owners of changed
+ * `children` arrays, block-map entries that changed whole or changed
+ * `parentId`, and the ids the summary reports removed or moved — an entry
+ * removed under a peer's concurrent move can leave a live block in no array.
+ * Read from the delta and summary alone, so it costs nothing per document block.
+ */
+function structurallyTouchedBlockIds(
+	delta: RawCommitDelta,
+	summary: ChangeSummary,
+): Set<string> {
+	const touched = new Set<string>();
+	for (const change of summary.structural) {
+		if (change.type === "block-removed" || change.type === "block-moved") {
+			touched.add(change.blockId);
+		}
+	}
+	const addInserted = (ops: RawCommitDelta["blockOrderDelta"]): void => {
+		for (const op of ops) {
+			for (const id of op.insert ?? []) {
+				if (typeof id === "string") touched.add(id);
+			}
+		}
+	};
+	addInserted(delta.blockOrderDelta);
+	for (const [ownerId, ops] of delta.childArrayDeltas) {
+		touched.add(ownerId);
+		addInserted(ops);
+	}
+	for (const [blockId, keys] of delta.blockMapChanges) {
+		if (keys.size === 0) {
+			touched.add(blockId);
+			continue;
+		}
+		for (const key of keys) {
+			if (STRUCTURAL_BLOCK_KEYS.has(key)) {
+				touched.add(blockId);
+				break;
+			}
+		}
+	}
+	return touched;
 }
 
 /** Blocks whose text a structural commit may have changed, so must be re-read. */
