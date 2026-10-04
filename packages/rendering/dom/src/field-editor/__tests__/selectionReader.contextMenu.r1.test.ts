@@ -70,7 +70,7 @@ describe("R1 context-menu window", () => {
 		fixture.contextMenu();
 		fixture.nativeRange(0, 5);
 		expect(fixture.textState()).toEqual([0, 5]);
-		expect(fixture.fieldEditor.getGestureWindows().contextMenu).toBe(false);
+		expect(fixture.fieldEditor.reader.windows.contextMenu).toBe(false);
 		fixture.nativeRange(6, 11);
 		expect(fixture.textState()).toEqual([0, 5]);
 	});

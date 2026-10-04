@@ -11,6 +11,7 @@ import {
 	flushAnimationFrames,
 	getFieldEditor,
 } from "./utils/crossBlockSelectionTestHelpers";
+import { fieldEditorInternals } from "./utils/fieldEditorInternals";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -82,7 +83,7 @@ describe("@input/pen-react cmd+a: escalation in flow documents", () => {
 		});
 
 		await act(async () => {
-			fieldEditor.beginPointerSelection();
+			fieldEditorInternals(fieldEditor).reader.notifyGesture("pointerdown");
 			const selection = document.getSelection();
 			const range = document.createRange();
 			range.setStart(

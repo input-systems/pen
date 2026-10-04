@@ -19,6 +19,7 @@ import {
 	getYText,
 	visibleText,
 } from "./utils/fieldEditorCommandsTestHelpers";
+import { fieldEditorInternals } from "./utils/fieldEditorInternals";
 
 describe("@input/pen-react field-editor commands: inline marks and input rules", () => {
 	it("toggles an inline mark across a single-block text selection", () => {
@@ -106,13 +107,23 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 
 		expect(toggleInlineMark(editor, "bold")).toBe(true);
 		expect(fieldEditor.getPendingMarks()).toEqual({ bold: true });
-		expect(fieldEditor.resolveInsertMarks(ytext, 0)).toEqual({
+		expect(
+			fieldEditorInternals(fieldEditor).pendingMarks.resolveInsertMarks(
+				ytext,
+				0,
+			),
+		).toEqual({
 			bold: true,
 		});
 
 		expect(toggleInlineMark(editor, "bold")).toBe(true);
 		expect(fieldEditor.getPendingMarks()).toEqual({});
-		expect(fieldEditor.resolveInsertMarks(ytext, 0)).toBeUndefined();
+		expect(
+			fieldEditorInternals(fieldEditor).pendingMarks.resolveInsertMarks(
+				ytext,
+				0,
+			),
+		).toBeUndefined();
 
 		fieldEditor.destroy();
 		editor.destroy();
@@ -140,7 +151,12 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 
 		expect(toggleInlineMark(editor, "bold")).toBe(true);
 		expect(fieldEditor.getPendingMarks()).toEqual({ bold: null });
-		expect(fieldEditor.resolveInsertMarks(ytext, 5)).toEqual({
+		expect(
+			fieldEditorInternals(fieldEditor).pendingMarks.resolveInsertMarks(
+				ytext,
+				5,
+			),
+		).toEqual({
 			bold: null,
 			italic: true,
 		});
@@ -149,14 +165,16 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 		editor.destroy();
 	});
 
-	it("opens the pointer window on beginPointerSelection without muting reads", () => {
+	it("opens the pointer window on a pointerdown gesture without muting reads", () => {
 		const editor = createEditor(editorOpts());
 		const blockId = editor.firstBlock()!.id;
 		const fieldEditor = new FieldEditorImpl(editor);
 
 		fieldEditor.activate(blockId);
-		fieldEditor.beginPointerSelection();
-		expect(fieldEditor.isAdmissibleGestureRead()).toBe(true);
+		fieldEditorInternals(fieldEditor).reader.notifyGesture("pointerdown");
+		expect(
+			fieldEditorInternals(fieldEditor).reader.isAdmissibleRead(),
+		).toBe(true);
 
 		fieldEditor.deactivate();
 

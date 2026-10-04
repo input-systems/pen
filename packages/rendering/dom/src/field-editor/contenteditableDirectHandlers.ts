@@ -291,7 +291,7 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 			blockId,
 			range,
 			text: "\n",
-			marks: fe.resolveInsertMarks(ytext, range.start),
+			marks: fe.pendingMarks.resolveInsertMarks(ytext, range.start),
 		});
 	},
 
@@ -393,7 +393,7 @@ function insertTextOverRange(
 	if (backend.applyListInputRule({ blockId, range, text })) {
 		return;
 	}
-	const marks = fe.resolveInsertMarks(ytext, range.start);
+	const marks = fe.pendingMarks.resolveInsertMarks(ytext, range.start);
 	if (tryDispatchInsert(editor, fe, backend, blockId, range, text, marks)) {
 		return;
 	}

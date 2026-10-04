@@ -107,7 +107,7 @@ describe("session reconciler projection while composing (P3, W3.R6)", () => {
 			{ origin: "keyboard" },
 		);
 		expect(fieldEditor.getSnapshot().mode).toBe("expanded");
-		fieldEditor.notifyGestureEvent("compositionstart");
+		fieldEditor.reader.notifyGesture("compositionstart");
 		projected.length = 0;
 
 		editor.apply(
@@ -125,7 +125,7 @@ describe("session reconciler projection while composing (P3, W3.R6)", () => {
 		await flushFrames();
 		expect(projected).toHaveLength(0);
 
-		fieldEditor.notifyGestureEvent("compositionend-completed");
+		fieldEditor.reader.notifyGesture("compositionend-completed");
 		expect(projected).toHaveLength(1);
 	});
 
@@ -153,7 +153,7 @@ describe("session reconciler projection while composing (P3, W3.R6)", () => {
 		await flushFrames();
 		expect(projected).toHaveLength(0);
 
-		fieldEditor.notifyGestureEvent("compositionend-completed");
+		fieldEditor.reader.notifyGesture("compositionend-completed");
 		expect(projected).toHaveLength(1);
 	});
 });

@@ -5,6 +5,7 @@ import { createEditor, getCommandRegistry } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import type { FieldEditorInputController } from "../controller";
 import { ExpandedContentEditableBackend } from "../expandedContentEditableBackend";
+import { stubFieldEditorParts } from "./fieldEditorParts.testHelpers";
 
 type Activation = {
 	blockId: string;
@@ -37,7 +38,7 @@ function createFieldEditor(blockId: string) {
 		requestDomFocus: () => false,
 		applyDomTextSelection: () => {},
 		selectAllBehavior: "block-first" as const,
-		resolveInsertMarks: () => undefined,
+		...stubFieldEditorParts(),
 	};
 	return { controller, activations, deactivated: () => deactivated };
 }
@@ -481,7 +482,9 @@ describe("ExpandedContentEditableBackend composition window", () => {
 		const controller = {
 			...fieldEditor.controller,
 			setComposing: (value: boolean) => composing.push(value),
-			notifyGestureEvent: (kind: string) => gestures.push(kind),
+			...stubFieldEditorParts({
+				onGesture: (kind) => gestures.push(kind),
+			}),
 		};
 		return { controller, composing, gestures };
 	}

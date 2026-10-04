@@ -12,6 +12,7 @@ import { ExpandedContentEditableBackend } from "../expandedContentEditableBacken
 import type { FieldEditorTextLike } from "../crdt";
 import type { InputBackend } from "../../internal/inputBackend";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
+import { stubFieldEditorParts } from "./fieldEditorParts.testHelpers";
 
 function getYText(editor: Editor, blockId: string): FieldEditorTextLike {
 	const ydoc = editor.internals.adapter.raw<{
@@ -159,10 +160,9 @@ function stubController(blockId: string) {
 		requestDomFocus: () => false,
 		applyDomTextSelection: () => {},
 		selectAllBehavior: "block-first" as const,
-		resolveInsertMarks: () => undefined,
+		...stubFieldEditorParts(),
 		setComposing: () => {},
 		notifyDomReconciled: () => {},
-		notifyGestureEvent: () => {},
 		selection: null,
 	} as unknown as FieldEditorInputController;
 }

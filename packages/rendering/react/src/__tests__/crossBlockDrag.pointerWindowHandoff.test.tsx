@@ -12,6 +12,7 @@ import {
 	getFieldEditor,
 	setNativeSelectionRange,
 } from "./utils/crossBlockSelectionTestHelpers";
+import { fieldEditorInternals } from "./utils/fieldEditorInternals";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -109,7 +110,7 @@ describe("@input/pen-react cross-block drag: pointer window handoff", () => {
 		});
 
 		await act(async () => {
-			fieldEditor.notifyGestureEvent("pointerdown");
+			fieldEditorInternals(fieldEditor).reader.notifyGesture("pointerdown");
 			setNativeSelectionRange(
 				firstInlineElement!,
 				1,

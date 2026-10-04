@@ -11,7 +11,7 @@ import type { TextDiffOp } from "./textDiff";
 
 type TextInputPipelineController = Pick<
 	FieldEditorInputController,
-	"syncCellTextSelection" | "syncTextSelection" | "resolveInsertMarks"
+	"syncCellTextSelection" | "syncTextSelection" | "pendingMarks"
 >;
 
 export interface ApplyInlineTextInputOptions {
@@ -74,7 +74,10 @@ export function applyInlineTextDiffInput(
 		diff: options.diff,
 		ytext: options.ytext,
 		resolveInsertMarks: (sourceText, offset) =>
-			options.fieldEditor.resolveInsertMarks(sourceText, offset),
+			options.fieldEditor.pendingMarks.resolveInsertMarks(
+				sourceText,
+				offset,
+			),
 		cellCoord: options.cellCoord,
 	});
 	if (ops.length === 0) {

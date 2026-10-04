@@ -8,6 +8,7 @@ import type { FieldEditorInputController } from "../controller";
 import type { FieldEditorTextLike } from "../crdt";
 import { ContentEditableBackend } from "../contenteditableBackend";
 import { extractTextFromDOM } from "../selectionBridge";
+import { stubFieldEditorParts } from "./fieldEditorParts.testHelpers";
 
 function getYText(
 	editor: ReturnType<typeof createEditor>,
@@ -40,14 +41,13 @@ function createFieldEditor(blockId: string) {
 		commitProgrammaticTextSelection: () => {},
 		deactivate: () => {},
 		selectAllBehavior: "block-first" as const,
-		resolveInsertMarks: () => undefined,
+		...stubFieldEditorParts(),
 		setComposing: () => {},
 		notifyDomReconciled: () => {},
 		requestDomFocus: () => false,
 		applyDomTextSelection: () => {},
 		applyDocumentTextSelection: () => {},
 		syncTextSelection: () => {},
-		notifyGestureEvent: () => {},
 	};
 }
 

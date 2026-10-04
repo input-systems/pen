@@ -299,7 +299,7 @@ export class EditContextBackend extends FieldInputBackendBase {
 			blockId,
 			this.modelText,
 		);
-		this.fieldEditor.notifyGestureEvent?.("compositionstart");
+		this.fieldEditor.reader.notifyGesture("compositionstart");
 		this.fieldEditor.setComposing(true);
 		return this.composition;
 	}
@@ -437,7 +437,7 @@ export class EditContextBackend extends FieldInputBackendBase {
 			}
 		}
 		if (!detaching) {
-			this.fieldEditor.notifyGestureEvent?.("compositionend-completed");
+			this.fieldEditor.reader.notifyGesture("compositionend-completed");
 		}
 	}
 
@@ -593,7 +593,10 @@ export class EditContextBackend extends FieldInputBackendBase {
 			blockId,
 			range,
 			text,
-			marks: this.fieldEditor.resolveInsertMarks(this.ytext, range.start),
+			marks: this.fieldEditor.pendingMarks.resolveInsertMarks(
+				this.ytext,
+				range.start,
+			),
 			selection: pending.selection,
 			syncSelection: pending.selection != null,
 		});

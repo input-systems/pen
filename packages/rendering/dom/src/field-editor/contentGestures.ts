@@ -149,7 +149,7 @@ export function attachContentGestures<
 		);
 		gestureEl.ownerDocument?.removeEventListener("mouseup", handleMouseUp);
 		if (pointerGestureRef.current) {
-			fieldEditor.notifyGestureEvent?.("pointerup");
+			fieldEditor.reader.notifyGesture("pointerup");
 			clearPointerSelectionState();
 		}
 		region.clearRegionSelectionState();

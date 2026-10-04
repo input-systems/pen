@@ -6,6 +6,7 @@ import { DIRECT_HANDLERS } from "../contenteditableDirectHandlers";
 import { handleFieldEditorKeyDown } from "../keyHandling";
 import type { FieldEditorInputController } from "../controller";
 import type { FieldEditorTextLike } from "../crdt";
+import { stubFieldEditorParts } from "./fieldEditorParts.testHelpers";
 
 function getYText(
 	editor: ReturnType<typeof createEditor>,
@@ -67,7 +68,7 @@ function createFieldEditor(blockId: string) {
 			},
 			deactivate: () => {},
 			selectAllBehavior: "block-first" as const,
-			resolveInsertMarks: () => undefined,
+			...stubFieldEditorParts(),
 		},
 		activations,
 	};

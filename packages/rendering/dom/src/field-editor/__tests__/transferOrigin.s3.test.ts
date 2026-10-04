@@ -8,7 +8,7 @@ import {
 
 function source(windows: Partial<GestureWindowState>) {
 	return {
-		getGestureWindows: () => ({ ...CLOSED_GESTURE_WINDOWS, ...windows }),
+		reader: { windows: { ...CLOSED_GESTURE_WINDOWS, ...windows } },
 	};
 }
 

@@ -814,10 +814,13 @@ export function normalizeDomSelectionProposal(
  * `keyboard` (a shortcut paste).
  */
 export function originForTransfer(
-	source: { getGestureWindows?(): GestureWindowState } | null | undefined,
+	source:
+		| { readonly reader?: { readonly windows: GestureWindowState } }
+		| null
+		| undefined,
 	isDrop = false,
 ): "pointer" | "keyboard" {
-	const windows = source?.getGestureWindows?.() ?? CLOSED_GESTURE_WINDOWS;
+	const windows = source?.reader?.windows ?? CLOSED_GESTURE_WINDOWS;
 	return isDrop || windows.contextMenu || windows.drag
 		? "pointer"
 		: "keyboard";

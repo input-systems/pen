@@ -60,7 +60,7 @@ export function createDragGestures<
 		if (hostChromePoint) {
 			pointerGestureRef.current.anchorPoint = hostChromePoint;
 		}
-		fieldEditor.notifyGestureEvent?.("pointerdown");
+		fieldEditor.reader.notifyGesture("pointerdown");
 
 		const clickedBlock = editor.getBlock(blockId);
 		const clickedSchema = clickedBlock

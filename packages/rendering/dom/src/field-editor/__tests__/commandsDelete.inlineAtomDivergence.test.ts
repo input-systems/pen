@@ -6,6 +6,7 @@ import { DIRECT_HANDLERS } from "../contenteditableDirectHandlers";
 import { handleFieldEditorKeyDown } from "../keyHandling";
 import type { FieldEditorInputController } from "../controller";
 import type { FieldEditorTextLike } from "../crdt";
+import { stubFieldEditorParts } from "./fieldEditorParts.testHelpers";
 
 /**
  * Owner-approved UX: Backspace next to an inline atom SELECTs on the first
@@ -126,7 +127,7 @@ function createFieldEditor(blockId: string) {
 		activateTextSelection: () => {},
 		deactivate: () => {},
 		selectAllBehavior: "block-first" as const,
-		resolveInsertMarks: () => undefined,
+		...stubFieldEditorParts(),
 	};
 }
 

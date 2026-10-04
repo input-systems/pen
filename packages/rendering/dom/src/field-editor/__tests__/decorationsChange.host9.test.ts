@@ -16,6 +16,7 @@ import { EditContextBackend } from "../editContextBackend";
 import type { EditContext } from "../editContextTypes";
 import type { InputBackend } from "../../internal/inputBackend";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
+import { stubFieldEditorParts } from "./fieldEditorParts.testHelpers";
 
 const TEXT = "Hello world";
 const DECORATION_ATTRIBUTE = "data-test-decorated";
@@ -127,14 +128,11 @@ function stubController(
 		activateTextSelection: () => {},
 		deactivate: () => {},
 		requestDomFocus: () => false,
-		shouldProjectSelectionAfterReconcile: () =>
-			shouldProjectSelectionAfterReconcile,
 		applyDomTextSelection: () => {},
 		selectAllBehavior: "block-first" as const,
-		resolveInsertMarks: () => undefined,
+		...stubFieldEditorParts({ shouldProjectSelectionAfterReconcile }),
 		setComposing: () => {},
 		notifyDomReconciled: () => {},
-		notifyGestureEvent: () => {},
 	} as unknown as FieldEditorInputController;
 	return { controller };
 }

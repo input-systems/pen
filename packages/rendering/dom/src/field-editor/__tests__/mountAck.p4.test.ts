@@ -47,11 +47,11 @@ function mountBlock(
 
 class ProbeFieldEditor extends FieldEditorImpl {
 	get lastProjectedVersion(): number {
-		return this._projector.lastProjectedVersion;
+		return this.projector.lastProjectedVersion;
 	}
 
 	get parkedProjectionVersion(): number | null {
-		return this._projector.parkedProjectionVersion;
+		return this.projector.parkedProjectionVersion;
 	}
 }
 

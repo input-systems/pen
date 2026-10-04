@@ -90,7 +90,7 @@ describe("HOST9: authority writes while a native control outside the editor owns
 		input.focus();
 		document.getSelection()?.removeAllRanges();
 
-		mounted.fieldEditor.requestDivergenceProjection();
+		mounted.fieldEditor.projector.requestDivergenceProjection();
 
 		expect(focusRequests).toEqual([]);
 		expect(domSelectionIsInside(root)).toBe(false);
@@ -256,7 +256,7 @@ describe("HOST9: two editors on one page", () => {
 		const { a, surfaceB } = mountTwo();
 
 		expect(
-			a.mounted.fieldEditor.shouldProjectSelectionAfterReconcile(),
+			a.mounted.fieldEditor.projector.shouldProjectSelectionAfterReconcile(),
 		).toBe(false);
 		a.mounted.fieldEditor.projectAfterRebuild([a.blockId]);
 
@@ -294,7 +294,7 @@ describe("AX3: a divergence report while editor chrome inside the root owns focu
 		document.getSelection()?.removeAllRanges();
 		focusRequests.length = 0;
 
-		mounted.fieldEditor.requestDivergenceProjection();
+		mounted.fieldEditor.projector.requestDivergenceProjection();
 
 		expect(focusRequests).toEqual([]);
 		expect(document.activeElement).toBe(handle);
@@ -306,7 +306,7 @@ describe("AX3: a divergence report while editor chrome inside the root owns focu
 		document.getSelection()?.removeAllRanges();
 		focusRequests.length = 0;
 
-		mounted.fieldEditor.requestDivergenceProjection();
+		mounted.fieldEditor.projector.requestDivergenceProjection();
 
 		expect(focusRequests.map((request) => request.action)).toContain(
 			"project-selection",

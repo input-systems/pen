@@ -98,9 +98,9 @@ describe("an editor mounted in an iframe document", () => {
 		mounted.fieldEditor.activateTextSelection(blockId, 0, 5);
 		input.focus();
 
-		expect(mounted.fieldEditor.shouldProjectSelectionAfterReconcile()).toBe(
-			false,
-		);
+		expect(
+			mounted.fieldEditor.projector.shouldProjectSelectionAfterReconcile(),
+		).toBe(false);
 	});
 
 	it("W3.R1: a projection with focus on its target reads back as focused, so no mismatch is reported", () => {
@@ -125,7 +125,7 @@ describe("an editor mounted in an iframe document", () => {
 			new frameWindow.Event("pointerdown", { bubbles: true }),
 		);
 
-		expect(mounted.fieldEditor.getGestureWindows().pointer).toBe(true);
+		expect(mounted.fieldEditor.reader.windows.pointer).toBe(true);
 	});
 
 	it("O1: a click on an inline atom chip in the iframe activates its block", () => {

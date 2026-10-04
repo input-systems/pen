@@ -101,7 +101,7 @@ function seed() {
 		nativeRange,
 		record,
 		textRecord,
-		windows: () => fieldEditor.getGestureWindows(),
+		windows: () => fieldEditor.reader.windows,
 	};
 }
 

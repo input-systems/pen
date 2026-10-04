@@ -275,9 +275,20 @@ store.applyDomTextSelection(anchor, focus, "pointer");
   this.authorityRangeIn(blockId); // the record's { start, end } in the field
   ```
 
+**19. `FieldEditorImpl` drops its selection-reader, projector and pending-mark forwarders.** These methods only forwarded to pen-dom's internal reader, projector, focus controller or pending marks. They are removed from `FieldEditorImpl` and `FieldEditorSession`. The backends and gestures inside pen-dom now call those parts directly.
+
+- **Affected:** host code that called any of these methods, and custom controllers handed to a backend that implemented them.
+- **Removed:**
+  - `beginPointerSelection()`, `endPointerSelection()`, `notifyGestureEvent(kind)`, `isAdmissibleGestureRead()`, `getGestureWindows()` (gesture windows)
+  - `hasSelectionInRoot()`, `readFieldSelectionOffsets(element)` (reader)
+  - `requestDivergenceProjection(read)`, `shouldProjectSelectionAfterReconcile()` (projector)
+  - `requestActivation(target, reason, options)` (focus controller)
+  - `resolveInsertMarks(ytext, offset)` (pending marks)
+- **Do:** drop the calls. pen-dom's root listeners, content gestures and backends already report pointer, context-menu, composition and drag gestures to the reader. Pending marks remain on `getPendingMarks` / `togglePendingMark` / `clearPendingMarks`. Focus goes through `requestDomFocus` / `requestRootFocus`, and a host renderer that rebuilt a field still calls `projectAfterRebuild(blockIds)`.
+
 ### `@input/pen-react`
 
-**18. `Pen.Editor.CaretOverlay` (`EditorCaretOverlay`) binds to pen-dom's overlay.**
+**20. `Pen.Editor.CaretOverlay` (`EditorCaretOverlay`) binds to pen-dom's overlay.**
 
 - `renderCaret` gets a transform-positioned `caretStyle` with no `left`/`top`, plus a new `affinity`.
 - Its node is portaled into the overlay layer.
@@ -295,7 +306,7 @@ store.applyDomTextSelection(anchor, focus, "pointer");
   /* set --pen-editor-caret-* tokens on the editor root or above */
   ```
 
-**19. `Pen.Multiplayer.CaretOverlay` (`MultiplayerCaretOverlay`) binds to the overlay.**
+**21. `Pen.Multiplayer.CaretOverlay` (`MultiplayerCaretOverlay`) binds to the overlay.**
 
 - Remote carets move from `[data-pen-multiplayer-caret-overlay]` into `[data-pen-overlay-layer]`.
 - `caretStyle` and `labelStyle` change from `position: fixed` + `left`/`top` to `position: absolute` + `transform`.
@@ -304,9 +315,9 @@ store.applyDomTextSelection(anchor, focus, "pointer");
 
   Restyle remote carets under `[data-pen-overlay-layer]`, and read position from `transform` in `renderCaret` / `renderLabel`.
 
-**20. `EditorSelectionRect` draws only the region-select marquee.** pen-dom now paints committed block selections. Style them with `--pen-block-selection-outline` / `--pen-block-selection-background` / `--pen-block-selection-radius` on the editor root.
+**22. `EditorSelectionRect` draws only the region-select marquee.** pen-dom now paints committed block selections. Style them with `--pen-block-selection-outline` / `--pen-block-selection-background` / `--pen-block-selection-radius` on the editor root.
 
-**21. Focus return (AX3).**
+**23. Focus return (AX3).**
 
 - Toolbar buttons and toggles no longer take focus on click: the primary-button `mousedown` default is prevented after your handler runs (`pointerdown` is left alone, so compatibility mouse events still fire). Keyboard activation keeps focus on the control, and Escape returns it to the editor.
 - The AI command menu and the contextual prompt move focus back to whatever had it before they opened, on accept, reject, dismiss or Escape.
@@ -315,7 +326,7 @@ store.applyDomTextSelection(anchor, focus, "pointer");
 
 ### `@input/pen-vue`
 
-**22. Overlay on by default with no component.** Same CSS actions as item 9: set `--pen-block-selection-outline: none` if you style `[data-selected]`, and account for the extra `data-pen-overlay-layer` child in any root `:last-child` CSS. List grouping (item 10) applies to `PenContent` / `PenBlock`.
+**24. Overlay on by default with no component.** Same CSS actions as item 9: set `--pen-block-selection-outline: none` if you style `[data-selected]`, and account for the extra `data-pen-overlay-layer` child in any root `:last-child` CSS. List grouping (item 10) applies to `PenContent` / `PenBlock`.
 
 ---
 
@@ -381,7 +392,7 @@ store.applyDomTextSelection(anchor, focus, "pointer");
   - `resolvePointerSelectionIntent` and `createPointerSelectionGesture`, in `@input/pen-dom/utils/pointerSelection`.
   - `findDOMPoint`, in `…/field-editor/selectionBridge`.
   - `fieldEditor.blockNotifier`.
-  - `FieldEditorImpl`: `projectAfterRebuild(blockIds)`, `setMountRequester(requester)`, `scrollIntoView(target, scroll)`, `setReadOnly(readonly)`, `getGestureWindows()`.
+  - `FieldEditorImpl`: `projectAfterRebuild(blockIds)`, `setMountRequester(requester)`, `scrollIntoView(target, scroll)`, `setReadOnly(readonly)`.
   - `FieldEditorSession.getSubstituteState()`.
   - `buildLazyNormalPositionSnapshot(editor)`.
   - `DocumentTree.destroy()`.

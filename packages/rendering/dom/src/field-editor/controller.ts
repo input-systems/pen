@@ -5,15 +5,14 @@ import type {
 	SelectionOrigin,
 } from "@input/pen-types";
 import type { FieldEditorStore } from "./store";
-import type { DirectionalSelectionOffsets } from "./selectionMapping";
 import type { EditorSelectAllBehavior } from "../constants/selectAll";
+import type { PendingMarkController } from "./pendingMarkController";
 import type {
 	DomSelectionReadDecision,
-	GestureEventKind,
-	GestureWindowState,
 	ReaderSelection,
+	SelectionReader,
 } from "./selectionReader";
-import type { S2ExceptionKind } from "./selectionProjector";
+import type { S2ExceptionKind, SelectionProjector } from "./selectionProjector";
 
 export type FieldEditorFocusReason =
 	| "activate"
@@ -146,7 +145,22 @@ export interface FieldEditorRootHandle {
 	focusSelection(): void;
 }
 
-export interface FieldEditorDomController extends FieldEditorSelectionState {
+/**
+ * pen-dom's own sub-controllers. Backends, gestures and host helpers inside
+ * pen-dom call them directly. Every member is stripped from the published
+ * types (`stripInternal`), so hosts use the session methods.
+ */
+export interface FieldEditorParts {
+	/** @internal S1: the one reader of the DOM selection for this root. */
+	readonly reader: SelectionReader;
+	/** @internal P, S1: the one writer of the DOM selection for this root. */
+	readonly projector: SelectionProjector;
+	/** @internal Marks toggled at a collapsed caret, applied to the next insert. */
+	readonly pendingMarks: PendingMarkController;
+}
+
+export interface FieldEditorDomController
+	extends FieldEditorSelectionState, FieldEditorParts {
 	setComposing(composing: boolean): void;
 	requestDomFocus(
 		target: HTMLElement,
@@ -154,20 +168,11 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 		options?: FocusOptions,
 		policyOptions?: PenFieldEditorFocusOptions,
 	): boolean;
-	requestActivation(
-		target: HTMLElement,
-		reason: FieldEditorFocusReason,
-		options?: PenFieldEditorFocusOptions,
-	): boolean;
 	requestRootFocus(
 		target: HTMLElement,
 		reason: FieldEditorFocusReason,
 		options?: FocusOptions,
 	): boolean;
-	notifyGestureEvent?(eventKind: GestureEventKind): void;
-	getGestureWindows?(): GestureWindowState;
-	isAdmissibleGestureRead?(): boolean;
-	requestDivergenceProjection?(read?: ReaderSelection): void;
 	/**
 	 * P3: a reconcile rebuilt these blocks' DOM; project the authority now
 	 * when one of them is the mounted projection target. Reconciles never
@@ -179,20 +184,6 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 	 * and then read the authority instead of mapping the DOM themselves.
 	 */
 	syncDomSelectionRead?(): void;
-	/**
-	 * S1: the reader's live range inside one field element (see
-	 * `SelectionReader.fieldOffsets`). Backends read the DOM selection only
-	 * through this.
-	 */
-	readFieldSelectionOffsets?(
-		element: HTMLElement,
-	): DirectionalSelectionOffsets | null;
-	/**
-	 * Whether a field rebuild may write the selection back into the DOM.
-	 * False while a native control that is not this field owns focus (HOST9):
-	 * setting a DOM selection inside the field would move focus with it.
-	 */
-	shouldProjectSelectionAfterReconcile?(): boolean;
 	readDomSelection?(proposal: ReaderSelection): DomSelectionReadDecision;
 	/** A cross-block text selection with its gesture's origin (S3). */
 	applyDocumentTextSelection(
@@ -205,10 +196,6 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 		focus: { blockId: string; offset: number },
 		origin: SelectionOrigin,
 	): void;
-	resolveInsertMarks(
-		ytext: { toDelta(): unknown[] },
-		offset: number,
-	): Record<string, unknown | null> | undefined;
 	/** A text-input caret write; origin defaults to `keyboard`, `ime` while composing (S3). */
 	syncTextSelection(
 		blockId: string,
@@ -302,8 +289,8 @@ export interface FieldEditorTransferController {
 		focusOffset: number,
 		options?: FieldEditorFocusOptions,
 	): void;
-	/** The reader's gesture windows, for the paste caret's origin (S3). */
-	getGestureWindows?(): GestureWindowState;
+	/** @internal The reader's gesture windows, for the paste caret's origin (S3). */
+	readonly reader?: Pick<SelectionReader, "windows">;
 }
 
 export type FieldEditorInputController = FieldEditorDomController &
@@ -314,10 +301,6 @@ export type FieldEditorSession = FieldEditorStore &
 	FieldEditorInputController &
 	FieldEditorTableNavigationController &
 	FieldEditorEscapeController & {
-		beginPointerSelection(): void;
-		endPointerSelection(): void;
-		notifyGestureEvent(eventKind: GestureEventKind): void;
-		isAdmissibleGestureRead(): boolean;
 		readDomSelection(proposal: ReaderSelection): DomSelectionReadDecision;
 		suspendForPointerSelection(): void;
 		getPendingMarks(): Readonly<Record<string, unknown | null>>;
@@ -333,8 +316,6 @@ export type FieldEditorSession = FieldEditorStore &
 		): void;
 		onFocusLifecycle(listener: PenFocusLifecycleListener): () => void;
 		waitForAttachment(blockId?: string | null): Promise<boolean>;
-		/** Whether the live DOM selection maps inside this editor's root. */
-		hasSelectionInRoot(): boolean;
 		syncDomSelectionRead(): void;
 		ackBlockMounted(blockId: string, element: HTMLElement): void;
 		delegate(blockSchema: BlockSchema): boolean;

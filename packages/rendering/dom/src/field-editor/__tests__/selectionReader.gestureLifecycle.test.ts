@@ -121,7 +121,7 @@ function seed() {
 		nativeRange,
 		textState,
 		record,
-		windows: () => fieldEditor.getGestureWindows(),
+		windows: () => fieldEditor.reader.windows,
 	};
 }
 
@@ -176,7 +176,7 @@ describe("gesture windows outlive a field session switch (R1–R3)", () => {
 
 	it("C1: a deactivation mid-composition closes the ime window it owned", () => {
 		const fixture = seed();
-		fixture.fieldEditor.notifyGestureEvent("compositionstart");
+		fixture.fieldEditor.reader.notifyGesture("compositionstart");
 		fixture.press(fixture.blockB, "mouse");
 		fixture.fieldEditor.activate(fixture.blockB);
 		expect(fixture.windows()).toMatchObject({ ime: false, pointer: true });
