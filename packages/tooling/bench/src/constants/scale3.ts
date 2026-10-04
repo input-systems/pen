@@ -57,7 +57,7 @@ export const SCALE3_SYNCED_PEER_POINTS = [2, 4, 8] as const;
  */
 export const LOCAL_PRESENCE_SETTLE_MS = 80;
 
-export const SCALE3_DEFAULT_PRESET_EXTENSIONS = [
+const SCALE3_DEFAULT_PRESET_EXTENSIONS = [
 	"tools",
 	"delta-stream",
 	"undo",

@@ -5,7 +5,6 @@ import {
 	yjsAdapter,
 	wrapYjsDocument,
 } from "@input/pen-yjs";
-import type { CRDTDocument, PenDocument } from "@input/pen-types";
 import { populateYDoc } from "./createTestDocument";
 import { resetTestIdCounter } from "./helpers";
 import type {
@@ -215,4 +214,3 @@ type Base64Globals = typeof globalThis & {
 	btoa?: (value: string) => string;
 };
 
-export type { CRDTDocument, PenDocument };

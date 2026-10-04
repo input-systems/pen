@@ -104,13 +104,13 @@ export interface EnvelopeDriftResult {
 	failures: EnvelopeDriftFailure[];
 }
 
-export const ENVELOPE_TOLERANCE_JUSTIFICATION =
+const ENVELOPE_TOLERANCE_JUSTIFICATION =
 	"Same-run p95/p50 on the committed macos-arm64 sample (n=21) peaked at 2.38× (100-block). The same-class gate is 3× attributed median for rungs whose attributed p50 is at least 0.5ms. Below that the clock is inside timer noise and a ratio cannot be attributed to Pen. The +1ms term applies only above that signal. P95 and Max are trend-only (CH8).";
 
-export const ENVELOPE_CROSS_CLASS_POLICY =
+const ENVELOPE_CROSS_CLASS_POLICY =
 	"Timing is not compared across machine classes. macos-arm64 medians are not a ubuntu-latest budget; a ratio picked to absorb that gap cannot catch a regression.";
 
-export function envelopeBaselinePath(): string {
+function envelopeBaselinePath(): string {
 	return resolve(
 		dirname(fileURLToPath(import.meta.url)),
 		"../../baselines/envelope.json",

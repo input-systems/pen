@@ -362,7 +362,7 @@ export function describePeerSchedule(schedule: PeerSchedule): string {
 }
 
 /** Expands a schedule into the steps `run()` executes. */
-export function schedulePeerSteps(
+function schedulePeerSteps(
 	n: number,
 	schedule: PeerSchedule,
 ): PeerStep[] {
@@ -470,7 +470,7 @@ function encodeSeed(
 }
 
 /** Label used in messages: `a`, `b`, … `z`, then `p26`, `p27`, …. */
-export function peerLabel(index: PeerIndex): string {
+function peerLabel(index: PeerIndex): string {
 	return index < 26 ? String.fromCharCode(97 + index) : `p${index}`;
 }
 

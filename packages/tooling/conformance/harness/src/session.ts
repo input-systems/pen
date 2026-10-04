@@ -375,7 +375,7 @@ function recordRelayOutbox(ydoc: Y.Doc, outbox: Uint8Array[]): () => void {
 }
 
 /** `?relay=1`: fork this page from another page's encoded state with its own client id. */
-export function loadSeeded(fixture: string, seedBase64: string, clientId: number): void {
+function loadSeeded(fixture: string, seedBase64: string, clientId: number): void {
 	disposeGeometry();
 	if (session) {
 		destroySession(session);
@@ -489,7 +489,7 @@ export function getWindowStart(): number {
 	return windowStart;
 }
 
-export function setWindowStart(start: number): void {
+function setWindowStart(start: number): void {
 	const blockCount = getHarnessSession().editor.documentState.blockOrder.length;
 	const next = clampWindowStart(start, blockCount, WINDOWED_WINDOW_SIZE);
 	if (next === windowStart) {
@@ -506,7 +506,7 @@ function reducedMotion(): boolean {
 	return reducedMotionSignal.reduced;
 }
 
-export function loadFixture(name: string): void {
+function loadFixture(name: string): void {
 	disposeGeometry();
 	if (session) {
 		destroySession(session);

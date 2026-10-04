@@ -163,7 +163,7 @@ export const col4SplitSameOffset: Col4PeerScenario = {
 	},
 };
 
-export const col4SplitDifferentOffsets: Col4PeerScenario = {
+const col4SplitDifferentOffsets: Col4PeerScenario = {
 	name: "split-different-offsets",
 	options: () => ({
 		blocks: [{ id: "p1", type: "paragraph", content: SPLIT_TEXT }],
@@ -207,7 +207,7 @@ export const col4SplitDifferentOffsets: Col4PeerScenario = {
 	},
 };
 
-export const col4DeleteVsTyping: Col4PeerScenario = {
+const col4DeleteVsTyping: Col4PeerScenario = {
 	name: "delete-vs-typing",
 	options: () => ({
 		blocks: [
@@ -251,7 +251,7 @@ const DELETE_VS_MOVE_POSITIONS: readonly Position[] = [
 	{ before: "p1" },
 ];
 
-export const col4DeleteVsMove: Col4PeerScenario = {
+const col4DeleteVsMove: Col4PeerScenario = {
 	name: "delete-vs-move",
 	options: () => ({ blocks: paragraphs(4) }),
 	apply(harness) {
@@ -292,7 +292,7 @@ export const col4DeleteVsMove: Col4PeerScenario = {
 	},
 };
 
-export const col4MoveToDifferentParents: Col4PeerScenario = {
+const col4MoveToDifferentParents: Col4PeerScenario = {
 	name: "move-to-different-parents",
 	options: (n) => ({
 		blocks: [
@@ -340,7 +340,7 @@ export const col4MoveToDifferentParents: Col4PeerScenario = {
 	},
 };
 
-export const col4ParentCycle: Col4PeerScenario = {
+const col4ParentCycle: Col4PeerScenario = {
 	name: "parent-cycle",
 	options: (n) => ({
 		blocks: Array.from({ length: n }, (_, index) => ({
@@ -377,7 +377,7 @@ export const col4ParentCycle: Col4PeerScenario = {
 	},
 };
 
-export const col4IndentOutdent: Col4PeerScenario = {
+const col4IndentOutdent: Col4PeerScenario = {
 	name: "indent-outdent",
 	options: (n) => ({
 		blocks: [
@@ -415,7 +415,7 @@ export const col4IndentOutdent: Col4PeerScenario = {
 	},
 };
 
-export const col4OverlappingReorder: Col4PeerScenario = {
+const col4OverlappingReorder: Col4PeerScenario = {
 	name: "overlapping-reorder",
 	options: () => ({ blocks: paragraphs(6) }),
 	apply(harness) {
@@ -439,7 +439,7 @@ export const col4OverlappingReorder: Col4PeerScenario = {
 	},
 };
 
-export const col4DeleteParentWhileChildEdited: Col4PeerScenario = {
+const col4DeleteParentWhileChildEdited: Col4PeerScenario = {
 	name: "delete-parent-while-child-edited",
 	options: () => ({
 		blocks: [
@@ -495,7 +495,7 @@ export const col4DeleteParentWhileChildEdited: Col4PeerScenario = {
 	},
 };
 
-export const col4ListReparent: Col4PeerScenario = {
+const col4ListReparent: Col4PeerScenario = {
 	name: "list-reparent",
 	options: (n) => ({
 		blocks: [
@@ -534,7 +534,7 @@ export const col4ListReparent: Col4PeerScenario = {
 const TABLE_BASE_ROWS = 6;
 const TABLE_BASE_COLUMNS = 6;
 
-export const col4TableRowColumn: Col4PeerScenario = {
+const col4TableRowColumn: Col4PeerScenario = {
 	name: "table-row-column",
 	options: () => ({
 		blocks: [],
@@ -632,19 +632,6 @@ export function runCol4PeerScenarioCase(
 	);
 }
 
-/** Runs a row at each of its sizes under every default schedule. */
-export function runCol4PeerScenario(scenario: Col4PeerScenario): void {
-	for (const n of scenario.sizes ?? COL4_PEER_SIZES) {
-		runPeerSchedules(
-			n,
-			scenario.options(n),
-			scenario.apply,
-			scenario.invariant,
-			COL4_DEFAULT_SCHEDULES,
-		);
-	}
-}
-
 // ── Seeded structural fuzz ───────────────────────────────
 
 type FuzzSplit = {
@@ -682,7 +669,7 @@ export const COL4_FUZZ_STRUCTURAL_KINDS: readonly Col4FuzzOpKind[] = [
 ];
 
 /** Seed document the fuzz forks from. */
-export function col4FuzzSeedOptions(): PeerHarnessOptions {
+function col4FuzzSeedOptions(): PeerHarnessOptions {
 	return {
 		blocks: [
 			{ id: "p1", type: "paragraph", content: "Hello World" },
@@ -707,7 +694,7 @@ export function col4FuzzSeedOptions(): PeerHarnessOptions {
 }
 
 /** Picks one op from the widened catalog (text, split, parent, indent, move, nested-parent, insert, delete, grid). */
-export function pickCol4FuzzOp(
+function pickCol4FuzzOp(
 	tag: string,
 	random: () => number,
 ): { kind: Col4FuzzOpKind; op: Col4FuzzOp } {
@@ -797,7 +784,7 @@ function isFuzzSplit(op: Col4FuzzOp): op is FuzzSplit {
 }
 
 /** Applies one fuzz op to an editor. */
-export function applyCol4FuzzOp(editor: Editor, op: Col4FuzzOp): void {
+function applyCol4FuzzOp(editor: Editor, op: Col4FuzzOp): void {
 	if (isFuzzSplit(op)) {
 		applySplitBlock(editor, {
 			blockId: op.blockId,
