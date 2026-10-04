@@ -1,21 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { createEditor, getInlineCompletionController } from "@input/pen-core";
-import { FIELD_EDITOR_SLOT_KEY } from "@input/pen-types";
-import { defineExtension } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import { autocompleteExtension, getAutocompleteController } from "../index";
-import { waitForCondition } from "./extension.testHelpers";
+import { fieldEditorSlot, waitForCondition } from "./extension.testHelpers";
 
 describe("@input/pen-ai/autocomplete: deep prose promotion", () => {
 	it("promotes long depth-two prose continuations into a new paragraph earlier", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
 		let callCount = 0;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -41,23 +34,7 @@ describe("@input/pen-ai/autocomplete: deep prose promotion", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;

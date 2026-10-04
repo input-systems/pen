@@ -1,22 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { createEditor } from "@input/pen-core";
-import { FIELD_EDITOR_SLOT_KEY } from "@input/pen-types";
-import { defineExtension } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import { autocompleteExtension, getAutocompleteController } from "../index";
-import { waitForCondition } from "./extension.testHelpers";
+import { fieldEditorSlot, waitForCondition } from "./extension.testHelpers";
 
 describe("@input/pen-ai/autocomplete: runtime policy cancellation", () => {
 	it("cancels a scheduled request when runtime policy becomes ineligible", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
 		let modelCalled = false;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-			activeCellCoord: null,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot({ activeCellCoord: null });
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -33,23 +25,7 @@ describe("@input/pen-ai/autocomplete: runtime policy cancellation", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const firstBlockId = editor.firstBlock()!.id;
@@ -112,15 +88,9 @@ describe("@input/pen-ai/autocomplete: runtime policy cancellation", () => {
 	});
 
 	it("cancels an in-flight request when runtime policy becomes ineligible", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
 		let streamStarted = false;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-			activeCellCoord: null,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot({ activeCellCoord: null });
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -140,23 +110,7 @@ describe("@input/pen-ai/autocomplete: runtime policy cancellation", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const firstBlockId = editor.firstBlock()!.id;
@@ -214,14 +168,8 @@ describe("@input/pen-ai/autocomplete: runtime policy cancellation", () => {
 	});
 
 	it("dismisses a visible suggestion when runtime policy becomes ineligible", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-			activeCellCoord: null,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot({ activeCellCoord: null });
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -237,23 +185,7 @@ describe("@input/pen-ai/autocomplete: runtime policy cancellation", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const firstBlockId = editor.firstBlock()!.id;
@@ -366,15 +298,9 @@ describe("@input/pen-ai/autocomplete: runtime policy cancellation", () => {
 	});
 
 	it("blocks table-cell autocomplete when tables are disabled", () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
 		let modelCalled = false;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-			activeCellCoord: { blockId: "table-1", row: 0, col: 0 },
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot({ activeCellCoord: { blockId: "table-1", row: 0, col: 0 } });
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -394,23 +320,7 @@ describe("@input/pen-ai/autocomplete: runtime policy cancellation", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 
