@@ -5,17 +5,7 @@ import { createDefaultSchema } from "@input/pen-schema";
 import { sanitizeHTML } from "../sanitize";
 import { parseHTML, type DOMNode } from "../domAdapter";
 import { domToBlocks } from "../domToBlocks";
-
-const stubRegistry: SchemaRegistry = {
-	resolve: () => null,
-	resolveInline: () => null,
-	resolveApp: () => null,
-	resolveLayout: () => null,
-	allBlocks: () => [],
-	allInlines: () => [],
-	allApps: () => [],
-	allBlockDisplays: () => [],
-};
+import { stubRegistry } from "./importHtml.testHelpers";
 
 function convert(html: string, registry: SchemaRegistry = stubRegistry) {
 	return domToBlocks(parseHTML(sanitizeHTML(html)), registry);

@@ -1,26 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { blocksToOps } from "@input/pen-core";
-import type { SchemaRegistry } from "@input/pen-types";
-import { sanitizeHTML } from "../sanitize";
 import { parseHTML } from "../domAdapter";
 import { domToBlocks } from "../domToBlocks";
-
-const stubRegistry: SchemaRegistry = {
-	resolve: () => null,
-	resolveInline: () => null,
-	resolveApp: () => null,
-	resolveLayout: () => null,
-	allBlocks: () => [],
-	allInlines: () => [],
-	allApps: () => [],
-	allBlockDisplays: () => [],
-};
-
-function convert(html: string, registry: SchemaRegistry = stubRegistry) {
-	const sanitized = sanitizeHTML(html);
-	const dom = parseHTML(sanitized);
-	return domToBlocks(dom, registry);
-}
+import { convert, stubRegistry } from "./importHtml.testHelpers";
 
 describe("@input/pen-interop/html dom-to-blocks: element mapping", () => {
 	it("heading + paragraph (AC 28)", () => {

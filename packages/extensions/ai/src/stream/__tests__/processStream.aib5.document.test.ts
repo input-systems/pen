@@ -1,34 +1,13 @@
 import { createEditor } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
-import type { DiagnosticEvent, PenStreamPart } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
-import { undoExtension } from "@input/pen-undo";
-import { deltaStreamExtension } from "../deltaStreamExtension";
 import { processStream } from "../processStream";
-
-function createStreamEditor() {
-	return createEditor({
-		schema: defaultSchema,
-		extensions: [undoExtension(), deltaStreamExtension()],
-	});
-}
-
-async function* createStream(parts: PenStreamPart[]) {
-	for (const part of parts) {
-		yield part;
-	}
-}
-
-function listenDiagnostics(
-	editor: ReturnType<typeof createEditor>,
-): DiagnosticEvent[] {
-	const diagnostics: DiagnosticEvent[] = [];
-	editor.on("diagnostic", (event) => {
-		diagnostics.push(event);
-	});
-	return diagnostics;
-}
+import {
+	createStream,
+	createStreamEditor,
+	listenDiagnostics,
+} from "./processStream.testHelpers";
 
 describe("@input/pen-ai/stream processStream AIB5 document", () => {
 	it("AIB5: bare createEditor without deltaStreamExtension refuses the stream", async () => {

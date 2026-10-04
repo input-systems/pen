@@ -4,11 +4,12 @@ import {
 	getDocumentToolRuntime,
 } from "@input/pen-tools";
 import { defaultSchema } from "@input/pen-schema";
-import type { DiagnosticEvent, PenStreamPart } from "@input/pen-types";
+import type { PenStreamPart } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
 import { deltaStreamExtension } from "../deltaStreamExtension";
 import { processStream } from "../processStream";
+import { listenDiagnostics } from "./processStream.testHelpers";
 
 function createLiveEditor() {
 	return createEditor({
@@ -23,16 +24,6 @@ async function* createStream(
 	for (const part of parts) {
 		yield part;
 	}
-}
-
-function listenDiagnostics(
-	editor: ReturnType<typeof createEditor>,
-): DiagnosticEvent[] {
-	const diagnostics: DiagnosticEvent[] = [];
-	editor.on("diagnostic", (event) => {
-		diagnostics.push(event);
-	});
-	return diagnostics;
 }
 
 function documentTexts(editor: ReturnType<typeof createEditor>): string[] {

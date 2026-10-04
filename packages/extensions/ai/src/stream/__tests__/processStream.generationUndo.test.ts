@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { undoExtension } from "@input/pen-undo";
 import { deltaStreamExtension } from "../deltaStreamExtension";
 import { processStream } from "../processStream";
+import { createStream } from "./processStream.testHelpers";
 
 function createDefaultEditor(options: Parameters<typeof createEditor>[0] = {}) {
 	return createEditor({
@@ -17,12 +18,6 @@ function createDefaultEditor(options: Parameters<typeof createEditor>[0] = {}) {
 			...(options.extensions ?? []),
 		],
 	});
-}
-
-async function* createStream(parts: PenStreamPart[]) {
-	for (const part of parts) {
-		yield part;
-	}
 }
 
 function visibleText(text: string): string {

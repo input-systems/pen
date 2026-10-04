@@ -5,16 +5,11 @@ import {
 	defineExtension,
 } from "@input/pen-core";
 import type { AssetProvider, DiagnosticEvent } from "@input/pen-types";
-import { createDefaultSchema } from "@input/pen-schema";
 import { htmlImporter } from "../importer";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
-
-const defaultRegistry = createDefaultSchema();
+import {
+	defaultRegistry,
+	noDefaultExtensionsPreset,
+} from "./importHtml.testHelpers";
 
 function editorWithProvider(provider?: AssetProvider) {
 	return createEditor({

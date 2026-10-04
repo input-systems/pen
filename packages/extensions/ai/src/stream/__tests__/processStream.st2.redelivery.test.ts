@@ -1,24 +1,9 @@
 import { createEditor } from "@input/pen-core";
-import { defaultSchema } from "@input/pen-schema";
 import type { PenStreamPart } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
-import { undoExtension } from "@input/pen-undo";
-import { deltaStreamExtension } from "../deltaStreamExtension";
 import { processStream } from "../processStream";
-
-function createStreamEditor() {
-	return createEditor({
-		schema: defaultSchema,
-		extensions: [undoExtension(), deltaStreamExtension()],
-	});
-}
-
-async function* createStream(parts: PenStreamPart[]) {
-	for (const part of parts) {
-		yield part;
-	}
-}
+import { createStream, createStreamEditor } from "./processStream.testHelpers";
 
 function bodyText(editor: ReturnType<typeof createEditor>): string {
 	return editor.documentState.blockOrder
