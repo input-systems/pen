@@ -32,6 +32,28 @@ export function buildStreamingReviewPreviewDecorations({
 	if (preview.deletesBlocks === true) {
 		return deletedBlockDecorations(editor, preview.target);
 	}
+	const decorations = previewTextDecorations({
+		editor,
+		preview,
+		suggestionPresentation,
+	});
+	return preview.replacesBlocks === true
+		? [
+				...decorations,
+				...emptyEdgeBlockDecorations(editor, preview.target, decorations),
+			]
+		: decorations;
+}
+
+function previewTextDecorations({
+	editor,
+	preview,
+	suggestionPresentation,
+}: {
+	editor: Editor;
+	preview: AIStreamingReviewPreview;
+	suggestionPresentation: SuggestionPresentation;
+}): Decoration[] {
 	const text = preview.text;
 	if (text.length === 0) {
 		return [];
@@ -64,6 +86,30 @@ export function buildStreamingReviewPreviewDecorations({
 			text,
 		}),
 	];
+}
+
+/**
+ * A replace removes its edge blocks whole too, but an empty one has no text
+ * to strike and would stay on screen as an empty line accept removes (RS6).
+ * Hide it, unless it already carries a decoration — the replacement text is
+ * shown in it, or it is hidden as a middle block.
+ */
+function emptyEdgeBlockDecorations(
+	editor: Editor,
+	target: AIStreamingReviewPreview["target"],
+	decorations: readonly Decoration[],
+): Decoration[] {
+	if (target.kind !== "block-range") {
+		return [];
+	}
+	const decorated = new Set(decorations.map((decoration) => decoration.blockId));
+	const edges = new Set([target.start.blockId, target.end.blockId]);
+	return [...edges]
+		.filter(
+			(blockId) =>
+				!decorated.has(blockId) && editor.getBlock(blockId)?.length() === 0,
+		)
+		.map((blockId) => createStreamingDeleteBlockDecoration(blockId));
 }
 
 /**

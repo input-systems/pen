@@ -204,6 +204,7 @@ export function editDocumentReviewPreviewInput(
 				),
 		complete: input.complete,
 		...(isDelete ? { deletesBlocks: true } : {}),
+		...(input.operation === "replace_blocks" ? { replacesBlocks: true } : {}),
 	};
 }
 
@@ -243,7 +244,8 @@ function editDocumentPreviewTarget(
 }
 
 /**
- * Every named block, first to last in document order. A block-range covers
+ * Every named block, first to last in nested document order, so a block
+ * inside a container is named like a top-level one. A block-range covers
  * whole blocks, so the preview hides each one the commit replaces or deletes
  * rather than only the first.
  */
@@ -251,10 +253,13 @@ function namedBlocksRange(
 	editor: Editor,
 	blockIds: readonly string[],
 ): AIStreamingReviewPreviewTarget {
-	const named = new Set(blockIds);
-	const ordered = editor.documentState.blockOrder.filter((blockId) =>
-		named.has(blockId),
-	);
+	const state = editor.documentState;
+	const ordered = [...new Set(blockIds)]
+		.filter((blockId) => state.preorderIndexOf(blockId) >= 0)
+		.sort(
+			(left, right) =>
+				state.preorderIndexOf(left) - state.preorderIndexOf(right),
+		);
 	const start = ordered[0] ?? blockIds[0]!;
 	const end = ordered[ordered.length - 1] ?? start;
 	return {

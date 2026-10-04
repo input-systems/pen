@@ -254,6 +254,12 @@ export interface AIStreamingReviewPreviewInput {
 	 * even though no replacement text ever arrives (RS6).
 	 */
 	deletesBlocks?: boolean;
+	/**
+	 * The edit replaces every block in the target whole. An empty block at
+	 * the range edge has no text to strike, so the preview hides it unless the
+	 * replacement text is shown in it (RS6).
+	 */
+	replacesBlocks?: boolean;
 }
 
 export interface AIStreamingReviewPreview extends AIStreamingReviewPreviewInput {

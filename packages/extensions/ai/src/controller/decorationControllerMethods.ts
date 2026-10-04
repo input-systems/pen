@@ -201,7 +201,8 @@ function mergeOperationPreview(
 		isSamePreview &&
 		previous.text === text &&
 		previous.complete === input.complete &&
-		previous.deletesBlocks === input.deletesBlocks
+		previous.deletesBlocks === input.deletesBlocks &&
+		previous.replacesBlocks === input.replacesBlocks
 	) {
 		return null;
 	}
@@ -214,6 +215,7 @@ function mergeOperationPreview(
 		previousTextLength: isSamePreview ? previous.text.length : 0,
 		complete: input.complete,
 		deletesBlocks: input.deletesBlocks,
+		replacesBlocks: input.replacesBlocks,
 	};
 }
 

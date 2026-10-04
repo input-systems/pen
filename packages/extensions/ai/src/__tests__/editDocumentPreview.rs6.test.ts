@@ -3,6 +3,7 @@ import { createEditor } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import type { Editor } from "@input/pen-types";
 import { editDocumentReviewPreviewInput } from "../controller/streamingPreviewInput";
+import { buildStreamingReviewPreviewDecorations } from "../review/reviewPresentation";
 import { extractEditDocumentPreview } from "../runtime/editDocumentPreview";
 
 /**
@@ -194,4 +195,97 @@ describe("RS6: edit_document preview mapping", () => {
 			to: block.length(),
 		});
 	});
+
+	function createNested(): Editor {
+		const created = createParagraphs({ a: "Alpha" });
+		created.apply(
+			[
+				{ type: "insert-block", blockId: "t", blockType: "toggle", props: {}, position: "last" },
+				{ type: "splice-text", blockId: "t", from: 0, to: 0, insert: "Toggle" },
+				...["c1", "c2", "c3"].flatMap((blockId, index) => [
+					{
+						type: "insert-block" as const,
+						blockId,
+						blockType: "paragraph",
+						props: {},
+						position: { parent: "t", index },
+					},
+					{
+						type: "splice-text" as const,
+						blockId,
+						from: 0,
+						to: 0,
+						insert: `Child ${index + 1}`,
+					},
+				]),
+			],
+			{ origin: "system" },
+		);
+		return created;
+	}
+
+	function hiddenBlockIds(live: Editor, input: ReturnType<typeof editDocumentReviewPreviewInput>): string[] {
+		return buildStreamingReviewPreviewDecorations({
+			editor: live,
+			preview: { ...input!, previousTextLength: 0 },
+			suggestionPresentation: "final-text",
+		})
+			.filter((decoration) => decoration.type === "block")
+			.map((decoration) => decoration.blockId);
+	}
+
+	it("RS6: a delete of nested blocks names and hides every one of them", () => {
+		const live = createNested();
+		const input = editDocumentReviewPreviewInput(live, {
+			...SESSION,
+			operationIndex: 0,
+			blockIds: ["c2", "c1"],
+			placement: null,
+			operation: "delete_blocks",
+			text: "",
+			complete: true,
+		});
+		expect(input?.target).toEqual({
+			kind: "block-range",
+			start: { blockId: "c1", offset: 0 },
+			end: { blockId: "c2", offset: 7 },
+			blockIds: ["c1", "c2"],
+		});
+		expect(hiddenBlockIds(live, input)).toEqual(["c1", "c2"]);
+	});
+
+	it("RS6: a replace of nested blocks covers every named block", () => {
+		const live = createNested();
+		const input = editDocumentReviewPreviewInput(live, {
+			...SESSION,
+			operationIndex: 0,
+			blockIds: ["c1", "c2", "c3"],
+			placement: null,
+			operation: "replace_blocks",
+			text: "New",
+			complete: true,
+		});
+		expect(input?.target).toMatchObject({
+			kind: "block-range",
+			start: { blockId: "c1", offset: 0 },
+			end: { blockId: "c3", offset: 7 },
+			blockIds: ["c1", "c2", "c3"],
+		});
+		expect(hiddenBlockIds(live, input)).toContain("c2");
+	});
+
+	it("RS6: a replace hides an empty block at the edge of the range it removes", () => {
+		const live = createParagraphs({ a: "Alpha", b: "Beta", e: "" });
+		const input = editDocumentReviewPreviewInput(live, {
+			...SESSION,
+			operationIndex: 0,
+			blockIds: ["a", "b", "e"],
+			placement: null,
+			operation: "replace_blocks",
+			text: "Replaced",
+			complete: true,
+		});
+		expect(hiddenBlockIds(live, input)).toEqual(expect.arrayContaining(["b", "e"]));
+	});
+
 });
