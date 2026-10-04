@@ -238,9 +238,11 @@ scenario("S2: copy from the sink carries the range", async (s, page) => {
 			cancelable: true,
 		});
 		sink.dispatchEvent(event);
+		// Gecko copies the init DataTransfer into a new one on the event, so
+		// the handler's writes land on `event.clipboardData`, not the init.
 		return {
 			prevented: event.defaultPrevented,
-			text: clipboardData.getData("text/plain"),
+			text: (event.clipboardData ?? clipboardData).getData("text/plain"),
 		};
 	});
 	expect(copied, "copy fired on the focused sink").not.toBeNull();

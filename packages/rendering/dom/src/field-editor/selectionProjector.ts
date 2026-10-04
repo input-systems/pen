@@ -14,9 +14,11 @@ import {
 	type ReaderSelection,
 } from "./selectionReader";
 import {
+	isFieldEditorTextEntryTarget,
 	isForeignNativeTextEntryTarget,
 	isNativeTextEntryTarget,
 } from "../utils/textEntryTarget";
+import { FOCUS_SINK_ATTR } from "../a11y/focusSink";
 import type { GeometryReader, Rect } from "../geometry/types";
 import { findLogicalDOMPoint } from "./inlineAtomDom";
 import {
@@ -535,7 +537,10 @@ export class SelectionProjector {
 	 * engine normalized the write and another write would loop.
 	 */
 	requestDivergenceProjection(read?: ReaderSelection): void {
-		if (this.isFocusHeldByNativeControlOutsideRoot()) {
+		if (
+			this.isFocusHeldByNativeControlOutsideRoot() ||
+			this._isFocusOnChromeInRoot()
+		) {
 			return;
 		}
 		if (read !== undefined && this._isReportedMismatch(read)) {
@@ -1029,6 +1034,31 @@ export class SelectionProjector {
 			return false;
 		}
 		return isForeignNativeTextEntryTarget(activeElement);
+	}
+
+	/**
+	 * AX3: focus on editor chrome inside the root — a block handle, a
+	 * detached menu item, a toolbar button — is not the field's. A P2 write
+	 * would take focus from it, as P3 already declines to
+	 * (`shouldProjectSelectionAfterReconcile`). The root, the focus sink and
+	 * any field surface are the editor's own.
+	 */
+	private _isFocusOnChromeInRoot(): boolean {
+		const root = this._options.getRootElement();
+		const active = root?.ownerDocument.activeElement;
+		if (
+			!root ||
+			!(active instanceof HTMLElement) ||
+			active === root ||
+			!root.contains(active)
+		) {
+			return false;
+		}
+		return (
+			!active.hasAttribute(FOCUS_SINK_ATTR) &&
+			!isFieldEditorTextEntryTarget(active) &&
+			!this._options.getAttachedElement()?.contains(active)
+		);
 	}
 
 	private _projectIntoElement(

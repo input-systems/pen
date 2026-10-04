@@ -21,7 +21,9 @@ scenario(
 			page.locator(`[data-block-id="${windowedBlockId(0)}"]`),
 		).toBeVisible();
 		await expect(
-			page.locator(`[data-block-id="${windowedBlockId(WINDOWED_WINDOW_SIZE)}"]`),
+			page.locator(
+				`[data-block-id="${windowedBlockId(WINDOWED_WINDOW_SIZE)}"]`,
+			),
 		).toHaveCount(0);
 
 		await s.keyboard.type("!");
@@ -51,6 +53,16 @@ scenario(
 		await s.assert.textContains("?Window block 24");
 		await s.assert.textContains("!Window block 0");
 
+		// Scrolling win-0 out while it held the caret may already have parked
+		// a projection on it (Firefox's reader sees the removed field's
+		// selection collapse and reprojects). That report belongs to the
+		// scroll, not to this park, so count from here.
+		const unmountedBefore = await page.evaluate(
+			() =>
+				window.__penConformance.diagnostics.filter(
+					(event) => event.code === "selection-target-unmounted",
+				).length,
+		);
 		// Firefox may echo the live win-24 caret over this selectText.
 		// Not a sentinel leak — applyDomTextSelection in
 		// contenteditableBackend.ts writes the DOM caret back.
@@ -58,7 +70,9 @@ scenario(
 			window.__penConformance.selectText(0, 0);
 		});
 		const afterOutside = await page.evaluate(() => {
-			const mounted = [...document.querySelectorAll("[data-pen-editor-block]")]
+			const mounted = [
+				...document.querySelectorAll("[data-pen-editor-block]"),
+			]
 				.map((element) => element.getAttribute("data-block-id"))
 				.filter((id): id is string => id != null);
 			return {
@@ -85,10 +99,16 @@ scenario(
 		// reports the unmounted target once, without a mount request.
 		await expect
 			.poll(() =>
-				page.evaluate(() =>
-					window.__penConformance.diagnostics
-						.filter((event) => event.code === "selection-target-unmounted")
-						.map((event) => event.details ?? {}),
+				page.evaluate(
+					(before) =>
+						window.__penConformance.diagnostics
+							.filter(
+								(event) =>
+									event.code === "selection-target-unmounted",
+							)
+							.slice(before)
+							.map((event) => event.details ?? {}),
+					unmountedBefore,
 				),
 			)
 			.toEqual([
@@ -123,9 +143,9 @@ scenario(
 		}));
 		expect(remounted.blockIds).toHaveLength(WINDOWED_LARGE_BLOCK_COUNT);
 		expect(
-			remounted.diagnostics.filter(
-				(code) => code === "selection-target-unmounted",
-			),
+			remounted.diagnostics
+				.filter((code) => code === "selection-target-unmounted")
+				.slice(unmountedBefore),
 		).toHaveLength(1);
 	},
 );

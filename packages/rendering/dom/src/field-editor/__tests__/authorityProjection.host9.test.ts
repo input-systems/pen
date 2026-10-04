@@ -151,3 +151,40 @@ describe("HOST9: authority writes while a native control outside the editor owns
 		);
 	});
 });
+
+describe("AX3: a divergence report while editor chrome inside the root owns focus", () => {
+	function focusHandle(root: HTMLElement): HTMLElement {
+		const handle = document.createElement("div");
+		handle.tabIndex = 0;
+		handle.setAttribute("role", "button");
+		root.append(handle);
+		handle.focus();
+		return handle;
+	}
+
+	it("P2 does not take focus from a block handle in the root", () => {
+		const { root, mounted, focusRequests } = mount();
+		const handle = focusHandle(root);
+		document.getSelection()?.removeAllRanges();
+		focusRequests.length = 0;
+
+		mounted.fieldEditor.requestDivergenceProjection();
+
+		expect(focusRequests).toEqual([]);
+		expect(document.activeElement).toBe(handle);
+	});
+
+	it("P2 still projects while the field holds focus", () => {
+		const { root, mounted, focusRequests } = mount();
+		root.querySelector<HTMLElement>("[data-pen-field-editor-surface]")?.focus();
+		document.getSelection()?.removeAllRanges();
+		focusRequests.length = 0;
+
+		mounted.fieldEditor.requestDivergenceProjection();
+
+		expect(focusRequests.map((request) => request.action)).toContain(
+			"project-selection",
+		);
+		expect(domSelectionIsInside(root)).toBe(true);
+	});
+});
