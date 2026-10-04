@@ -1,5 +1,5 @@
 ---
-"@input/pen-dom": patch
+"@input/pen-dom": minor
 ---
 
 Keep authority projections from taking focus the editor does not own (HOST9), make the projection and focus paths work for editors mounted in an iframe, and project a multi-block range when focus enters the root.
@@ -8,4 +8,4 @@ Keep authority projections from taking focus the editor does not own (HOST9), ma
 - Focus, event-target and read-back checks no longer use the host window's `Node` / `Element` / `HTMLElement` constructors, so HOST9 withholding, P3, the W3.R1 read-back and root pointer gestures work when the editor's document is an iframe's.
 - Tab (or a host `focus()`) into the root with a multi-block text range within the block-surface threshold now projects it into the expanded host (S2), so printable keys reach it. New `FieldEditorSession.focusSelection()` performs that activation.
 
-Breaking: no
+Breaking: yes — hosts that called `editor.setSelection` (or another programmatic selection write) while focus was outside the editor and relied on it focusing the editor focus it explicitly — `useFocusController().text(…)` / `.range(…)` in React, or the field editor's `focus()` elsewhere; programmatic and collaborator writes no longer take focus (HOST9)
