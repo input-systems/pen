@@ -134,6 +134,13 @@ Every published package is in one `fixed` changeset group, so all of them move t
   editor.onSelectionChange((record) => { if (record.origin === "restore") /* history restore */ });
   ```
 
+### `@input/pen-multiplayer`
+
+**Peer colours are validated against a closed grammar (COL2).** A peer's `user.color` is accepted only as a hex colour, a CSS named colour (plus `transparent` / `currentColor`), or `rgb()` / `rgba()` / `hsl()` / `hsla()` with numeric arguments. Anything else, including `var(--…)`, `inherit`, `color-mix()` and `oklch()`, falls back to `currentColor`. This closes a hole where a collaborator could inject a CSS `url()` into every viewer's caret.
+
+- **Affected:** hosts that assign peer colours as CSS variables or modern colour functions.
+- **Do:** resolve the colour to hex or `rgb()` before passing it as `user.color`, or theme remote carets with the `--pen-peer-*` tokens instead.
+
 ### `@input/pen-dom`
 
 **Programmatic selection writes no longer take focus (HOST9).** `editor.setSelection`, `selectText` and other programmatic or collaborator writes update the selection without moving focus into the editor when focus is elsewhere (the page body, a host control, or another editor). Only user input (`pointer`, `keyboard`, `ime`), undo/redo `restore`, and the user's own edits move focus.
