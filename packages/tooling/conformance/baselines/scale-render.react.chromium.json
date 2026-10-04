@@ -80,8 +80,8 @@
 			"keystroke": {
 				"commit.affectedBlockIds": 1,
 				"dom.mutationRecords": 3,
-				"geometry.boundingClientRect.inFlush": 2,
-				"geometry.boundingClientRect.total": 2,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
 				"listeners.invoked.commit": 7,
 				"listeners.invoked.selectionChange": 5,
 				"render.blockRenders": 1,
@@ -99,8 +99,8 @@
 			},
 			"caretRight": {
 				"dom.mutationRecords": 0,
-				"geometry.boundingClientRect.inFlush": 2,
-				"geometry.boundingClientRect.total": 2,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 1,
 				"render.blockRenders": 1,
@@ -117,9 +117,9 @@
 			},
 			"caretDown": {
 				"dom.mutationRecords": 22,
-				"geometry.boundingClientRect.inFlush": 2,
+				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.outOfFlush": 1581,
-				"geometry.boundingClientRect.total": 1583,
+				"geometry.boundingClientRect.total": 1582,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 6,
 				"render.blockRenders": 2,
@@ -251,8 +251,8 @@
 			"keystroke": {
 				"commit.affectedBlockIds": 1,
 				"dom.mutationRecords": 3,
-				"geometry.boundingClientRect.inFlush": 2,
-				"geometry.boundingClientRect.total": 2,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
 				"listeners.invoked.commit": 7,
 				"listeners.invoked.selectionChange": 5,
 				"render.blockRenders": 1,
@@ -270,8 +270,8 @@
 			},
 			"caretRight": {
 				"dom.mutationRecords": 0,
-				"geometry.boundingClientRect.inFlush": 2,
-				"geometry.boundingClientRect.total": 2,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 1,
 				"render.blockRenders": 1,
@@ -288,9 +288,9 @@
 			},
 			"caretDown": {
 				"dom.mutationRecords": 22,
-				"geometry.boundingClientRect.inFlush": 2,
+				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.outOfFlush": 7881,
-				"geometry.boundingClientRect.total": 7883,
+				"geometry.boundingClientRect.total": 7882,
 				"listeners.invoked.selectionChange": 5,
 				"listeners.invoked.store": 6,
 				"render.blockRenders": 2,
@@ -1339,6 +1339,30 @@
 			"reason": "Merge of main (76f2fadd): bindSurfaceTabStop flips the active surface's tabIndex on focus and blur (AX1, Firefox Shift+Tab), so a shift-down extend that moves focus to the next block's surface records one more attribute mutation",
 			"moved": [
 				"react/scale-5k/shiftDown/dom.mutationRecords: 17 !== 16"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "b4c8dc03 scrolls a projected selection once per measure: a version projected twice in one turn (selection-change then activation) no longer queues a duplicate scroll measure, so keystroke and caret moves read one bounding rect instead of two",
+			"moved": [
+				"react/scale-1k/keystroke/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-1k/keystroke/geometry.boundingClientRect.total: 1 !== 2",
+				"react/scale-1k/caretRight/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-1k/caretRight/geometry.boundingClientRect.total: 1 !== 2",
+				"react/scale-1k/caretDown/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-1k/caretDown/geometry.boundingClientRect.total: 1582 !== 1583"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "b4c8dc03 scrolls a projected selection once per measure: a version projected twice in one turn (selection-change then activation) no longer queues a duplicate scroll measure, so keystroke and caret moves read one bounding rect instead of two",
+			"moved": [
+				"react/scale-5k/keystroke/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-5k/keystroke/geometry.boundingClientRect.total: 1 !== 2",
+				"react/scale-5k/caretRight/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-5k/caretRight/geometry.boundingClientRect.total: 1 !== 2",
+				"react/scale-5k/caretDown/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-5k/caretDown/geometry.boundingClientRect.total: 7882 !== 7883"
 			]
 		}
 	]
