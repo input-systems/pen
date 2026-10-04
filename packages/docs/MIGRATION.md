@@ -172,6 +172,7 @@ Every published package is in one `fixed` changeset group, so all of them move t
     /* after  */ [data-pen-editor-block][data-block-id="x"] { … }
     ```
   - The root now has an extra last child, `data-pen-overlay-layer`. CSS that relies on the root's `:last-child` must account for it.
+  - The editor root is now positioned (OV2), so overlay items scroll and clip with the root and follow it when content above it moves. The chrome sheet sets `:where([data-pen-editor-root]) { position: relative }` (zero specificity, so any host rule wins); without the sheet (`chrome={false}`), a root whose computed `position` is `static` when the editor mounts gets inline `position: relative` until it unmounts. Absolutely positioned host elements inside the root now position against the root. To keep another containing block, give the root its own non-static `position` in your stylesheet before mount; the computed value is checked once per mount, so do not toggle it from static later.
 
 **10. List items are wrapped in `[data-pen-list-group]` (AX1).** This item also covers `@input/pen-react` and `@input/pen-vue`. Each run of list items renders inside `div[data-pen-list-group][role="list"]`. Each item host gets `role="listitem"`, `aria-level`, `aria-posinset` and `aria-setsize`.
 

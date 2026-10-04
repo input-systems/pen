@@ -118,6 +118,8 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 	private epoch = 0;
 	private caretMoved = false;
 	private paintedLocalCaret: Point | null = null;
+	private rootPosition: RootPosition = "unchecked";
+	private rootNeedsPosition = false;
 	private attached = false;
 	private disposed = false;
 
@@ -172,6 +174,9 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		}
 		this.attached = true;
 		this.root.appendChild(this.layer);
+		if (this.root.isConnected) {
+			this.positionRoot(isStatic(this.root));
+		}
 		this.scheduler.setOverlayPainter(this);
 		this.reducedMotion =
 			this.sharedReducedMotion ?? getRootReducedMotion(this.root);
@@ -207,6 +212,7 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		this.scheduler.setOverlayPainter(null);
 		this.syncNativeCaret(false);
 		this.syncReducedMotionAttr(false);
+		this.restoreRootPosition();
 		this.painter.clear();
 		// The layer keeps its OV4 attributes while detached: the first paint
 		// after a re-attach rewrites them only if they changed, and a detach
@@ -323,6 +329,14 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		const userCommits = input.commits.filter(isUserCommit).length;
 		this.epoch += userCommits > 0 ? userCommits : this.caretMoved ? 1 : 0;
 		this.caretMoved = false;
+		// A root attached before it was connected is checked at its first
+		// read; the write and a re-measure follow in the write phase.
+		if (this.rootPosition === "unchecked" && this.root.isConnected) {
+			this.rootNeedsPosition = isStatic(this.root);
+			if (!this.rootNeedsPosition) {
+				this.rootPosition = "host";
+			}
+		}
 
 		const selection = getEditorSelectionRecord(this.editor) ?? NULL_RECORD;
 		const field = this.readFieldState();
@@ -373,6 +387,12 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		if (this.disposed || !this.attached) {
 			return;
 		}
+		if (this.rootNeedsPosition) {
+			this.rootNeedsPosition = false;
+			this.positionRoot(true);
+			// The layer moved under this plan's measurements.
+			this.requestPaint();
+		}
 		const next = this.pending;
 		this.pending = null;
 		if (next) {
@@ -420,6 +440,30 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		this.disposed = true;
 		this.listeners.clear();
 		this.contributors.length = 0;
+	}
+
+	/**
+	 * OV2: the root is the layer's containing block, so items scroll and clip
+	 * with the root's content and move with the root wherever it moves. A
+	 * root the host left static gets `position: relative` inline while the
+	 * overlay is attached; a host's own position is kept.
+	 */
+	private positionRoot(rootIsStatic: boolean): void {
+		if (!rootIsStatic) {
+			this.rootPosition = "host";
+			return;
+		}
+		this.rootPosition = { previous: this.root.style.position };
+		this.root.style.position = "relative";
+	}
+
+	private restoreRootPosition(): void {
+		const position = this.rootPosition;
+		this.rootPosition = "unchecked";
+		this.rootNeedsPosition = false;
+		if (typeof position === "object") {
+			this.root.style.position = position.previous;
+		}
 	}
 
 	private releaseOnce(release: () => void): Unsubscribe {
@@ -728,6 +772,18 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 const OVERLAY_SELECTION_VERSION_ATTR =
 	"data-pen-overlay-selection-version";
 const CARET_VISIBLE_ATTR = "data-caret-visible";
+
+/**
+ * Whether pen-dom positioned the root (and the inline value it replaced),
+ * the host did, or neither has been checked yet.
+ */
+type RootPosition = "unchecked" | "host" | { readonly previous: string };
+
+/** A style read, not a layout read: the computed `position` of `element`. */
+function isStatic(element: HTMLElement): boolean {
+	const view = element.ownerDocument.defaultView;
+	return view?.getComputedStyle(element).position === "static";
+}
 
 function isUserCommit(event: CommitEvent): boolean {
 	return getOpOriginType(event.origin) === "user";

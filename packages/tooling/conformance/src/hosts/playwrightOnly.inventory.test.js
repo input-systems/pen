@@ -182,6 +182,9 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 98 -> 99: scenarios/ax3-toolbar-press.spec.ts (AX3, a toolbar press keeps compatibility mouse events).
 	// 99 -> 100: suites/selection/r-shift-click-range.spec.ts (R1/S2, shift-click extends across blocks on React, Vue and vanilla).
 	// 98 -> 99: suites/overlays/ov2-scaled-ancestor.spec.ts (OV2, items under a scaled or zoomed ancestor).
+
+	// 99 -> 101: suites/overlays/{ov2-moved-root,ov2-scroll-clip}.spec.ts (OV2, the root is the layer's containing block).
+	const expectedPlaywrightSpecs = 103;
 	const expectedPlaywrightSpecs = 101;
 	assert.equal(
 		playwrightSpecs.length,

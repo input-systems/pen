@@ -358,7 +358,8 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	 * the root that moves it without resizing it — a re-centred max-width
 	 * column on window resize, a sidebar collapsing, a banner above — bumps
 	 * nothing, so a hit is checked against the block's live box before it is
-	 * trusted. Every read costs one block `getBoundingClientRect`; the text
+	 * trusted. Painted overlay items need no bump for such a move: the root is
+	 * the overlay layer's containing block (OV2), so they move with it. Every read costs one block `getBoundingClientRect`; the text
 	 * range measurements the cache exists for stay cached.
 	 */
 	private entryFor(blockId: string): BlockCacheEntry {

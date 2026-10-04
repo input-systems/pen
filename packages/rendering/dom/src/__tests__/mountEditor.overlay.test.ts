@@ -64,4 +64,35 @@ describe("mountEditor overlay layer (W35.R2)", () => {
 		mounted.destroy();
 		editor.destroy();
 	});
+
+	it("OV2: without the chrome sheet a static root is positioned inline while mounted and restored on destroy", () => {
+		const editor = createEditor({
+			schema: defaultSchema,
+			preset: noDefaultExtensionsPreset,
+		});
+		const root = document.createElement("div");
+		document.body.append(root);
+		const mounted = mountEditor(editor, root, { chrome: false });
+
+		expect(root.style.position).toBe("relative");
+		mounted.destroy();
+		expect(root.style.position).toBe("");
+		editor.destroy();
+	});
+
+	it("OV2: a root the host positions keeps the host's position", () => {
+		const editor = createEditor({
+			schema: defaultSchema,
+			preset: noDefaultExtensionsPreset,
+		});
+		const root = document.createElement("div");
+		root.style.position = "sticky";
+		document.body.append(root);
+		const mounted = mountEditor(editor, root);
+
+		expect(root.style.position).toBe("sticky");
+		mounted.destroy();
+		expect(root.style.position).toBe("sticky");
+		editor.destroy();
+	});
 });
