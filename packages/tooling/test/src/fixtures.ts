@@ -39,6 +39,7 @@ export const DEFAULT_PEN_ROOTS = [
 	{ name: "metadata", type: "map" },
 ] satisfies YjsRootExpectation[];
 
+/** Thrown when a test fixture or one of its CRDT contracts is malformed. */
 export class PenFixtureError extends Error {
 	constructor(message: string) {
 		super(message);

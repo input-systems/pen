@@ -33,6 +33,11 @@ export type PenClipboardReadResult =
 			diagnostic: DiagnosticEvent;
 	  };
 
+/**
+ * Thrown by `decodePenBlocksFromHtml` when the embedded Pen payload cannot be
+ * used and paste must fall back to another clipboard flavor. Carries the
+ * diagnostic to emit and the flavor to fall back to.
+ */
 export class PenClipboardFallbackError extends Error {
 	readonly diagnostic: DiagnosticEvent;
 	readonly flavor: PenClipboardFallbackFlavor;

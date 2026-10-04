@@ -74,7 +74,9 @@ describe("SCALE2 scoped search", () => {
 		editor.destroy();
 	});
 
-	it("SCALE2: scoped search matches equal a full scan", () => {
+	// 200 seeded steps, each comparing every block's held decorations with a
+	// full rebuild: ~0.5 s locally, past 10 s on the shared 4-vCPU CI runner.
+	it("SCALE2: scoped search matches equal a full scan", { timeout: 30_000 }, () => {
 		const editor = createSearchEditor(200, "a 1");
 		const controller = getSearchController(editor)!;
 		const random = mulberry32(11);

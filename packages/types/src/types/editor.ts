@@ -190,6 +190,7 @@ export interface DiagnosticEvent {
 	[key: string]: unknown;
 }
 
+/** One problem found when validating a CRDT document's shape, reported with `crdt:corruption`. */
 export interface DocumentValidationError {
 	code:
 		| "MISSING_SHARED_TYPE"
