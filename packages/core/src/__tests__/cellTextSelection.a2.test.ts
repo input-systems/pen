@@ -204,3 +204,118 @@ describe("CellSelection.text (W3.R18)", () => {
 		editor.destroy();
 	});
 });
+
+describe("A5: a table props or meta change is not a structure change", () => {
+	function editSecondCell(
+		editor: ReturnType<typeof createTableEditor>,
+	): void {
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId: TABLE_ID,
+				cell: { row: 0, col: 1 },
+				from: 0,
+				to: 0,
+				insert: "bravo",
+			},
+		]);
+		editor.setSelection({
+			type: "cell",
+			blockId: TABLE_ID,
+			anchor: { row: 0, col: 1 },
+			head: { row: 0, col: 1 },
+			text: { anchor: 3, focus: 3 },
+		});
+	}
+
+	it("A5: a collaborator set-props on the table keeps the edited cell and its text", () => {
+		const editor = createTableEditor();
+		editSecondCell(editor);
+		const before = recordOf(editor);
+
+		editor.apply(
+			[
+				{
+					type: "set-props",
+					blockId: TABLE_ID,
+					props: { hasHeaderRow: false },
+				},
+			],
+			{ origin: "collaborator" },
+		);
+
+		expect(editor.getBlock(TABLE_ID)?.props).toMatchObject({
+			hasHeaderRow: false,
+		});
+		expect(recordOf(editor)).toEqual(before);
+		editor.destroy();
+	});
+
+	it("A5: a set-meta on the table keeps the edited cell and its text", () => {
+		const editor = createTableEditor();
+		editSecondCell(editor);
+		const before = recordOf(editor);
+
+		editor.apply(
+			[
+				{
+					type: "set-meta",
+					blockId: TABLE_ID,
+					namespace: "review",
+					data: { note: "x" },
+				},
+			],
+			{ origin: "collaborator" },
+		);
+
+		expect(recordOf(editor)).toEqual(before);
+		editor.destroy();
+	});
+
+	it("A5: a set-props summary on a table is block-props-changed, not table-changed", () => {
+		const editor = createTableEditor();
+		const structural: string[] = [];
+		editor.on("commit", (event) => {
+			for (const change of event.summary.structural) {
+				structural.push(change.type);
+			}
+		});
+
+		editor.apply([
+			{
+				type: "set-props",
+				blockId: TABLE_ID,
+				props: { hasHeaderRow: false },
+			},
+		]);
+
+		expect(structural).toEqual(["block-props-changed"]);
+		editor.destroy();
+	});
+
+	it("A5: a table structure change resets to a collapsed text selection in the first cell", () => {
+		const editor = createTableEditor();
+		editSecondCell(editor);
+
+		editor.apply(
+			[
+				{
+					type: "grid",
+					blockId: TABLE_ID,
+					change: { kind: "insert-row", index: 0 },
+				},
+			],
+			{ origin: "collaborator" },
+		);
+
+		expect(editor.selection).toEqual({
+			type: "cell",
+			blockId: TABLE_ID,
+			anchor: { row: 0, col: 0 },
+			head: { row: 0, col: 0 },
+			text: { anchor: 0, focus: 0 },
+		});
+		expect(recordOf(editor).origin).toBe("mapped");
+		editor.destroy();
+	});
+});

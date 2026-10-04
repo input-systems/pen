@@ -95,7 +95,7 @@ A `ChangeSummary` answers what a commit touched: `commitId`, `blockText`, `struc
 
 `blockText` is per-block splices (pre-commit offsets, `insertLength`) plus attribute-only `formatRanges`. The live `BlockTextChange` has no `cell` field.
 
-`structural` is nine variants: `block-inserted`, `block-removed`, `block-moved`, `block-props-changed`, `block-split`, `blocks-merged`, `table-changed`, `apps-changed`, `metadata-changed`. There is no `block-converted` variant; a conversion is `block-props-changed` with `"type"` in `keys`. `metadata-changed` carries `namespaces`, not `keys`.
+`structural` is nine variants: `block-inserted`, `block-removed`, `block-moved`, `block-props-changed`, `block-split`, `blocks-merged`, `table-changed`, `apps-changed`, `metadata-changed`. There is no `block-converted` variant; a conversion is `block-props-changed` with `"type"` in `keys`. `table-changed` names a grid structure change (the table's row, cell, or column arrays); a props or meta change on a table block is `block-props-changed`, as on any other block. `metadata-changed` carries `namespaces`, not `keys`.
 
 `block-split` and `blocks-merged` are the local content-move recipes (source, dest, cut/join offsets), stamped by the executor onto the transaction and copied onto the summary. Remote commits without those tags fall back to same-length delete/insert pairing.
 

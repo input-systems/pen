@@ -260,7 +260,11 @@ function buildStructuralChanges(
 	// The block is gone all the same; report it removed where it sat.
 	if (blockExists) {
 		for (const [blockId, keys] of delta.blockMapChanges) {
-			if (keys.size > 0 || removedIds.has(blockId) || newIds.has(blockId)) {
+			if (
+				keys.size > 0 ||
+				removedIds.has(blockId) ||
+				newIds.has(blockId)
+			) {
 				continue;
 			}
 			if (!index.typeById.has(blockId) || blockExists(blockId)) continue;
@@ -271,7 +275,9 @@ function buildStructuralChanges(
 				parentId,
 				index: Math.max(
 					0,
-					(index.childrenByParentId.get(parentId) ?? []).indexOf(blockId),
+					(index.childrenByParentId.get(parentId) ?? []).indexOf(
+						blockId,
+					),
 				),
 			});
 		}
@@ -280,28 +286,23 @@ function buildStructuralChanges(
 	for (const [blockId, keys] of delta.blockMapChanges) {
 		if (newIds.has(blockId)) continue;
 		const keyList = [...keys];
-		const fromType = index.typeById.get(blockId) ?? "";
 		const residual = keyList.filter(
 			(key) => !IGNORABLE_BLOCK_KEYS.has(key),
 		);
 		if (residual.length === 0) continue;
 
-		const looksTable =
-			fromType === "table" || residual.some((key) => TABLE_KEYS.has(key));
-		if (looksTable) {
+		// `table-changed` names a grid structure change only; a table's props
+		// or meta change is `block-props-changed` like any other block's (A5).
+		if (residual.some((key) => TABLE_KEYS.has(key))) {
 			structural.push({ type: "table-changed", blockId });
 		}
-		if (!looksTable || residual.includes("type")) {
-			const keys = looksTable
-				? residual.filter((key) => !TABLE_KEYS.has(key))
-				: residual;
-			if (keys.length > 0) {
-				structural.push({
-					type: "block-props-changed",
-					blockId,
-					keys,
-				});
-			}
+		const propKeys = residual.filter((key) => !TABLE_KEYS.has(key));
+		if (propKeys.length > 0) {
+			structural.push({
+				type: "block-props-changed",
+				blockId,
+				keys: propKeys,
+			});
 		}
 	}
 

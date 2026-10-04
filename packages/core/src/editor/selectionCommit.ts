@@ -228,6 +228,7 @@ function mapCell(
 			blockId: state.blockId,
 			anchor: { row: 0, col: 0 },
 			head: { row: 0, col: 0 },
+			text: { anchor: 0, focus: 0 },
 		};
 	}
 
@@ -299,7 +300,11 @@ function fallbackPoint(
 	);
 	const offset =
 		textChange && textChange.splices.length > 0
-			? mapOffsetThroughSplices(textChange.splices, addressed.offset, assoc)
+			? mapOffsetThroughSplices(
+					textChange.splices,
+					addressed.offset,
+					assoc,
+				)
 			: addressed.offset;
 	return {
 		blockId: addressed.blockId,
