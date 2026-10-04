@@ -177,7 +177,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 89 -> 90 is W5.R10's two-editor relay set: scenarios/col-two-editors.spec.ts.
 	// 91 -> 94: suites/selection/r1-native-range.spec.ts (W3.G20), scenarios/ax1-list-editing.spec.ts (W6.G2), suites/selection/s2-states.spec.ts (W3.G19).
 	// 94 -> 96: suites/selection/r1-context-menu-window.spec.ts (R1) and suites/input/fe9-editcontext-programmatic-caret.spec.ts (FE9).
-	const expectedPlaywrightSpecs = 96;
+	// 96 -> 97: suites/ime/expanded-composition.spec.ts (FE2, Firefox composition over a cross-block range).
+	const expectedPlaywrightSpecs = 97;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,
