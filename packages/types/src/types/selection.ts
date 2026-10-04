@@ -141,6 +141,7 @@ export type SelectionRecordState =
 	  }
 	| null;
 
+/** The selection authority's current record: its state, version, the write's origin, and the commit it follows. */
 export interface SelectionRecord {
 	readonly state: SelectionRecordState;
 	readonly version: number;

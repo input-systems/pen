@@ -149,6 +149,7 @@ export interface HistoryAppliedEvent {
 	requestId: number;
 }
 
+/** What produced a commit: a local apply, a remote update, undo, redo, or a text stream. */
 export type CommitEventSource = "apply" | "remote" | "undo" | "redo" | "stream";
 
 /** Dropped ops and validation failures for one commit (`06-commit-pipeline.md`). */
@@ -156,6 +157,7 @@ export type Diagnostic = DiagnosticEvent;
 
 export type { SelectionRecord };
 
+/** The one event each durable commit emits (I1): its summary, origin, and the selection before and after. */
 export interface CommitEvent {
 	readonly commitId: number;
 	readonly origin: StructuredOpOrigin;
