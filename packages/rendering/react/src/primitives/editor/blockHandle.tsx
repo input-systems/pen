@@ -33,6 +33,48 @@ const MOVE_ITEMS: ReadonlyArray<{
 	{ command: PEN_MOVE_BLOCK_DOWN, messageKey: "pen.blockHandle.moveDown" },
 ];
 
+/**
+ * AX3: a block handle menu move whose focus return is still owed. A move
+ * that regroups a list item re-keys or replaces its AX1 group wrapper, so
+ * the block and its handle remount (D7) in the commit that closes the menu,
+ * and the closing handle's own return never runs. The record outlives that
+ * handle; the remounted handle for the same block takes it in the same
+ * commit. It names the move's document commit, so a later commit (an undo
+ * that remounts the block) never takes focus with it.
+ */
+interface PendingHandleMove {
+	readonly blockId: string;
+	readonly commitId: number | null;
+}
+
+const pendingByEditor = new WeakMap<Editor, PendingHandleMove>();
+
+/** Records a handle-menu move of `blockId`. Call after the move applied. */
+function markHandleMove(editor: Editor, blockId: string): void {
+	pendingByEditor.set(editor, {
+		blockId,
+		commitId: editor.lastChangeSummary?.commitId ?? null,
+	});
+}
+
+/** Drops the record: the handle that moved its block returned focus itself. */
+function clearHandleMove(editor: Editor): void {
+	pendingByEditor.delete(editor);
+}
+
+/**
+ * Whether a handle mounting for `blockId` owes focus for the move just
+ * committed. Consumes the record when it does.
+ */
+function takeHandleMove(editor: Editor, blockId: string): boolean {
+	const pending = pendingByEditor.get(editor);
+	if (!pending || pending.blockId !== blockId) {
+		return false;
+	}
+	pendingByEditor.delete(editor);
+	return pending.commitId === (editor.lastChangeSummary?.commitId ?? null);
+}
+
 export interface BlockHandleProps extends AsChildProps {
 	blockId: string;
 	ref?: React.Ref<HTMLElement>;
@@ -74,6 +116,7 @@ export function EditorBlockHandle(props: BlockHandleProps) {
 		} else {
 			applyAdjacentMove(editor, blockId, command);
 		}
+		markHandleMove(editor, blockId);
 		closeMenu();
 	}
 
@@ -85,8 +128,28 @@ export function EditorBlockHandle(props: BlockHandleProps) {
 			return;
 		}
 		focusReturnRef.current = null;
+		clearHandleMove(editor);
 		restoreFocusReturn(token, fieldEditor, "target");
 	}, [menuOpen]);
+
+	// AX3: a move that regrouped this block remounted it, and this handle
+	// with it, in the commit that closed the old handle's menu. The old
+	// handle's return above never ran, so the new one returns focus to
+	// itself, in the same commit.
+	useIsomorphicLayoutEffect(() => {
+		if (!takeHandleMove(editor, blockId)) {
+			return;
+		}
+		const handle = handleRef.current;
+		const root = resolveChromeEditorRoot(editor, handle);
+		if (root) {
+			restoreFocusReturn(
+				captureFocusReturn(root, handle),
+				fieldEditor,
+				"target",
+			);
+		}
+	}, []);
 
 	function handleTriggerKeyDown(
 		event: React.KeyboardEvent<HTMLElement>,

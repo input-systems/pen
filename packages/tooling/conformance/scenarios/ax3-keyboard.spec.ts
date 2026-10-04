@@ -166,6 +166,45 @@ scenario(
 	{ url: AX3_URL },
 );
 
+/**
+ * A move that regroups a list item (it leads a run, or crosses into another
+ * run) re-keys or replaces its AX1 group wrapper, which remounts the block
+ * and its handle (D7). Focus still returns to the moved block's handle.
+ */
+const REGROUPING_MOVES = [
+	{ blockId: "sem-b1", command: "pen.moveBlockDown", neighbours: ["sem-b1a", "sem-b1", "sem-b2"] },
+	{ blockId: "sem-b1a", command: "pen.moveBlockUp", neighbours: ["sem-b1a", "sem-b1", "sem-b2"] },
+	{ blockId: "sem-b2", command: "pen.moveBlockDown", neighbours: ["sem-between", "sem-b2", "sem-b3"] },
+	{ blockId: "sem-b3", command: "pen.moveBlockUp", neighbours: ["sem-b2", "sem-b3", "sem-between"] },
+] as const;
+
+for (const { blockId, command, neighbours } of REGROUPING_MOVES) {
+	scenario(
+		`AX3: ${command} from the handle menu of list item ${blockId} keeps focus on its handle across the regroup`,
+		async (s, page) => {
+			await installPointerGuard(page);
+			await s.load("semantics", { pointer: false });
+			const handle = `[data-pen-block-handle][data-block-id="${blockId}"]`;
+			await page.evaluate((selector) => {
+				document.querySelector<HTMLElement>(selector)?.focus();
+			}, handle);
+			await expectFocused(page, handle, "the list item's handle");
+			await page.keyboard.press("Enter");
+			const item = page.locator(`[data-pen-block-handle-menu] [data-pen-command="${command}"]`);
+			await expect(item).toBeVisible();
+			await item.focus();
+			await page.keyboard.press("Enter");
+			const order = await page.evaluate(() => window.__penConformance.blockIds);
+			const at = order.indexOf(neighbours[1]);
+			expect(order.slice(at - 1, at + 2)).toEqual(neighbours);
+			await expect(page.locator("[data-pen-block-handle-menu]")).toHaveCount(0);
+			await expectFocused(page, handle, "the moved block's handle");
+			await assertNoPointerEvents(page);
+		},
+		{ url: AX3_URL },
+	);
+}
+
 scenario(
 	"AX3: table row and column insertion is keyboard-only and keeps control focus",
 	async (s, page) => {
