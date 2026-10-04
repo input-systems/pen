@@ -98,7 +98,7 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 	{
 		code: "cell-capability-unsupported",
 		levels: ["info"],
-		sources: ["rendering/dom/src/field-editor/contenteditableDirectHandlers.ts"],
+		sources: ["rendering/dom/src/field-editor/cellMarkDecline.ts"],
 	},
 	{
 		code: "clipboard-invalid-payload",

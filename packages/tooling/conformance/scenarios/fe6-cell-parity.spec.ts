@@ -289,32 +289,25 @@ scenario(
 );
 
 /**
- * Which browsers route the bold accelerator into the page as a `formatBold`
- * `beforeinput`, measured rather than assumed.
+ * The bold accelerator inside an edited cell, on every engine.
  *
- * Chromium and WebKit produce it. Firefox delivers the keydown and nothing
- * else, so a Firefox host has no native route to a mark toggle at all — the
- * intent never reaches Pen, and there is nothing for Pen to decline. (In a
- * paragraph even Chromium delivers nothing, because it is on EditContext there;
- * cells are always contenteditable, which is why this route exists in a cell.)
+ * The field editor declines it on keydown, which every engine delivers, rather
+ * than waiting for a native `formatBold` `beforeinput`. That event is engine-
+ * and host-dependent: Chromium produces it inside a contenteditable, Firefox
+ * never does, and WebKit only does when the host application maps the key
+ * equivalent to a bold command (Safari's Format menu does; a bare WKWebView,
+ * which is what Playwright drives, does not). A decline that rode on that
+ * event was observable on one of the three conformance engines.
  *
- * The scenario asserts this per browser instead of skipping the engines that
- * lack the route. Skipping would mean a Chromium or WebKit regression that
- * silenced both the route and the diagnostic still passed. Pinning it means
- * drift in either direction is red: if a routing engine stops delivering
- * `formatBold`, or if Firefox starts, the claim fails and the contract gets
- * re-read.
+ * Declining on keydown prevents the default, so no engine follows with a
+ * `formatBold` either; the scenario pins that too, because a native toggle
+ * arriving after the keydown would report the same decline twice.
  */
-const ENGINES_ROUTING_BOLD_ACCELERATOR = new Set(["chromium", "webkit"]);
-
 scenario(
 	"FE6: a mark toggle inside a cell fails closed and says so",
 	async (s, page) => {
 		const browserName = test.info().project.name;
-		const routeExists = ENGINES_ROUTING_BOLD_ACCELERATOR.has(browserName);
-		if (routeExists) {
-			s.expectDiagnostic(CELL_CAPABILITY_UNSUPPORTED);
-		}
+		s.expectDiagnostic(CELL_CAPABILITY_UNSUPPORTED);
 
 		await seedTable(s);
 		await editCell(page, 0, 0);
@@ -358,17 +351,15 @@ scenario(
 		const diagnostics = await page.evaluate(
 			() => window.__penConformance.diagnostics,
 		);
-		const declined = diagnostics.find(
+		const declines = diagnostics.filter(
 			(event) => event.code === CELL_CAPABILITY_UNSUPPORTED,
 		);
-		const routeDelivered = inputTypes.includes("formatBold");
+		const declined = declines[0];
 
 		await test.info().attach("fe6-cell-marks-decline", {
 			body: JSON.stringify(
 				{
 					browserName,
-					routeExists,
-					routeDelivered,
 					inputTypes,
 					changed: before !== after,
 					diagnostics,
@@ -379,7 +370,6 @@ scenario(
 			contentType: "application/json",
 		});
 
-		// True on every engine, route or no route: a cell never gains a mark.
 		expect(
 			after,
 			formatCheckReport(
@@ -389,40 +379,23 @@ scenario(
 			),
 		).toBe(before);
 
-		// The label states the pin and the detail states the measurement, so a
-		// failure reads as the disagreement it is. Composing the label from
-		// `routeExists` alone printed "webkit does not route ... — inputTypes=
-		// ["formatBold"]", which contradicts its own evidence.
 		expect(
-			routeDelivered,
+			inputTypes,
 			formatCheckReport(
-				`FE6: ${browserName} is pinned to ${routeExists ? "route" : "not route"} the bold accelerator into the page as formatBold`,
-				routeDelivered === routeExists ? "passed" : "failed",
-				`${browserName} ${routeDelivered ? "delivered" : "did not deliver"} formatBold; inputTypes=${JSON.stringify(inputTypes)}`,
+				"FE6: the declined accelerator is not followed by a native formatBold",
+				inputTypes.length === 0 ? "passed" : "failed",
+				`${browserName} inputTypes=${JSON.stringify(inputTypes)}`,
 			),
-		).toBe(routeExists);
-
-		if (!routeExists) {
-			// Nothing asked, so nothing may claim to have declined.
-			expect(
-				declined,
-				formatCheckReport(
-					"FE6: no decline is reported where no toggle intent arrives",
-					declined ? "failed" : "passed",
-					`diagnostics=${JSON.stringify(diagnostics)}`,
-				),
-			).toBeUndefined();
-			return;
-		}
+		).toEqual([]);
 
 		expect(
-			declined ? declined.code : "missing",
+			declines.length,
 			formatCheckReport(
-				"FE6: the decline is observable, not silent",
-				declined ? "passed" : "failed",
-				`diagnostics=${JSON.stringify(diagnostics)}`,
+				"FE6: the decline is observable, once, on every engine",
+				declines.length === 1 ? "passed" : "failed",
+				`${browserName} diagnostics=${JSON.stringify(diagnostics)}`,
 			),
-		).toBe(CELL_CAPABILITY_UNSUPPORTED);
+		).toBe(1);
 
 		expect(
 			declined?.message ?? "",

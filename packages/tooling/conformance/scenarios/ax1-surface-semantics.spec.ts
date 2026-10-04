@@ -116,10 +116,14 @@ scenario(
 		await s.load("two-paragraph");
 
 		const root = page.locator("[data-pen-editor-root]");
+		// The neighbour is a text input, not a button: WebKit on macOS follows
+		// the platform's "Tab moves between text fields only" default and drops
+		// buttons from sequential navigation, so Shift+Tab out of the editor
+		// would leave a button-only page with nowhere to land.
 		await root.evaluate((rootElement) => {
-			const before = document.createElement("button");
+			const before = document.createElement("input");
 			before.setAttribute("data-ax1-before-editor", "");
-			before.textContent = "Before editor";
+			before.setAttribute("aria-label", "Before editor");
 			rootElement.before(before);
 		});
 		const before = page.locator("[data-ax1-before-editor]");

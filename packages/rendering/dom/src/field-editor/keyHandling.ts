@@ -19,6 +19,7 @@ import {
 } from "./commandDispatch";
 import type { SelectionRange } from "./commands";
 import { getAutocompleteController } from "../utils/autocompleteController";
+import { markForAccelerator, reportCellMarkDecline } from "./cellMarkDecline";
 import {
 	isRedoShortcut,
 	isSelectAllShortcut,
@@ -126,6 +127,13 @@ export function handleFieldEditorKeyDown(options: {
 	}
 
 	if (handleEditorKeyBindings(editor, event, { includeSelectAll: false })) {
+		return true;
+	}
+
+	if (
+		fieldEditor.activeCellCoord &&
+		declineCellMarkAccelerator(editor, event)
+	) {
 		return true;
 	}
 
@@ -247,6 +255,32 @@ function handleTableCellKey(
 	}
 
 	return null;
+}
+
+/**
+ * FE6: a mark accelerator nothing else claimed inside an edited cell fails
+ * closed here, on the keydown every engine delivers. Leaving it to the
+ * engine's `formatBold` beforeinput made the decline engine-dependent:
+ * Firefox never produces that event, and WebKit only does when the host app
+ * maps the key equivalent to a bold command (Safari's Format menu does; a
+ * bare WKWebView such as Playwright's does not). Preventing the default also
+ * keeps Chromium from following with a native `formatBold` that would
+ * report the same decline twice.
+ */
+function declineCellMarkAccelerator(
+	editor: Editor,
+	event: KeyboardEvent,
+): boolean {
+	if (event.defaultPrevented || event.isComposing === true) {
+		return false;
+	}
+	const mark = markForAccelerator(event);
+	if (!mark) {
+		return false;
+	}
+	event.preventDefault();
+	reportCellMarkDecline(editor, mark);
+	return true;
 }
 
 type CellArrowKey = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";

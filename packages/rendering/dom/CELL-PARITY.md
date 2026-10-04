@@ -40,11 +40,13 @@ Marks are the declared instance the conformance scenario exercises, and the only
 
 ### Which route the mark diagnostic covers
 
-There are two ways a mark toggle reaches Pen, and the diagnostic is on one of them.
+The field editor emits the diagnostic on two routes, and the keyboard one is the one every engine reaches.
 
-The field editor's own route is `beforeinput` with `inputType: "formatBold"`, dispatched through `DIRECT_HANDLERS`. That route emits the diagnostic. Measured across the conformance engines, **Chromium and WebKit produce it**: they turn the platform bold accelerator into `formatBold` inside a `contenteditable`. Firefox delivers the keydown and nothing more, so on Firefox the intent never arrives and there is nothing to decline. (In a paragraph Chromium delivers nothing either, because a paragraph is on EditContext; cells are always contenteditable, which is why the route exists here at all.) `fe6-cell-parity.spec.ts` asserts this per engine rather than skipping Firefox, so a Chromium or WebKit regression that silenced the route cannot pass unnoticed.
+The keyboard route is the field editor's keydown. When `Mod-b`/`Mod-i`/`Mod-u` (no Shift or Alt) reaches the end of keydown handling inside an edited cell — no keymap command and no extension binding claimed it — the field editor prevents the default and emits the diagnostic. Every engine delivers that keydown. The native `formatBold` `beforeinput` does not reach every engine: Chromium produces it inside a `contenteditable`, Firefox never does, and WebKit only does when the host application maps the key equivalent to a bold command (Safari's Format menu does; a bare WKWebView, including the one Playwright drives, does not). A decline that waited for that event was observable on Chromium alone in the conformance matrix. Preventing the keydown default also stops Chromium from following with a native `formatBold`, so the decline is reported once.
 
-The other route is `richTextShortcutsExtension()` from `@input/pen-shortcuts`, which binds `Mod-b`/`Mod-i`/`Mod-u` and is how a host gets these shortcuts on every engine — a bare `createEditor()` does not install them. That route declines through `toggleInlineMark`'s documented `false` return, and emits no diagnostic. It is left alone deliberately: the diagnostic's declared scope is the field editor and the conformance package, and the keybinding layer already has a return channel for "not expressible" that its caller chooses to discard. Giving that route the same diagnostic is the obvious next step for whoever wants the contract total across routes; it needs a cell predicate in the shortcuts package, which is why it is not a one-line change.
+The `beforeinput` route — `inputType: "formatBold"` and friends, dispatched through `DIRECT_HANDLERS` — still emits the diagnostic, for toggles that arrive without a keydown Pen saw (a host application's Format menu, for instance).
+
+`richTextShortcutsExtension()` from `@input/pen-shortcuts` binds the same keys and is how a host gets these shortcuts on every engine — a bare `createEditor()` does not install them. Its handler declines through `toggleInlineMark`'s documented `false` return and emits nothing itself; because it returns `false`, the keydown falls through to the field editor's decline above. A host binding that returns `true` for one of these keys in a cell owns the key, and no diagnostic is emitted.
 
 ## Half-supported, and honest about it
 
@@ -61,7 +63,7 @@ These reach a cell partially. They are called out rather than filed under "suppo
 
 ## Coverage
 
-`packages/tooling/conformance/scenarios/fe6-cell-parity.spec.ts` is the net, and it runs on Chromium, Firefox, and WebKit. It exercises the supported rows against a live cell — text entry, caret movement inside the cell, Tab to the next cell, undo — and holds the declared-unsupported row to three claims: the document bytes do not change on any engine, Chromium and WebKit route the bold accelerator as `formatBold` while Firefox does not, and where the route exists the decline is reported as `cell-capability-unsupported` naming the capability and the surface.
+`packages/tooling/conformance/scenarios/fe6-cell-parity.spec.ts` is the net, and it runs on Chromium, Firefox, and WebKit. It exercises the supported rows against a live cell — text entry, caret movement inside the cell, Tab to the next cell, undo — and holds the declared-unsupported row to three claims: the document bytes do not change on any engine, no native `formatBold` follows the declined accelerator, and the decline is reported exactly once as `cell-capability-unsupported` naming the capability and the surface, on every engine.
 
 Two facts the scenario had to work around, recorded because both are easy to rediscover the hard way:
 

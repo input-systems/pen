@@ -29,6 +29,7 @@ import {
 	dispatchEditorCommand,
 	syncEditorTextSelection,
 } from "./commandDispatch";
+import { reportCellMarkDecline } from "./cellMarkDecline";
 import { getPasteImporters, handlePaste } from "./clipboard";
 import { staticRangeToOffsets } from "./contenteditableDomHelpers";
 
@@ -392,14 +393,7 @@ function toggleMarkOrReport(
 	if (!isCellEditing(editor, fe)) {
 		return;
 	}
-	editor.internals.emit("diagnostic", {
-		code: "cell-capability-unsupported",
-		level: "info",
-		source: "field-editor",
-		message: `marks are not supported inside a table cell: ${mark}`,
-		capability: "marks",
-		mark,
-	});
+	reportCellMarkDecline(editor, mark);
 }
 
 function isCellEditing(
