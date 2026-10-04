@@ -12,19 +12,44 @@ export function useReducedMotion(): boolean {
 	const rootElement =
 		useContext(EditorRegionSelectionContext)?.rootElement ?? null;
 	return useSyncExternalStore(
-		(onChange) => subscribeReducedMotion(rootElement, onChange),
+		reducedMotionSubscriber(rootElement),
 		() => readReducedMotion(rootElement),
 		() => false,
 	);
 }
 
+type Subscribe = (onChange: () => void) => () => void;
+
+/**
+ * One subscribe function per root. `useSyncExternalStore` resubscribes
+ * whenever the function's identity changes, and an inline one changes every
+ * render: the sole holder of a root's signal then disposed it and re-added
+ * its `matchMedia` listener on each render. The identity is a stability
+ * contract with `useSyncExternalStore`, not an optimisation, so it is kept
+ * per root here rather than left to the compiler.
+ */
+const subscribersByRoot = new WeakMap<HTMLElement, Subscribe>();
+
+function reducedMotionSubscriber(root: HTMLElement | null): Subscribe {
+	if (!root) {
+		return subscribeNothing;
+	}
+	let subscribe = subscribersByRoot.get(root);
+	if (!subscribe) {
+		subscribe = (onChange) => subscribeReducedMotion(root, onChange);
+		subscribersByRoot.set(root, subscribe);
+	}
+	return subscribe;
+}
+
+function subscribeNothing(): () => void {
+	return noop;
+}
+
 function subscribeReducedMotion(
-	root: HTMLElement | null,
+	root: HTMLElement,
 	onChange: () => void,
 ): () => void {
-	if (!root) {
-		return noop;
-	}
 	const signal = getRootReducedMotion(root);
 	const unsubscribe = signal.subscribe(onChange);
 	return () => {
