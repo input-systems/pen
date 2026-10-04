@@ -10,17 +10,22 @@ export interface ToolbarToggleProps extends AsChildProps {
 	/** Composed with the toggle, not instead of it; see `ToolbarButtonProps.onClick`. */
 	onClick?: React.MouseEventHandler<HTMLElement>;
 	/**
-	 * Composed: the primitive prevents the primary-button default afterwards,
-	 * so a click never takes focus from the field (AX3).
+	 * Passed through. The primitive does not cancel `pointerdown`: that would
+	 * suppress the compatibility mouse events (AX3).
 	 */
 	onPointerDown?: React.PointerEventHandler<HTMLElement>;
-	/** Composed like `onPointerDown`. */
+	/**
+	 * Composed: the primitive prevents the primary-button `mousedown` default
+	 * afterwards, so a click never takes focus from the field (AX3).
+	 * `pointerdown` is not cancelled, so compatibility mouse events still
+	 * fire.
+	 */
 	onMouseDown?: React.MouseEventHandler<HTMLElement>;
 	ref?: React.Ref<HTMLElement>;
 }
 
 export function ToolbarToggle(props: ToolbarToggleProps) {
-	const { format, onClick, onPointerDown, onMouseDown, ...rest } = props;
+	const { format, onClick, onMouseDown, ...rest } = props;
 	const { editor, state } = useToolbarContext();
 	const { readonly } = useEditorContext();
 
@@ -39,7 +44,6 @@ export function ToolbarToggle(props: ToolbarToggleProps) {
 		role: "button",
 		"aria-pressed": isActive,
 		onClick: handleClick,
-		onPointerDown: composeToolbarPress(onPointerDown),
 		onMouseDown: composeToolbarPress(onMouseDown),
 	};
 

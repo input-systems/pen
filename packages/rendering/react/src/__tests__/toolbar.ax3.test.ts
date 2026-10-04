@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createElement } from "react";
+import React, { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 import { fieldEditorHostFacet } from "@input/pen-core";
@@ -213,7 +213,9 @@ describe("@input/pen-react toolbar AX3", () => {
 				press = dispatchPress(control);
 				control.click();
 			});
-			expect(press.pointerdown.defaultPrevented).toBe(true);
+			// AX3: mousedown's default is what moves focus; pointerdown stays
+			// uncancelled so compatibility mouse events still fire.
+			expect(press.pointerdown.defaultPrevented).toBe(false);
 			expect(press.mousedown.defaultPrevented).toBe(true);
 			expect(document.activeElement).toBe(field);
 		}
@@ -261,9 +263,59 @@ describe("@input/pen-react toolbar AX3", () => {
 		});
 
 		expect(seen).toEqual(["pointerdown", "mousedown", "mousedown"]);
-		expect(press.pointerdown.defaultPrevented).toBe(true);
+		expect(press.pointerdown.defaultPrevented).toBe(false);
 		expect(press.mousedown.defaultPrevented).toBe(true);
 		expect(secondary.defaultPrevented).toBe(false);
+	});
+
+	it("AX3: a Radix-style trigger composed through asChild still opens on pointerdown", async () => {
+		const editor = createTestEditor();
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+		fixtures.push({ container, editor, root, blockId: "" });
+		const opened: string[] = [];
+
+		// Radix triggers compose the props they receive before their own
+		// handler and skip it once the event is default-prevented.
+		function Trigger(props: React.ComponentProps<"button">) {
+			const { onPointerDown, ...rest } = props;
+			return createElement("button", {
+				...rest,
+				type: "button",
+				onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
+					onPointerDown?.(event);
+					if (!event.defaultPrevented) opened.push("open");
+				},
+			});
+		}
+
+		await act(async () => {
+			root.render(
+				createElement(
+					Pen.Editor.Root,
+					{ editor },
+					createElement(
+						Pen.Toolbar.Root,
+						null,
+						createElement(
+							Pen.Toolbar.Button,
+							{ asChild: true },
+							createElement(Trigger, null, "More"),
+						),
+					),
+				),
+			);
+		});
+
+		const button = toolbarItems(container)[0]!;
+		let press!: ReturnType<typeof dispatchPress>;
+		await act(async () => {
+			press = dispatchPress(button);
+		});
+
+		expect(opened).toEqual(["open"]);
+		expect(press.mousedown.defaultPrevented).toBe(true);
 	});
 
 	it("AX3: keyboard activation keeps focus on the toolbar control", async () => {

@@ -167,7 +167,9 @@ export function App() {
 				{showAx3Chrome ? (
 					<>
 						<Pen.SlashMenu.Root>
-							<Pen.SlashMenu.List />
+							<Pen.SlashMenu.Content>
+								<Pen.SlashMenu.List />
+							</Pen.SlashMenu.Content>
 						</Pen.SlashMenu.Root>
 						<Ax3Chrome editor={session.editor} />
 					</>

@@ -12,17 +12,22 @@ export interface ToolbarButtonProps extends AsChildProps {
 	 */
 	onClick?: React.MouseEventHandler<HTMLElement>;
 	/**
-	 * Composed: the primitive prevents the primary-button default afterwards,
-	 * so a click never takes focus from the field (AX3).
+	 * Passed through. The primitive does not cancel `pointerdown`: that would
+	 * suppress the compatibility mouse events (AX3).
 	 */
 	onPointerDown?: React.PointerEventHandler<HTMLElement>;
-	/** Composed like `onPointerDown`. */
+	/**
+	 * Composed: the primitive prevents the primary-button `mousedown` default
+	 * afterwards, so a click never takes focus from the field (AX3).
+	 * `pointerdown` is not cancelled, so compatibility mouse events still
+	 * fire.
+	 */
 	onMouseDown?: React.MouseEventHandler<HTMLElement>;
 	ref?: React.Ref<HTMLElement>;
 }
 
 export function ToolbarButton(props: ToolbarButtonProps) {
-	const { onAction, disabled, onClick, onPointerDown, onMouseDown, ...rest } =
+	const { onAction, disabled, onClick, onMouseDown, ...rest } =
 		props;
 
 	const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -38,7 +43,6 @@ export function ToolbarButton(props: ToolbarButtonProps) {
 		role: "button",
 		"aria-disabled": disabled || undefined,
 		onClick: handleClick,
-		onPointerDown: composeToolbarPress(onPointerDown),
 		onMouseDown: composeToolbarPress(onMouseDown),
 	};
 

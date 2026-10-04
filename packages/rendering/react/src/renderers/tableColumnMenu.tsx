@@ -273,8 +273,10 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 				onClose();
 			}
 		};
-		document.addEventListener("mousedown", handler);
-		return () => document.removeEventListener("mousedown", handler);
+		// `pointerdown`, not `mousedown`: a control that cancels its
+		// pointerdown suppresses the compatibility mouse events.
+		document.addEventListener("pointerdown", handler);
+		return () => document.removeEventListener("pointerdown", handler);
 	}, [anchorEl, onClose, title]);
 
 	useIsomorphicLayoutEffect(() => {

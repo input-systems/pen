@@ -126,9 +126,11 @@ export function SuggestionMenuContent(props: SuggestionMenuContentProps) {
 			dismiss();
 		};
 
-		document.addEventListener("mousedown", handlePointerDown, true);
+		// `pointerdown`, not `mousedown`: a control that cancels its
+		// pointerdown suppresses the compatibility mouse events.
+		document.addEventListener("pointerdown", handlePointerDown, true);
 		return () => {
-			document.removeEventListener("mousedown", handlePointerDown, true);
+			document.removeEventListener("pointerdown", handlePointerDown, true);
 		};
 	}, [dismiss, open]);
 

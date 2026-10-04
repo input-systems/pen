@@ -289,7 +289,7 @@ store.applyDomTextSelection(anchor, focus, "pointer");
 
 **21. Focus return (AX3).**
 
-- Toolbar buttons and toggles no longer take focus on click: the primary-button `pointerdown` / `mousedown` default is prevented after your handler runs. Keyboard activation keeps focus on the control, and Escape returns it to the editor.
+- Toolbar buttons and toggles no longer take focus on click: the primary-button `mousedown` default is prevented after your handler runs (`pointerdown` is left alone, so compatibility mouse events still fire). Keyboard activation keeps focus on the control, and Escape returns it to the editor.
 - The AI command menu and the contextual prompt move focus back to whatever had it before they opened, on accept, reject, dismiss or Escape.
 - The block-handle and table column menus return focus to the control that opened them.
 - If you relied on `document.activeElement` being the toolbar button after a click, or on the AI input keeping focus after close, update that logic. For custom chrome, use `captureFocusReturn` / `restoreFocusReturn` from `@input/pen-dom`.
