@@ -967,6 +967,14 @@ export class FieldEditorImpl implements FieldEditorSession {
 		if (decided.decision !== "accept" || decided.normalized === null) {
 			return decided.decision;
 		}
+		if (this._isComposing && this._mode === "expanded") {
+			// C1, FE2: the expanded host composes at its range start in text
+			// the record does not hold; that caret is not a selection. The
+			// range stays the record, and the divergence projection is
+			// withheld until compositionend-completed releases it.
+			this.requestDivergenceProjection(proposal);
+			return "diverge";
+		}
 		if (isLeftoverField) {
 			// Same leftover with the window open: a drag onto a block
 			// with no text position reports the nearest text end, and

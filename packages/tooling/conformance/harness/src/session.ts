@@ -1490,6 +1490,9 @@ function installBridge(): void {
 		get hasFieldEditor() {
 			return getHarnessSession().editor.facet(fieldEditorHostFacet) != null;
 		},
+		get composing() {
+			return isFieldComposing(getHarnessSession().editor);
+		},
 		get reducedMotion() {
 			return reducedMotion();
 		},

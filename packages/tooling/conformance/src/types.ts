@@ -380,6 +380,8 @@ export type PenConformanceBridge = {
 	readonly fixtureName: string;
 	readonly generation: number;
 	readonly hasFieldEditor: boolean;
+	/** The field editor's composing state: the C1 ime window is open. */
+	readonly composing: boolean;
 	readonly reducedMotion: boolean;
 	readonly windowRange: { start: number; size: number };
 	readonly hasMultiplayer: boolean;

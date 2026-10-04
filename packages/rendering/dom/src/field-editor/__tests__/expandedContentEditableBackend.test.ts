@@ -450,3 +450,89 @@ describe("ExpandedContentEditableBackend keymap", () => {
 		}
 	});
 });
+
+describe("ExpandedContentEditableBackend composition window", () => {
+	function twoBlockRange() {
+		const editor = createEditor({ schema: defaultSchema });
+		const firstBlockId = editor.firstBlock()!.id;
+		const secondBlockId = crypto.randomUUID();
+		editor.apply([
+			{ type: "splice-text", blockId: firstBlockId, from: 0, to: 0, insert: "Hello" },
+			{
+				type: "insert-block",
+				blockId: secondBlockId,
+				blockType: "paragraph",
+				props: {},
+				position: { after: firstBlockId },
+			},
+			{ type: "splice-text", blockId: secondBlockId, from: 0, to: 0, insert: "World" },
+		]);
+		editor.selectTextRange(
+			{ blockId: firstBlockId, offset: 1 },
+			{ blockId: secondBlockId, offset: 2 },
+		);
+		return { editor, firstBlockId };
+	}
+
+	function composingController(blockId: string) {
+		const fieldEditor = createFieldEditor(blockId);
+		const composing: boolean[] = [];
+		const gestures: string[] = [];
+		const controller = {
+			...fieldEditor.controller,
+			setComposing: (value: boolean) => composing.push(value),
+			notifyGestureEvent: (kind: string) => gestures.push(kind),
+		};
+		return { controller, composing, gestures };
+	}
+
+	it("C1: a composition in the host opens and closes the ime window", () => {
+		const { editor, firstBlockId } = twoBlockRange();
+		const { controller, composing, gestures } = composingController(firstBlockId);
+		const backend = new ExpandedContentEditableBackend(
+			editor,
+			controller as unknown as FieldEditorInputController,
+		);
+		const host = document.createElement("div");
+		backend.activate(host);
+		try {
+			host.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+			expect(composing).toEqual([true]);
+			expect(gestures).toEqual(["compositionstart"]);
+			host.dispatchEvent(
+				new CompositionEvent("compositionend", { bubbles: true, data: "x" }),
+			);
+			expect(composing).toEqual([true, false]);
+			expect(gestures).toEqual(["compositionstart", "compositionend-completed"]);
+			expect(editor.getBlock(firstBlockId)?.textContent()).toBe("Hxrld");
+		} finally {
+			backend.deactivate();
+			editor.destroy();
+		}
+	});
+
+	it("FE2: a composition does not survive a re-attach of the same instance", () => {
+		const { editor, firstBlockId } = twoBlockRange();
+		const { controller, composing } = composingController(firstBlockId);
+		const backend = new ExpandedContentEditableBackend(
+			editor,
+			controller as unknown as FieldEditorInputController,
+		);
+		const host = document.createElement("div");
+		backend.activate(host);
+		try {
+			host.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+			backend.deactivate();
+			expect(composing).toEqual([true, false]);
+			backend.activate(host);
+			host.dispatchEvent(
+				new CompositionEvent("compositionend", { bubbles: true, data: "x" }),
+			);
+			expect(editor.getBlock(firstBlockId)?.textContent()).toBe("Hello");
+			expect(composing).toEqual([true, false]);
+		} finally {
+			backend.deactivate();
+			editor.destroy();
+		}
+	});
+});

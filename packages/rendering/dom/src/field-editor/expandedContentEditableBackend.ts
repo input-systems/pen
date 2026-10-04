@@ -69,6 +69,7 @@ export class ExpandedContentEditableBackend {
 		focusOptions?: PenFieldEditorFocusOptions,
 	): void {
 		this.element = element;
+		this.composingOverRange = false;
 		element.contentEditable = "true";
 		bindSurfaceTabStop(this.attachment, element);
 
@@ -128,6 +129,10 @@ export class ExpandedContentEditableBackend {
 		this.attachment.release();
 
 		this.element = null;
+		if (this.composingOverRange) {
+			this.composingOverRange = false;
+			this.fieldEditor.setComposing(false);
+		}
 	}
 
 	updateSelection(): void {
@@ -312,10 +317,11 @@ export class ExpandedContentEditableBackend {
 	 * FE2: a composition with no decided composition keystroke before it
 	 * (Gecko delivers text from a text input processor this way, and an
 	 * Android keyboard's keystroke is undecided) starts in this host. Its
-	 * `insertCompositionText` cannot be cancelled, and over the cross-block range it would move text and remove block elements the
-	 * renderer owns, so the native range collapses to the range start and the
-	 * engine composes inside that block's field DOM. Moving the editing host
-	 * now would make Gecko commit the composition empty. The committed text
+	 * `insertCompositionText` cannot be cancelled, and over the cross-block
+	 * range it would move text and remove block elements the renderer owns,
+	 * so the native range collapses to the range start and the engine
+	 * composes inside that block's field DOM. Moving the editing host now
+	 * would make Gecko commit the composition empty. The committed text
 	 * replaces the authority range at `compositionend`, and the caret's field
 	 * rebuilds its DOM from the document.
 	 */
@@ -326,18 +332,25 @@ export class ExpandedContentEditableBackend {
 		const start = rangeStart(this.editor, selection);
 		writeNativeRange(element, start, start);
 		this.composingOverRange = true;
+		// C1: the ime window opens, so projections are withheld while the
+		// engine composes in the start block's DOM; the reader does not take
+		// that caret as a selection, so the range stays the record.
+		this.fieldEditor.setComposing(true);
+		this.fieldEditor.notifyGestureEvent?.("compositionstart");
 	};
 
 	private handleCompositionEnd = (event: CompositionEvent): void => {
 		if (!this.composingOverRange) return;
 		this.composingOverRange = false;
+		this.fieldEditor.setComposing(false);
 		const text = event.data ?? "";
+		if (text && !dispatchEditorCommand(this.editor, insertText, { text })) {
+			this.editor.replaceSelection(text);
+		}
+		this.fieldEditor.notifyGestureEvent?.("compositionend-completed");
 		if (!text) {
 			this.updateSelection();
 			return;
-		}
-		if (!dispatchEditorCommand(this.editor, insertText, { text })) {
-			this.editor.replaceSelection(text);
 		}
 		this.activateSingleBlockTextSelection();
 	};
