@@ -4,46 +4,16 @@ import { undoExtension } from "@input/pen-undo";
 import { deltaStreamExtension } from "../stream";
 import { toolsExtension } from "@input/pen-tools";
 import {
-	acceptAllSuggestions,
-	acceptSuggestion,
 	aiExtension,
 	getAIInlineHistoryController,
 	getAIController,
-	rejectSuggestion,
 } from "../index";
-import {
-	readAllSuggestions,
-	readBlockSuggestionMeta,
-	readSuggestionsFromBlock,
-} from "../suggestions/persistent";
 import { defaultSchema } from "@input/pen-schema";
-import {
-	createDeferred,
-	testStreamingToolExtension,
-	waitForPreview,
-} from "./extension.testUtils";
+import { createSingleDeltaEditor } from "./extension.testUtils";
 
 describe("aiExtension: inline review restore and session metrics", () => {
 	it("does not reopen accepted inline review for unrelated undo operations", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "planet",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("planet");
 		const firstBlockId = editor.firstBlock()!.id;
 		const secondBlockId = crypto.randomUUID();
 		editor.apply(
@@ -123,25 +93,7 @@ describe("aiExtension: inline review restore and session metrics", () => {
 	});
 
 	it("restores the latest inline review turn even when no inline session is active", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "planet",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("planet");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[
@@ -182,25 +134,7 @@ describe("aiExtension: inline review restore and session metrics", () => {
 	});
 
 	it("restores the inline prompt in the same undo step after accepting a suspended review turn", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "planet",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("planet");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[
@@ -250,25 +184,7 @@ describe("aiExtension: inline review restore and session metrics", () => {
 	});
 
 	it("restores prompt and review state on the first inline history undo shortcut", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "planet",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("planet");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[
@@ -392,25 +308,7 @@ describe("aiExtension: inline review restore and session metrics", () => {
 	});
 
 	it("records selection rewrites in session commit metrics", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "planet",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("planet");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[
