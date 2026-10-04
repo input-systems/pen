@@ -303,7 +303,23 @@ export function insertUploadedImagesAtDropTarget(
 	return lastInsertedBlockId;
 }
 
-export { resolveDefaultDropTarget } from "./dropResolver";
+/** After the last block, or the document end when there is none. */
+export function resolveDefaultDropTarget(editor: Editor): ResolvedDropTarget {
+	const lastBlock = editor.lastBlock();
+	if (!lastBlock) {
+		return {
+			kind: "document-end",
+			position: "last",
+		};
+	}
+
+	return {
+		kind: "block-edge",
+		blockId: lastBlock.id,
+		side: "after",
+		position: { after: lastBlock.id },
+	};
+}
 
 /** One image block per upload, the first at `position` and each next after the previous. */
 function buildImageInsertOps(

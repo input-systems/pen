@@ -5,9 +5,9 @@ import {
 	getAssetProvider,
 	getImageFiles,
 	insertUploadedImagesAtDropTarget,
+	resolveDefaultDropTarget,
 	uploadImageFiles,
 } from "./transferImages";
-import { resolveDefaultDropTarget } from "./dropResolver";
 import {
 	IMAGE_BLOCK_TYPE,
 	type ExecuteTransferOptions,

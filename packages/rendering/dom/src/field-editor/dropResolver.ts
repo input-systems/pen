@@ -7,6 +7,7 @@ import {
 	pointToEditorSelectionPoint,
 	type SelectionPoint,
 } from "./selectionBridge";
+import { resolveDefaultDropTarget } from "./transferImages";
 
 export type ResolvedDropTarget =
 	| {
@@ -135,24 +136,6 @@ function blockEdgeTarget(
 		blockId,
 		side,
 		position: side === "before" ? { before: blockId } : { after: blockId },
-	};
-}
-
-/** After the last block, or the document end when there is none. */
-export function resolveDefaultDropTarget(editor: Editor): ResolvedDropTarget {
-	const lastBlock = editor.lastBlock();
-	if (!lastBlock) {
-		return {
-			kind: "document-end",
-			position: "last",
-		};
-	}
-
-	return {
-		kind: "block-edge",
-		blockId: lastBlock.id,
-		side: "after",
-		position: { after: lastBlock.id },
 	};
 }
 
