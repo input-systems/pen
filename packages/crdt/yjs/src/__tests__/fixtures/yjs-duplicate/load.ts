@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as Y from "yjs";
@@ -27,7 +28,14 @@ export async function loadDuplicateYjs(): Promise<{
 	if (!outFile) {
 		throw new Error("yjs-duplicate fixture build printed no output path");
 	}
-	const duplicate = (await import(pathToFileURL(outFile).href)) as typeof Y;
+	let duplicate: typeof Y;
+	try {
+		duplicate = (await import(
+			/* @vite-ignore */ pathToFileURL(outFile).href
+		)) as typeof Y;
+	} finally {
+		rmSync(dirname(outFile), { recursive: true, force: true });
+	}
 	if (typeof duplicate.Doc !== "function") {
 		throw new Error("yjs-duplicate bundle did not export Doc");
 	}
