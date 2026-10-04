@@ -404,9 +404,9 @@
 				"render.reactCommits": 2,
 				"scan.blockOrderReads": 84000,
 				"scan.blocksMapIterations": 41990,
-				"scan.blocksMapReads": 409162,
+				"scan.blocksMapReads": 657670,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 110302506,
+				"scan.orderArrayReads": 110323510,
 				"scan.textFullReads": 30710,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 9990,
@@ -418,7 +418,7 @@
 				"listeners.live.decorationsChange": 2,
 				"listeners.live.store": 1,
 				"listeners.live.total": 20,
-				"notifier.blockSubscribers": 135520,
+				"notifier.blockSubscribers": 138020,
 				"mount.blocksMounted": 10500
 			}
 		},
@@ -433,9 +433,9 @@
 				"render.reactCommits": 2,
 				"scan.blockOrderReads": 1470000,
 				"scan.blocksMapIterations": 209950,
-				"scan.blocksMapReads": 2045762,
+				"scan.blocksMapReads": 3288270,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 2756512506,
+				"scan.orderArrayReads": 2756617510,
 				"scan.textFullReads": 153550,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 49950,
@@ -447,16 +447,16 @@
 				"listeners.live.decorationsChange": 2,
 				"listeners.live.store": 1,
 				"listeners.live.total": 20,
-				"notifier.blockSubscribers": 677600,
+				"notifier.blockSubscribers": 690100,
 				"mount.blocksMounted": 52500
 			}
 		}
 	},
 	"clocks": {
-		"recordedAt": "2026-10-03",
+		"recordedAt": "2026-10-04",
 		"machineClass": "macos-arm64 (darwin 27, Apple Silicon). Not the CI runner (github-actions-ubuntu-latest).",
 		"load": {
-			"load1": 4.17529296875,
+			"load1": 4.67578125,
 			"ncpu": 14,
 			"busy": false
 		},
@@ -492,6 +492,21 @@
 					"max": 32.2
 				},
 				"heapAfterMountBytes": 36226976
+			},
+			"scale-10k": {
+				"mountMs": {
+					"p50": 218.5,
+					"n": 5,
+					"min": 203.5,
+					"max": 228.1
+				},
+				"keystrokeToFrameMs": {
+					"p50": 8.7,
+					"n": 20,
+					"min": 8.3,
+					"max": 44.5
+				},
+				"heapAfterMountBytes": 58095040
 			}
 		},
 		"fixtures": {
@@ -556,6 +571,37 @@
 					"totalMs": 0
 				},
 				"heapAfterMountBytes": 138879864
+			},
+			"scale-10k": {
+				"mountMs": {
+					"p50": 2638.5,
+					"n": 5,
+					"min": 1918.9,
+					"max": 3460.1
+				},
+				"keystrokeToFrameMs": {
+					"p50": 61.8,
+					"n": 20,
+					"min": 59.2,
+					"max": 77.5
+				},
+				"caretRightToFrameMs": {
+					"p50": 15.5,
+					"n": 20,
+					"min": 14.8,
+					"max": 23.1
+				},
+				"caretDownToFrameMs": {
+					"p50": 673.1,
+					"n": 20,
+					"min": 666.6,
+					"max": 689.4
+				},
+				"scrollLongTasks": {
+					"count": 0,
+					"totalMs": 0
+				},
+				"heapAfterMountBytes": 416756564
 			}
 		}
 	},

@@ -165,7 +165,7 @@
 			"caretDownToFrameP50Ms": 11.9,
 			"mountTimedOut": false,
 			"machineClass": "macos-arm64 (darwin 27, Apple Silicon). Not the CI runner (github-actions-ubuntu-latest).",
-			"recordedAt": "2026-10-03",
+			"recordedAt": "2026-10-04",
 			"source": "@input/pen-conformance baselines/scale-render.react.chromium.json"
 		},
 		{
@@ -180,7 +180,7 @@
 			"caretDownToFrameP50Ms": 167.2,
 			"mountTimedOut": false,
 			"machineClass": "macos-arm64 (darwin 27, Apple Silicon). Not the CI runner (github-actions-ubuntu-latest).",
-			"recordedAt": "2026-10-03",
+			"recordedAt": "2026-10-04",
 			"source": "@input/pen-conformance baselines/scale-render.react.chromium.json"
 		},
 		{
@@ -189,13 +189,13 @@
 			"rootBlocks": 10000,
 			"totalBlocks": 10500,
 			"grade": "measured",
-			"mountP50Ms": null,
-			"mountFloorP50Ms": null,
-			"keystrokeToFrameP50Ms": null,
-			"caretDownToFrameP50Ms": null,
+			"mountP50Ms": 2638.5,
+			"mountFloorP50Ms": 218.5,
+			"keystrokeToFrameP50Ms": 61.8,
+			"caretDownToFrameP50Ms": 673.1,
 			"mountTimedOut": false,
-			"machineClass": "unrecorded",
-			"recordedAt": "unrecorded",
+			"machineClass": "macos-arm64 (darwin 27, Apple Silicon). Not the CI runner (github-actions-ubuntu-latest).",
+			"recordedAt": "2026-10-04",
 			"source": "@input/pen-conformance baselines/scale-render.react.chromium.json"
 		},
 		{
