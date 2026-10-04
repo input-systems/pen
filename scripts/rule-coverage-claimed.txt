@@ -300,3 +300,4 @@ rules/dom#OV3
 rules/selection#O5
 rules/dom#FE5
 rules/interop#IOP11
+rules/dom#FE2
