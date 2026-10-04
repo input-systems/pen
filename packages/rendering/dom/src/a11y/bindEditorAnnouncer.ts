@@ -15,6 +15,7 @@ import {
 } from "@input/pen-types";
 
 import { createAnnouncer } from "./announcer";
+import { arraysEqual } from "../utils/arraysEqual";
 import { getRootGeometry } from "../geometry/rootGeometry";
 import { getInlineAtomAtOffset } from "../field-editor/inlineAtomModel";
 
@@ -125,7 +126,7 @@ function announceSelectionChange(
 			announceEditorA11y(editor, "blockSelectionEntered", { count });
 			return;
 		}
-		if (!sameBlockIds(previous.blockIds, next.blockIds)) {
+		if (!arraysEqual(previous.blockIds, next.blockIds)) {
 			announceEditorA11y(editor, "blockSelectionChanged", { count });
 		}
 		return;
@@ -190,19 +191,4 @@ function announceAtomSelection(
 			props: atom.props,
 		}).label,
 	});
-}
-
-function sameBlockIds(
-	left: readonly string[],
-	right: readonly string[],
-): boolean {
-	if (left.length !== right.length) {
-		return false;
-	}
-	for (let index = 0; index < left.length; index += 1) {
-		if (left[index] !== right[index]) {
-			return false;
-		}
-	}
-	return true;
 }

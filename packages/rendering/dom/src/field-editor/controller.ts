@@ -198,9 +198,6 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 		anchor: { blockId: string; offset: number },
 		focus: { blockId: string; offset: number },
 		origin: SelectionOrigin,
-		options?: {
-			focusBlockId?: string;
-		},
 	): void;
 	resolveInsertMarks(
 		ytext: { toDelta(): unknown[] },

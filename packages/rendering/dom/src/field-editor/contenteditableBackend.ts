@@ -242,7 +242,7 @@ export class ContentEditableBackend {
 	 * `CellSelection.text`, else a text selection inside the focused block.
 	 * The projector calls it; so do this backend's own rebuilds.
 	 */
-	updateSelection(_relPos?: unknown): void {
+	updateSelection(): void {
 		const element = this.element;
 		if (!element) return;
 

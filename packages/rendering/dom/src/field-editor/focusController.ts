@@ -46,16 +46,11 @@ export class FocusController {
 		options?: FocusOptions,
 		policyOptions: PenFieldEditorFocusOptions = {},
 	): boolean {
-		const request = this._createFocusRequest(target, reason, policyOptions);
-		const decision = this._decideFocus(request);
-		if (decision.type === "deny") {
-			this._emitFocusDenied(request);
-			return false;
-		}
-		if (decision.type === "allow" && !request.passive) {
+		const decision = this._decide(target, reason, policyOptions);
+		if (decision === "allow") {
 			target.focus(options);
 		}
-		return true;
+		return decision !== "deny";
 	}
 
 	requestActivation(
@@ -63,13 +58,7 @@ export class FocusController {
 		reason: FieldEditorFocusReason,
 		options: PenFieldEditorFocusOptions = {},
 	): boolean {
-		const request = this._createFocusRequest(target, reason, options);
-		const decision = this._decideFocus(request);
-		if (decision.type === "deny") {
-			this._emitFocusDenied(request);
-			return false;
-		}
-		return true;
+		return this._decide(target, reason, options) !== "deny";
 	}
 
 	requestRootFocus(
@@ -87,17 +76,6 @@ export class FocusController {
 		if (activeEl instanceof HTMLElement && root.contains(activeEl)) {
 			activeEl.blur();
 		}
-	}
-
-	attachedElementOwnsFocus(): boolean {
-		const attachedElement = this._getAttachedElement();
-		if (!attachedElement) {
-			return false;
-		}
-		const activeElement = attachedElement.ownerDocument?.activeElement;
-		return activeElement instanceof Node
-			? attachedElement.contains(activeElement)
-			: false;
 	}
 
 	notifyRootAttached(root: HTMLElement): void {
@@ -153,6 +131,20 @@ export class FocusController {
 			blockId: this._getFocusBlockId(),
 			passive: options.passive ?? options.domFocus === false,
 		};
+	}
+
+	/** Decides a focus request; a denied one is reported. `allow` means move focus now. */
+	private _decide(
+		target: HTMLElement,
+		reason: FieldEditorFocusReason,
+		options: PenFieldEditorFocusOptions,
+	): PenFocusDecision["type"] {
+		const request = this._createFocusRequest(target, reason, options);
+		const decision = this._decideFocus(request);
+		if (decision.type === "deny") {
+			this._emitFocusDenied(request);
+		}
+		return decision.type;
 	}
 
 	private _decideFocus(request: FieldEditorFocusRequest): PenFocusDecision {

@@ -29,14 +29,9 @@ export class BackendLifecycleController {
 		return this.backend?.constructor === BackendClass;
 	}
 
-	create(BackendClass: InputBackendConstructor): InputBackend {
-		return new BackendClass(this.editor, this.fieldEditor);
-	}
-
-	replace(BackendClass: InputBackendConstructor): InputBackend {
+	replace(BackendClass: InputBackendConstructor): void {
 		this.deactivate();
-		this.backend = this.create(BackendClass);
-		return this.backend;
+		this.backend = new BackendClass(this.editor, this.fieldEditor);
 	}
 
 	activate(
@@ -47,8 +42,8 @@ export class BackendLifecycleController {
 		this.backend?.activate(element, ytext, focusOptions);
 	}
 
-	updateSelection(relPos: unknown): void {
-		this.backend?.updateSelection(relPos);
+	updateSelection(): void {
+		this.backend?.updateSelection();
 	}
 
 	deactivate(): void {

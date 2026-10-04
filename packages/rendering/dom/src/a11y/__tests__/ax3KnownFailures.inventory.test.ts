@@ -29,9 +29,9 @@ describe("AX3 previously-reclassified bugs (rechecked, not trusted)", () => {
 		// The body writes the record: the edited cell's text range, else
 		// the native range in the field (W3.R10 folded the restore into it).
 		const body = backend.slice(
-			backend.indexOf("updateSelection(_relPos?: unknown): void {"),
+			backend.indexOf("updateSelection(): void {"),
 		);
-		expect(body).toMatch(/^updateSelection\(_relPos\?: unknown\): void \{/);
+		expect(body).toMatch(/^updateSelection\(\): void \{/);
 		expect(body.slice(0, 1200)).toMatch(
 			/writeNativeRange\(root, anchor, focus\)/,
 		);

@@ -18,6 +18,7 @@ import {
 } from "./selectionMapping";
 import { normalizeSelectionFormation } from "../utils/selectionFormation";
 import { resolveCellInlineElement } from "./contentResolution";
+import { arraysEqual } from "../utils/arraysEqual";
 
 export type ReaderPoint = Point;
 
@@ -153,7 +154,7 @@ export function isLogicallyEquivalent(
 				return false;
 			}
 			return (
-				sameBlockIds(domRead.blockIds, authorityState.blockIds) &&
+				arraysEqual(domRead.blockIds, authorityState.blockIds) &&
 				defaultBlockHead(domRead) === defaultBlockHead(authorityState)
 			);
 		}
@@ -1046,7 +1047,7 @@ function preserveAuthorityBlockHead(
 	}
 	if (
 		authorityState?.type === "block" &&
-		sameBlockIds(proposal.blockIds, authorityState.blockIds) &&
+		arraysEqual(proposal.blockIds, authorityState.blockIds) &&
 		authorityState.head
 	) {
 		return { ...proposal, head: authorityState.head };
@@ -1077,19 +1078,4 @@ function snapAcceptedPoint(
 		return logical ?? point;
 	}
 	return snapped;
-}
-
-function sameBlockIds(
-	left: readonly string[],
-	right: readonly string[],
-): boolean {
-	if (left.length !== right.length) {
-		return false;
-	}
-	for (let index = 0; index < left.length; index++) {
-		if (left[index] !== right[index]) {
-			return false;
-		}
-	}
-	return true;
 }

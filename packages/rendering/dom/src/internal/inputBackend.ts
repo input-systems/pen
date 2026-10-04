@@ -12,7 +12,8 @@ export interface InputBackend {
 		focusOptions?: PenFieldEditorFocusOptions,
 	): void;
 	deactivate(): void;
-	updateSelection(relPos: unknown): void;
+	/** Writes the authority's record into the attached field. */
+	updateSelection(): void;
 	/**
 	 * W3.R6 equivalence skip: whether selection state the backend keeps
 	 * outside the DOM (an EditContext buffer) already matches the authority.

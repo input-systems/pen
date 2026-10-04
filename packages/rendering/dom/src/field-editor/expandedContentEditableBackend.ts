@@ -118,12 +118,7 @@ export class ExpandedContentEditableBackend {
 		this.element = null;
 	}
 
-	updateSelection(_relPos: unknown): void {
-		if (!this.element) return;
-		this.projectCurrentSelection();
-	}
-
-	private projectCurrentSelection(): void {
+	updateSelection(): void {
 		const element = this.element;
 		if (!element) return;
 		const selection = this.editor.selection;
@@ -381,7 +376,7 @@ export class ExpandedContentEditableBackend {
 		this.composingOverRange = false;
 		const text = event.data ?? "";
 		if (!text) {
-			this.projectCurrentSelection();
+			this.updateSelection();
 			return;
 		}
 		if (

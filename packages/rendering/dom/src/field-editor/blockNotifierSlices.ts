@@ -9,6 +9,7 @@ import type {
 	SurfaceSnapshot,
 } from "./blockNotifierTypes";
 import { getExpandedBlockRole } from "./crossBlock";
+import { arraysEqual } from "../utils/arraysEqual";
 import type { FieldEditorStoreSnapshot } from "./store";
 
 /**
@@ -31,10 +32,6 @@ function shallowEqual(
 	const leftKeys = Object.keys(left);
 	if (leftKeys.length !== Object.keys(right).length) return false;
 	return leftKeys.every((key) => Object.is(left[key], right[key]));
-}
-
-export function arraysEqual<T>(left: readonly T[], right: readonly T[]): boolean {
-	return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function keepIfEqual<T extends object>(previous: T | undefined, next: T): T {

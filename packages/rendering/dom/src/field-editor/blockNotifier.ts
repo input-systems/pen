@@ -19,8 +19,8 @@ import type {
 import { getDocumentPlaceholderTargetBlockId } from "../utils/editorEmptyState";
 import { numberedRunOrdinals } from "../utils/numberedListRun";
 import { getRootBlockIds } from "../utils/parentIdTree";
+import { arraysEqual } from "../utils/arraysEqual";
 import {
-	arraysEqual,
 	buildCommitSlice,
 	buildFieldSlice,
 	buildListSlice,
