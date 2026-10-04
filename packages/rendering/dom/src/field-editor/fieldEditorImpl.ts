@@ -119,6 +119,15 @@ const FIELD_EDITOR_BACKEND_SPLIT = {
 	alwaysContentEditable: ["expanded", "table-cell"],
 } as const;
 
+/**
+ * FE9: the origins a backend's own text input writes (`inputOrigin()`).
+ * Every other authority write supersedes the backend's trusted input state.
+ */
+const TEXT_INPUT_ORIGINS: ReadonlySet<SelectionOrigin> = new Set([
+	"keyboard",
+	"ime",
+]);
+
 export class FieldEditorImpl implements FieldEditorSession {
 	protected _focusBlockId: string | null = null;
 	protected _activeBlockIds: string[] = [];
@@ -282,9 +291,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._unsubscribeSelection = this._editor.onSelectionChange(
 			(record) => {
 				this._selectionReader.notifyAuthorityWrite(record.origin);
-				if (record.origin === "mapped") {
-					this._backendLifecycle.current?.selectionMapped?.();
-				} else {
+				if (!TEXT_INPUT_ORIGINS.has(record.origin)) {
+					this._backendLifecycle.current?.selectionSuperseded?.();
+				}
+				if (record.origin !== "mapped") {
 					this._followEditedCell(record.state);
 				}
 				const selection = this._editor.selection;
@@ -965,7 +975,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 			proposal,
 			gestureWindows: this._selectionReader.windows,
 		});
-		this.notifyGestureEvent("selectionchange");
 		const isLeftoverField =
 			proposal?.type === "text" &&
 			isSingleFieldNativeLeftover(this._editor.selection, proposal);

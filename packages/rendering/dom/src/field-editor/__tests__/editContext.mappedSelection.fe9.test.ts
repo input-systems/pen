@@ -136,7 +136,22 @@ describe("FE9 EditContext trusted typing caret", () => {
 		expect(editor.getBlock(blockId)?.textContent()).toBe("loxy world");
 	});
 
-	it("FE9: an ordinary selection change keeps the trusted typing caret", () => {
+	it("FE9: ordinary typing keeps the trusted typing caret against a stale range", () => {
+		const { editor, fieldEditor, blockId, inline } =
+			mountEditContextEditor("hello world");
+		const editContext = (
+			inline as HTMLElement & { editContext?: FakeEditContext }
+		).editContext!;
+
+		fieldEditor.activateTextSelection(blockId, 5, 5);
+		editContext.textUpdate(5, 5, "x");
+		// a stale range: the buffer still reports the pre-keystroke caret
+		editContext.textUpdate(5, 5, "y");
+
+		expect(editor.getBlock(blockId)?.textContent()).toBe("helloxy world");
+	});
+
+	it("FE9: a programmatic selectText clears the trusted typing caret and the next textupdate inserts at the new caret", () => {
 		const { editor, fieldEditor, blockId, inline } =
 			mountEditContextEditor("hello world");
 		const editContext = (
@@ -146,11 +161,11 @@ describe("FE9 EditContext trusted typing caret", () => {
 		fieldEditor.activateTextSelection(blockId, 5, 5);
 		editContext.textUpdate(5, 5, "x");
 
-		// not a mapped remap, so the caret is still the last trusted typing
-		// caret a stale EditContext range resolves against
 		editor.selectText(blockId, 2, 2);
+		expect(editContext.selectionStart).toBe(2);
+		// a stale range: the old trusted caret would put "y" at 6
 		editContext.textUpdate(9, 9, "y");
 
-		expect(editor.getBlock(blockId)?.textContent()).toBe("helloxy world");
+		expect(editor.getBlock(blockId)?.textContent()).toBe("heyllox world");
 	});
 });

@@ -24,6 +24,10 @@ export interface InputBackend {
 	 * so a drag or click the reader accepted is not rewritten mid-gesture.
 	 */
 	writeSelectionState?(): void;
-	/** FE9: an A5 `mapped` `selectionChange`; pre-apply input state is stale. */
-	selectionMapped?(): void;
+	/**
+	 * FE9: an authority write that text input did not make — an A5 `mapped`
+	 * remap, a host `programmatic` write, a `pointer`, `restore` or `gc`
+	 * write. Input state the backend kept from before it is stale.
+	 */
+	selectionSuperseded?(): void;
 }

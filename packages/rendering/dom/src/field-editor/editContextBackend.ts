@@ -743,7 +743,7 @@ export class EditContextBackend {
 			: offset;
 	}
 
-	selectionMapped(): void {
+	selectionSuperseded(): void {
 		this.trustedTypingCaret = null;
 	}
 

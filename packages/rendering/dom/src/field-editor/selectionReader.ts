@@ -641,6 +641,13 @@ export function createSelectionReader(
 		);
 	};
 	const sync = (): DomSelectionReadDecision => {
+		const decision = decide();
+		// R1: every read closes the context-menu window, whatever it
+		// decided — an echo (step 3) or a range outside the root included.
+		notifyGesture("selectionchange");
+		return decision;
+	};
+	const decide = (): DomSelectionReadDecision => {
 		const proposal = peek();
 		if (proposal === null) {
 			return "no-proposal";
