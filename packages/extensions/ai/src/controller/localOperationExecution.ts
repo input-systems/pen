@@ -1,8 +1,8 @@
 import { generateId } from "@input/pen-types";
 import type { AIMutationReceipt, GenerationState } from "../types";
 import type { AIControllerImpl } from "./aiController";
+import { findRequestSession, startSeededGeneration } from "./generationStart";
 import {
-	beginGenerationSession,
 	buildSessionExecutionPrompt,
 	createAIStreamEvent,
 	resolveGenerationRequestMode,
@@ -91,48 +91,21 @@ export async function executeLocalOperation(
 			qualitySignals: {},
 		},
 	};
-	const existingSession =
-		context?.sessionId != null
-			? (controller._state.sessions.find(
-					(session) => session.id === context.sessionId,
-				) ?? null)
-			: null;
+	const existingSession = findRequestSession(controller, context?.sessionId);
 	const executionPrompt = buildSessionExecutionPrompt(
 		existingSession,
 		prompt,
 	);
 
-	if (context?.sessionId) {
-		beginGenerationSession(controller, {
-			sessionId: context.sessionId,
-			seedGeneration,
-			prompt,
-			target,
-			operation,
-			sessionTurnId,
-			existingSession,
-		});
-	}
-
-	controller._setState({
-		status: "thinking",
-		activeGeneration: seedGeneration,
-		commandMenuOpen: false,
-		lastRoute: seedGeneration.route,
-		activeSessionId:
-			context?.sessionId ?? controller._state.activeSessionId,
+	startSeededGeneration(controller, {
+		seedGeneration,
+		sessionId: context?.sessionId,
+		prompt,
+		target,
+		operation,
+		sessionTurnId,
+		existingSession,
 	});
-	controller._setStreamEvents([
-		createAIStreamEvent(seedGeneration, {
-			type: "generation-start",
-			prompt,
-			target: target.type,
-		}),
-		createAIStreamEvent(seedGeneration, {
-			type: "status",
-			status: "thinking",
-		}),
-	]);
 
 	let currentText = "";
 	let currentMutationReceipt: AIMutationReceipt | null = null;

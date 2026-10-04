@@ -14,6 +14,22 @@ import type { SearchController } from "./types";
 
 export const SEARCH_EXTENSION_NAME = "search";
 
+/** Moves to the next or previous match while search is open with a query. */
+function stepSearchMatch(
+	editor: Editor,
+	event: KeyboardEvent,
+	direction: "next" | "previous",
+): boolean {
+	const controller = getSearchController(editor);
+	const state = controller?.getState();
+	if (!controller || !state?.open || state.query.length === 0) {
+		return false;
+	}
+	event.preventDefault();
+	controller[direction]();
+	return true;
+}
+
 const SEARCH_KEY_BINDINGS: KeyBinding[] = [
 	{
 		key: "Mod-f",
@@ -31,58 +47,22 @@ const SEARCH_KEY_BINDINGS: KeyBinding[] = [
 	{
 		key: "Mod-g",
 		description: "Next search match",
-		handler: (editor, event) => {
-			const controller = getSearchController(editor);
-			const state = controller?.getState();
-			if (!controller || !state?.open || state.query.length === 0) {
-				return false;
-			}
-			event.preventDefault();
-			controller.next();
-			return true;
-		},
+		handler: (editor, event) => stepSearchMatch(editor, event, "next"),
 	},
 	{
 		key: "Shift-Mod-g",
 		description: "Previous search match",
-		handler: (editor, event) => {
-			const controller = getSearchController(editor);
-			const state = controller?.getState();
-			if (!controller || !state?.open || state.query.length === 0) {
-				return false;
-			}
-			event.preventDefault();
-			controller.previous();
-			return true;
-		},
+		handler: (editor, event) => stepSearchMatch(editor, event, "previous"),
 	},
 	{
 		key: "Enter",
 		description: "Next search match",
-		handler: (editor, event) => {
-			const controller = getSearchController(editor);
-			const state = controller?.getState();
-			if (!controller || !state?.open || state.query.length === 0) {
-				return false;
-			}
-			event.preventDefault();
-			controller.next();
-			return true;
-		},
+		handler: (editor, event) => stepSearchMatch(editor, event, "next"),
 	},
 	{
 		key: "Shift-Enter",
 		description: "Previous search match",
-		handler: (editor, event) => {
-			const controller = getSearchController(editor);
-			const state = controller?.getState();
-			if (!controller || !state?.open || state.query.length === 0) {
-				return false;
-			}
-			event.preventDefault();
-			controller.previous();
-			return true;
-		},
+		handler: (editor, event) => stepSearchMatch(editor, event, "previous"),
 	},
 	{
 		key: "Escape",

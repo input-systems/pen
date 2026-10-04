@@ -2,18 +2,14 @@ import type {
 	InsertBlockOp,
 	DeleteBlockOp,
 	MoveBlockOp,
+	Position,
 	SetPropsOp,
 	StructuralOriginTag,
 	TableColumnSchema,
 } from "@input/pen-types";
 import { STRUCTURAL_ORIGIN_META_KEY } from "@input/pen-yjs";
 import { resolveRuntimeContentType } from "../schema/contentType";
-import {
-	type CRDTTextLike,
-	type CRDTUnknownMap,
-	getMapProp,
-	getTableContent,
-} from "./crdtShapes";
+import { type CRDTUnknownMap, getMapProp, getTableContent } from "./crdtShapes";
 import type { ApplyPipelineDocumentAccess } from "./applyPipelineContext";
 import {
 	clearTableState,
@@ -67,21 +63,7 @@ export function insertBlock(
 		}
 	}
 
-	if (typeof op.position === "object" && "parent" in op.position) {
-		const parentMap = getMutableBlockMap(pipeline, op.position.parent);
-		if (parentMap) {
-			const children = getOrCreateStringArrayProp(
-				pipeline,
-				parentMap,
-				"children",
-			);
-			const idx = Math.min(op.position.index, children.length);
-			children.insert(idx, [op.blockId]);
-		}
-	} else {
-		const idx = resolvePosition(pipeline, op.position);
-		pipeline.mutableBlockOrder.insert(idx, [op.blockId]);
-	}
+	placeBlockId(pipeline, op.blockId, op.position);
 
 	return [op.blockId];
 }
@@ -104,23 +86,32 @@ export function moveBlock(
 	removeBlockIdFromArray(pipeline.mutableBlockOrder, op.blockId, true);
 	removeBlockIdFromAllChildren(pipeline, op.blockId);
 
-	if (typeof op.position === "object" && "parent" in op.position) {
-		const parentMap = getMutableBlockMap(pipeline, op.position.parent);
+	placeBlockId(pipeline, op.blockId, op.position);
+
+	return [op.blockId];
+}
+
+/** Inserts `blockId` at `position`: a parent's `children`, or the root order. */
+function placeBlockId(
+	pipeline: ApplyPipelineDocumentAccess,
+	blockId: string,
+	position: Position,
+): void {
+	if (typeof position === "object" && "parent" in position) {
+		const parentMap = getMutableBlockMap(pipeline, position.parent);
 		if (parentMap) {
 			const children = getOrCreateStringArrayProp(
 				pipeline,
 				parentMap,
 				"children",
 			);
-			const idx = Math.min(op.position.index, children.length);
-			children.insert(idx, [op.blockId]);
+			const idx = Math.min(position.index, children.length);
+			children.insert(idx, [blockId]);
 		}
 	} else {
-		const idx = resolvePosition(pipeline, op.position);
-		pipeline.mutableBlockOrder.insert(idx, [op.blockId]);
+		const idx = resolvePosition(pipeline, position);
+		pipeline.mutableBlockOrder.insert(idx, [blockId]);
 	}
-
-	return [op.blockId];
 }
 
 function convertBlock(

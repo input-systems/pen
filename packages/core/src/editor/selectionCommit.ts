@@ -9,6 +9,7 @@ import type {
 	SelectionState,
 	TextSelection,
 } from "@input/pen-types";
+import { mapOffsetThroughSplices } from "../changes/mapOffsetThroughSplices";
 import { createTextSelection } from "../selection/helpers";
 import type { EditorAnchorsImpl } from "./anchors";
 import {
@@ -298,7 +299,7 @@ function fallbackPoint(
 	);
 	const offset =
 		textChange && textChange.splices.length > 0
-			? shiftThroughSplices(textChange.splices, addressed.offset, assoc)
+			? mapOffsetThroughSplices(textChange.splices, addressed.offset, assoc)
 			: addressed.offset;
 	return {
 		blockId: addressed.blockId,
@@ -402,39 +403,6 @@ function readdressThroughStructural(
 		}
 	}
 	return current;
-}
-
-function shiftThroughSplices(
-	splices: readonly { from: number; to: number; insertLength: number }[],
-	offset: number,
-	assoc: Assoc,
-): number {
-	let delta = 0;
-	for (const splice of splices) {
-		const deleted = splice.to - splice.from;
-		if (offset < splice.from) {
-			return offset + delta;
-		}
-		if (splice.from < offset && offset < splice.to) {
-			return splice.from + delta;
-		}
-		if (offset === splice.from) {
-			if (splice.insertLength > 0) {
-				return assoc === -1
-					? splice.from + delta
-					: splice.from + delta + splice.insertLength;
-			}
-			if (deleted > 0) {
-				return splice.from + delta;
-			}
-			continue;
-		}
-		if (offset === splice.to && deleted > 0) {
-			return splice.from + delta + splice.insertLength;
-		}
-		delta += splice.insertLength - deleted;
-	}
-	return offset + delta;
 }
 
 function removedBlockIds(summary: ChangeSummary): Set<string> {

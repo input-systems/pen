@@ -2,14 +2,12 @@ import type {
 	Extension,
 	CommitEvent,
 	Editor,
-	DocumentState,
-	DecorationSet,
 	KeyBinding,
 	SchemaRegistry,
 } from "@input/pen-types";
-import { decorationsFacet, keymapFacet } from "../facets/coreFacets";
+import { keymapFacet } from "../facets/coreFacets";
+import { sortExtensions } from "../facets/registry";
 import { EventEmitter } from "./events";
-import { emptyDecorationSet, mergeDecorationSets } from "./decorations";
 
 export class ExtensionManagerImpl {
 	private readonly _extensions = new Map<string, Extension>();
@@ -220,55 +218,7 @@ export class ExtensionManagerImpl {
 	// ── Internal ─────────────────────────────────────────────
 
 	private _resortAndValidate(): void {
-		const extensions = [...this._extensions.values()];
-
-		const inDegree = new Map<string, number>();
-		const dependents = new Map<string, string[]>();
-
-		for (const ext of extensions) {
-			inDegree.set(ext.name, 0);
-			dependents.set(ext.name, []);
-		}
-
-		for (const ext of extensions) {
-			if (!ext.dependencies) continue;
-			for (const dep of ext.dependencies) {
-				if (!this._extensions.has(dep)) {
-					throw new Error(
-						`Extension "${ext.name}" depends on "${dep}", which is not registered`,
-					);
-				}
-				inDegree.set(ext.name, (inDegree.get(ext.name) ?? 0) + 1);
-				dependents.get(dep)!.push(ext.name);
-			}
-		}
-
-		const queue: string[] = [];
-		for (const [name, degree] of inDegree) {
-			if (degree === 0) queue.push(name);
-		}
-
-		const sorted: Extension[] = [];
-		while (queue.length > 0) {
-			const name = queue.shift()!;
-			sorted.push(this._extensions.get(name)!);
-			for (const dependent of dependents.get(name) ?? []) {
-				const newDegree = (inDegree.get(dependent) ?? 1) - 1;
-				inDegree.set(dependent, newDegree);
-				if (newDegree === 0) queue.push(dependent);
-			}
-		}
-
-		if (sorted.length !== extensions.length) {
-			const missing = extensions
-				.filter((e) => !sorted.includes(e))
-				.map((e) => e.name);
-			throw new Error(
-				`Circular dependency detected among extensions: ${missing.join(", ")}`,
-			);
-		}
-
-		this._sorted = sorted;
+		this._sorted = sortExtensions([...this._extensions.values()]);
 	}
 }
 

@@ -341,20 +341,7 @@ export function createYjsDocument(
 	// Reliable block undo/redo requires deleted Yjs content to remain restorable.
 	// Yjs recommends disabling GC when version/history restoration matters.
 	const ydoc = new Y.Doc({ gc: options?.gc ?? false });
-	const blockOrder = ydoc.getArray<string>(BLOCK_ORDER);
-	const blocks = ydoc.getMap<Y.Map<unknown>>(BLOCKS);
-	const apps = ydoc.getMap<Y.Map<unknown>>(APPS);
-	const metadata = ydoc.getMap(METADATA);
-
-	const penDocument: YjsPenDocument = {
-		blockOrder,
-		blocks,
-		apps,
-		metadata,
-		adapter,
-	};
-
-	return { adapter, ydoc, penDocument };
+	return bindPenDocument(adapter, ydoc);
 }
 
 export function wrapYjsDocument(
@@ -362,6 +349,11 @@ export function wrapYjsDocument(
 	ydoc: Y.Doc,
 ): YjsCRDTDocument {
 	assertAdapterYjsDoc(ydoc);
+	return bindPenDocument(adapter, ydoc);
+}
+
+/** Reads the four Pen roots off `ydoc`, creating any that are missing. */
+function bindPenDocument(adapter: CRDTAdapter, ydoc: Y.Doc): YjsCRDTDocument {
 	const blockOrder = ydoc.getArray<string>(BLOCK_ORDER);
 	const blocks = ydoc.getMap<Y.Map<unknown>>(BLOCKS);
 	const apps = ydoc.getMap<Y.Map<unknown>>(APPS);

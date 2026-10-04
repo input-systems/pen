@@ -8,6 +8,8 @@ import {
 	getTableColumns,
 	getTableContent,
 	isCRDTMap,
+	type TableCellMap,
+	type TableContentArray,
 } from "./crdtShapes";
 import {
 	captureTableRowSnapshot,
@@ -51,41 +53,19 @@ export class TableGridExecutor {
 				break;
 			}
 			case "insert-column": {
-				for (
-					let rowIndex = 0;
-					rowIndex < tableContent.length;
-					rowIndex++
-				) {
-					const row = tableContent.get(rowIndex);
-					if (!row || !isCRDTMap(row)) {
-						continue;
-					}
-					const cells = getRowCells(row);
-					if (!cells) {
-						continue;
-					}
-					cells.insert(op.change.index, [this.createTableCell()]);
-				}
+				const { index } = op.change;
+				forEachRowCells(tableContent, (cells) => {
+					cells.insert(index, [this.createTableCell()]);
+				});
 				break;
 			}
 			case "delete-column": {
-				for (
-					let rowIndex = 0;
-					rowIndex < tableContent.length;
-					rowIndex++
-				) {
-					const row = tableContent.get(rowIndex);
-					if (!row || !isCRDTMap(row)) {
-						continue;
+				const { index } = op.change;
+				forEachRowCells(tableContent, (cells) => {
+					if (index < cells.length) {
+						cells.delete(index, 1);
 					}
-					const cells = getRowCells(row);
-					if (!cells) {
-						continue;
-					}
-					if (op.change.index < cells.length) {
-						cells.delete(op.change.index, 1);
-					}
-				}
+				});
 				break;
 			}
 			case "merge-cells":
@@ -306,16 +286,9 @@ export class TableGridExecutor {
 		const tableContent = getTableContent(blockMap);
 		if (tableContent && tableContent.length > 0) {
 			let maxColumnCount = 0;
-			for (let rowIndex = 0; rowIndex < tableContent.length; rowIndex++) {
-				const row = tableContent.get(rowIndex);
-				if (!row || !isCRDTMap(row)) {
-					continue;
-				}
-				const cells = getRowCells(row);
-				if (cells) {
-					maxColumnCount = Math.max(maxColumnCount, cells.length);
-				}
-			}
+			forEachRowCells(tableContent, (cells) => {
+				maxColumnCount = Math.max(maxColumnCount, cells.length);
+			});
 			if (maxColumnCount > 0) {
 				return maxColumnCount;
 			}
@@ -436,5 +409,22 @@ export class TableGridExecutor {
 			}
 		}
 		return ids;
+	}
+}
+
+/** Calls `visit` with each row's cell array, skipping malformed rows. */
+function forEachRowCells(
+	tableContent: TableContentArray,
+	visit: (cells: CRDTUnknownArray<TableCellMap>) => void,
+): void {
+	for (let rowIndex = 0; rowIndex < tableContent.length; rowIndex++) {
+		const row = tableContent.get(rowIndex);
+		if (!row || !isCRDTMap(row)) {
+			continue;
+		}
+		const cells = getRowCells(row);
+		if (cells) {
+			visit(cells);
+		}
 	}
 }
