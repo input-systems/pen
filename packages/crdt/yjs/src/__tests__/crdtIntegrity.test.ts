@@ -123,7 +123,7 @@ describe("CRDT integrity", () => {
 				malformed.set("props", new Y.Map<unknown>());
 				malformed.set("meta", new Y.Map<unknown>());
 				malformed.set("content", new Y.Text());
-				malformed.set("children", new Y.Array<string>());
+				malformed.set("tableContent", new Y.Array<Y.Map<unknown>>());
 				blocks.set("multi-content", malformed);
 				blockOrder.push(["multi-content"]);
 			});
@@ -135,6 +135,31 @@ describe("CRDT integrity", () => {
 					e.blockId === "multi-content",
 			);
 			expect(structErrors.length).toBeGreaterThan(0);
+		});
+
+		it("DUR2 RI6: accepts an inline title beside a children array", () => {
+			const ydoc = new Y.Doc();
+			const blockOrder = ydoc.getArray<string>("blockOrder");
+			const blocks = ydoc.getMap<Y.Map<unknown>>("blocks");
+			ydoc.getMap("apps");
+			ydoc.getMap("metadata");
+
+			ydoc.transact(() => {
+				const container = new Y.Map<unknown>();
+				container.set("type", "toggle");
+				container.set("props", new Y.Map<unknown>());
+				container.set("meta", new Y.Map<unknown>());
+				container.set("content", new Y.Text());
+				container.set("children", new Y.Array<string>());
+				blocks.set("titled-container", container);
+				blockOrder.push(["titled-container"]);
+			});
+
+			expect(validateDocument(ydoc)).toEqual({
+				valid: true,
+				errors: [],
+				repaired: false,
+			});
 		});
 
 		it("detects orphan blocks (in blocks but not blockOrder)", () => {
