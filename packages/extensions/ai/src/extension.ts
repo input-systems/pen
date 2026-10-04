@@ -28,6 +28,7 @@ import {
 } from "@input/pen-types";
 import { defineExtension } from "@input/pen-core";
 import { SuggestionDecorationIndex } from "./review/suggestionIndex";
+import { aiToolConfirmPolicyFacet } from "./tools/confirmPolicy";
 import {
 	AI_SESSION_SUGGESTION_ORIGIN,
 	shouldBypassSuggestMode,
@@ -138,6 +139,10 @@ export function aiExtension(config: AIExtensionConfig = {}): Extension {
 					{ origin: options.origin },
 				);
 			}, "high"),
+			aiToolConfirmPolicyFacet.of({
+				confirm: config.confirm,
+				unconfirmedDestructive: config.unconfirmedDestructive,
+			}),
 			decorationsFacet.of(reviewSuggestionSource),
 			decorationsFacet.of(() => {
 				const decorations =

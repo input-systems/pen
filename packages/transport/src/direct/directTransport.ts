@@ -10,6 +10,9 @@ import {
 	createAIToolTurn,
 	isAIToolCallDenied,
 	openAIToolCall,
+	resolveAIToolConfirmPolicy,
+	type AIToolConfirmFn,
+	type AIUnconfirmedDestructivePolicy,
 } from "@input/pen-ai/tools";
 import { isAsyncIterable } from "@input/pen-types";
 import { createTransportToolContext } from "../toolContext";
@@ -25,11 +28,23 @@ export interface DirectTransportOptions {
 	 * Mutating tools the model may invoke on this transport. Default deny.
 	 */
 	allowedMutatingTools?: readonly string[];
+	/**
+	 * Confirms destructive tool calls (AIB3). Defaults to the editor's
+	 * `aiExtension({ confirm })`.
+	 */
+	confirm?: AIToolConfirmFn;
+	/**
+	 * A destructive call with no `confirm` resolver (AIB3): `"refuse"` is the
+	 * production setting for an external tool surface. Defaults to the
+	 * editor's `aiExtension({ unconfirmedDestructive })`, then `"allow"`.
+	 */
+	unconfirmedDestructive?: AIUnconfirmedDestructivePolicy;
 	onError?: (error: unknown) => void;
 }
 
 export function directTransport(options: DirectTransportOptions): PenTransport {
 	const { toolRuntime, editor, onError, allowedMutatingTools = [] } = options;
+	const confirmPolicy = resolveAIToolConfirmPolicy(editor, options);
 	const activeControllers = new Set<AbortController>();
 
 	const transport: PenTransport = {
@@ -41,7 +56,10 @@ export function directTransport(options: DirectTransportOptions): PenTransport {
 			const signal = controller.signal;
 
 			try {
-				const turn = createAIToolTurn({ allowedMutatingTools });
+				const turn = createAIToolTurn({
+					allowedMutatingTools,
+					...confirmPolicy,
+				});
 				for (const toolCall of request.toolCalls ?? []) {
 					if (signal.aborted) break;
 

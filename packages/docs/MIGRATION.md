@@ -89,7 +89,7 @@ Every published package is in one `fixed` changeset group, so all of them move t
   const isDestructive = typeof d === "function" ? d(input, { staged }) : !!d;
   // or use isDestructiveAITool / authorizeAIToolCall, which now take the call's context
   ```
-  `edit_document` now reaches `confirm` (and emits `ai-tool-unconfirmed`) only for direct replaces, deletes of non-empty blocks, and content-kind changes of non-empty blocks. To audit every AI edit, move to `onBeforeApply` or the `commit` event. In production, if you expose `delete_block` / `write_document`, consider `aiExtension({ unconfirmedDestructive: "refuse" })`.
+  `edit_document` now reaches `confirm` (and emits `ai-tool-unconfirmed`) only for direct replaces, deletes of non-empty blocks, and content-kind changes of non-empty blocks. To audit every AI edit, move to `onBeforeApply` or the `commit` event. In production, if you expose `delete_block` / `write_document`, consider `aiExtension({ unconfirmedDestructive: "refuse" })`; `directTransport`, `createSSEHandler`, and `processStream` now apply that setting (and `aiExtension({ confirm })`) from the editor they run against, or take `confirm` / `unconfirmedDestructive` options directly when there is no editor or you want a different policy on that surface.
 
 ### `@input/pen-yjs`
 
@@ -339,7 +339,10 @@ store.applyDomTextSelection(anchor, focus, "pointer");
   - `ToolDestructiveResolver`, `ToolAuthorityContext`, `CRDTUndoCaptureKey`, `BlockScrollAlign`.
 - `@input/pen-ai`
   - `aiExtension({ unconfirmedDestructive: "refuse" })`, also accepted on `AIToolGrant`, `AIToolTurnOptions` and `AgenticLoopOptions`.
+  - `aiToolConfirmPolicyFacet`, `resolveAIToolConfirmPolicy` and `AIToolConfirmPolicy` on `@input/pen-ai/tools`; `confirm` / `unconfirmedDestructive` on `ProcessStreamOptions`.
   - `EditDocumentPreviewUpdate` gains `blockIds`, `placement` and `complete`.
+- `@input/pen-transport`
+  - `confirm` / `unconfirmedDestructive` on `DirectTransportOptions` and `SSEServerOptions`.
 - `@input/pen-yjs`
   - `@input/pen-yjs/awareness` subpath.
   - `yjsAdapter({ awareness })`.

@@ -215,6 +215,7 @@
 - getAIToolRuntime
 - listAITools
 - openAIToolCall
+- resolveAIToolConfirmPolicy
 
 ### value
 
@@ -235,6 +236,7 @@
 - AIToolConfirmationDecision
 - AIToolConfirmationRequest
 - AIToolConfirmFn
+- aiToolConfirmPolicyFacet
 - AIToolContextImpl
 - AIToolDescriptor
 - AIToolGrant
@@ -251,6 +253,7 @@
 
 ### type
 
+- AIToolConfirmPolicy
 - OpenAIToolCall
 
 ## ./stream

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DocumentOp, Editor, PenStreamPart, ToolRuntime } from "@input/pen-types";
+import { aiToolConfirmPolicyFacet, type AIToolConfirmPolicy } from "@input/pen-ai/tools";
 import { createSSEHandler } from "../server";
 import { parseSSELine } from "../parser";
 import type { SSEEvent } from "../types";
@@ -331,5 +332,60 @@ describe("AIB3 SSE tool authority", () => {
 
 		editor.apply([insertTextOp("b1", "after-cancel")], { origin: "user" });
 		expect(applied).toEqual([insertTextOp("b1", "after-cancel")]);
+	});
+
+	function policyEditor(policy: AIToolConfirmPolicy) {
+		const recording = createRecordingEditor();
+		(recording.editor as unknown as { facet: (facet: unknown) => unknown }).facet = (facet) =>
+			facet === aiToolConfirmPolicyFacet ? policy : null;
+		return recording;
+	}
+
+	function deleteRuntime() {
+		return vi.fn(async (_name, _input, ctx) => {
+			ctx.editor.apply([insertTextOp("b1", HOSTILE_TEXT)], { origin: "ai" });
+			return { deleted: true };
+		});
+	}
+
+	function errors(parts: PenStreamPart[]) {
+		return parts
+			.filter((part) => part.type === "tool-error")
+			.map((part) => ("error" in part ? part.error : null));
+	}
+
+	it("AIB3: unconfirmedDestructive refuse on the SSE handler refuses an unconfirmed delete_block", async () => {
+		const { editor, applied } = createRecordingEditor();
+		const executeTool = deleteRuntime();
+		const { parts } = await postToolCall(
+			createSSEHandler({
+				editor,
+				allowedMutatingTools: ["delete_block"],
+				unconfirmedDestructive: "refuse",
+				toolRuntime: createRuntime(executeTool),
+				pingInterval: 60_000,
+			}),
+			"delete_block",
+		);
+		expect(executeTool).not.toHaveBeenCalled();
+		expect(applied).toEqual([]);
+		expect(errors(parts)).toEqual(["tool-refused"]);
+	});
+
+	it("AIB3: the editor's configured unconfirmedDestructive policy applies to the SSE handler", async () => {
+		const { editor, applied } = policyEditor({ unconfirmedDestructive: "refuse" });
+		const executeTool = deleteRuntime();
+		const { parts } = await postToolCall(
+			createSSEHandler({
+				editor,
+				allowedMutatingTools: ["delete_block"],
+				toolRuntime: createRuntime(executeTool),
+				pingInterval: 60_000,
+			}),
+			"delete_block",
+		);
+		expect(executeTool).not.toHaveBeenCalled();
+		expect(applied).toEqual([]);
+		expect(errors(parts)).toEqual(["tool-refused"]);
 	});
 });

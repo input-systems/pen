@@ -1,3 +1,7 @@
+import type {
+	AIToolConfirmFn,
+	AIUnconfirmedDestructivePolicy,
+} from "@input/pen-ai/tools";
 import type { Editor, PenStreamRequest, ToolRuntime } from "@input/pen-types";
 
 export interface SSEEvent {
@@ -26,6 +30,17 @@ export interface SSEServerOptions {
 	 * Mutating tools the model may invoke on this handler. Default deny.
 	 */
 	allowedMutatingTools?: readonly string[];
+	/**
+	 * Confirms destructive tool calls (AIB3). Defaults to the editor's
+	 * `aiExtension({ confirm })`.
+	 */
+	confirm?: AIToolConfirmFn;
+	/**
+	 * A destructive call with no `confirm` resolver (AIB3): `"refuse"` is the
+	 * production setting for an external tool surface. Defaults to the
+	 * editor's `aiExtension({ unconfirmedDestructive })`, then `"allow"`.
+	 */
+	unconfirmedDestructive?: AIUnconfirmedDestructivePolicy;
 	onRequest?: (request: PenStreamRequest) => void;
 	onError?: (error: unknown) => void;
 	pingInterval?: number;

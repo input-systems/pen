@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { aiToolConfirmPolicyFacet, type AIToolConfirmPolicy } from "@input/pen-ai/tools";
 import { directTransport } from "../directTransport";
 import type {
 	DocumentOp,
@@ -233,5 +234,73 @@ describe("AIB3 direct transport tool authority", () => {
 
 		editor.apply([insertTextOp("b1", "after-abandon")], { origin: "user" });
 		expect(applied).toEqual([insertTextOp("b1", "after-abandon")]);
+	});
+
+	function policyEditor(policy: AIToolConfirmPolicy) {
+		const recording = createRecordingEditor();
+		(recording.editor as unknown as { facet: (facet: unknown) => unknown }).facet = (facet) =>
+			facet === aiToolConfirmPolicyFacet ? policy : null;
+		return recording;
+	}
+
+	function deleteRuntime() {
+		return vi.fn(async (_name, _input, ctx) => {
+			ctx.editor.apply([insertTextOp("b1", HOSTILE_TEXT)], { origin: "ai" });
+			return { deleted: true };
+		});
+	}
+
+	function errors(parts: PenStreamPart[]) {
+		return parts
+			.filter((part) => part.type === "tool-error")
+			.map((part) => ("error" in part ? part.error : null));
+	}
+
+	it("AIB3: unconfirmedDestructive refuse on the transport refuses an unconfirmed delete_block", async () => {
+		const { editor, applied } = createRecordingEditor();
+		const executeTool = deleteRuntime();
+		const parts = await collectParts(
+			directTransport({
+				editor,
+				allowedMutatingTools: ["delete_block"],
+				unconfirmedDestructive: "refuse",
+				toolRuntime: createRuntime(executeTool),
+			}).stream(requestFor("delete_block")),
+		);
+		expect(executeTool).not.toHaveBeenCalled();
+		expect(applied).toEqual([]);
+		expect(errors(parts)).toEqual(["tool-refused"]);
+	});
+
+	it("AIB3: the editor's configured unconfirmedDestructive policy applies to the transport", async () => {
+		const { editor, applied } = policyEditor({ unconfirmedDestructive: "refuse" });
+		const executeTool = deleteRuntime();
+		const parts = await collectParts(
+			directTransport({
+				editor,
+				allowedMutatingTools: ["delete_block"],
+				toolRuntime: createRuntime(executeTool),
+			}).stream(requestFor("delete_block")),
+		);
+		expect(executeTool).not.toHaveBeenCalled();
+		expect(applied).toEqual([]);
+		expect(errors(parts)).toEqual(["tool-refused"]);
+	});
+
+	it("AIB3: a transport confirm resolver decides a destructive call under refuse", async () => {
+		const { editor } = policyEditor({ unconfirmedDestructive: "refuse" });
+		const executeTool = deleteRuntime();
+		const confirm = vi.fn(() => "allow" as const);
+		const parts = await collectParts(
+			directTransport({
+				editor,
+				allowedMutatingTools: ["delete_block"],
+				confirm,
+				toolRuntime: createRuntime(executeTool),
+			}).stream(requestFor("delete_block")),
+		);
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(executeTool).toHaveBeenCalledTimes(1);
+		expect(errors(parts)).toEqual([]);
 	});
 });

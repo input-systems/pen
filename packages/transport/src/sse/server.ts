@@ -3,6 +3,7 @@ import {
 	createAIToolTurn,
 	isAIToolCallDenied,
 	openAIToolCall,
+	resolveAIToolConfirmPolicy,
 } from "@input/pen-ai/tools";
 import { generateId, isAsyncIterable } from "@input/pen-types";
 import { createTransportToolContext } from "../toolContext";
@@ -23,6 +24,7 @@ export function createSSEHandler(
 		pingInterval = 15_000,
 		allowedMutatingTools = [],
 	} = options;
+	const confirmPolicy = resolveAIToolConfirmPolicy(editor, options);
 
 	return async (request: Request): Promise<Response> => {
 		if (request.method === "GET") {
@@ -78,6 +80,7 @@ export function createSSEHandler(
 					if (toolRuntime && body.toolCalls) {
 						const turn = createAIToolTurn({
 							allowedMutatingTools,
+							...confirmPolicy,
 						});
 						for (const toolCall of body.toolCalls) {
 							const context = createTransportToolContext(

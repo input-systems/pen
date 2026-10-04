@@ -24,8 +24,11 @@ import {
 	createAIToolTurn,
 	executeAITool,
 	isAIToolCallDenied,
+	resolveAIToolConfirmPolicy,
+	type AIToolConfirmFn,
 	type AIToolRuntime,
 	type AIToolTurn,
+	type AIUnconfirmedDestructivePolicy,
 } from "../tools";
 
 export interface ProcessStreamOptions {
@@ -45,6 +48,13 @@ export interface ProcessStreamOptions {
 	 * they write through the host-opened streaming target.
 	 */
 	allowedMutatingTools?: readonly string[];
+	/** Confirms destructive tool calls (AIB3). Defaults to `aiExtension({ confirm })`. */
+	confirm?: AIToolConfirmFn;
+	/**
+	 * A destructive call with no `confirm` resolver (AIB3). Defaults to
+	 * `aiExtension({ unconfirmedDestructive })`, then `"allow"`.
+	 */
+	unconfirmedDestructive?: AIUnconfirmedDestructivePolicy;
 }
 
 export async function processStream(
@@ -78,6 +88,7 @@ export async function processStream(
 	const toolTurn = createAIToolTurn({
 		allowedMutatingTools: options?.allowedMutatingTools ?? [],
 		groupId: groupId ?? undefined,
+		...resolveAIToolConfirmPolicy(editor, options),
 	});
 	const seenUnknownTypes = new Set<string>();
 	let closed = false;

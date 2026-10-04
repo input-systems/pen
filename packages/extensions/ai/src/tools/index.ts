@@ -27,6 +27,11 @@ export {
 	isDestructiveAITool,
 	isMutatingAITool,
 } from "./authority";
+export {
+	aiToolConfirmPolicyFacet,
+	resolveAIToolConfirmPolicy,
+} from "./confirmPolicy";
+export type { AIToolConfirmPolicy } from "./confirmPolicy";
 export type { AIToolDescriptor, AIToolRuntime } from "./types";
 export type {
 	AIToolAuthorityReason,
