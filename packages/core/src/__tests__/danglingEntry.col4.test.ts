@@ -3,6 +3,7 @@ import type { ChangeSummary, DiagnosticEvent, DocumentOp } from "@input/pen-type
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
+import { replaceRangeOps } from "../commands/helpers";
 import { createEditor as createCoreEditor } from "../index";
 import { createDefaultSchema } from "./fixtures/testSchema";
 
@@ -254,6 +255,43 @@ describe("COL4 dangling structural entries (Rule 12)", () => {
 			b.editor.apply([{ type: "move-block", blockId: "p3", position: "first" }]);
 			expect(blockOrderIds(b)).toEqual(["p3", "p1"]);
 			expect(danglingDiagnostics(b)).toHaveLength(1);
+		} finally {
+			destroyAll(peers);
+		}
+	});
+});
+
+describe("COL4 dangling entries before repair", () => {
+	it("COL4: a range op across a dangling entry deletes only live blocks", () => {
+		const peers = forkPeers(2, encodeSeed(
+			["p1", "p2", "p3", "p4"],
+			[
+				{ id: "p1", type: "paragraph", text: "One" },
+				{ id: "p2", type: "paragraph", text: "Two" },
+				{ id: "p3", type: "paragraph", text: "Three" },
+				{ id: "p4", type: "paragraph", text: "Four" },
+			],
+		));
+		const [a, b] = peers as [Peer, Peer];
+		try {
+			a.editor.apply([{ type: "delete-block", blockId: "p2" }]);
+			b.editor.apply([{ type: "move-block", blockId: "p2", position: { after: "p3" } }]);
+			syncAll(peers);
+			expect(blockOrderIds(b)).toEqual(["p1", "p3", "p2", "p4"]);
+
+			const replacement = replaceRangeOps(
+				b.editor,
+				{
+					type: "text",
+					anchor: { blockId: "p1", offset: 1 },
+					focus: { blockId: "p4", offset: 1 },
+				},
+				"",
+			);
+			const deleted = (replacement?.ops ?? [])
+				.filter((op) => op.type === "delete-block")
+				.map((op) => (op as { blockId: string }).blockId);
+			expect(deleted).toEqual(["p3", "p4"]);
 		} finally {
 			destroyAll(peers);
 		}

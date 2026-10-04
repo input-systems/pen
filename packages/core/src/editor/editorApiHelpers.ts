@@ -260,7 +260,10 @@ export function* iterateBlocks(
 		if (seen.has(id)) return;
 		seen.add(id);
 		const blockMap = (self._doc.blocks as CRDTBlockMap).get(id);
-		if (!type || blockMap?.get("type") === type) {
+		// A dangling entry names no block (COL4): skip it until the
+		// structural pass removes it.
+		if (!blockMap) return;
+		if (!type || blockMap.get("type") === type) {
 			yield createBlockHandle(
 				id,
 				self._doc,
@@ -268,7 +271,7 @@ export function* iterateBlocks(
 				self._registry,
 			);
 		}
-		const children = blockMap?.get("children") as
+		const children = blockMap.get("children") as
 			CRDTArray<string> | undefined;
 		if (!children) return;
 		for (let i = 0; i < children.length; i++) {
@@ -292,21 +295,26 @@ export function getEditorBlock(
 	return createBlockHandle(blockId, self._doc, self._crdtDoc, self._registry);
 }
 
+/** The first root entry with a block map; a dangling entry (COL4) is skipped. */
 export function getFirstBlock(editor: EditorImplRuntime): BlockHandle | null {
 	const self = editor as EditorImplRuntime;
-	if (self._doc.blockOrder.length === 0) return null;
-	const id = (self._doc.blockOrder as CRDTArray<string>).get(0) as string;
-	return createBlockHandle(id, self._doc, self._crdtDoc, self._registry);
+	const order = self._doc.blockOrder as CRDTArray<string>;
+	for (let i = 0; i < order.length; i++) {
+		const handle = getEditorBlock(self, order.get(i));
+		if (handle) return handle;
+	}
+	return null;
 }
 
+/** The last root entry with a block map; a dangling entry (COL4) is skipped. */
 export function getLastBlock(editor: EditorImplRuntime): BlockHandle | null {
 	const self = editor as EditorImplRuntime;
-	const len = self._doc.blockOrder.length;
-	if (len === 0) return null;
-	const id = (self._doc.blockOrder as CRDTArray<string>).get(
-		len - 1,
-	) as string;
-	return createBlockHandle(id, self._doc, self._crdtDoc, self._registry);
+	const order = self._doc.blockOrder as CRDTArray<string>;
+	for (let i = order.length - 1; i >= 0; i--) {
+		const handle = getEditorBlock(self, order.get(i));
+		if (handle) return handle;
+	}
+	return null;
 }
 
 export function getBlockCount(editor: EditorImplRuntime): number {

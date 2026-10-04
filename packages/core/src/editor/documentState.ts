@@ -110,9 +110,13 @@ export class DocumentStateImpl implements DocumentState {
 		const blocks = this._doc.blocks as CRDTBlockMap;
 		const visit = (id: string): void => {
 			if (index.has(id)) return;
+			// A dangling entry (COL4) names no block: skip it until the
+			// structural pass removes it, as renderers do.
+			const blockMap = blocks.get(id);
+			if (!blockMap) return;
 			index.set(id, ids.length);
 			ids.push(id);
-			const children = blocks.get(id)?.get("children") as CRDTArray<string> | undefined;
+			const children = blockMap.get("children") as CRDTArray<string> | undefined;
 			if (!children) return;
 			for (let i = 0; i < children.length; i++) visit(children.get(i));
 		};
@@ -121,18 +125,16 @@ export class DocumentStateImpl implements DocumentState {
 		return this._preorder;
 	}
 
+	/**
+	 * Skips an order or children entry whose block map is gone (COL4): a
+	 * concurrent move can re-insert an entry a concurrent delete removed, and
+	 * a handle for it would throw on every read until the structural pass
+	 * removes the entry.
+	 */
 	*allBlocks(): Iterable<BlockHandle> {
 		const seen = new Set<string>();
 		for (const id of this._blockOrder) {
-			if (seen.has(id)) continue;
-			seen.add(id);
-			yield createBlockHandle(
-				id,
-				this._doc,
-				this._crdtDoc,
-				this._registry,
-			);
-			yield* this._walkChildren(id, seen);
+			yield* this._visitBlock(id, seen);
 		}
 	}
 
@@ -338,29 +340,26 @@ export class DocumentStateImpl implements DocumentState {
 		this._generation++;
 	}
 
-	private *_walkChildren(
+	private *_visitBlock(
 		blockId: string,
 		seen: Set<string>,
 	): Iterable<BlockHandle> {
+		if (seen.has(blockId)) return;
+		seen.add(blockId);
 		const blockMap = (this._doc.blocks as CRDTBlockMap).get(blockId);
 		if (!blockMap) return;
-
+		yield createBlockHandle(
+			blockId,
+			this._doc,
+			this._crdtDoc,
+			this._registry,
+		);
 		const children = blockMap.get("children") as
 			| CRDTArray<string>
 			| undefined;
 		if (!children) return;
-
 		for (let i = 0; i < children.length; i++) {
-			const childId = children.get(i);
-			if (seen.has(childId)) continue;
-			seen.add(childId);
-			yield createBlockHandle(
-				childId,
-				this._doc,
-				this._crdtDoc,
-				this._registry,
-			);
-			yield* this._walkChildren(childId, seen);
+			yield* this._visitBlock(children.get(i), seen);
 		}
 	}
 
