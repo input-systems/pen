@@ -386,4 +386,50 @@ describe("handleFieldEditorPointerActivate", () => {
 		);
 		expect(target.attached).toEqual([inline]);
 	});
+
+	describe("O1: a chip in the field already being edited", () => {
+		function mountChip(): {
+			root: HTMLElement;
+			blocksHost: HTMLElement;
+			chip: HTMLElement;
+		} {
+			const { root, blocksHost, inline } = mountShell("p1");
+			const host = document.createElement("span");
+			host.setAttribute(DATA_ATTRS.inlineAtomHost, "");
+			const chip = document.createElement("span");
+			chip.setAttribute(DATA_ATTRS.inlineAtom, "");
+			chip.contentEditable = "false";
+			chip.textContent = "@Ada";
+			host.append(chip);
+			inline.append("Hello ", host, " world");
+			return { root, blocksHost, chip };
+		}
+
+		const cases: Array<[string, MouseEventInit]> = [
+			["a double click", { detail: 2 }],
+			["a shift-click", { shiftKey: true, detail: 1 }],
+		];
+		for (const [name, init] of cases) {
+			it(`leaves ${name} on a chip to the browser`, () => {
+				const { root, blocksHost, chip } = mountChip();
+				const target = createTarget({
+					isEditing: true,
+					focusBlockId: "p1",
+				});
+				const event = mouseEvent(chip, { cancelable: true, ...init });
+				const handled = handleFieldEditorPointerActivate({
+					event,
+					editor: stubEditor({
+						p1: { type: "paragraph", length: 13 },
+					}),
+					fieldEditor: target.fieldEditor,
+					root,
+					blocksHost,
+				});
+				expect(handled).toBe(false);
+				expect(event.defaultPrevented).toBe(false);
+				expect(target.activations).toEqual([]);
+			});
+		}
+	});
 });

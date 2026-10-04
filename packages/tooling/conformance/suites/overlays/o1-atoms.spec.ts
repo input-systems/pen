@@ -279,20 +279,6 @@ for (const surface of SURFACES) {
 		}
 	}, options);
 
-	// Vanilla (`mountEditor`) has no content-gesture mouseup path: on an
-	// active block a chip click is the browser's (caret after the chip), and
-	// on an inactive block `elementFromPoint` misses the chip. Routed to W35.R16.
-	const chipHalfDefect =
-		surface.name === "vanilla" && !process.env.PEN_IGNORE_KNOWN
-			? {
-					knownDefect: {
-						rule: "O1",
-						route: "pen-dom vanilla pointer activation: chip click resolution (W35.R16)",
-						symptom:
-							"click 2 px left of the ac-mid chip midpoint → caret ac-mid@7, not @6 (inactive: elementFromPoint returns the inline content; active: the native click wins)",
-					},
-				}
-			: {};
 	scenario(on("O1: clicking either half of a chip puts the caret on that side"), async (s, page) => {
 		await s.load("atom-caret");
 		const chip = await atomBox(page, ID.mid);
@@ -301,7 +287,7 @@ for (const surface of SURFACES) {
 		await expectAtomCaret(s, page, { blockId: ID.mid, offset: 6, edge: "leading" });
 		await page.mouse.click(chip.left + chip.width / 2 + 2, y);
 		await expectAtomCaret(s, page, { blockId: ID.mid, offset: 7, edge: "trailing" });
-	}, { ...options, ...chipHalfDefect });
+	}, options);
 
 	scenario(on("O1: clicking the empty tail after a block-final atom puts the caret after it"), async (s, page) => {
 		await s.load("atom-caret");

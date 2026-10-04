@@ -57,6 +57,12 @@ async function clickOffset(
 }
 
 async function readOverlay(page: Page): Promise<OverlaySnapshot> {
+	// The overlay paints in the scheduler flush after the selection commit
+	// (SCH), so a read straight after the record moved can precede the paint
+	// (WebKit, ~1 in 20). OV4 waits for that flush; the checks below report.
+	await page.evaluate(() =>
+		window.__penConformance.overlayMatchesAuthority(),
+	);
 	return page.evaluate(() => {
 		const overlay = document.querySelector("[data-pen-overlay-layer]");
 		if (!(overlay instanceof HTMLElement)) {

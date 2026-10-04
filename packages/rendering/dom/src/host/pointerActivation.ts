@@ -1,6 +1,7 @@
 import { usesInlineTextSelection } from "@input/pen-core";
 import type { Editor, FieldEditorFocusOptions } from "@input/pen-types";
 import { pointToEditorSelectionPoint } from "../field-editor/selectionBridge";
+import { isInlineAtomChipNode } from "../field-editor/inlineAtomDom";
 import { findInlineContentElement } from "../field-editor/selectionDomQueries";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 
@@ -80,7 +81,13 @@ export function handleFieldEditorPointerActivate(
 
 	const snapshot = fieldEditor.getSnapshot();
 	if (snapshot.isEditing && snapshot.focusBlockId === blockId) {
-		return false;
+		return activateInlineAtomSide({
+			event,
+			fieldEditor,
+			root,
+			blockId,
+			target,
+		});
 	}
 
 	event.preventDefault();
@@ -118,6 +125,44 @@ export function handleFieldEditorPointerActivate(
 	if (inline instanceof HTMLElement) {
 		fieldEditor.attachElement(inline);
 	}
+	return true;
+}
+
+/**
+ * A plain click on an inline chip in the field that is already editing.
+ * The chip is `contenteditable="false"`, so the browser's own mousedown puts
+ * the DOM caret inside the chip's text, which the reader can only map to
+ * one side of the atom. The side is the half of the chip the pointer is
+ * on (O1, W35.R16), resolved from geometry like an activating click. A
+ * double click or a shift-extend stays the browser's.
+ */
+function activateInlineAtomSide(options: {
+	event: MouseEvent;
+	fieldEditor: FieldEditorPointerTarget;
+	root: HTMLElement;
+	blockId: string;
+	target: Element;
+}): boolean {
+	const { event, fieldEditor, root, blockId, target } = options;
+	if (event.detail > 1 || event.shiftKey) {
+		return false;
+	}
+	const chip = target.closest(`[${DATA_ATTRS.inlineAtom}]`);
+	if (!isInlineAtomChipNode(chip)) {
+		return false;
+	}
+	const point = pointToEditorSelectionPoint(
+		root,
+		event.clientX,
+		event.clientY,
+	);
+	if (!point || point.blockId !== blockId) {
+		return false;
+	}
+	event.preventDefault();
+	fieldEditor.activateTextSelection(blockId, point.offset, point.offset, {
+		origin: "pointer",
+	});
 	return true;
 }
 
