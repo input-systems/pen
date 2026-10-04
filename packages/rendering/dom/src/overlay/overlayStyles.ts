@@ -59,14 +59,19 @@ const CARET_DEFAULTS: Record<
 	},
 };
 
-/** OV2: the layer is a zero-size, absolutely positioned origin that never takes pointer input. */
+/**
+ * OV2: the layer is an absolutely positioned origin that never takes pointer
+ * input. It spans its containing block (the root's padding box), so it adds
+ * no scrollable overflow, and its border box over its layout size is the
+ * scale the read phase divides out.
+ */
 export function overlayLayerStyle(): OverlayInlineStyle {
 	return {
 		position: "absolute",
 		top: "0px",
 		left: "0px",
-		width: "0px",
-		height: "0px",
+		width: "100%",
+		height: "100%",
 		overflow: "visible",
 		"pointer-events": "none",
 		"z-index": `var(${OVERLAY_TOKENS.zIndex}, 20)`,

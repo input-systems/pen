@@ -13,7 +13,12 @@ import {
 } from "../a11y/motion";
 import type { S2ExceptionKind } from "../field-editor/selectionProjector";
 import type { FieldEditorStoreSnapshot } from "../field-editor/store";
-import { elementRect, measureCellRect } from "../geometry/geometryMeasure";
+import {
+	elementRect,
+	elementScale,
+	measureCellRect,
+	type ElementScale,
+} from "../geometry/geometryMeasure";
 import type { GeometryReaderHost } from "../geometry/geometryReader";
 import type { Point, Rect } from "../geometry/types";
 import type { DomScheduler, OverlayPainter } from "../scheduler";
@@ -494,7 +499,14 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 			readonly request: OverlayRequest;
 		}[],
 	): { items: OverlayPaintItem[]; unresolved: Unresolved[] } {
-		const origin = elementRect(this.layer);
+		// OV2: items are in the layer's own CSS pixels. The layer spans its
+		// containing block, so its one read gives both the origin and the
+		// scale: a scaled or zoomed ancestor divides out here.
+		const layerRect = elementRect(this.layer);
+		const origin: LayerOrigin = {
+			rect: layerRect,
+			scale: elementScale(this.layer, layerRect),
+		};
 		const items: OverlayPaintItem[] = [];
 		const unresolved: Unresolved[] = [];
 		for (const { contributor, request } of requests) {
@@ -512,7 +524,7 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 	private resolveRequest(
 		contributor: string,
 		request: OverlayRequest,
-		origin: Rect,
+		origin: LayerOrigin,
 		items: OverlayPaintItem[],
 		unresolved: Unresolved[],
 	): void {
@@ -747,15 +759,20 @@ function inputsEqual(left: ReadInputs, right: ReadInputs): boolean {
 	);
 }
 
+/** The layer's viewport box and the viewport pixels per layer pixel, read once per flush. */
+type LayerOrigin = { readonly rect: Rect; readonly scale: ElementScale };
+
+/** A viewport rect in the layer's own CSS pixels (OV2): position and size alike. */
 function relative(
 	rect: Rect,
-	origin: Rect,
+	origin: LayerOrigin,
 ): Pick<OverlayPaintItem, "x" | "y" | "width" | "height"> {
+	const { x, y } = origin.scale;
 	return {
-		x: rect.left - origin.left,
-		y: rect.top - origin.top,
-		width: rect.width,
-		height: rect.height,
+		x: (rect.left - origin.rect.left) / x,
+		y: (rect.top - origin.rect.top) / y,
+		width: rect.width / x,
+		height: rect.height / y,
 	};
 }
 

@@ -181,7 +181,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 97 -> 98: suites/ime/c-editcontext-multi-update.spec.ts (C2/C4, one EditContext composition lifecycle under real CDP IME input).
 	// 98 -> 99: scenarios/ax3-toolbar-press.spec.ts (AX3, a toolbar press keeps compatibility mouse events).
 	// 99 -> 100: suites/selection/r-shift-click-range.spec.ts (R1/S2, shift-click extends across blocks on React, Vue and vanilla).
-	const expectedPlaywrightSpecs = 100;
+	// 98 -> 99: suites/overlays/ov2-scaled-ancestor.spec.ts (OV2, items under a scaled or zoomed ancestor).
+	const expectedPlaywrightSpecs = 101;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

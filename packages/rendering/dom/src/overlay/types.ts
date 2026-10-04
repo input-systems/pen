@@ -82,7 +82,10 @@ export interface OverlayPaintItem {
 	readonly kind: OverlayItemKind;
 	readonly contributor: string;
 	readonly role?: OverlayCaretRole;
-	/** Layer-relative CSS pixels. */
+	/**
+	 * Position and size in the layer's own CSS pixels, relative to its
+	 * origin: a scaled or zoomed ancestor is already divided out (OV2).
+	 */
 	readonly x: number;
 	readonly y: number;
 	readonly width: number;

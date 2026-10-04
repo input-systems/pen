@@ -132,3 +132,73 @@ export async function blockBox(
 		return { left: box.left, top: box.top, width: box.width, height: box.height };
 	}, blockId);
 }
+
+export type Box = LayerItem["box"];
+
+/** The viewport box of the character at `offset` in a block's inline content. */
+export async function charBox(
+	page: Page,
+	blockId: string,
+	offset: number,
+): Promise<Box> {
+	return page.evaluate(
+		({ id, target }) => {
+			const inline = document.querySelector(
+				`[data-pen-editor-block][data-block-id="${id}"] [data-pen-inline-content]`,
+			);
+			if (!(inline instanceof HTMLElement)) {
+				throw new Error(`missing inline content for ${id}`);
+			}
+			const walker = document.createTreeWalker(inline, NodeFilter.SHOW_TEXT);
+			let remaining = target;
+			while (walker.nextNode()) {
+				const text = walker.currentNode as Text;
+				if (remaining < text.data.length) {
+					const range = document.createRange();
+					range.setStart(text, remaining);
+					range.setEnd(text, remaining + 1);
+					const box = range.getBoundingClientRect();
+					return {
+						left: box.left,
+						top: box.top,
+						right: box.right,
+						bottom: box.bottom,
+						width: box.width,
+						height: box.height,
+					};
+				}
+				remaining -= text.data.length;
+			}
+			throw new Error(`no character at ${id}:${target}`);
+		},
+		{ id: blockId, target: offset },
+	);
+}
+
+/** The viewport box of the first painted remote caret's name label, or null. */
+export async function remoteLabelBox(page: Page): Promise<Box | null> {
+	return page.evaluate(() => {
+		const label = document.querySelector(
+			"[data-pen-overlay-layer] [data-pen-multiplayer-caret-label]",
+		);
+		if (!(label instanceof HTMLElement)) {
+			return null;
+		}
+		const box = label.getBoundingClientRect();
+		return {
+			left: box.left,
+			top: box.top,
+			right: box.right,
+			bottom: box.bottom,
+			width: box.width,
+			height: box.height,
+		};
+	});
+}
+
+/** Remote carets painted in the layer (`role: "remote"`; no local or endpoint attribute). */
+export function remoteCarets(snapshot: LayerSnapshot): LayerItem[] {
+	return snapshot.items.filter(
+		(item) => item.kind === "caret" && !item.local && item.endpoint === null,
+	);
+}

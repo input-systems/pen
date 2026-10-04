@@ -397,6 +397,30 @@ export function elementRect(element: HTMLElement): Rect {
 	return rectFromDOMRect(element.getBoundingClientRect());
 }
 
+/** Viewport pixels per CSS pixel along each axis inside an element. */
+export type ElementScale = { readonly x: number; readonly y: number };
+
+/**
+ * Viewport pixels per CSS pixel inside `element`: every ancestor
+ * `transform: scale()` and CSS `zoom`, and the element's own, read as its
+ * border box (`rect`, already measured by the caller) over its layout size.
+ * An axis whose two sizes agree to within `offsetWidth`'s integer rounding
+ * is 1, so an unscaled element measures exactly 1; an axis with no layout
+ * size borrows the other axis.
+ */
+export function elementScale(element: HTMLElement, rect: Rect): ElementScale {
+	const x = axisScale(rect.width, element.offsetWidth);
+	const y = axisScale(rect.height, element.offsetHeight);
+	return { x: x ?? y ?? 1, y: y ?? x ?? 1 };
+}
+
+function axisScale(viewport: number, layout: number): number | null {
+	if (layout <= 0 || viewport <= 0) {
+		return null;
+	}
+	return Math.abs(viewport - layout) < 1 ? 1 : viewport / layout;
+}
+
 export function findAtomHost(node: Node): HTMLElement | null {
 	let current: Node | null = node;
 	while (current) {
