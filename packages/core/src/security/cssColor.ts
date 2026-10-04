@@ -16,7 +16,7 @@ const HEX_COLOR_PATTERN =
 const FUNCTION_COLOR_PATTERN = /^(?:rgba?|hsla?)\((?:[0-9.,%/ -]|deg)+\)$/i;
 
 /** CSS Color 4 named colours, plus `transparent` and `currentcolor`. */
-const CSS_NAMED_COLORS: ReadonlySet<string> = new Set([
+const CSS_NAMED_COLORS: readonly string[] = [
 	"transparent",
 	"currentcolor",
 	"aliceblue",
@@ -167,7 +167,13 @@ const CSS_NAMED_COLORS: ReadonlySet<string> = new Set([
 	"whitesmoke",
 	"yellow",
 	"yellowgreen",
-]);
+];
+
+/** CSS keywords are ASCII case-insensitive, so the match is a flagged regex rather than a case fold. */
+const NAMED_COLOR_PATTERN = new RegExp(
+	`^(?:${CSS_NAMED_COLORS.join("|")})$`,
+	"i",
+);
 
 /**
  * Whether `value` is a plain CSS colour safe to write into a colour slot
@@ -185,6 +191,6 @@ export function isSafeCssColor(value: unknown): value is string {
 	return (
 		HEX_COLOR_PATTERN.test(value) ||
 		FUNCTION_COLOR_PATTERN.test(value) ||
-		CSS_NAMED_COLORS.has(value.toLowerCase())
+		NAMED_COLOR_PATTERN.test(value)
 	);
 }
