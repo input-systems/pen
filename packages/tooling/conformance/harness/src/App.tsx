@@ -1,5 +1,5 @@
 import type { Editor, TableColumnSchema } from "@input/pen-types";
-import { useEffect, useState, type ReactElement } from "react";
+import { useState, useSyncExternalStore, type ReactElement } from "react";
 import { Pen } from "../../../../rendering/react/src/primitives";
 import { ColumnHeaderMenu } from "../../../../rendering/react/src/renderers/tableColumnMenu";
 import { isWindowedFixture } from "../../src/windowedRange";
@@ -115,16 +115,17 @@ function PseudoLocaleChrome({ editor }: { editor: Editor }) {
 	);
 }
 
-export function App() {
-	const [generation, setGeneration] = useState(() => getHarnessSession().generation);
-	const [windowStart, setWindowStart] = useState(getWindowStart);
+function readGeneration(): number {
+	return getHarnessSession().generation;
+}
 
-	useEffect(() => {
-		return subscribeHarness(() => {
-			setGeneration(getHarnessSession().generation);
-			setWindowStart(getWindowStart());
-		});
-	}, []);
+export function App() {
+	// The bridge is live before React runs passive effects, so a `load()` that
+	// lands between the first commit and an effect-time subscribe would never
+	// re-render (HOST6 WebKit flake). useSyncExternalStore re-checks the
+	// snapshot when it subscribes.
+	const generation = useSyncExternalStore(subscribeHarness, readGeneration);
+	const windowStart = useSyncExternalStore(subscribeHarness, getWindowStart);
 
 	const session = getHarnessSession();
 	const showPseudoLocaleChrome = readQueryFlag("pseudoLocale");
