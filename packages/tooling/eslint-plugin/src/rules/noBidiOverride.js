@@ -1,6 +1,4 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { loadAllowlistEntries } from "./allowlistLint.js";
 import { posixFilename, repoRelativeFilename } from "./lintPaths.js";
 
 /**
@@ -8,21 +6,9 @@ import { posixFilename, repoRelativeFilename } from "./lintPaths.js";
  * `bidi-override`. Isolate is the allowed unicode-bidi value.
  */
 
-const DEFAULT_ALLOWLIST_PATH = path.join(
-	path.dirname(fileURLToPath(import.meta.url)),
-	"../../../../../scripts/bidi-override-allowlist.json",
-);
+const ALLOWLIST_PATH = "scripts/bidi-override-allowlist.json";
 
-function loadAllowlist(filePath) {
-	try {
-		const parsed = JSON.parse(readFileSync(filePath, "utf8"));
-		return Array.isArray(parsed.entries) ? parsed.entries : [];
-	} catch {
-		return [];
-	}
-}
-
-const committedAllowlist = loadAllowlist(DEFAULT_ALLOWLIST_PATH);
+const committedAllowlist = loadAllowlistEntries(ALLOWLIST_PATH);
 
 function containsOverride(value) {
 	return typeof value === "string" && value.includes("bidi-override");

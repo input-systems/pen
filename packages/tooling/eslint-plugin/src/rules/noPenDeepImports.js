@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { loadAllowlistEntries } from "./allowlistLint.js";
 import { posixFilename, REPO_ROOT, repoRelativeFilename } from "./lintPaths.js";
 
 /**
@@ -8,10 +8,7 @@ import { posixFilename, REPO_ROOT, repoRelativeFilename } from "./lintPaths.js";
  * `/dist/`, or an unpublished subpath.
  */
 
-const DEFAULT_ALLOWLIST_PATH = path.join(
-	path.dirname(fileURLToPath(import.meta.url)),
-	"../../../../../scripts/pen-deep-imports-allowlist.json",
-);
+const ALLOWLIST_PATH = "scripts/pen-deep-imports-allowlist.json";
 
 const ESCAPE_HATCH_RE = /\/(?:src|dist)(?:\/|$)/;
 const SKIP_DIRS = new Set([
@@ -21,15 +18,6 @@ const SKIP_DIRS = new Set([
 	".turbo",
 	".git",
 ]);
-
-function loadAllowlist(filePath) {
-	try {
-		const parsed = JSON.parse(readFileSync(filePath, "utf8"));
-		return Array.isArray(parsed.entries) ? parsed.entries : [];
-	} catch {
-		return [];
-	}
-}
 
 function publishedExportKeys(manifest) {
 	const keys = new Set();
@@ -150,7 +138,7 @@ export function isDeepImport(specifier, packages) {
 	return !matchesExportKey(exportKey, publishedKeys);
 }
 
-const committedAllowlist = loadAllowlist(DEFAULT_ALLOWLIST_PATH);
+const committedAllowlist = loadAllowlistEntries(ALLOWLIST_PATH);
 const workspacePackages = loadWorkspacePackages(REPO_ROOT);
 
 function specifierFromNode(node) {

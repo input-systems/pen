@@ -1,5 +1,7 @@
 import {
 	allowlistLifecycleListeners,
+	allowlistSlots,
+	consumeAllowlistSlot,
 	loadAllowlistEntries,
 	missingAllowlistField,
 } from "./allowlistLint.js";
@@ -74,13 +76,7 @@ export const noBindingEditorSubscriptions = {
 		const allowlist =
 			context.options[0]?.allowlist ??
 			loadAllowlistEntries(ALLOWLIST_PATH);
-		const slots = allowlist
-			.filter(
-				(entry) =>
-					!missingSubscriptionAllowlistField(entry) &&
-					entry.file === relative,
-			)
-			.map((entry) => ({ ...entry, used: false }));
+		const slots = allowlistSlots(allowlist, relative, missingSubscriptionAllowlistField);
 
 		return {
 			...allowlistLifecycleListeners(context, {
@@ -93,11 +89,7 @@ export const noBindingEditorSubscriptions = {
 				const event = subscribedEvent(node);
 				if (!event) return;
 				const symbol = enclosingSymbol(node);
-				const slot = slots.find((entry) => entry.symbol === symbol);
-				if (slot) {
-					slot.used = true;
-					return;
-				}
+				if (consumeAllowlistSlot(slots, symbol)) return;
 				context.report({
 					node,
 					messageId: "subscription",

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { REPO_ROOT } from "./lintPaths.js";
+import { posixFilename, REPO_ROOT } from "./lintPaths.js";
 
 /**
  * The allowlist ratchet shared by rules whose waivers live in a committed
@@ -30,13 +30,38 @@ export function missingAllowlistField(entry, requiredFields) {
 	);
 }
 
+/** The complete entries for `relative`, each a slot starting `used: false`. */
+export function allowlistSlots(allowlist, relative, missingField) {
+	return allowlist
+		.filter(
+			(entry) =>
+				!missingField(entry) && posixFilename(entry.file) === relative,
+		)
+		.map((entry) => ({ ...entry, used: false }));
+}
+
+/** Marks the first slot for `symbol` used; false when none waives it. */
+export function consumeAllowlistSlot(slots, symbol) {
+	const slot = slots.find((entry) => entry.symbol === symbol);
+	if (!slot) return false;
+	slot.used = true;
+	return true;
+}
+
 /**
  * `Program` reports incomplete entries for this file (or any entry without a
- * file); `Program:exit` reports every slot still `used: false`.
+ * file); `Program:exit` reports every slot still `used: false` under
+ * `orphanMessageId`.
  */
 export function allowlistLifecycleListeners(
 	context,
-	{ allowlist, relative, slots, missingField },
+	{
+		allowlist,
+		relative,
+		slots,
+		missingField,
+		orphanMessageId = "orphanedAllowlist",
+	},
 ) {
 	return {
 		Program() {
@@ -55,7 +80,7 @@ export function allowlistLifecycleListeners(
 			for (const slot of slots.filter((entry) => !entry.used)) {
 				context.report({
 					loc: { line: 1, column: 0 },
-					messageId: "orphanedAllowlist",
+					messageId: orphanMessageId,
 					data: {
 						file: slot.file,
 						symbol: slot.symbol,

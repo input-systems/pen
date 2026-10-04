@@ -1,5 +1,6 @@
 import {
 	allowlistLifecycleListeners,
+	allowlistSlots,
 	loadAllowlistEntries,
 	missingAllowlistField,
 } from "./allowlistLint.js";
@@ -87,13 +88,7 @@ export const noUnscopedDecorationSource = {
 		const allowlist =
 			context.options[0]?.allowlist ??
 			loadAllowlistEntries(ALLOWLIST_PATH);
-		const slots = allowlist
-			.filter(
-				(entry) =>
-					!missingDecorationAllowlistField(entry) &&
-					entry.file === relative,
-			)
-			.map((entry) => ({ ...entry, used: false }));
+		const slots = allowlistSlots(allowlist, relative, missingDecorationAllowlistField);
 
 		return {
 			...allowlistLifecycleListeners(context, {
