@@ -118,9 +118,7 @@ export function getBoundaryPoint(
 	blockId: string,
 	side: "start" | "end",
 ): Point {
-	const root = ctx.gestureEl.closest(
-		EDITOR_ROOT_SELECTOR,
-	) as HTMLElement | null;
+	const root = ctx.currentEditorRoot;
 	return (
 		(root ? getBlockBoundaryPoint(root, blockId, side) : null) ?? {
 			blockId,

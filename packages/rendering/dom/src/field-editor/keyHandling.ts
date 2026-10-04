@@ -126,7 +126,8 @@ export function handleFieldEditorKeyDown(options: {
 		}
 	}
 
-	if (handleEditorKeyBindings(editor, event, { includeSelectAll: false })) {
+	// History already ran above; an undo/redo key never reaches here.
+	if (!event.defaultPrevented && runMatchingKeyBinding(editor, event)) {
 		return true;
 	}
 

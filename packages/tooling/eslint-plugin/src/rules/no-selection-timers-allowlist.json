@@ -2,7 +2,7 @@
   "_comment": "S4 (spec/rules/selection.md). `modules` is the protected set the basename-contains-selection matcher cannot see; every item is a repo path. Basename `selection` is a fail-closed net so selectionReader.ts cannot silently escape. `outOfScope` is a decision that a file is not a selection module \u2014 not a waiver. `entries` waive a live site in an in-scope file; each needs file, enclosing symbol, kind (a timer name, or promise-then, async, await, scheduler-setter, retry-counter), and a reason that names why the site remains. Remove an entry in the same PR that deletes the call. R1's pointer-settled microtask in selectionReader.ts is a structural match in the rule, not an entry.",
   "modules": [
     "packages/rendering/dom/src/field-editor/focusController.ts",
-    "packages/rendering/dom/src/field-editor/offsetDomain.ts",
+    "packages/rendering/dom/src/utils/clampOffset.ts",
     "packages/core/src/selection/normalPosition.ts",
     "packages/core/src/selection/transitions.ts",
     "packages/rendering/dom/src/field-editor/editContextBackend.ts",

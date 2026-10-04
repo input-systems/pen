@@ -1021,8 +1021,8 @@ export class EditContextBackend {
 		);
 	};
 
+	// The root's capture listener already notified the reader (R1).
 	protected handlePointerDown = (): void => {
-		this.fieldEditor.notifyGestureEvent?.("pointerdown");
 		this.trustedTypingCaret = null;
 	};
 

@@ -707,6 +707,8 @@ export class ContentEditableBackend {
 
 	// ── Clipboard events ──────────────────────────────────────
 
+	// R1: an active table cell carries `ignorePointerGesture`, so the root's
+	// capture listener skips it; this is the cell's only pointerdown notify.
 	protected handlePointerDown = (): void => {
 		this.fieldEditor.notifyGestureEvent?.("pointerdown");
 	};

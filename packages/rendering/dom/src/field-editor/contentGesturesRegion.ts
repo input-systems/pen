@@ -11,7 +11,6 @@ import {
 	type RegionSelectorConfig,
 } from "../utils/regionSelection";
 import {
-	EDITOR_ROOT_SELECTOR,
 	ensureEditorFocus,
 	resolveClickedBlockId,
 	shouldIgnorePointerGesture,
@@ -151,9 +150,7 @@ export function createRegionGestures<
 			return false;
 		}
 		const wasSelecting = regionGesture.isSelecting;
-		const regionRoot = gestureEl.closest(
-			EDITOR_ROOT_SELECTOR,
-		) as HTMLElement | null;
+		const regionRoot = currentEditorRoot;
 		if (wasSelecting) {
 			if (!blockSelectionEnabled) {
 				clearRegionSelectionState();

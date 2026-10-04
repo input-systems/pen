@@ -3,7 +3,7 @@ import {
 	getLogicalNodeLength,
 	getLogicalTextContent,
 } from "../field-editor/inlineAtomDom";
-import { toLogicalOffset } from "../field-editor/offsetDomain";
+import { clampOffset } from "../utils/clampOffset";
 import { pointToEditorSelectionPoint } from "../field-editor/selectionBridge";
 import {
 	findBlockElement,
@@ -82,9 +82,9 @@ function domToPoint(
 	}
 	return {
 		blockId,
-		offset: toLogicalOffset(
+		offset: clampOffset(
 			domPointToLogicalOffset(inlineEl, node, offset),
-			getLogicalTextContent(inlineEl),
+			getLogicalTextContent(inlineEl).length,
 		),
 	};
 }

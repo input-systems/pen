@@ -18,7 +18,6 @@ import { resolvePointerDragSelection } from "../utils/pointerSelection";
 import {
 	activateCanonicalSelection,
 	DRAG_THRESHOLD_PX,
-	EDITOR_ROOT_SELECTOR,
 	ensureEditorFocus,
 	isPreorderForward,
 	getBoundaryPoint,
@@ -192,9 +191,7 @@ export function createPointerSelectionGestures<
 		const moved =
 			Math.abs(clientX - gesture.clientX) > DRAG_THRESHOLD_PX ||
 			Math.abs(clientY - gesture.clientY) > DRAG_THRESHOLD_PX;
-		const root = gestureEl.closest(
-			EDITOR_ROOT_SELECTOR,
-		) as HTMLElement | null;
+		const root = currentEditorRoot;
 
 		const commitCanonicalSelection = (
 			anchorPoint: Point,

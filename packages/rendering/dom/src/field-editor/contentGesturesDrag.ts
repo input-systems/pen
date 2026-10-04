@@ -7,7 +7,6 @@ import {
 import {
 	activateCanonicalSelection,
 	DRAG_THRESHOLD_PX,
-	EDITOR_ROOT_SELECTOR,
 	getBoundaryPoint,
 	resolveClickedBlockId,
 	shouldIgnorePointerGesture,
@@ -22,6 +21,7 @@ export function createDragGestures<
 		editor,
 		fieldEditor,
 		gestureEl,
+		currentEditorRoot,
 		pointerGestureRef,
 		pointerGestureVersionRef,
 		interactionModelRef,
@@ -33,9 +33,7 @@ export function createDragGestures<
 		if (fieldEditor.isComposing) return;
 		if (shouldIgnorePointerGesture(ctx, event)) return;
 
-		const root = gestureEl.closest(
-			EDITOR_ROOT_SELECTOR,
-		) as HTMLElement | null;
+		const root = currentEditorRoot;
 		const clickedBlockId = resolveClickedBlockId(ctx, event);
 		// A drag starting in host chrome (the content padding beside the
 		// column, or the root next to it) anchors at the nearest block
@@ -138,9 +136,7 @@ export function createDragGestures<
 		if (!pointerGesture) {
 			return;
 		}
-		const root = gestureEl.closest(
-			EDITOR_ROOT_SELECTOR,
-		) as HTMLElement | null;
+		const root = currentEditorRoot;
 		if (!root) {
 			return;
 		}

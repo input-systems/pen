@@ -8,7 +8,7 @@ import {
 	isInlineAtomHostNode,
 	isInlineAtomNode,
 } from "../field-editor/inlineAtomDom";
-import { toLogicalOffset } from "../field-editor/offsetDomain";
+import { clampOffset } from "../utils/clampOffset";
 import { getTextSelectionClientRects } from "../field-editor/selectionBridgeOffsets";
 import {
 	findInlineContentElement,
@@ -35,7 +35,10 @@ export function snapToLogicalOffset(root: HTMLElement, point: Point): Point {
 	}
 	return {
 		blockId: point.blockId,
-		offset: toLogicalOffset(point.offset, getLogicalTextContent(inlineEl)),
+		offset: clampOffset(
+			point.offset,
+			getLogicalTextContent(inlineEl).length,
+		),
 	};
 }
 
@@ -407,10 +410,4 @@ export function findAtomHost(node: Node): HTMLElement | null {
 		current = current.parentNode;
 	}
 	return null;
-}
-
-function clampOffset(offset: number, length: number): number {
-	if (offset < 0) return 0;
-	if (offset > length) return length;
-	return offset;
 }

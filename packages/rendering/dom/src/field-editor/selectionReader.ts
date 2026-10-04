@@ -9,7 +9,7 @@ import type {
 	SelectionOrigin,
 	SelectionRecordState,
 } from "@input/pen-types";
-import { toLogicalOffset } from "./offsetDomain";
+import { clampOffset } from "../utils/clampOffset";
 import { domPointToLogicalOffset } from "./inlineAtomDom";
 import {
 	mapDomSelectionToEditor,
@@ -1004,7 +1004,7 @@ function toLogicalPoint(
 	}
 	return {
 		blockId: point.blockId,
-		offset: toLogicalOffset(point.offset, block.text),
+		offset: clampOffset(point.offset, block.text.length),
 	};
 }
 
