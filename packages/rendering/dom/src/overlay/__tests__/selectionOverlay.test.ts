@@ -279,4 +279,145 @@ describe("local-selection contributor (§3.5)", () => {
 		expect(requests(text(["b0", 1], ["b0", 4]), { caretMode: "all" })).toEqual([]);
 		expect(requests(text(["p0", 2]), { field: { editingCell: true }, caretMode: "all" })).toEqual([]);
 	});
+
+	describe("caches follow the document, not only the selection version", () => {
+		// Core does not bump the record version when a commit leaves the mapped
+		// selection equal, so a remote edit inside a held range must still
+		// refresh the D5 / O3 requests.
+		function reader(
+			state: SelectionRecordState,
+			field: Partial<OverlayFieldState>,
+		) {
+			const contributor = createSelectionOverlayContributor();
+			const selection: SelectionRecord = {
+				state,
+				version: 1,
+				origin: "keyboard",
+				commitId: 0,
+			};
+			return () =>
+				contributor.requests({
+					editor,
+					commits: [],
+					selection,
+					caretMode: "auto",
+					field: { ...FIELD, ...field },
+				});
+		}
+		const surface = {
+			substitute: "block-surface-range",
+			mode: "block",
+			isEditing: false,
+		} as const;
+
+		it("D5: a remote append to the first block extends range:first", () => {
+			editor = createDocument();
+			const read = reader(text(["b2", 3], ["b55", 2]), surface);
+			expect(read()).toContainEqual(
+				expect.objectContaining({
+					key: "range:first",
+					focus: { blockId: "b2", offset: 6 },
+				}),
+			);
+			editor.apply([splice("b2", 6, "!!")], { origin: "collaborator" });
+			expect(read()).toContainEqual(
+				expect.objectContaining({
+					key: "range:first",
+					focus: { blockId: "b2", offset: 8 },
+				}),
+			);
+		});
+
+		it("D5: a remote delete of the first covered block moves range:covered", () => {
+			editor = createDocument();
+			const read = reader(text(["b2", 3], ["b55", 2]), surface);
+			expect(read()).toContainEqual(
+				expect.objectContaining({
+					key: "range:covered",
+					fromBlockId: "b3",
+				}),
+			);
+			editor.apply([{ type: "delete-block", blockId: "b3" }], {
+				origin: "collaborator",
+			});
+			expect(read()).toContainEqual(
+				expect.objectContaining({
+					key: "range:covered",
+					fromBlockId: "b4",
+					toBlockId: "b54",
+				}),
+			);
+		});
+
+		it("D5: a remote insert after the first block joins range:covered", () => {
+			editor = createDocument();
+			const read = reader(text(["b2", 3], ["b55", 2]), surface);
+			read();
+			editor.apply(
+				[
+					{
+						type: "insert-block",
+						blockId: "x",
+						blockType: "paragraph",
+						props: {},
+						position: { after: "b2" },
+					},
+				],
+				{ origin: "collaborator" },
+			);
+			expect(read()).toContainEqual(
+				expect.objectContaining({
+					key: "range:covered",
+					fromBlockId: "x",
+				}),
+			);
+		});
+
+		it("O3: a remote insert inside a selected run splits the span", () => {
+			editor = createDocument();
+			const read = reader(
+				{ type: "block", blockIds: blockIds(0, 59), head: "b59" },
+				{},
+			);
+			expect(read()).toHaveLength(1);
+			editor.apply(
+				[
+					{
+						type: "insert-block",
+						blockId: "x",
+						blockType: "paragraph",
+						props: {},
+						position: { after: "b10" },
+					},
+				],
+				{ origin: "collaborator" },
+			);
+			expect(read()).toEqual([
+				{
+					kind: "block-span",
+					key: "block-span:b0",
+					fromBlockId: "b0",
+					toBlockId: "b10",
+				},
+				{
+					kind: "block-span",
+					key: "block-span:b11",
+					fromBlockId: "b11",
+					toBlockId: "b59",
+				},
+			]);
+		});
+
+		it("an unchanged document reuses the cached requests", () => {
+			editor = createDocument();
+			const read = reader(text(["b2", 3], ["b55", 2]), surface);
+			const first = read();
+			const ranges = first.filter((request) => request.kind !== "caret");
+			expect(
+				read().filter((request) => request.kind !== "caret"),
+			).toEqual(ranges);
+			const second = read();
+			expect(second[2]).toBe(first[2]);
+		});
+	});
 });

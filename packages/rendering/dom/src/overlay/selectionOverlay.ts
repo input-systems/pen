@@ -33,6 +33,13 @@ const NO_REQUESTS: readonly OverlayRequest[] = [];
 type TextState = Extract<NonNullable<SelectionRecordState>, { type: "text" }>;
 type BlockState = Extract<NonNullable<SelectionRecordState>, { type: "block" }>;
 
+interface RangeCacheKey {
+	readonly version: number;
+	readonly generation: number;
+	readonly anchorRevision: number;
+	readonly focusRevision: number;
+}
+
 /**
  * O preamble, O5: the local caret needs an editing, focused field that is
  * not composing (IME always sees the native caret), not read-only, and not
@@ -72,7 +79,8 @@ function samePoint(a: Point, b: Point): boolean {
  *   while no cell is edited. App selections are not outlined (D13).
  *
  * Inline facts are cached per block revision, and the D5 block range and the
- * O3 runs once per record version, so an unchanged flush recomputes nothing.
+ * O3 runs once per record version and document state, so an unchanged
+ * flush recomputes nothing.
  */
 export function createSelectionOverlayContributor(): OverlayContributor {
 	const facts = new Map<
@@ -83,16 +91,39 @@ export function createSelectionOverlayContributor(): OverlayContributor {
 			readonly textCapable: boolean;
 		}
 	>();
+	/**
+	 * The D5 range or O3 runs. Keyed on the record version, the document
+	 * structure (`documentState.generation`, bumped by every structural
+	 * rebuild) and, for D5, the endpoint blocks' revisions: core keeps the
+	 * version when a commit leaves the mapped selection equal, so a remote
+	 * edit inside a held range must still miss. Every part is an O(1) read.
+	 */
 	let rangeCache: {
-		readonly version: number;
+		readonly key: RangeCacheKey;
 		readonly requests: readonly OverlayRequest[];
 	} | null = null;
+
+	function cachedRange(key: RangeCacheKey): readonly OverlayRequest[] | null {
+		if (
+			rangeCache === null ||
+			rangeCache.key.version !== key.version ||
+			rangeCache.key.generation !== key.generation ||
+			rangeCache.key.anchorRevision !== key.anchorRevision ||
+			rangeCache.key.focusRevision !== key.focusRevision
+		) {
+			return null;
+		}
+		return rangeCache.requests;
+	}
 
 	/** Inline facts per block, re-read only when the block's revision moved. */
 	function factsFor(
 		editor: Editor,
 		blockId: string,
-	): { readonly facts: BlockInlineFacts; readonly textCapable: boolean } | null {
+	): {
+		readonly facts: BlockInlineFacts;
+		readonly textCapable: boolean;
+	} | null {
 		const revision = editor.getBlockRevision(blockId);
 		const cached = facts.get(blockId);
 		if (cached && cached.revision === revision) {
@@ -182,7 +213,10 @@ export function createSelectionOverlayContributor(): OverlayContributor {
 			return requests;
 		}
 		const requests: OverlayRequest[] = endpointsAllowed
-			? [endpointRequest(state, "anchor"), endpointRequest(state, "focus")]
+			? [
+					endpointRequest(state, "anchor"),
+					endpointRequest(state, "focus"),
+				]
 			: [];
 		requests.push(...substituteRangeRequests(context, state));
 		return requests;
@@ -193,9 +227,17 @@ export function createSelectionOverlayContributor(): OverlayContributor {
 		context: OverlayReadContext,
 		state: TextState,
 	): readonly OverlayRequest[] {
-		const version = context.selection.version;
-		if (rangeCache?.version === version) {
-			return rangeCache.requests;
+		const key: RangeCacheKey = {
+			version: context.selection.version,
+			generation: context.editor.documentState.generation,
+			anchorRevision: context.editor.getBlockRevision(
+				state.anchor.blockId,
+			),
+			focusRevision: context.editor.getBlockRevision(state.focus.blockId),
+		};
+		const cached = cachedRange(key);
+		if (cached) {
+			return cached;
 		}
 		const ids = getSelectionBlockRange(context.editor.documentState, {
 			type: "text",
@@ -232,7 +274,7 @@ export function createSelectionOverlayContributor(): OverlayContributor {
 				toBlockId: ids[ids.length - 2]!,
 			});
 		}
-		rangeCache = { version, requests };
+		rangeCache = { key, requests };
 		return requests;
 	}
 
@@ -248,9 +290,15 @@ export function createSelectionOverlayContributor(): OverlayContributor {
 				blockId,
 			}));
 		}
-		const version = context.selection.version;
-		if (rangeCache?.version === version) {
-			return rangeCache.requests;
+		const key: RangeCacheKey = {
+			version: context.selection.version,
+			generation: context.editor.documentState.generation,
+			anchorRevision: 0,
+			focusRevision: 0,
+		};
+		const cached = cachedRange(key);
+		if (cached) {
+			return cached;
 		}
 		const requests = contiguousRuns(context.editor, state.blockIds).map(
 			(run) =>
@@ -261,7 +309,7 @@ export function createSelectionOverlayContributor(): OverlayContributor {
 					toBlockId: run.to,
 				}) satisfies OverlayRequest,
 		);
-		rangeCache = { version, requests };
+		rangeCache = { key, requests };
 		return requests;
 	}
 
