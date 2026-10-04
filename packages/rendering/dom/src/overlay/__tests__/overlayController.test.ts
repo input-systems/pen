@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { getEditorSelectionRecord } from "@input/pen-core";
 import type { DiagnosticEvent } from "@input/pen-types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
@@ -50,6 +51,36 @@ describe("overlay controller (W35.R1, W35.R11)", () => {
 			controller.layer.getAttribute("data-pen-overlay-selection-version"),
 		).toBe(String(plan?.selectionVersion));
 		expect(controller.layer.hasAttribute("data-caret-visible")).toBe(true);
+	});
+
+	it("OV4: a selection move that leaves the items unchanged keeps the plan identity and still records the version", () => {
+		const { controller, editor, blockId } = fixture;
+		controller.registerContributor({
+			id: "outline",
+			requests: () => [{ kind: "block-outline", key: "o", blockId }],
+		});
+		const plans: unknown[] = [];
+		controller.onPaintPlan((plan) => {
+			if (plans[plans.length - 1] !== plan) {
+				plans.push(plan);
+			}
+		});
+		editor.selectText(blockId, 1, 1, { origin: "keyboard" });
+		flushFrame();
+		const first = controller.plan;
+		expect(plans).toEqual([first]);
+
+		// Each keystroke-like move bumps the record version; the outline is
+		// identical, so a binding rendering from the plan has nothing to redo.
+		for (const offset of [2, 3, 4]) {
+			editor.selectText(blockId, offset, offset, { origin: "keyboard" });
+			flushFrame();
+			expect(
+				controller.layer.getAttribute("data-pen-overlay-selection-version"),
+			).toBe(String(getEditorSelectionRecord(editor)?.version));
+		}
+		expect(controller.plan).toBe(first);
+		expect(plans).toEqual([first]);
 	});
 
 	it("OV1: a request for an unmounted block is reported unresolved and never painted", () => {

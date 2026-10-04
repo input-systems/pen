@@ -282,6 +282,46 @@ describe("@input/pen-react multiplayer caret overlay (W35.R12)", () => {
 		editor.destroy();
 	});
 
+	it("OV3: a local keystroke that leaves the remote caret in place re-renders no host caret", async () => {
+		stubGeometry();
+		const { editor, blockId, controller } = createPeerEditor();
+		publishRemoteCursor(
+			controller,
+			editor.clientId,
+			encodeCursorAnchor(editor, blockId, 1),
+			1,
+		);
+		let renders = 0;
+		const renderCaret = (props: MultiplayerCaretRenderProps) => {
+			renders += 1;
+			return <span data-host-caret="" style={props.caretStyle} />;
+		};
+		const view = await mount(
+			<Pen.Editor.Root editor={editor}>
+				<Pen.Editor.Content />
+				<Pen.Multiplayer.CaretOverlay renderCaret={renderCaret} />
+			</Pen.Editor.Root>,
+		);
+		await flushFrames();
+		const settled = renders;
+		expect(settled).toBeGreaterThan(0);
+
+		// Three keystrokes after the peer's caret (offset 1): it never moves.
+		for (const at of [2, 3, 4]) {
+			await act(async () => {
+				editor.apply(
+					[{ type: "splice-text", blockId, from: at, to: at, insert: "x" }],
+					{ origin: "user" },
+				);
+			});
+			await flushFrames();
+		}
+
+		expect(renders).toBe(settled);
+		await view.unmount();
+		editor.destroy();
+	});
+
 	it("OV3: the binding imports no measurement API and no frame driver", () => {
 		const source = readFileSync(
 			join(

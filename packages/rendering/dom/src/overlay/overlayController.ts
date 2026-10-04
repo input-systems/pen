@@ -390,7 +390,9 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 						: null;
 			}
 			const painted = this._plan ?? next;
-			this.writeLayerState(painted);
+			// OV4 names the version just read, even when an identical plan
+			// was kept so bindings rendering from it have nothing to redo.
+			this.writeLayerState(painted, next.selectionVersion);
 			this.syncNativeCaret(painted.nativeCaretHidden);
 			this.syncReducedMotionAttr(painted.solidCaret);
 			for (const listener of [...this.listeners]) {
@@ -656,8 +658,11 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 	}
 
 	/** Write phase: OV4's painted version and the caret-visible flag on the layer. */
-	private writeLayerState(plan: OverlayPaintPlan): void {
-		const version = String(plan.selectionVersion);
+	private writeLayerState(
+		plan: OverlayPaintPlan,
+		selectionVersion: number,
+	): void {
+		const version = String(selectionVersion);
 		if (
 			this.layer.getAttribute(OVERLAY_SELECTION_VERSION_ATTR) !== version
 		) {
@@ -772,9 +777,14 @@ function unionRect(a: Rect, b: Rect): Rect {
 }
 
 /** Plans paint the same when everything but the flush number matches. */
+/**
+ * Whether two plans paint the same thing. The selection version is not
+ * compared: a keystroke that moves nothing the overlay draws (a remote caret
+ * elsewhere, an unchanged outline) keeps the painted plan, so its identity
+ * — and every binding rendering from it — stays put.
+ */
 function plansEqual(left: OverlayPaintPlan, right: OverlayPaintPlan): boolean {
 	if (
-		left.selectionVersion !== right.selectionVersion ||
 		left.nativeCaretHidden !== right.nativeCaretHidden ||
 		left.solidCaret !== right.solidCaret ||
 		left.items.length !== right.items.length ||

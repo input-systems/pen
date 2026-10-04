@@ -108,7 +108,11 @@ export interface OverlayPaintItem {
 export interface OverlayPaintPlan {
 	/** `scheduler.diagnostics.flushCount` of the flush that read this plan. */
 	readonly flush: number;
-	/** Authority record version the plan was read against (OV4). */
+	/**
+	 * Authority record version the plan was read against (OV4). A later read
+	 * that resolves to identical items keeps this plan, so the layer's
+	 * `data-pen-overlay-selection-version` can be newer than this field.
+	 */
 	readonly selectionVersion: number;
 	readonly items: readonly OverlayPaintItem[];
 	/** Requests whose block or cell was not mounted. The W4 Stage C hook. */

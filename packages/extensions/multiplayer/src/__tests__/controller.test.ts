@@ -333,4 +333,64 @@ describe("MultiplayerControllerImpl", () => {
 		expect(controller.getRemoteSelections()).toBe(selections);
 		expect(controller.getState()).toBe(state);
 	});
+
+	it("a local keystroke that leaves the peer's presence unchanged notifies no one", () => {
+		const editor = createDocumentEditor();
+		const controller = new MultiplayerControllerImpl({
+			editor,
+			config: {
+				user: { id: "u1", name: "Ada" },
+			},
+			authorLedger: new AuthorLedger(),
+			identityMap: new ClientIdentityMap(),
+		});
+		controller.handleAwarenessChange(
+			new Map<number, MultiplayerAwarenessState>([
+				[editor.clientId, { user: { id: "u1", name: "Ada" } }],
+				[
+					77,
+					{
+						user: { id: "u2", name: "Babbage", color: "#abc123" },
+						cursor: wireCursor(editor, 1),
+						selection: wireTextSelection(editor, 0, 1),
+					},
+				],
+			]),
+		);
+		const peers = controller.getPeers();
+		const cursors = controller.getRemoteCursors();
+		const selections = controller.getRemoteSelections();
+		const listener = vi.fn();
+		controller.subscribe(listener);
+
+		// Five keystrokes after the peer's caret: its offset never moves.
+		for (let index = 0; index < 5; index += 1) {
+			editor.apply(
+				[
+					{
+						type: "splice-text",
+						blockId: "b1",
+						from: 5 + index,
+						to: 5 + index,
+						insert: "x",
+					},
+				],
+				{ origin: "user" },
+			);
+		}
+
+		expect(listener).toHaveBeenCalledTimes(0);
+		expect(controller.getPeers()).toBe(peers);
+		expect(controller.getRemoteCursors()).toBe(cursors);
+		expect(controller.getRemoteSelections()).toBe(selections);
+
+		// A keystroke before the caret moves it: one notification, new identities.
+		editor.apply(
+			[{ type: "splice-text", blockId: "b1", from: 0, to: 0, insert: "y" }],
+			{ origin: "user" },
+		);
+		expect(listener).toHaveBeenCalledTimes(1);
+		expect(controller.getRemoteCursors()[0]?.offset).toBe(2);
+		expect(controller.getPeers()).not.toBe(peers);
+	});
 });
