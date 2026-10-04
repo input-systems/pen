@@ -178,7 +178,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 91 -> 94: suites/selection/r1-native-range.spec.ts (W3.G20), scenarios/ax1-list-editing.spec.ts (W6.G2), suites/selection/s2-states.spec.ts (W3.G19).
 	// 94 -> 96: suites/selection/r1-context-menu-window.spec.ts (R1) and suites/input/fe9-editcontext-programmatic-caret.spec.ts (FE9).
 	// 96 -> 97: suites/ime/expanded-composition.spec.ts (FE2, Firefox composition over a cross-block range).
-	const expectedPlaywrightSpecs = 97;
+	// 97 -> 98: suites/ime/c-editcontext-multi-update.spec.ts (C2/C4, one EditContext composition lifecycle under real CDP IME input).
+	const expectedPlaywrightSpecs = 98;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

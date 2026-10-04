@@ -136,7 +136,7 @@ describe("C2 EditContext rebase", () => {
 		expect(editor.getBlock(blockId)?.textContent()).toBe("HelloXX world");
 	});
 
-	it("C2: EditContext textupdate ranges map through remote deltas that arrive mid-composition", () => {
+	it("C2: an EditContext composition commits once at compositionend, mapped through remote deltas that arrived mid-composition", () => {
 		const { editor, inline, blockId } = mountEditContextEditor("Hello world");
 		const editContext = contextOf(inline);
 		editor.selectText(blockId, 11, 11, { origin: "keyboard" });
@@ -159,8 +159,15 @@ describe("C2 EditContext rebase", () => {
 			}),
 		);
 
+		// C4: the composition holds its text until it closes.
+		expect(editor.getBlock(blockId)?.textContent()).toBe("XHello world");
+		inline.dispatchEvent(
+			new CompositionEvent("compositionend", { bubbles: true, data: "!" }),
+		);
+
 		// Buffer offset 11 is Y.Text offset 12 once the remote "X" is in.
 		expect(editor.getBlock(blockId)?.textContent()).toBe("XHello world!");
+		expect(editContext.text).toBe("XHello world!");
 	});
 
 	it("C2: an EditContext composition committed after a remote insert lands at its mapped range", () => {
@@ -184,6 +191,10 @@ describe("C2 EditContext rebase", () => {
 		editContext.emit(
 			"textupdate",
 			textUpdate({ updateRangeStart: 11, updateRangeEnd: 12, text: "漢", selectionStart: 12, selectionEnd: 12 }),
+		);
+		expect(editor.getBlock(blockId)?.textContent()).toBe("XHello world");
+		inline.dispatchEvent(
+			new CompositionEvent("compositionend", { bubbles: true, data: "漢" }),
 		);
 
 		expect(editor.getBlock(blockId)?.textContent()).toBe("XHello world漢");

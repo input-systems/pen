@@ -103,18 +103,18 @@ function mountEditContextEditor(text: string) {
 
 describe("C2 EditContext mid-composition remote", () => {
 
-	it("C2: EditContext field DOM untouched after IME textformatupdate", () => {
+	it("C2: EditContext field DOM untouched after the EditContext compositionstart", () => {
 		const { editor, inline, blockId } =
 			mountEditContextEditor("Hello world");
 		const editContext = (
 			inline as HTMLElement & { editContext?: FakeEditContext }
 		).editContext;
 		expect(editContext).toBeDefined();
+		// Chromium fires composition events on the EditContext, not the
+		// element; a bare textformatupdate no longer opens a composition (C1).
 		editContext!.emit(
-			"textformatupdate",
-			Object.assign(new Event("textformatupdate"), {
-				getTextFormats: () => [],
-			}),
+			"compositionstart",
+			new CompositionEvent("compositionstart", { data: "" }),
 		);
 		inline.append("ni");
 		const beforeDom = extractTextFromDOM(inline);

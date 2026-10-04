@@ -347,3 +347,181 @@ describe("C1 EditContext composition apply sequencing", () => {
 		).toBe("Hello world");
 	});
 });
+
+/** Chromium updates the buffer, then fires `textupdate` over it. */
+function imeUpdate(
+	editContext: FakeEditContext,
+	start: number,
+	end: number,
+	text: string,
+): void {
+	editContext.updateText(start, end, text);
+	editContext.updateSelection(start + text.length, start + text.length);
+	emitTextUpdate(editContext, {
+		text,
+		updateRangeStart: start,
+		updateRangeEnd: end,
+		selectionStart: start + text.length,
+		selectionEnd: start + text.length,
+	});
+	emitTextFormatUpdate(editContext);
+}
+
+function contextOf(inline: HTMLElement): FakeEditContext {
+	return (inline as HTMLElement & { editContext?: FakeEditContext })
+		.editContext!;
+}
+
+function emitComposition(
+	editContext: FakeEditContext,
+	type: "compositionstart" | "compositionend",
+	data = "",
+): void {
+	editContext.emit(type, new CompositionEvent(type, { data }));
+}
+
+describe("C4 EditContext composition lifecycle", () => {
+	it("C4: a multi-update composition holds its text and commits once at compositionend", () => {
+		const { editor, inline, blockId } = mountEditContextEditor(
+			"Hello world",
+			{ withUndo: true },
+		);
+		editor.undoManager.stopCapturing();
+		editor.selectText(blockId, 5, 5, { origin: "keyboard" });
+		const editContext = contextOf(inline);
+		emitComposition(editContext, "compositionstart");
+		let previous = "";
+		for (const text of ["n", "ni", "nih", "niha", "nihao"]) {
+			imeUpdate(editContext, 5, 5 + previous.length, text);
+			previous = text;
+			expect(authorityText(editor, blockId)).toBe("Hello world");
+			expect(inline.textContent).toBe(`Hello${text} world`);
+		}
+		imeUpdate(editContext, 5, 10, "你好");
+		emitComposition(editContext, "compositionend", "你好");
+
+		expect(authorityText(editor, blockId)).toBe("Hello你好 world");
+		expect(editContext.text).toBe("Hello你好 world");
+		expect(inline.textContent).toBe("Hello你好 world");
+		const selection = editor.selection;
+		expect(selection?.type === "text" ? selection.focus.offset : null).toBe(
+			7,
+		);
+		expect(editor.undoManager.undo()).toBe(true);
+		expect(
+			authorityText(editor, blockId),
+			"C4: the composition is one undo step",
+		).toBe("Hello world");
+	});
+
+	it("C4: a composition over a selection replaces exactly the selection", () => {
+		const { editor, inline, blockId } =
+			mountEditContextEditor("Hello world");
+		editor.selectText(blockId, 6, 11, { origin: "keyboard" });
+		const editContext = contextOf(inline);
+		emitComposition(editContext, "compositionstart");
+		imeUpdate(editContext, 6, 11, "せ");
+		imeUpdate(editContext, 6, 7, "せかい");
+		imeUpdate(editContext, 6, 9, "世界");
+		expect(authorityText(editor, blockId)).toBe("Hello world");
+		emitComposition(editContext, "compositionend", "世界");
+
+		expect(authorityText(editor, blockId)).toBe("Hello 世界");
+		expect(editContext.text).toBe("Hello 世界");
+	});
+
+	it("C4: an update that reaches past the composed text grows the replaced range", () => {
+		const { editor, inline, blockId } =
+			mountEditContextEditor("Hello world");
+		editor.selectText(blockId, 5, 5, { origin: "keyboard" });
+		const editContext = contextOf(inline);
+		emitComposition(editContext, "compositionstart");
+		imeUpdate(editContext, 5, 5, "ka");
+		// A reconversion takes in the "o" before the composed text and the
+		// space after it.
+		imeUpdate(editContext, 4, 8, "化");
+		expect(inline.textContent).toBe("Hell化world");
+		emitComposition(editContext, "compositionend", "化");
+
+		expect(authorityText(editor, blockId)).toBe("Hell化world");
+		expect(editContext.text).toBe("Hell化world");
+	});
+
+	it("C4: an empty compositionend drops the composition and restores the field", () => {
+		const { editor, inline, blockId } =
+			mountEditContextEditor("Hello world");
+		editor.selectText(blockId, 5, 5, { origin: "keyboard" });
+		const editContext = contextOf(inline);
+		emitComposition(editContext, "compositionstart");
+		imeUpdate(editContext, 5, 5, "k");
+		imeUpdate(editContext, 5, 6, "ka");
+		imeUpdate(editContext, 5, 7, "");
+		emitComposition(editContext, "compositionend");
+
+		expect(authorityText(editor, blockId)).toBe("Hello world");
+		expect(editContext.text).toBe("Hello world");
+		expect(inline.textContent).toBe("Hello world");
+	});
+
+	it("C4: deactivating mid-composition commits the composed text", () => {
+		const { editor, fieldEditor, inline, blockId } =
+			mountEditContextEditor("Hello world");
+		editor.selectText(blockId, 11, 11, { origin: "keyboard" });
+		const editContext = contextOf(inline);
+		emitComposition(editContext, "compositionstart");
+		imeUpdate(editContext, 11, 11, "k");
+		fieldEditor.deactivate();
+
+		expect(authorityText(editor, blockId)).toBe("Hello worldk");
+		expect(fieldEditor.isComposing).toBe(false);
+	});
+
+	it("C2: collaborator edits mid-composition are deferred and the one commit rebases over them", () => {
+		const { editor, inline, blockId } =
+			mountEditContextEditor("Hello world");
+		editor.selectText(blockId, 11, 11, { origin: "keyboard" });
+		const editContext = contextOf(inline);
+		emitComposition(editContext, "compositionstart");
+		let previous = "";
+		for (const text of ["n", "ni", "nih", "niha"]) {
+			imeUpdate(editContext, 11, 11 + previous.length, text);
+			previous = text;
+			editor.apply(
+				[{ type: "splice-text", blockId, from: 0, to: 0, insert: "X" }],
+				{ origin: "collaborator" },
+			);
+			expect(inline.textContent).toBe(`Hello world${text}`);
+		}
+		imeUpdate(editContext, 11, 15, "你");
+		emitComposition(editContext, "compositionend", "你");
+
+		expect(authorityText(editor, blockId)).toBe("XXXXHello world你");
+		expect(editContext.text).toBe("XXXXHello world你");
+		expect(inline.textContent).toBe("XXXXHello world你");
+		const selection = editor.selection;
+		expect(selection?.type === "text" ? selection.focus.offset : null).toBe(
+			16,
+		);
+	});
+
+	it("C4: a typed textupdate is not replayed into a buffer that already holds it", () => {
+		const { editor, inline, blockId } =
+			mountEditContextEditor("Hello world");
+		editor.selectText(blockId, 11, 11, { origin: "keyboard" });
+		const editContext = contextOf(inline);
+		for (const [index, char] of ["a", "b", "c"].entries()) {
+			const at = 11 + index;
+			editContext.updateText(at, at, char);
+			emitTextUpdate(editContext, {
+				text: char,
+				updateRangeStart: at,
+				updateRangeEnd: at,
+				selectionStart: at + 1,
+				selectionEnd: at + 1,
+			});
+		}
+
+		expect(authorityText(editor, blockId)).toBe("Hello worldabc");
+		expect(editContext.text).toBe("Hello worldabc");
+	});
+});

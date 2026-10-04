@@ -14,11 +14,16 @@ import {
 	rebuildFocusedField,
 } from "./fieldDomRebuild";
 import { getLogicalInlineText } from "./commandsShared";
+import { isNavigationSelectionKey } from "./contenteditableDomHelpers";
 import {
-	isNavigationSelectionKey,
-	mapOffsetThroughRemoteDeltas,
-	mapOffsetThroughRemoteDeltasUpstream,
-} from "./contenteditableDomHelpers";
+	commitEditContextComposition,
+	deferEditContextCompositionDelta,
+	openEditContextComposition,
+	openEditContextCompositionAround,
+	updateEditContextComposition,
+	type CompositionPaint,
+	type EditContextComposition,
+} from "./editContextComposition";
 import { computeTextDiff } from "./textDiff";
 import {
 	writeEditContextSelection,
@@ -35,8 +40,9 @@ import {
 import {
 	applyEditContextTextFormats,
 	buildEditContextCharacterBounds,
+	applyDeltaToLogicalText,
 	findTextPosition,
-	shouldReplaceEditContextText,
+	paintEditContextComposition,
 } from "./editContextDom";
 import type {
 	EditContext,
@@ -50,18 +56,17 @@ import type { DirectionalSelectionOffsets } from "./selectionMapping";
 import { inlineDecorationsRequireFullReconcile } from "../utils/inlineDecorations";
 import { handleEditContextBeforeInput } from "./editContextBeforeInput";
 import { handleFieldEditorKeyDown } from "./keyHandling";
-import {
-	isCollaboratorTransaction,
-	isHistoryTransactionOrigin,
-} from "./transactionOrigin";
+import { isHistoryTransactionOrigin } from "./transactionOrigin";
 import { getPasteImporters, handleClipboardPaste } from "./clipboard";
 import { applyListInputRule } from "./commands";
 import { isFieldEditorTextEditingKey } from "../utils/textEntryTarget";
 import { applyInlineInputRule } from "./inlineInputRules";
-import { applyInlineTextInput } from "./textInputPipeline";
+import {
+	applyInlineTextDiffInput,
+	applyInlineTextInput,
+} from "./textInputPipeline";
 import { isDomNode } from "../utils/domNodes";
 import type {
-	FieldEditorDelta,
 	FieldEditorObserver,
 	FieldEditorTextChangeEvent,
 	FieldEditorTextLike,
@@ -82,6 +87,13 @@ type PendingEditContextTextUpdate = {
 	text: string;
 	originRange: { start: number; end: number };
 	selection: EditContextSelection | null;
+};
+
+type EditContextTextUpdateInput = {
+	blockId: string;
+	updateRangeStart: number;
+	updateRangeEnd: number;
+	text: string;
 	selectionStart?: number;
 	selectionEnd?: number;
 };
@@ -103,6 +115,11 @@ export class EditContextBackend {
 	 * navigation key and history clear it.
 	 */
 	protected trustedTypingCaret: EditContextSelection | null = null;
+	/**
+	 * The field's logical text as `Y.Text` last reported it, followed by
+	 * delta so the buffer sync never reads `Y.Text` back (SCALE6).
+	 */
+	protected modelText = "";
 
 	constructor(editor: Editor, fieldEditor: FieldEditorInputController) {
 		this.editor = editor;
@@ -114,8 +131,8 @@ export class EditContextBackend {
 		ytext: unknown,
 		focusOptions?: PenFieldEditorFocusOptions,
 	): void {
-		this.deferredRemoteDeltas = [];
-		this.clearPendingTextUpdate();
+		this.composition = null;
+		this.lastIdleTextUpdate = null;
 		this.element = element;
 		this.ytext = ytext as FieldEditorTextLike;
 		this.fieldEditor.setComposing(false);
@@ -128,7 +145,9 @@ export class EditContextBackend {
 			);
 		}
 
-		const initialText = this.ytext.toString();
+		// The buffer is in `Y.Text` index space: one U+FFFC per inline atom.
+		const initialText = getLogicalInlineText(this.ytext);
+		this.modelText = initialText;
 		const initialSelectionOffset = initialText.length;
 		this.editContext = new editContextConstructor({
 			text: initialText,
@@ -153,6 +172,9 @@ export class EditContextBackend {
 			this.fieldEditor,
 		);
 		this.attachment.listen(element, "pointerdown", this.handlePointerDown);
+		// Chromium fires composition events on the EditContext, before the
+		// first `textupdate` and after the last; the element listeners serve
+		// an engine that fires them on the element instead.
 		this.attachment.listen(
 			element,
 			"compositionstart",
@@ -160,6 +182,16 @@ export class EditContextBackend {
 		);
 		this.attachment.listen(
 			element,
+			"compositionend",
+			this.handleCompositionEnd,
+		);
+		this.attachment.listenEditContext(
+			ec,
+			"compositionstart",
+			this.handleCompositionStart,
+		);
+		this.attachment.listenEditContext(
+			ec,
 			"compositionend",
 			this.handleCompositionEnd,
 		);
@@ -203,8 +235,11 @@ export class EditContextBackend {
 	}
 
 	deactivate(): void {
-		this.deferredRemoteDeltas = [];
-		this.clearPendingTextUpdate();
+		// Blur or a click elsewhere ends the composition with its text kept,
+		// as Chromium keeps it in the buffer; the caret is no longer this
+		// field's to move.
+		this.endComposition("commit", { detaching: true });
+		this.lastIdleTextUpdate = null;
 		this.attachment.release();
 		if (this.element) {
 			// After the EditContext listeners are gone, so the browser cannot
@@ -273,193 +308,233 @@ export class EditContextBackend {
 	}
 
 	/**
-	 * C4 composition state. `committed-awaiting-format` drops the one
-	 * `textformatupdate` Chromium sends after a commit or an empty
-	 * `compositionend`; without it, the rewind would re-open the committed
-	 * text as a composition. A new composition supersedes it.
+	 * C4: the open composition. One lifecycle per IME composition: it opens
+	 * on `compositionstart`, stays open across every `textupdate`, and closes
+	 * once — `compositionend` with text commits it, an empty `compositionend`
+	 * or `Escape` drops it, and deactivation commits what it holds.
 	 */
-	protected compositionPhase:
-		"idle" | "composing" | "committed-awaiting-format" = "idle";
-	protected deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [];
-	protected pendingTextUpdate: PendingEditContextTextUpdate | null = null;
-	protected lastCommittedTextUpdate: PendingEditContextTextUpdate | null =
-		null;
-	protected paintedCompositionPreview = false;
+	protected composition: EditContextComposition | null = null;
+	/**
+	 * The last `textupdate` applied with no composition open, until another
+	 * `Y.Text` change follows it. A `textformatupdate` right after it, with no
+	 * `compositionstart` before it, makes it a composition's first update
+	 * (C1).
+	 */
+	protected lastIdleTextUpdate: PendingEditContextTextUpdate | null = null;
 
 	protected handleCompositionStart = (): void => {
-		this.beginEditContextComposition();
+		this.beginComposition();
 	};
 
 	protected handleCompositionEnd = (event?: Event): void => {
 		const committed =
 			event instanceof CompositionEvent ? (event.data ?? "") : "";
-		if (this.pendingTextUpdate) {
-			if (committed.length === 0) {
-				this.dropPendingTextUpdate();
-				this.compositionPhase = "committed-awaiting-format";
-			} else {
-				this.commitPendingTextUpdate();
-			}
-		}
-		this.closeEditContextComposition();
+		this.endComposition(committed.length === 0 ? "drop" : "commit");
 	};
 
 	protected handleCompositionCancelKey = (event: KeyboardEvent): void => {
-		if (event.key !== "Escape") {
+		if (event.key !== "Escape" || !this.composition) {
 			return;
 		}
-		if (
-			!this.pendingTextUpdate ||
-			!this.hasInFlightEditContextComposition()
-		) {
-			return;
-		}
-		this.dropPendingTextUpdate();
-		this.closeEditContextComposition();
+		this.endComposition("drop");
 	};
 
-	protected hasInFlightEditContextComposition(): boolean {
-		return (
-			this.compositionPhase === "composing" ||
-			this.fieldEditor.isComposing
-		);
-	}
-
-	protected beginEditContextComposition(): void {
-		if (this.compositionPhase === "composing") {
-			return;
+	protected beginComposition(): EditContextComposition | null {
+		if (this.composition) {
+			return this.composition;
 		}
-		this.compositionPhase = "composing";
-		this.deferredRemoteDeltas = [];
+		const blockId = this.fieldEditor.focusBlockId;
+		if (!this.ytext || !blockId) {
+			return null;
+		}
+		this.lastIdleTextUpdate = null;
+		this.composition = openEditContextComposition(
+			blockId,
+			this.modelText,
+		);
 		this.fieldEditor.notifyGestureEvent?.("compositionstart");
 		this.fieldEditor.setComposing(true);
+		return this.composition;
 	}
 
-	protected closeEditContextComposition(): void {
-		if (this.compositionPhase === "composing") {
-			this.compositionPhase = "idle";
-		}
-		this.fieldEditor.setComposing(false);
-		this.flushDeferredRemoteDeltas();
-		this.fieldEditor.notifyGestureEvent?.("compositionend-completed");
-	}
-
-	protected clearPendingTextUpdate(): void {
-		this.pendingTextUpdate = null;
-		this.lastCommittedTextUpdate = null;
-		this.compositionPhase = "idle";
-		this.paintedCompositionPreview = false;
-	}
-
-	protected capturePendingTextUpdate(input: {
-		blockId: string;
-		updateRangeStart: number;
-		updateRangeEnd: number;
-		text: string;
-		selectionStart?: number;
-		selectionEnd?: number;
-	}): PendingEditContextTextUpdate {
-		const resolved =
-			this.compositionPhase === "composing" &&
-			this.deferredRemoteDeltas.length > 0
-				? this.resolveRebasedTextUpdateRange(input)
-				: this.resolveTextUpdateRange(input);
-		return {
-			blockId: input.blockId,
-			text: input.text,
-			originRange: resolved.range,
-			selection: resolved.selection,
-			selectionStart: input.selectionStart,
-			selectionEnd: input.selectionEnd,
-		};
-	}
-
-	protected rewindLastCommittedIntoPending(): void {
-		const last = this.lastCommittedTextUpdate;
-		if (!last || last.text.length === 0) {
-			this.lastCommittedTextUpdate = null;
+	/**
+	 * C1: a `textformatupdate` after a `textupdate` that applied with no
+	 * `compositionstart` opens the composition around that update: the apply
+	 * is rewound at origin `"system"` and the composition holds its text.
+	 * The text it replaced stays deleted, so the composition replaces nothing.
+	 */
+	protected openCompositionAroundLastUpdate(): void {
+		const last = this.lastIdleTextUpdate;
+		this.lastIdleTextUpdate = null;
+		if (!last || !this.ytext) {
 			return;
 		}
+		const opened = this.beginComposition();
+		if (!opened || opened.blockId !== last.blockId) {
+			return;
+		}
+		const start = last.originRange.start;
 		this.editor.apply(
 			[
 				{
 					type: "splice-text",
 					blockId: last.blockId,
-					from: last.originRange.start,
-					to: last.originRange.start + last.text.length,
+					from: start,
+					to: start + last.text.length,
 					insert: "",
 				},
 			],
 			{ origin: "system" },
 		);
-		this.pendingTextUpdate = last;
-		this.lastCommittedTextUpdate = null;
-		this.paintedCompositionPreview = true;
-	}
-
-	protected dropPendingTextUpdate(): void {
-		if (this.paintedCompositionPreview && this.element && this.ytext) {
-			this.reconcileFullAndNotify(this.ytext, this.element);
-			this.updateSelection();
-		}
-		this.pendingTextUpdate = null;
-		this.lastCommittedTextUpdate = null;
-		this.paintedCompositionPreview = false;
-	}
-
-	protected commitPendingTextUpdate(): void {
-		const pending = this.pendingTextUpdate;
-		if (!pending) {
-			return;
-		}
-		this.pendingTextUpdate = null;
-		this.lastCommittedTextUpdate = null;
-		this.paintedCompositionPreview = false;
-		// The apply still runs inside the composition (C2 rebase, deferred
-		// local echo); the phase moves once it has.
-		this.applyEditContextTextUpdate(this.rebasePendingTextUpdate(pending));
-		this.compositionPhase = "committed-awaiting-format";
+		// The rewind is the composition's own edit: its base text and its
+		// deferral list start after it.
+		this.composition = openEditContextCompositionAround(
+			last.blockId,
+			this.modelText,
+			start,
+			last.text,
+		);
 	}
 
 	/**
-	 * C2: a pending update holds buffer offsets from before the composition's
-	 * remote deltas (it is captured when the composition opens, and the
-	 * deferral list starts empty there), so it is mapped through all of them
-	 * before it applies: start downstream, end upstream.
+	 * C4: a `textupdate` inside the open composition is held and painted
+	 * into the field, never applied. Before any deferred delta the buffer is
+	 * `Y.Text`, so the authority resolves the first update's range (FE9);
+	 * after one the buffer's own range is taken.
 	 */
-	protected rebasePendingTextUpdate(
-		pending: PendingEditContextTextUpdate,
-	): PendingEditContextTextUpdate {
-		const deltas = this.deferredRemoteDeltas;
-		if (this.compositionPhase !== "composing" || deltas.length === 0) {
-			return pending;
-		}
-		const { start, end, caret } = rebaseBufferRange(
-			pending.originRange.start,
-			pending.originRange.end,
-			pending.text.length,
-			deltas,
+	protected updateComposition(
+		composition: EditContextComposition,
+		input: EditContextTextUpdateInput,
+	): void {
+		const firstRange =
+			composition.replaced === null && composition.deferred.length === 0
+				? this.resolveTextUpdateRange(input).range
+				: undefined;
+		const updated = updateEditContextComposition(
+			composition,
+			{
+				start: input.updateRangeStart,
+				end: input.updateRangeEnd,
+				text: input.text,
+			},
+			firstRange,
 		);
-		return {
-			...pending,
-			originRange: { start, end },
-			selection: { blockId: pending.blockId, anchorOffset: caret, focusOffset: caret },
-			selectionStart: caret,
-			selectionEnd: caret,
-		};
+		this.composition = this.paintComposition(
+			updated.composition,
+			updated.paint,
+		);
 	}
 
-	protected flushDeferredRemoteDeltas(): void {
-		if (this.deferredRemoteDeltas.length === 0) {
-			return;
+	protected paintComposition(
+		composition: EditContextComposition,
+		paint: CompositionPaint,
+	): EditContextComposition {
+		if (!this.element || !this.ytext || composition.field === "model") {
+			return composition;
 		}
-		this.deferredRemoteDeltas = [];
-		if (!this.editContext || !this.element || !this.ytext) {
-			return;
+		if (
+			paintEditContextComposition(
+				this.element,
+				paint,
+				this.editor.schema,
+				urlPolicyFromEditor(this.editor),
+			)
+		) {
+			return { ...composition, field: "composed" };
 		}
-		resyncEditContextSpan(this.editContext, getLogicalInlineText(this.ytext));
+		// The field could not take the edit in place: it shows `Y.Text`
+		// until the composition closes and rebuilds it.
 		this.reconcileFullAndNotify(this.ytext, this.element);
-		this.updateSelection();
+		return { ...composition, field: "model" };
+	}
+
+	/**
+	 * C4: closes the open composition. A commit applies its text once, as
+	 * `"user"`, over the range it replaced, rebased over the deferred deltas
+	 * (C2); a drop applies nothing, and the caret returns to the record,
+	 * which stayed on the composition start. The buffer and the field then
+	 * take `Y.Text` once. `detaching` is deactivation: the field is losing
+	 * focus, so nothing is written back into its buffer or selection.
+	 */
+	protected endComposition(
+		outcome: "commit" | "drop",
+		options?: { detaching?: boolean },
+	): void {
+		if (!this.composition) {
+			return;
+		}
+		const detaching = options?.detaching === true;
+		if (outcome === "commit") {
+			// Still open while it applies, so its own delta is deferred with
+			// the rest instead of reconciled into the composed field.
+			this.commitComposition(this.composition, !detaching);
+		}
+		const composition = this.composition;
+		this.composition = null;
+		this.fieldEditor.setComposing(false);
+		if (
+			this.element &&
+			this.ytext &&
+			(composition.field !== "base" || composition.deferred.length > 0)
+		) {
+			if (!detaching && this.editContext) {
+				syncEditContextBuffer(
+					this.editContext,
+					this.modelText,
+				);
+			}
+			this.inlineDecorationsSignature = this.getInlineDecorationsSignature();
+			this.reconcileFullAndNotify(this.ytext, this.element);
+			if (!detaching) {
+				this.updateSelection();
+			}
+		}
+		if (!detaching) {
+			this.fieldEditor.notifyGestureEvent?.("compositionend-completed");
+		}
+	}
+
+	protected commitComposition(
+		composition: EditContextComposition,
+		syncSelection: boolean,
+	): void {
+		const commit = commitEditContextComposition(composition);
+		const { blockId, replaced, text } = composition;
+		if (!commit || !replaced || !this.ytext || !this.editor.getBlock(blockId)) {
+			return;
+		}
+		if (syncSelection && composition.deferred.length === 0) {
+			// The plain path: input rules and the W3.R6 buffer caret apply.
+			this.applyEditContextTextUpdate({
+				blockId,
+				text,
+				originRange: replaced,
+				selection:
+					commit.caret === null
+						? null
+						: {
+								blockId,
+								anchorOffset: commit.caret,
+								focusOffset: commit.caret,
+							},
+			});
+			return;
+		}
+		applyInlineTextDiffInput({
+			editor: this.editor,
+			fieldEditor: this.fieldEditor,
+			blockId,
+			diff: commit.diff,
+			ytext: this.ytext,
+			selection:
+				syncSelection && commit.caret !== null
+					? {
+							blockId,
+							anchorOffset: commit.caret,
+							focusOffset: commit.caret,
+						}
+					: null,
+		});
 	}
 
 	protected handleTextUpdate = (event: Event): void => {
@@ -480,52 +555,40 @@ export class EditContextBackend {
 			return;
 		}
 
-		if (
-			this.pendingTextUpdate &&
-			this.hasInFlightEditContextComposition()
-		) {
-			if (text.length === 0) {
-				this.dropPendingTextUpdate();
-				this.compositionPhase = "committed-awaiting-format";
-				this.closeEditContextComposition();
-				return;
-			}
-			this.pendingTextUpdate = {
-				...this.pendingTextUpdate,
-				text,
-				selection:
-					selectionStart != null && selectionEnd != null
-						? {
-								blockId,
-								anchorOffset: selectionStart,
-								focusOffset: selectionEnd,
-							}
-						: this.pendingTextUpdate.selection,
-				selectionStart,
-				selectionEnd,
-			};
-			this.commitPendingTextUpdate();
-			this.closeEditContextComposition();
-			return;
-		}
-
-		const pending = this.capturePendingTextUpdate({
+		const input = {
 			blockId,
 			updateRangeStart,
 			updateRangeEnd,
 			text,
 			selectionStart,
 			selectionEnd,
-		});
-		this.applyEditContextTextUpdate(pending);
-		this.lastCommittedTextUpdate = pending;
+		};
+		if (this.composition) {
+			this.updateComposition(this.composition, input);
+			return;
+		}
+
+		const resolved = this.resolveTextUpdateRange(input);
+		const pending = {
+			blockId,
+			text,
+			originRange: resolved.range,
+			selection: resolved.selection,
+		};
+		if (this.applyEditContextTextUpdate(pending)) {
+			this.lastIdleTextUpdate = pending;
+		}
 	};
 
+	/**
+	 * Applies one text update as `"user"`. True when the text went in as
+	 * given; false when an input rule rewrote it or nothing applied.
+	 */
 	protected applyEditContextTextUpdate(
 		pending: PendingEditContextTextUpdate,
-	): void {
+	): boolean {
 		if (!this.ytext) {
-			return;
+			return false;
 		}
 		const { blockId, text, originRange } = pending;
 		const range = originRange;
@@ -549,7 +612,7 @@ export class EditContextBackend {
 				listInputRuleTarget.focusOffset,
 			);
 			this.updateSelection();
-			return;
+			return false;
 		}
 
 		const inlineInputRuleTarget = applyInlineInputRule(this.editor, {
@@ -567,7 +630,7 @@ export class EditContextBackend {
 				inlineInputRuleTarget.focusOffset,
 			);
 			this.updateSelection();
-			return;
+			return false;
 		}
 
 		// A buffer that already holds the edit takes its caret before the
@@ -603,37 +666,7 @@ export class EditContextBackend {
 			);
 			this.updateSelection();
 		}
-	}
-
-	/**
-	 * C2: mid-composition, remote text has entered `Y.Text` but not the
-	 * EditContext buffer, so the event's buffer range is mapped onto `Y.Text`
-	 * through the deferred deltas — start downstream, end upstream, the
-	 * contenteditable rebase's association — before the speculative apply.
-	 * The IME's own range is the source here; the authority's selection is
-	 * already in `Y.Text` space and would be mapped twice.
-	 */
-	protected resolveRebasedTextUpdateRange(input: {
-		blockId: string;
-		updateRangeStart: number;
-		updateRangeEnd: number;
-		text: string;
-		selectionStart?: number;
-		selectionEnd?: number;
-	}): {
-		range: { start: number; end: number };
-		selection: EditContextSelection | null;
-	} {
-		const { start, end, caret } = rebaseBufferRange(
-			input.updateRangeStart,
-			input.updateRangeEnd,
-			input.text.length,
-			this.deferredRemoteDeltas,
-		);
-		return {
-			range: { start, end },
-			selection: { blockId: input.blockId, anchorOffset: caret, focusOffset: caret },
-		};
+		return true;
 	}
 
 	protected resolveTextUpdateRange(input: {
@@ -746,13 +779,9 @@ export class EditContextBackend {
 		const ranges =
 			(event as EditContextTextFormatUpdateEvent).getTextFormats?.() ??
 			[];
-		if (this.compositionPhase === "committed-awaiting-format") {
-			this.compositionPhase = "idle";
-			applyEditContextTextFormats(this.element, ranges);
-			return;
+		if (!this.composition && this.lastIdleTextUpdate) {
+			this.openCompositionAroundLastUpdate();
 		}
-		this.beginEditContextComposition();
-		this.rewindLastCommittedIntoPending();
 		applyEditContextTextFormats(this.element, ranges);
 	};
 
@@ -769,16 +798,27 @@ export class EditContextBackend {
 
 	protected handleYTextChange = (event: FieldEditorTextChangeEvent): void => {
 		if (!this.editContext || !this.element || !this.ytext) return;
+		this.modelText = applyDeltaToLogicalText(this.modelText, event.delta);
 		const isHistory = isHistoryTransactionOrigin(event.transaction?.origin);
-		if (!isHistory && this.hasInFlightEditContextComposition()) {
-			if (isCollaboratorTransaction(event.transaction)) {
-				this.deferredRemoteDeltas.push({ delta: event.delta });
-			}
-			return;
-		}
 		if (isHistory) {
 			this.trustedTypingCaret = null;
-			replaceEditContextText(this.editContext, this.ytext.toString());
+		}
+		if (this.composition) {
+			// C2: the composing field's buffer and DOM are the IME's until the
+			// composition closes; every change waits for it, mapped over at
+			// the commit and synced once after it.
+			this.composition = deferEditContextCompositionDelta(
+				this.composition,
+				event.delta,
+			);
+			return;
+		}
+		this.lastIdleTextUpdate = null;
+		if (isHistory) {
+			syncEditContextBuffer(
+				this.editContext,
+				this.modelText,
+			);
 			this.reconcileFullAndNotify(this.ytext, this.element);
 			this.updateSelection();
 			return;
@@ -807,36 +847,13 @@ export class EditContextBackend {
 			}
 		}
 
-		if (
-			shouldReplaceEditContextText(
-				event.delta,
-				this.editContext.text.length,
-			)
-		) {
-			const nextText = this.ytext.toString();
-			this.editContext.updateText(
-				0,
-				this.editContext.text.length,
-				nextText,
-			);
-		} else {
-			const delta = event.delta;
-			let offset = 0;
-			for (const entry of delta) {
-				if (entry.retain != null) {
-					offset += entry.retain;
-				} else if (typeof entry.insert === "string") {
-					this.editContext.updateText(offset, offset, entry.insert);
-					offset += entry.insert.length;
-				} else if (entry.delete != null) {
-					this.editContext.updateText(
-						offset,
-						offset + entry.delete,
-						"",
-					);
-				}
-			}
-		}
+		// The buffer takes `Y.Text` by diff: a typed `textupdate` is already
+		// in it, while a command, an input rule, or another writer's apply is
+		// not, so replaying the delta would duplicate the first.
+		syncEditContextBuffer(
+			this.editContext,
+			this.modelText,
+		);
 
 		// Inside the apply the authority still holds the pre-apply caret; the
 		// buffer holds the one this backend wrote for its own edit, and P1
@@ -845,7 +862,9 @@ export class EditContextBackend {
 	};
 
 	protected handleDecorationsChange = (): void => {
-		if (!this.element || !this.ytext) {
+		// The composing field is rebuilt with its decorations when the
+		// composition closes.
+		if (!this.element || !this.ytext || this.composition) {
 			return;
 		}
 		const nextInlineDecorationsSignature =
@@ -913,6 +932,9 @@ export class EditContextBackend {
 
 	protected handleKeyDown = (event: KeyboardEvent): void => {
 		if (!this.editContext || !this.element || !this.ytext) return;
+		// C1: keys reach the IME while it composes; neither the reader nor
+		// the buffer selection is touched until the composition closes.
+		if (this.composition) return;
 		if (isNavigationSelectionKey(event)) {
 			this.trustedTypingCaret = null;
 		}
@@ -1002,7 +1024,7 @@ export class EditContextBackend {
 
 	protected handleBeforeInput = (event: InputEvent): void => {
 		if (!this.editContext || !this.ytext) return;
-		if (this.hasInFlightEditContextComposition()) return;
+		if (this.composition) return;
 
 		const blockId = this.fieldEditor.focusBlockId;
 		if (!blockId || !this.editor.getBlock(blockId)) {
@@ -1047,29 +1069,15 @@ export class EditContextBackend {
 }
 
 /**
- * C2: maps a buffer range through the deltas deferred during a composition,
- * start downstream and end upstream (the contenteditable rebase's
- * association), with the caret after `textLength` inserted at the start.
+ * Brings the EditContext buffer to `nextText` with one `updateText` over the
+ * changed span, so the buffer outside it is untouched, and clamps the
+ * buffer selection to the new length. A buffer that already holds
+ * `nextText` is left alone.
  */
-function rebaseBufferRange(
-	rawStart: number,
-	rawEnd: number,
-	textLength: number,
-	deltas: Array<{ delta: FieldEditorDelta[] }>,
-): { start: number; end: number; caret: number } {
-	const start = mapOffsetThroughRemoteDeltas(rawStart, deltas);
-	const end =
-		rawEnd === rawStart
-			? start
-			: Math.max(start, mapOffsetThroughRemoteDeltasUpstream(rawEnd, deltas));
-	return { start, end, caret: start + textLength };
-}
-
-/**
- * C2: brings the EditContext buffer to `nextText` with one `updateText` over
- * the changed span, so the IME's buffer outside the remote edit is untouched.
- */
-function resyncEditContextSpan(editContext: EditContext, nextText: string): void {
+function syncEditContextBuffer(
+	editContext: EditContext,
+	nextText: string,
+): void {
 	const ops = computeTextDiff(editContext.text, nextText);
 	if (ops.length === 0) return;
 	const deleted = ops.find((op) => op.type === "delete");
@@ -1080,22 +1088,6 @@ function resyncEditContextSpan(editContext: EditContext, nextText: string): void
 		start + (deleted?.type === "delete" ? deleted.length : 0),
 		inserted?.type === "insert" ? inserted.text : "",
 	);
-	writeEditContextSelection(
-		editContext,
-		Math.min(editContext.selectionStart, nextText.length),
-		Math.min(editContext.selectionEnd, nextText.length),
-	);
-}
-
-/**
- * Replaces an EditContext's text with `nextText` and clamps its selection to
- * the new length.
- */
-function replaceEditContextText(
-	editContext: EditContext,
-	nextText: string,
-): void {
-	editContext.updateText(0, editContext.text.length, nextText);
 	writeEditContextSelection(
 		editContext,
 		Math.min(editContext.selectionStart, nextText.length),
