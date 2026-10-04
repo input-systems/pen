@@ -26,10 +26,8 @@ import {
 	writeNativeRangeFromField,
 } from "./selectionProjector";
 import {
-	rangesEqual,
 	resolveEditContextKeyDownRange,
 	resolveEditContextTextUpdateRange,
-	type DirectionalSelectionOffsets,
 	type EditContextRange,
 	type EditContextSelection,
 	type KeyDownRangeResolution,
@@ -48,6 +46,7 @@ import type {
 	EditContextTextUpdateEvent,
 } from "./editContextTypes";
 import { authorityOffsetsInBlock } from "./selectionReader";
+import type { DirectionalSelectionOffsets } from "./selectionMapping";
 import { inlineDecorationsRequireFullReconcile } from "../utils/inlineDecorations";
 import { handleEditContextBeforeInput } from "./editContextBeforeInput";
 import { handleFieldEditorKeyDown } from "./keyHandling";
@@ -957,9 +956,6 @@ export class EditContextBackend {
 			collapsedEditorSelectionRange: blockId
 				? this.resolveCollapsedEditorSelectionRange(blockId)
 				: null,
-			synchronizedEditContextRange: blockId
-				? this.resolveSynchronizedEditContextRange(blockId)
-				: null,
 		});
 	}
 
@@ -993,25 +989,6 @@ export class EditContextBackend {
 				start: selection.focus.offset,
 				end: selection.focus.offset,
 			};
-		}
-
-		return null;
-	}
-
-	protected resolveSynchronizedEditContextRange(
-		blockId: string,
-	): EditContextRange | null {
-		if (!this.editContext) {
-			return null;
-		}
-
-		const editContextRange = this.resolveEditContextSelectionRange();
-		const editorRange =
-			this.resolveEditorSelectionRange(blockId) ??
-			this.resolveCollapsedEditorSelectionRange(blockId);
-
-		if (editorRange && rangesEqual(editContextRange, editorRange)) {
-			return editContextRange;
 		}
 
 		return null;

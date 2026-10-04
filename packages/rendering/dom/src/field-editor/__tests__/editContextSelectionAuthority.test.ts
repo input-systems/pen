@@ -60,7 +60,6 @@ describe("resolveEditContextKeyDownRange", () => {
 			editorSelectionRange: { start: 3, end: 3 },
 			authoritativeTextInputSelection: null,
 			collapsedEditorSelectionRange: null,
-			synchronizedEditContextRange: null,
 		});
 
 		expect(result.range).toEqual({ start: 3, end: 3 });

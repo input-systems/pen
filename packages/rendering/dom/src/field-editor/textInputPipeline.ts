@@ -4,10 +4,10 @@ import type { FieldEditorTextLike } from "./crdt";
 import {
 	buildInlineTextDiffOps,
 	buildInlineTextEditTransaction,
-	type InlineTextDiffOp,
 	type InlineTextRange,
 	type InlineTextSelectionTarget,
 } from "./inlineTextTransaction";
+import type { TextDiffOp } from "./textDiff";
 
 type TextInputPipelineController = Pick<
 	FieldEditorInputController,
@@ -30,7 +30,7 @@ export interface ApplyInlineTextDiffInputOptions {
 	editor: Editor;
 	fieldEditor: TextInputPipelineController;
 	blockId: string;
-	diff: readonly InlineTextDiffOp[];
+	diff: readonly TextDiffOp[];
 	ytext: FieldEditorTextLike;
 	selection?: InlineTextSelectionTarget | null;
 	cellCoord?: ActiveCellCoord | null;

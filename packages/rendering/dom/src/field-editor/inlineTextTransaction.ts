@@ -1,15 +1,12 @@
 import type { DocumentOp } from "@input/pen-types";
 import type { ActiveCellCoord } from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
+import type { TextDiffOp } from "./textDiff";
 
 export type InlineTextRange = {
 	start: number;
 	end: number;
 };
-
-export type InlineTextDiffOp =
-	| { type: "insert"; offset: number; text: string }
-	| { type: "delete"; offset: number; length: number };
 
 export type InlineTextSelectionTarget = {
 	blockId: string;
@@ -63,7 +60,7 @@ export function buildInlineTextEditTransaction(options: {
 
 export function buildInlineTextDiffOps(options: {
 	blockId: string;
-	diff: readonly InlineTextDiffOp[];
+	diff: readonly TextDiffOp[];
 	ytext: FieldEditorTextLike;
 	resolveInsertMarks: (
 		ytext: FieldEditorTextLike,

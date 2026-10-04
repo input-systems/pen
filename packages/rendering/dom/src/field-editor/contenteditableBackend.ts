@@ -11,7 +11,7 @@ import {
 	renderFieldFromModel,
 } from "./fieldDomRebuild";
 import { extractTextFromDOM } from "./selectionBridge";
-import { computeAnchoredTextDiff } from "./textDiff";
+import { computeAnchoredTextDiff, type TextDiffOp } from "./textDiff";
 import {
 	writeCellTextRange,
 	writeNativeRangeFromField,
@@ -21,7 +21,6 @@ import {
 	isCollaboratorTransaction,
 	isHistoryTransactionOrigin,
 } from "./transactionOrigin";
-import type { InlineTextDiffOp } from "./inlineTextTransaction";
 import {
 	applyInlineTextDiffInput,
 	applyInlineTextInput,
@@ -560,7 +559,7 @@ export class ContentEditableBackend {
 
 	protected applyTextDiffAsOps(
 		blockId: string,
-		diff: InlineTextDiffOp[],
+		diff: TextDiffOp[],
 		deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [],
 		caretOverride: number | null = null,
 	): void {

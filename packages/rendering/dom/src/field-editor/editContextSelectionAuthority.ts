@@ -1,3 +1,5 @@
+import type { DirectionalSelectionOffsets } from "./selectionMapping";
+
 export type EditContextSelection = {
 	blockId: string;
 	anchorOffset: number;
@@ -5,13 +7,6 @@ export type EditContextSelection = {
 };
 
 export type EditContextRange = {
-	start: number;
-	end: number;
-};
-
-export type DirectionalSelectionOffsets = {
-	anchor: number;
-	focus: number;
 	start: number;
 	end: number;
 };
@@ -118,7 +113,6 @@ export function resolveEditContextKeyDownRange(input: {
 	editorSelectionRange: EditContextRange | null;
 	authoritativeTextInputSelection: EditContextSelection | null;
 	collapsedEditorSelectionRange: EditContextRange | null;
-	synchronizedEditContextRange: EditContextRange | null;
 }): KeyDownRangeResolution {
 	if (!input.blockId) {
 		return {
@@ -201,7 +195,7 @@ function directionalSelectionToRange(
 	};
 }
 
-export function rangesEqual(
+function rangesEqual(
 	left: EditContextRange,
 	right: EditContextRange,
 ): boolean {
@@ -213,7 +207,6 @@ function resolveTrustedKeyDownRange(input: {
 	editorSelectionRange: EditContextRange | null;
 	authoritativeTextInputSelection: EditContextSelection | null;
 	collapsedEditorSelectionRange: EditContextRange | null;
-	synchronizedEditContextRange: EditContextRange | null;
 }): EditContextRange | null {
 	if (!input.isTextEditingKey) {
 		return null;
@@ -227,15 +220,7 @@ function resolveTrustedKeyDownRange(input: {
 		return selectionToRange(input.authoritativeTextInputSelection);
 	}
 
-	if (input.collapsedEditorSelectionRange) {
-		return input.collapsedEditorSelectionRange;
-	}
-
-	if (input.synchronizedEditContextRange) {
-		return input.synchronizedEditContextRange;
-	}
-
-	return null;
+	return input.collapsedEditorSelectionRange;
 }
 
 function shouldUseLiveDomSelection(

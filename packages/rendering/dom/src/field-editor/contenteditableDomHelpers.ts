@@ -3,6 +3,7 @@ import { measureWithRoot } from "../geometry/rootGeometry";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import type { FieldEditorDelta } from "./crdt";
 import { domPointToLogicalOffset } from "./inlineAtomDom";
+import type { TextDiffOp } from "./textDiff";
 import { findInlineContentElement } from "./selectionDomQueries";
 
 const LINE_EDGE_SEAM = Symbol.for("pen.lineEdgeSeam");
@@ -96,10 +97,6 @@ export function staticRangeToOffsets(
 	};
 }
 
-type TextDiffRebaseOp =
-	| { type: "insert"; offset: number; text: string }
-	| { type: "delete"; offset: number; length: number };
-
 /**
  * C2 (D3): rebases a composition diff taken against the composition-start
  * text over the collaborator deltas deferred while it ran, so the result
@@ -126,10 +123,10 @@ type TextDiffRebaseOp =
  * ends at or before the insert.
  */
 export function rebaseTextDiffOps(
-	ops: TextDiffRebaseOp[],
+	ops: TextDiffOp[],
 	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
 	baseLength: number,
-): TextDiffRebaseOp[] {
+): TextDiffOp[] {
 	if (deferredRemoteDeltas.length === 0 || ops.length === 0) {
 		return ops;
 	}
@@ -157,7 +154,7 @@ export function rebaseTextDiffOps(
 	}
 	if (insertAt === -1) insertAt = live;
 
-	const result: TextDiffRebaseOp[] = [];
+	const result: TextDiffOp[] = [];
 	if (insertOp?.type === "insert") {
 		result.push({ type: "insert", offset: insertAt, text: insertOp.text });
 	}
@@ -190,7 +187,7 @@ function replayDelta(tokens: ReplayToken[], delta: FieldEditorDelta[]): ReplayTo
 	const flushInserts = () => {
 		if (pendingInserts === 0) return;
 		// An insert lands after the deleted characters at its index.
-		while (index < next.length && next[index]!.deleted) index++;
+		skipToLive();
 		const inserted = Array.from({ length: pendingInserts }, () => ({
 			original: null,
 			deleted: false,
@@ -228,7 +225,7 @@ function replayDelta(tokens: ReplayToken[], delta: FieldEditorDelta[]): ReplayTo
 }
 
 /** Where the caret sits after `rebased` applies: the end of the composed text. */
-export function caretAfterRebasedDiff(rebased: readonly TextDiffRebaseOp[]): number | null {
+export function caretAfterRebasedDiff(rebased: readonly TextDiffOp[]): number | null {
 	const insert = rebased.find((op) => op.type === "insert");
 	const deletes = rebased.filter((op) => op.type === "delete");
 	if (insert?.type === "insert") {
@@ -434,15 +431,15 @@ function measureVisualLineEdge(
 		const start = line.startOffset;
 		const end = Math.min(line.endOffset, length);
 		for (let offset = start; offset <= end; offset += 1) {
-			const x = caretXAt(host, offset);
-			if (x == null) {
+			const caret = collapsedCaretRect(host, offset);
+			if (
+				!caret ||
+				caret.top < lineTop - 2 ||
+				caret.top > lineBottom + 2
+			) {
 				continue;
 			}
-			const y = caretYAt(host, offset);
-			if (y != null && (y < lineTop - 2 || y > lineBottom + 2)) {
-				continue;
-			}
-			const dist = Math.abs(x - targetX);
+			const dist = Math.abs(caret.left - targetX);
 			if (dist < bestDist) {
 				bestDist = dist;
 				bestOffset = offset;
@@ -460,16 +457,6 @@ function measureVisualLineEdge(
 		}
 		return { blockId: current.blockId, offset: bestOffset };
 	});
-}
-
-function caretXAt(host: HTMLElement, offset: number): number | null {
-	const rect = collapsedCaretRect(host, offset);
-	return rect ? rect.left : null;
-}
-
-function caretYAt(host: HTMLElement, offset: number): number | null {
-	const rect = collapsedCaretRect(host, offset);
-	return rect ? rect.top : null;
 }
 
 function collapsedCaretRect(host: HTMLElement, offset: number): DOMRect | null {
