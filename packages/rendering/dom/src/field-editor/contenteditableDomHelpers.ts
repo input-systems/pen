@@ -2,7 +2,7 @@ import type { Editor } from "@input/pen-types";
 import { measureWithRoot } from "../geometry/rootGeometry";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import type { FieldEditorDelta } from "./crdt";
-import { domPointToOffset } from "./selectionBridge";
+import { domPointToLogicalOffset } from "./inlineAtomDom";
 import { findInlineContentElement } from "./selectionDomQueries";
 
 const LINE_EDGE_SEAM = Symbol.for("pen.lineEdgeSeam");
@@ -79,12 +79,12 @@ export function staticRangeToOffsets(
 		return null;
 	}
 
-	const startOffset = domPointToOffset(
+	const startOffset = domPointToLogicalOffset(
 		element,
 		staticRange.startContainer,
 		staticRange.startOffset,
 	);
-	const endOffset = domPointToOffset(
+	const endOffset = domPointToLogicalOffset(
 		element,
 		staticRange.endContainer,
 		staticRange.endOffset,

@@ -10,8 +10,8 @@ import type {
 	SelectionRecordState,
 } from "@input/pen-types";
 import { toLogicalOffset } from "./offsetDomain";
+import { domPointToLogicalOffset } from "./inlineAtomDom";
 import {
-	domPointToOffset,
 	mapDomSelectionToEditor,
 	type DirectionalSelectionOffsets,
 	type SelectionPoint,
@@ -365,12 +365,12 @@ export function getDirectionalSelectionOffsets(
 		return null;
 	}
 
-	const anchor = domPointToOffset(
+	const anchor = domPointToLogicalOffset(
 		inlineElement,
 		sel.anchorNode,
 		sel.anchorOffset,
 	);
-	const focus = domPointToOffset(
+	const focus = domPointToLogicalOffset(
 		inlineElement,
 		sel.focusNode,
 		sel.focusOffset,

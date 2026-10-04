@@ -2,15 +2,20 @@ import { getLogicalInlineText } from "./commandsShared";
 import type { Editor, InlineDecoration } from "@input/pen-types";
 import type { FieldEditorInputController } from "./controller";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
+import { inlineDecorationsRequireFullReconcile } from "../utils/inlineDecorations";
+import { applyDeltaToDOM } from "./reconciler";
 import {
-	buildInlineDecorationsRenderSignature,
-	inlineDecorationsForBlock,
-	inlineDecorationsRequireFullReconcile,
-} from "../utils/inlineDecorations";
-import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
+	focusedFieldDecorations,
+	focusedFieldDecorationsSignature,
+	rebuildFocusedField,
+	renderFieldFromModel,
+} from "./fieldDomRebuild";
 import { extractTextFromDOM } from "./selectionBridge";
 import { computeAnchoredTextDiff } from "./textDiff";
-import { writeCellTextRange, writeNativeRange } from "./selectionProjector";
+import {
+	writeCellTextRange,
+	writeNativeRangeFromField,
+} from "./selectionProjector";
 import { applyListInputRule } from "./commands";
 import {
 	isCollaboratorTransaction,
@@ -126,13 +131,7 @@ export class ContentEditableBackend {
 		);
 		this.inlineDecorationsSignature = this.getInlineDecorationsSignature();
 
-		fullReconcileToDOM(activeYText, element, this.editor.schema, {
-			urlPolicy: urlPolicyFromEditor(this.editor),
-			inlineDecorations: this.getInlineDecorationsForBlock(),
-		});
-		this.fieldEditor.notifyDomReconciled(
-			this.fieldEditor.focusBlockId ?? undefined,
-		);
+		rebuildFocusedField(this.editor, this.fieldEditor, activeYText, element);
 		this.updateSelection();
 		this.discardObservedMutations();
 	}
@@ -265,14 +264,7 @@ export class ContentEditableBackend {
 			activeCell,
 		);
 		if (!restored) return;
-		const { anchor, focus } = restored;
-
-		const root = element.closest(
-			"[data-pen-editor-root]",
-		) as HTMLElement | null;
-		if (!root) return;
-
-		writeNativeRange(root, anchor, focus);
+		writeNativeRangeFromField(element, restored.anchor, restored.focus);
 	}
 
 	protected handleBeforeInput = (event: InputEvent): void => {
@@ -321,7 +313,7 @@ export class ContentEditableBackend {
 		if (!this.element) {
 			return false;
 		}
-		const resolve = () => this.resolveLiveInputRange();
+		const resolve = () => this.resolveCurrentInputRange();
 		if (canResolveInputRange(event, this.element, resolve)) {
 			return true;
 		}
@@ -501,7 +493,7 @@ export class ContentEditableBackend {
 		blockId: string | null,
 		delta: FieldEditorDelta[],
 	): boolean {
-		const inlineDecorations = this.getInlineDecorationsForBlock();
+		const inlineDecorations = focusedFieldDecorations(this.editor, this.fieldEditor);
 		if (this.requiresFullReconcile(blockId, inlineDecorations)) {
 			this.fullReconcileActiveField(blockId, inlineDecorations);
 			return true;
@@ -534,14 +526,17 @@ export class ContentEditableBackend {
 
 	protected fullReconcileActiveField(
 		blockId: string | null,
-		inlineDecorations = this.getInlineDecorationsForBlock(),
+		inlineDecorations = focusedFieldDecorations(this.editor, this.fieldEditor),
 	): void {
 		if (!this.element || !this.ytext) return;
-		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-			urlPolicy: urlPolicyFromEditor(this.editor),
+		rebuildFocusedField(
+			this.editor,
+			this.fieldEditor,
+			this.ytext,
+			this.element,
 			inlineDecorations,
-		});
-		this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
+			blockId ?? undefined,
+		);
 	}
 
 	/**
@@ -553,10 +548,12 @@ export class ContentEditableBackend {
 		element: HTMLElement,
 		blockId: string | undefined = this.fieldEditor.focusBlockId ?? undefined,
 	): void {
-		fullReconcileToDOM(ytext, element, this.editor.schema, {
-			urlPolicy: urlPolicyFromEditor(this.editor),
-			inlineDecorations: this.getInlineDecorationsForBlock(),
-		});
+		renderFieldFromModel(
+			this.editor,
+			ytext,
+			element,
+			focusedFieldDecorations(this.editor, this.fieldEditor),
+		);
 		this.discardObservedMutations();
 		this.fieldEditor.notifyDomReconciled(blockId);
 	}
@@ -651,16 +648,10 @@ export class ContentEditableBackend {
 		}
 	};
 
-	protected getInlineDecorationsForBlock(): readonly InlineDecoration[] {
-		return inlineDecorationsForBlock(
-			this.editor,
-			this.fieldEditor.focusBlockId,
-		);
-	}
-
 	protected getInlineDecorationsSignature(): readonly InlineDecoration[] {
-		return buildInlineDecorationsRenderSignature(
-			this.getInlineDecorationsForBlock(),
+		return focusedFieldDecorationsSignature(
+			this.editor,
+			this.fieldEditor,
 			this.inlineDecorationsSignature,
 		);
 	}
@@ -676,7 +667,7 @@ export class ContentEditableBackend {
 			fieldEditor: this.fieldEditor,
 			ytext: this.ytext,
 			// The authority after a reader sync, not the live DOM range (W35.R18).
-			range: this.resolveLiveInputRange(),
+			range: this.resolveCurrentInputRange(),
 		});
 		if (handled) {
 			event.preventDefault();
@@ -690,28 +681,21 @@ export class ContentEditableBackend {
 	 * activated without a caret in the authority still reads the field,
 	 * where the browser's caret is the only one.
 	 */
-	resolveLiveInputRange(): {
+	resolveCurrentInputRange(): {
 		start: number;
 		end: number;
 	} | null {
 		const blockId = this.fieldEditor.focusBlockId;
 		if (!this.element || !blockId) return null;
 		this.fieldEditor.syncDomSelectionRead?.();
+		// A field activated with no caret in the record takes the browser's.
 		return (
 			authorityOffsetsInBlock(
 				this.editor,
 				blockId,
 				this._getActiveCellCoord(blockId),
-			) ?? this.unclaimedFieldCaretOffsets()
+			) ?? this.liveFieldOffsets()
 		);
-	}
-
-	// A field activated with no caret in the record takes the browser's.
-	private unclaimedFieldCaretOffsets(): {
-		start: number;
-		end: number;
-	} | null {
-		return this.liveFieldOffsets();
 	}
 
 	/** The reader's live range inside this field (S1). */
@@ -720,13 +704,6 @@ export class ContentEditableBackend {
 		return element
 			? (this.fieldEditor.readFieldSelectionOffsets?.(element) ?? null)
 			: null;
-	}
-
-	resolveCurrentInputRange(): {
-		start: number;
-		end: number;
-	} | null {
-		return this.resolveLiveInputRange();
 	}
 
 	// ── Clipboard events ──────────────────────────────────────

@@ -7,7 +7,12 @@ import type {
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
-import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
+import { applyDeltaToDOM } from "./reconciler";
+import {
+	focusedFieldDecorations,
+	focusedFieldDecorationsSignature,
+	rebuildFocusedField,
+} from "./fieldDomRebuild";
 import { getLogicalInlineText } from "./commandsShared";
 import {
 	isNavigationSelectionKey,
@@ -18,7 +23,7 @@ import { computeTextDiff } from "./textDiff";
 import {
 	writeEditContextSelection,
 	writeNativeRangeBetween,
-	writeNativeRange,
+	writeNativeRangeFromField,
 } from "./selectionProjector";
 import {
 	rangesEqual,
@@ -43,11 +48,7 @@ import type {
 	EditContextTextUpdateEvent,
 } from "./editContextTypes";
 import { authorityOffsetsInBlock } from "./selectionReader";
-import {
-	buildInlineDecorationsRenderSignature,
-	inlineDecorationsForBlock,
-	inlineDecorationsRequireFullReconcile,
-} from "../utils/inlineDecorations";
+import { inlineDecorationsRequireFullReconcile } from "../utils/inlineDecorations";
 import { handleEditContextBeforeInput } from "./editContextBeforeInput";
 import { handleFieldEditorKeyDown } from "./keyHandling";
 import {
@@ -115,25 +116,6 @@ export class EditContextBackend {
 	): void {
 		this.deferredRemoteDeltas = [];
 		this.clearPendingTextUpdate();
-		this._activateEditContext(element, ytext, focusOptions);
-		this.attachment.listen(
-			element,
-			"keydown",
-			this.handleCompositionCancelKey,
-		);
-	}
-
-	deactivate(): void {
-		this.deferredRemoteDeltas = [];
-		this.clearPendingTextUpdate();
-		this._deactivateEditContext();
-	}
-
-	private _activateEditContext(
-		element: HTMLElement,
-		ytext: unknown,
-		focusOptions?: PenFieldEditorFocusOptions,
-	): void {
 		this.element = element;
 		this.ytext = ytext as FieldEditorTextLike;
 		this.fieldEditor.setComposing(false);
@@ -213,9 +195,16 @@ export class EditContextBackend {
 			{ preventScroll: true },
 			focusOptions,
 		);
+		this.attachment.listen(
+			element,
+			"keydown",
+			this.handleCompositionCancelKey,
+		);
 	}
 
-	private _deactivateEditContext(): void {
+	deactivate(): void {
+		this.deferredRemoteDeltas = [];
+		this.clearPendingTextUpdate();
 		this.attachment.release();
 		if (this.element) {
 			// After the EditContext listeners are gone, so the browser cannot
@@ -239,11 +228,11 @@ export class EditContextBackend {
 
 	updateSelection(): void {
 		const written = this.writeSelectionState();
-		if (written) {
-			this.projectDOMSelection(
-				written.blockId,
-				written.anchorOffset,
-				written.focusOffset,
+		if (written && this.element) {
+			writeNativeRangeFromField(
+				this.element,
+				{ blockId: written.blockId, offset: written.anchorOffset },
+				{ blockId: written.blockId, offset: written.focusOffset },
 			);
 		}
 	}
@@ -281,23 +270,6 @@ export class EditContextBackend {
 		const len = this.ytext.length;
 		writeEditContextSelection(this.editContext, len, len);
 		return null;
-	}
-
-	protected projectDOMSelection(
-		blockId: string,
-		anchorOffset: number,
-		focusOffset: number,
-	): void {
-		if (!this.element) return;
-		const root = this.element.closest(
-			"[data-pen-editor-root]",
-		) as HTMLElement | null;
-		if (!root) return;
-		writeNativeRange(
-			root,
-			{ blockId, offset: anchorOffset },
-			{ blockId, offset: focusOffset },
-		);
 	}
 
 	/**
@@ -462,13 +434,12 @@ export class EditContextBackend {
 		if (this.compositionPhase !== "composing" || deltas.length === 0) {
 			return pending;
 		}
-		const { start: rawStart, end: rawEnd } = pending.originRange;
-		const start = mapOffsetThroughRemoteDeltas(rawStart, deltas);
-		const end =
-			rawEnd === rawStart
-				? start
-				: Math.max(start, mapOffsetThroughRemoteDeltasUpstream(rawEnd, deltas));
-		const caret = start + pending.text.length;
+		const { start, end, caret } = rebaseBufferRange(
+			pending.originRange.start,
+			pending.originRange.end,
+			pending.text.length,
+			deltas,
+		);
 		return {
 			...pending,
 			originRange: { start, end },
@@ -653,21 +624,12 @@ export class EditContextBackend {
 		range: { start: number; end: number };
 		selection: EditContextSelection | null;
 	} {
-		const start = mapOffsetThroughRemoteDeltas(
+		const { start, end, caret } = rebaseBufferRange(
 			input.updateRangeStart,
+			input.updateRangeEnd,
+			input.text.length,
 			this.deferredRemoteDeltas,
 		);
-		const end =
-			input.updateRangeEnd === input.updateRangeStart
-				? start
-				: Math.max(
-						start,
-						mapOffsetThroughRemoteDeltasUpstream(
-							input.updateRangeEnd,
-							this.deferredRemoteDeltas,
-						),
-					);
-		const caret = start + input.text.length;
 		return {
 			range: { start, end },
 			selection: { blockId: input.blockId, anchorOffset: caret, focusOffset: caret },
@@ -822,7 +784,7 @@ export class EditContextBackend {
 			return;
 		}
 
-		const inlineDecorations = this.getInlineDecorationsForBlock();
+		const inlineDecorations = focusedFieldDecorations(this.editor, this.fieldEditor);
 		if (inlineDecorationsRequireFullReconcile(inlineDecorations)) {
 			this.reconcileFullAndNotify(
 				this.ytext,
@@ -897,14 +859,8 @@ export class EditContextBackend {
 		// the caret back into this field would drag focus along with it
 		const projectSelection =
 			this.fieldEditor.shouldProjectSelectionAfterReconcile?.() ?? true;
-		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-			urlPolicy: urlPolicyFromEditor(this.editor),
-			inlineDecorations: this.getInlineDecorationsForBlock(),
-		});
 		this.inlineDecorationsSignature = nextInlineDecorationsSignature;
-		this.fieldEditor.notifyDomReconciled(
-			this.fieldEditor.focusBlockId ?? undefined,
-		);
+		this.reconcileFullAndNotify(this.ytext, this.element);
 		if (projectSelection) {
 			this.updateSelection();
 		}
@@ -931,27 +887,21 @@ export class EditContextBackend {
 	private reconcileFullAndNotify(
 		ytext: FieldEditorTextLike,
 		element: HTMLElement,
-		inlineDecorations: readonly InlineDecoration[] = this.getInlineDecorationsForBlock(),
+		inlineDecorations?: readonly InlineDecoration[],
 	): void {
-		fullReconcileToDOM(ytext, element, this.editor.schema, {
-			urlPolicy: urlPolicyFromEditor(this.editor),
-			inlineDecorations,
-		});
-		this.fieldEditor.notifyDomReconciled(
-			this.fieldEditor.focusBlockId ?? undefined,
-		);
-	}
-
-	protected getInlineDecorationsForBlock(): readonly InlineDecoration[] {
-		return inlineDecorationsForBlock(
+		rebuildFocusedField(
 			this.editor,
-			this.fieldEditor.focusBlockId,
+			this.fieldEditor,
+			ytext,
+			element,
+			inlineDecorations,
 		);
 	}
 
 	protected getInlineDecorationsSignature(): readonly InlineDecoration[] {
-		return buildInlineDecorationsRenderSignature(
-			this.getInlineDecorationsForBlock(),
+		return focusedFieldDecorationsSignature(
+			this.editor,
+			this.fieldEditor,
 			this.inlineDecorationsSignature,
 		);
 	}
@@ -1055,16 +1005,7 @@ export class EditContextBackend {
 			return null;
 		}
 
-		const editContextRange = {
-			start: Math.min(
-				this.editContext.selectionStart,
-				this.editContext.selectionEnd,
-			),
-			end: Math.max(
-				this.editContext.selectionStart,
-				this.editContext.selectionEnd,
-			),
-		};
+		const editContextRange = this.resolveEditContextSelectionRange();
 		const editorRange =
 			this.resolveEditorSelectionRange(blockId) ??
 			this.resolveCollapsedEditorSelectionRange(blockId);
@@ -1120,6 +1061,25 @@ export class EditContextBackend {
 		const caret = this.trustedCaretIn(blockId);
 		return caret && caret.anchorOffset === caret.focusOffset ? caret : null;
 	}
+}
+
+/**
+ * C2: maps a buffer range through the deltas deferred during a composition,
+ * start downstream and end upstream (the contenteditable rebase's
+ * association), with the caret after `textLength` inserted at the start.
+ */
+function rebaseBufferRange(
+	rawStart: number,
+	rawEnd: number,
+	textLength: number,
+	deltas: Array<{ delta: FieldEditorDelta[] }>,
+): { start: number; end: number; caret: number } {
+	const start = mapOffsetThroughRemoteDeltas(rawStart, deltas);
+	const end =
+		rawEnd === rawStart
+			? start
+			: Math.max(start, mapOffsetThroughRemoteDeltasUpstream(rawEnd, deltas));
+	return { start, end, caret: start + textLength };
 }
 
 /**

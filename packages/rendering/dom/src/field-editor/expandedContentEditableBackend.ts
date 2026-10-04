@@ -8,7 +8,7 @@ import type {
 	FieldEditorInputController,
 	PenFieldEditorFocusOptions,
 } from "./controller";
-import type { FieldEditorTextLike } from "./crdt";
+import { getResolvedYText } from "./contentResolution";
 import {
 	deleteBackward,
 	deleteForward,
@@ -35,6 +35,12 @@ import {
 import { dispatchKeymapEvent } from "./keymap";
 import { mapBeforeInput } from "./beforeinputMap";
 import { isCompositionKeyDown } from "../utils/compositionKeyDown";
+
+const FORMAT_MARKS = {
+	formatBold: "bold",
+	formatItalic: "italic",
+	formatUnderline: "underline",
+} as const;
 
 /**
  * Expanded mode owns the shared cross-block selected state on the real block
@@ -198,7 +204,7 @@ export class ExpandedContentEditableBackend {
 				}
 
 				const blockId = selection.anchor.blockId;
-				const ytext = getBlockText(this.editor, blockId);
+				const ytext = getResolvedYText(this.editor, blockId, null);
 				if (!ytext) return;
 
 				const target = applyEnterBehavior(this.editor, {
@@ -263,67 +269,25 @@ export class ExpandedContentEditableBackend {
 				return;
 			}
 			case "historyUndo": {
-				if (
-					dispatchEditorCommand(this.editor, historyUndo, undefined, {
-						origin: "user",
-					})
-				) {
-					return;
+				if (!dispatchEditorCommand(this.editor, historyUndo, undefined)) {
+					this.editor.undoManager.undo();
 				}
-				this.editor.undoManager.undo();
 				return;
 			}
 			case "historyRedo": {
-				if (
-					dispatchEditorCommand(this.editor, historyRedo, undefined, {
-						origin: "user",
-					})
-				) {
-					return;
+				if (!dispatchEditorCommand(this.editor, historyRedo, undefined)) {
+					this.editor.undoManager.redo();
 				}
-				this.editor.undoManager.redo();
 				return;
 			}
-			case "formatBold": {
-				if (
-					dispatchEditorCommand(
-						this.editor,
-						toggleMark,
-						{ mark: "bold" },
-						{ origin: "user" },
-					)
-				) {
-					return;
-				}
-				toggleInlineMark(this.editor, "bold");
-				return;
-			}
-			case "formatItalic": {
-				if (
-					dispatchEditorCommand(
-						this.editor,
-						toggleMark,
-						{ mark: "italic" },
-						{ origin: "user" },
-					)
-				) {
-					return;
-				}
-				toggleInlineMark(this.editor, "italic");
-				return;
-			}
+			case "formatBold":
+			case "formatItalic":
 			case "formatUnderline": {
-				if (
-					dispatchEditorCommand(
-						this.editor,
-						toggleMark,
-						{ mark: "underline" },
-						{ origin: "user" },
-					)
-				) {
-					return;
+				const mark =
+					FORMAT_MARKS[event.inputType as keyof typeof FORMAT_MARKS];
+				if (!dispatchEditorCommand(this.editor, toggleMark, { mark })) {
+					toggleInlineMark(this.editor, mark);
 				}
-				toggleInlineMark(this.editor, "underline");
 				return;
 			}
 			default:
@@ -430,25 +394,6 @@ export class ExpandedContentEditableBackend {
 			event.preventDefault();
 		}
 	};
-}
-
-function getBlockText(
-	editor: Editor,
-	blockId: string,
-): FieldEditorTextLike | null {
-	const adapter = editor.internals.adapter;
-	const doc = editor.internals.crdtDoc;
-	const ydoc = adapter.raw<{
-		getMap(name: string): {
-			get(key: string): { get(field: string): unknown } | undefined;
-		};
-	}>(doc);
-	return (
-		(ydoc
-			.getMap("blocks")
-			.get(blockId)
-			?.get("content") as FieldEditorTextLike | null) ?? null
-	);
 }
 
 function rangeStart(editor: Editor, selection: TextSelection): Point {

@@ -33,7 +33,7 @@ describe("AX3 previously-reclassified bugs (rechecked, not trusted)", () => {
 		);
 		expect(body).toMatch(/^updateSelection\(\): void \{/);
 		expect(body.slice(0, 1200)).toMatch(
-			/writeNativeRange\(root, anchor, focus\)/,
+			/writeNativeRangeFromField\(element, restored\.anchor, restored\.focus\)/,
 		);
 
 		const accept = readFileSync(AUTOCOMPLETE_ACCEPT, "utf8");

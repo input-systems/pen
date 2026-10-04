@@ -36,28 +36,16 @@ export interface ResolveSelectionPointOptions {
 	rangeEdge?: SelectionBoundary;
 }
 
-function fallbackCharacterOffset(
-	container: HTMLElement,
-	targetNode: Node,
-	targetOffset: number,
-): number {
-	return domPointToLogicalOffset(container, targetNode, targetOffset);
-}
-
 /**
- * Compute the character offset of a DOM point within an inline content container.
- * Uses DOM Range first so browser-native endpoints on mark wrapper elements map
- * to the same logical offsets as equivalent text-node endpoints.
+ * The logical offset of a DOM point within an inline content container.
+ * Public through `./field-editor/selectionBridge`; `domPointToLogicalOffset`
+ * is the implementation.
  */
 export function domPointToOffset(
 	container: HTMLElement,
 	targetNode: Node,
 	targetOffset: number,
 ): number {
-	if (targetNode !== container && !container.contains(targetNode)) {
-		return fallbackCharacterOffset(container, targetNode, targetOffset);
-	}
-
 	return domPointToLogicalOffset(container, targetNode, targetOffset);
 }
 
@@ -165,7 +153,7 @@ export function resolveSelectionPoint(
 			options.preferredBoundary ??
 			(inlineEl && inlineEl.contains(node)
 				? resolveBoundarySideFromOffset(
-						domPointToOffset(inlineEl, node, offset),
+						domPointToLogicalOffset(inlineEl, node, offset),
 						getBlockSelectionLength(blockEl),
 					)
 				: "start");
@@ -173,12 +161,8 @@ export function resolveSelectionPoint(
 	}
 
 	const inlineEl = findInlineContentElement(blockEl);
-	if (!inlineEl) return { blockId, offset: 0 };
-
-	if (!inlineEl.contains(node)) return { blockId, offset: 0 };
-
-	const charOffset = domPointToOffset(inlineEl, node, offset);
-	return { blockId, offset: charOffset };
+	if (!inlineEl?.contains(node)) return { blockId, offset: 0 };
+	return { blockId, offset: domPointToLogicalOffset(inlineEl, node, offset) };
 }
 
 /**

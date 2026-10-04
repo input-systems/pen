@@ -35,7 +35,6 @@ import { staticRangeToOffsets } from "./contenteditableDomHelpers";
 
 export interface ContentEditableDirectInputBackend {
 	resolveCurrentInputRange(): { start: number; end: number } | null;
-	resolveLiveInputRange?(): { start: number; end: number } | null;
 	applyListInputRule(options: {
 		blockId: string;
 		range: { start: number; end: number };

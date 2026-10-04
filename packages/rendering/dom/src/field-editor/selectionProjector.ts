@@ -34,6 +34,7 @@ import { findDOMPoint } from "./selectionBridgeOffsets";
 import type { SelectionPoint } from "./selectionBridge";
 import { queryBlockElement } from "./selectionDomQueries";
 import { isSingleFieldNativeLeftover } from "./singleFieldNativeLeftover";
+import { DATA_ATTRS } from "../utils/dataAttributes";
 
 /**
  * The selection writer (S1). Every mutation of the DOM selection or of an
@@ -56,6 +57,18 @@ export function writeNativeRange(
 	if (!sel) return;
 
 	writeNativeRangeAt(sel, anchorResult, focusResult);
+}
+
+/** `writeNativeRange` inside the editor root that holds `field`. */
+export function writeNativeRangeFromField(
+	field: HTMLElement,
+	anchor: SelectionPoint,
+	focus: SelectionPoint,
+): void {
+	const root = field.closest<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`);
+	if (root) {
+		writeNativeRange(root, anchor, focus);
+	}
 }
 
 /**
