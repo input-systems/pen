@@ -213,13 +213,79 @@ export class DocumentStateImpl implements DocumentState {
 			this.rebuild();
 			return;
 		}
+		const touchedParents = new Set<string>();
 		for (const blockId of affectedBlocks) {
 			this._dropPreorderIfChildrenTouched(blockId);
 			if (this._needsRebuild(blockId)) {
 				this.rebuild();
 				return;
 			}
+			// A block without indexed children gaining an array is caught by
+			// `_childrenChanged`; only indexed parents can have reordered.
+			if (this._childIndex.has(blockId)) touchedParents.add(blockId);
+			const cachedParent = this._parentIndex.get(blockId);
+			if (cachedParent !== undefined) touchedParents.add(cachedParent);
 		}
+		let reordered = false;
+		for (const parentId of touchedParents) {
+			const order = this._childOrderChange(parentId);
+			if (order === "rebuild") {
+				this.rebuild();
+				return;
+			}
+			if (order) {
+				this._childIndex.set(parentId, order);
+				reordered = true;
+			}
+		}
+		if (reordered) {
+			this._preorder = null;
+			this._generation++;
+		}
+	}
+
+	/**
+	 * A reorder within one `children` array moves no block's parent, and a
+	 * local move names the moved block rather than its parent, so each touched
+	 * parent's array is compared with the index in O(its children) (SCALE2).
+	 * Returns the new child list, `null` when the order is current, or
+	 * `"rebuild"` when the cached list holds a child the array no longer has.
+	 */
+	private _childOrderChange(parentId: string): string[] | "rebuild" | null {
+		const children = (this._doc.blocks as CRDTBlockMap)
+			.get(parentId)
+			?.get("children") as CRDTArray<string> | undefined;
+		if (!children) return null;
+		const cached = this._childIndex.get(parentId) ?? EMPTY_CHILD_IDS;
+		let current = cached.length >= children.length;
+		for (let i = 0; current && i < children.length; i++) {
+			current = cached[i] === children.get(i);
+		}
+		// Entries after the array's are the `parentId` route's children.
+		for (let i = children.length; current && i < cached.length; i++) {
+			current = this._isParentIdChild(cached[i] as string, parentId);
+		}
+		if (current) return null;
+		const next: string[] = [];
+		const inArray = new Set<string>();
+		for (let i = 0; i < children.length; i++) {
+			const childId = children.get(i);
+			next.push(childId);
+			inArray.add(childId);
+		}
+		for (const childId of cached) {
+			if (inArray.has(childId)) continue;
+			if (!this._isParentIdChild(childId, parentId)) return "rebuild";
+			next.push(childId);
+		}
+		return next;
+	}
+
+	private _isParentIdChild(blockId: string, parentId: string): boolean {
+		const props = (this._doc.blocks as CRDTBlockMap)
+			.get(blockId)
+			?.get("props") as CRDTMap<unknown> | undefined;
+		return props?.get?.("parentId") === parentId;
 	}
 
 	/** A children array can reorder, or vanish, without moving any block's parent. */
