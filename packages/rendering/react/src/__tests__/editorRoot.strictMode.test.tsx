@@ -60,7 +60,13 @@ describe("Pen.Editor.Root under React.StrictMode (HB2)", () => {
 			await flushAnimationFrames(2);
 		});
 
-		// P1: an authority write projects into the DOM selection.
+		// P1: an authority write projects into the DOM selection. HOST9: a
+		// programmatic write projects only while the editor owns focus.
+		const editorRoot = container.querySelector<HTMLElement>(
+			"[data-pen-editor-root]",
+		);
+		editorRoot!.tabIndex = -1;
+		editorRoot!.focus();
 		await act(async () => {
 			editor.selectText(first, 2, 2, { origin: "programmatic" });
 			await flushAnimationFrames(2);
