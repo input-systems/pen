@@ -65,15 +65,27 @@ async function readCaret(page: Page): Promise<CaretSnapshot> {
 	});
 }
 
+/** Read the caret once the scheduler has flushed (OV4), so the paint is current. */
+async function readSettledCaret(page: Page): Promise<CaretSnapshot> {
+	const check = await page.evaluate(() =>
+		window.__penConformance.overlayMatchesAuthority(),
+	);
+	expect(check.kind, `OV4 before reading the caret: ${check.reason}`).toBe(
+		"held",
+	);
+	return readCaret(page);
+}
+
 scenario(
 	"O: customCaret paints an ordinary collapsed caret and hides the native caret",
 	async (s, page) => {
 		await s.load("hello-world");
 		await clickOffset(page, "hello-p1", 2);
-		await expect
-			.poll(async () => (await readCaret(page)).caretCount)
-			.toBe(1);
-		const caret = await readCaret(page);
+		// The load already painted a caret at the end of the line, so a caret
+		// count proves nothing about the click; the overlay paints the new
+		// record on the next scheduler flush (OV4), so wait for that flush.
+		const caret = await readSettledCaret(page);
+		expect(caret.caretCount).toBe(1);
 		await test.info().attach("custom-caret", {
 			body: JSON.stringify({ caret }, null, 2),
 			contentType: "application/json",
