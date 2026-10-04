@@ -251,6 +251,40 @@ export class FieldEditorImpl implements FieldEditorSession {
 			projectSubstituteFocus: () => this._projectFocusTarget(),
 			onSubstituteChange: () => this._emitStateChange(),
 		});
+		this._subscribeEditor();
+		this._sessionReconciler = new SessionReconciler(this._editor, {
+			getSnapshot: () => this.getSnapshot(),
+			getAttachedElement: () => this._attachedElement,
+			getInlineElement: (blockId) => this._resolveInlineElement(blockId),
+			getYText: (blockId) => this._getYText(blockId),
+			projectAfterRebuild: (blockIds) =>
+				this.projectAfterRebuild(blockIds),
+			shouldProjectSelection: () =>
+				this.shouldProjectSelectionAfterReconcile(),
+			projectSelection: () => this._projector.project("selection-change"),
+			notifyDomReconciled: (blockId) => this.notifyDomReconciled(blockId),
+			getScheduler: () => this._ensureScheduler(),
+		});
+	}
+
+	/**
+	 * Re-attaches the editor subscriptions `destroy()` released: the P1
+	 * selection listener, the commit feed, the history listener, and the
+	 * session reconciler. A binding whose mount can be undone and redone
+	 * on one instance (React Strict Mode runs mount, cleanup, mount) calls
+	 * this in its mount and `destroy()` in its cleanup (HB2). A no-op while
+	 * connected.
+	 */
+	connect(): void {
+		if (this._unsubscribeSelection) {
+			return;
+		}
+		this._subscribeEditor();
+		this._sessionReconciler.connect();
+	}
+
+	/** P1, the FE4 commit feed, and the history listener. */
+	protected _subscribeEditor(): void {
 		// FE4: the commit feed lives here rather than in a host's mount,
 		// because both the vanilla mount and the framework bindings build a
 		// field editor while only the vanilla one has a mount function. The
@@ -320,19 +354,6 @@ export class FieldEditorImpl implements FieldEditorSession {
 				this._handleHistoryApplied(event);
 			},
 		);
-		this._sessionReconciler = new SessionReconciler(this._editor, {
-			getSnapshot: () => this.getSnapshot(),
-			getAttachedElement: () => this._attachedElement,
-			getInlineElement: (blockId) => this._resolveInlineElement(blockId),
-			getYText: (blockId) => this._getYText(blockId),
-			projectAfterRebuild: (blockIds) =>
-				this.projectAfterRebuild(blockIds),
-			shouldProjectSelection: () =>
-				this.shouldProjectSelectionAfterReconcile(),
-			projectSelection: () => this._projector.project("selection-change"),
-			notifyDomReconciled: (blockId) => this.notifyDomReconciled(blockId),
-			getScheduler: () => this._ensureScheduler(),
-		});
 	}
 
 	get focusBlockId(): string | null {
@@ -659,9 +680,13 @@ export class FieldEditorImpl implements FieldEditorSession {
 		}
 		syncFocusSink(sink, this._editor, this._editor.selection, {
 			requestFocus: (target) => {
-				this._focusController.requestDomFocus(target, "selection-project", {
-					preventScroll: true,
-				});
+				this._focusController.requestDomFocus(
+					target,
+					"selection-project",
+					{
+						preventScroll: true,
+					},
+				);
 			},
 			substitute: this._projector.getSubstituteState(),
 		});

@@ -37,13 +37,23 @@ export class SessionReconciler {
 	private scheduledWrite = false;
 	private destroyed = false;
 	private shouldProjectSelection = false;
-	private readonly unsubscribeCommit: () => void;
-	private readonly unsubscribeDecorationsChange: () => void;
+	private unsubscribeCommit: (() => void) | null = null;
+	private unsubscribeDecorationsChange: (() => void) | null = null;
 
 	constructor(editor: Editor, options: SessionReconcilerOptions) {
 		this.editor = editor;
 		this.options = options;
 		this.seenDecorations = editor.getDecorations();
+		this.connect();
+	}
+
+	/** (Re)subscribes after `destroy()`; a no-op while connected. */
+	connect(): void {
+		if (this.unsubscribeCommit) {
+			return;
+		}
+		this.destroyed = false;
+		this.seenDecorations = this.editor.getDecorations();
 		this.unsubscribeCommit = this.editor.on("commit", (event) => {
 			this.handleCommit(
 				event.origin,
@@ -60,8 +70,10 @@ export class SessionReconciler {
 
 	destroy(): void {
 		this.destroyed = true;
-		this.unsubscribeCommit();
-		this.unsubscribeDecorationsChange();
+		this.unsubscribeCommit?.();
+		this.unsubscribeCommit = null;
+		this.unsubscribeDecorationsChange?.();
+		this.unsubscribeDecorationsChange = null;
 		this.scheduledWrite = false;
 		this.pendingBlockIds.clear();
 		this.seenDecorations = emptyDecorationSet();

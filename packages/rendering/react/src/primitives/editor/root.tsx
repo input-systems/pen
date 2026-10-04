@@ -34,7 +34,6 @@ import {
 	RegionSelectionStore,
 	registerInlineAtomInteractionRoot,
 	registerVerticalCaretMeasure,
-	type FieldEditorSession,
 	type PenFocusLifecycleListener,
 	type PenFocusPolicy,
 } from "@input/pen-dom";
@@ -146,7 +145,7 @@ export function EditorRoot(props: EditorRootProps) {
 	const [focused, setFocused] = useState(false);
 	const [rootElement, setRootElement] = useState<HTMLElement | null>(null);
 	const isEmpty = useDocumentEmptyState(editor);
-	const fieldEditorRef = useRef<FieldEditorSession | null>(null);
+	const fieldEditorRef = useRef<FieldEditorImpl | null>(null);
 	const regionSelectionStoreRef = useRef<RegionSelectionStore | null>(null);
 	const rootRef = useRef<HTMLElement | null>(null);
 	const mountedEditorRef = useRef<Editor>(editor);
@@ -273,6 +272,9 @@ export function EditorRoot(props: EditorRootProps) {
 	}, [editor, importers, resolvedAssets]);
 
 	useEffect(() => {
+		// Strict Mode runs this cleanup and then this effect again on the same
+		// instance; connect re-attaches what destroy released (HB2).
+		fieldEditorRef.current?.connect();
 		editor.internals.assignSlot(
 			FIELD_EDITOR_SLOT_KEY,
 			fieldEditorRef.current,
@@ -371,7 +373,9 @@ export function EditorRoot(props: EditorRootProps) {
 	return (
 		<EditorContext.Provider value={editorContextValue}>
 			<BlockDragSessionProvider viewId={editor.internals.viewId}>
-				<EditorRegionSelectionContext.Provider value={regionSelectionContextValue}>
+				<EditorRegionSelectionContext.Provider
+					value={regionSelectionContextValue}
+				>
 					<FieldEditorContext.Provider value={fieldEditorRef.current}>
 						{renderAsChild(
 							{

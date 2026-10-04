@@ -23,6 +23,8 @@ Shipped hosts already do it on unmount:
 - React `EditorRoot` — `packages/rendering/react/src/primitives/editor/root.tsx`
 - Vue `PenEditor` — `packages/rendering/vue/src/components/PenEditor.ts`
 
+`destroy()` is not terminal: `FieldEditorImpl.connect()` re-attaches the editor subscriptions it released (P1, the commit feed, the history listener, the session reconciler). React `EditorRoot` calls it in the same effect whose cleanup calls `destroy()`, because StrictMode runs that cleanup and the effect again on one instance.
+
 Those hosts also clear the field-editor slots and their own `focusin` / `focusout` / document `keydown` listeners. `FieldEditorImpl.destroy()` does not clear slots or host listeners. A headless or custom host that constructs `FieldEditorImpl` and never calls `destroy()` leaks the editor subscriptions below.
 
 ## `destroy()` sequence today
