@@ -6,17 +6,14 @@ export type OverlayReactStyle = React.CSSProperties & Record<string, string | nu
 /**
  * Turn pen-dom's overlay inline style (CSS property names) into a React
  * style object: standard properties become camelCase, custom properties
- * (`--pen-…`) keep their names. `omit` drops properties by CSS name.
+ * (`--pen-…`) keep their names. Every property is kept, `left` and `top`
+ * included (OV2).
  */
 export function toOverlayReactStyle(
 	style: Readonly<Record<string, string>>,
-	omit: readonly string[] = [],
 ): OverlayReactStyle {
 	const result: Record<string, string> = {};
 	for (const [property, value] of Object.entries(style)) {
-		if (omit.includes(property)) {
-			continue;
-		}
 		const key = property.startsWith("--")
 			? property
 			: property.replace(/-([a-z])/g, (_match, letter: string) =>

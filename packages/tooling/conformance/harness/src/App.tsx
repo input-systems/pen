@@ -1,6 +1,8 @@
 import type { Editor, TableColumnSchema } from "@input/pen-types";
 import { useState, useSyncExternalStore, type ReactElement } from "react";
 import { Pen } from "../../../../rendering/react/src/primitives";
+import type { EditorCaretRenderProps } from "../../../../rendering/react/src/primitives/editor/caretOverlay";
+import type { MultiplayerCaretRenderProps } from "../../../../rendering/react/src/primitives/multiplayer/caretOverlay";
 import { ColumnHeaderMenu } from "../../../../rendering/react/src/renderers/tableColumnMenu";
 import { isWindowedFixture } from "../../src/windowedRange";
 import { getHarnessSession, getWindowStart, subscribeHarness } from "./session";
@@ -115,6 +117,40 @@ function PseudoLocaleChrome({ editor }: { editor: Editor }) {
 	);
 }
 
+/** `?bindingCarets=1`: the local caret rendered by the React binding (OV3), from its render props only. */
+function renderBindingCaret(props: EditorCaretRenderProps): ReactElement {
+	return (
+		<div
+			{...props.attributes}
+			data-conformance-binding-caret=""
+			style={props.caretStyle}
+		/>
+	);
+}
+
+/** `?bindingCarets=1`: remote carets and labels rendered by the React binding. */
+function renderBindingRemoteCaret(
+	props: MultiplayerCaretRenderProps,
+): ReactElement {
+	return (
+		<div
+			{...props.attributes}
+			data-conformance-binding-remote-caret=""
+			style={props.caretStyle}
+		/>
+	);
+}
+
+function renderBindingRemoteLabel(
+	props: MultiplayerCaretRenderProps,
+): ReactElement {
+	return (
+		<div data-conformance-binding-label="" style={props.labelStyle}>
+			{props.cursor.user.name}
+		</div>
+	);
+}
+
 function readGeneration(): number {
 	return getHarnessSession().generation;
 }
@@ -131,6 +167,7 @@ export function App() {
 	const showPseudoLocaleChrome = readQueryFlag("pseudoLocale");
 	const showAx3Chrome = readQueryFlag("ax3");
 	const showCustomCaret = readQueryFlag("customCaret");
+	const bindingCarets = readQueryFlag("bindingCarets");
 	const blinkCaret = readQueryFlag("blink");
 	const readonly = readQueryFlag("readonly");
 	const modal = readQueryFlag("modal");
@@ -156,12 +193,23 @@ export function App() {
 				) : (
 					<Pen.Editor.Content emptyPlaceholder="" />
 				)}
-				{showCustomCaret ? <Pen.Editor.CaretOverlay /> : null}
+				{showCustomCaret ? (
+					<Pen.Editor.CaretOverlay
+						renderCaret={bindingCarets ? renderBindingCaret : undefined}
+					/>
+				) : null}
 				{showCol2Presence ? (
 					<>
 						<Pen.Multiplayer.PresenceList />
 						<Pen.Multiplayer.RemoteCursors />
-						<Pen.Multiplayer.CaretOverlay />
+						<Pen.Multiplayer.CaretOverlay
+							renderCaret={
+								bindingCarets ? renderBindingRemoteCaret : undefined
+							}
+							renderLabel={
+								bindingCarets ? renderBindingRemoteLabel : undefined
+							}
+						/>
 					</>
 				) : null}
 				{showAx3Chrome ? (

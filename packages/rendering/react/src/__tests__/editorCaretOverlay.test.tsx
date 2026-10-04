@@ -194,8 +194,9 @@ describe("@input/pen-react editor caret overlay (W35.R9)", () => {
 		expect(props?.affinity).toBe("downstream");
 		expect(props?.attributes["data-affinity"]).toBe("downstream");
 		expect(props?.caretStyle.transform).toMatch(/^translate3d\(/);
-		expect(props?.caretStyle).not.toHaveProperty("left");
-		expect(props?.caretStyle).not.toHaveProperty("top");
+		// OV2: left and top stay 0, so an RTL host keeps the transform's position.
+		expect(props?.caretStyle.left).toBe("0px");
+		expect(props?.caretStyle.top).toBe("0px");
 		expect(props?.caretStyle.position).toBe("absolute");
 		expect(props?.caretStyle.height).toBe("24px");
 		expect(props?.caretStyle.width).toBe(

@@ -184,8 +184,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 98 -> 99: suites/overlays/ov2-scaled-ancestor.spec.ts (OV2, items under a scaled or zoomed ancestor).
 
 	// 99 -> 101: suites/overlays/{ov2-moved-root,ov2-scroll-clip}.spec.ts (OV2, the root is the layer's containing block).
-	const expectedPlaywrightSpecs = 103;
-	const expectedPlaywrightSpecs = 101;
+	// 101 -> 102: suites/overlays/ov3-rtl-binding.spec.ts (OV2/OV3, binding-rendered carets in an RTL host).
+	const expectedPlaywrightSpecs = 104;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

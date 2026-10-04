@@ -18,9 +18,6 @@ import { EditorRegionSelectionContext } from "./regionSelectionState";
 
 type CaretStyle = OverlayReactStyle;
 
-/** `left` and `top` stay with the layer: the caret is placed by its transform (OV2). */
-const CARET_STYLE_OMIT = ["left", "top"];
-
 export const CARET = {
 	DEFAULT: "default",
 	MACOS: "macos",
@@ -36,7 +33,11 @@ export interface EditorCaretRenderProps {
 	};
 	/** The record's affinity the caret was measured with (G3). */
 	affinity: Affinity;
-	/** Positioned with `transform: translate3d(...)` relative to the overlay layer; no `left` or `top`. */
+	/**
+	 * Positioned with `transform: translate3d(...)` relative to the overlay
+	 * layer, with `left: 0` and `top: 0` so an RTL host does not move it to
+	 * its static position (OV2).
+	 */
 	caretStyle: CaretStyle;
 	attributes: Record<string, string | undefined>;
 }
@@ -164,7 +165,6 @@ function createCaretRenderProps(
 	const affinity = item.affinity;
 	const caretStyle = toOverlayReactStyle(
 		overlayItemStyle(item, { variant, solidCaret }),
-		CARET_STYLE_OMIT,
 	);
 	const attributes = {
 		"data-pen-editor-caret": "",

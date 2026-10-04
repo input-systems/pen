@@ -274,7 +274,10 @@ describe("@input/pen-react multiplayer caret overlay (W35.R12)", () => {
 		const props = seen.at(-1);
 		expect(props?.cursor.user.name).toBe("Babbage");
 		expect(props?.caretStyle.transform).toBe("translate3d(24px, 32px, 0)");
-		expect(props?.caretStyle.left).toBeUndefined();
+		// OV2: left and top stay 0, so an RTL host keeps the transform's position.
+		expect(props?.caretStyle.left).toBe("0px");
+		expect(props?.labelStyle.left).toBe("0px");
+		expect(props?.labelStyle.top).toBe("0px");
 		expect(props?.labelStyle.transform).toBe(
 			"translate3d(24px, 24px, 0) translateY(-100%)",
 		);

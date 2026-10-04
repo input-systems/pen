@@ -26,15 +26,16 @@ import { EditorRegionSelectionContext } from "../editor/regionSelectionState";
 
 type MultiplayerStyle = OverlayReactStyle;
 
-/** `left` and `top` stay with the layer: carets and labels are placed by their transform (OV2). */
-const ITEM_STYLE_OMIT = ["left", "top"];
-
 export interface MultiplayerCaretRenderProps {
 	cursor: RemoteCursorState;
 	peer: PeerState | null;
-	/** Positioned with `transform: translate3d(...)` relative to the overlay layer; no `left` or `top`. */
+	/**
+	 * Positioned with `transform: translate3d(...)` relative to the overlay
+	 * layer, with `left: 0` and `top: 0` so an RTL host does not move it to
+	 * its static position (OV2).
+	 */
 	caretStyle: MultiplayerStyle;
-	/** Positioned with `transform` above the caret, relative to the overlay layer; no `left` or `top`. */
+	/** Positioned with `transform` above the caret, relative to the overlay layer; `left` and `top` are `0`. */
 	labelStyle: MultiplayerStyle;
 	attributes: Record<string, string | undefined>;
 }
@@ -167,12 +168,8 @@ function createCaretRenderProps(
 ): MultiplayerCaretRenderProps {
 	const caretStyle = toOverlayReactStyle(
 		overlayItemStyle(item, { variant: "default", solidCaret: true }),
-		ITEM_STYLE_OMIT,
 	);
-	const labelStyle = toOverlayReactStyle(
-		overlayLabelStyle(item),
-		ITEM_STYLE_OMIT,
-	);
+	const labelStyle = toOverlayReactStyle(overlayLabelStyle(item));
 	const attributes = {
 		...item.attributes,
 		"data-block-id": cursor.blockId,
