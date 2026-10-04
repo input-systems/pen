@@ -1,13 +1,8 @@
 import type { Editor, Point, TextSelection } from "@input/pen-types";
 import { writeNativeRange } from "./selectionProjector";
 import { getPasteImporters, handlePaste } from "./clipboard";
-import { BackendAttachment } from "./backendAttachment";
-import { bindBackendTransferEvents } from "./backendTransferEvents";
-import { bindSurfaceTabStop } from "./surfaceTabStop";
-import type {
-	FieldEditorInputController,
-	PenFieldEditorFocusOptions,
-} from "./controller";
+import { InputBackendBase } from "./inputBackendBase";
+import type { PenFieldEditorFocusOptions } from "./controller";
 import { getResolvedYText } from "./contentResolution";
 import {
 	deleteBackward,
@@ -51,46 +46,17 @@ const FORMAT_MARKS = {
  * style inputs; once the DOM selection collapses back to a single block we hand
  * control back to the normal single-block backend path.
  */
-export class ExpandedContentEditableBackend {
-	private element: HTMLElement | null = null;
-	private readonly attachment = new BackendAttachment();
-	private editor: Editor;
-	private fieldEditor: FieldEditorInputController;
+export class ExpandedContentEditableBackend extends InputBackendBase {
 	private composingOverRange = false;
-
-	constructor(editor: Editor, fieldEditor: FieldEditorInputController) {
-		this.editor = editor;
-		this.fieldEditor = fieldEditor;
-	}
 
 	activate(
 		element: HTMLElement,
 		_ytext?: unknown,
 		focusOptions?: PenFieldEditorFocusOptions,
 	): void {
-		this.element = element;
 		this.composingOverRange = false;
-		element.contentEditable = "true";
-		bindSurfaceTabStop(this.attachment, element);
-
-		this.attachment.listen(element, "beforeinput", this.handleBeforeInput);
-		this.attachment.listen(element, "keydown", this.handleKeyDown);
-		this.attachment.listen(
-			element,
-			"compositionstart",
-			this.handleCompositionStart,
-		);
-		this.attachment.listen(
-			element,
-			"compositionend",
-			this.handleCompositionEnd,
-		);
-		bindBackendTransferEvents(
-			this.attachment,
-			element,
-			this.editor,
-			this.fieldEditor,
-		);
+		this.attachEditableHost(element);
+		this.bindInputEvents(element);
 
 		const selection = this.editor.selection;
 		if (selection?.type === "text") {
@@ -119,16 +85,8 @@ export class ExpandedContentEditableBackend {
 	}
 
 	deactivate(): void {
-		if (this.element) {
-			// see ContentEditableBackend.deactivate: release editability by
-			// removing the attribute so this host never becomes a read-only
-			// island inside a wider editing host.
-			this.element.removeAttribute("contenteditable");
-			this.element.removeAttribute("tabindex");
-		}
-		this.attachment.release();
-
-		this.element = null;
+		this.releaseEditableHost();
+		this.detach();
 		if (this.composingOverRange) {
 			this.composingOverRange = false;
 			this.fieldEditor.setComposing(false);
@@ -157,7 +115,7 @@ export class ExpandedContentEditableBackend {
 		);
 	}
 
-	private handleBeforeInput = (event: InputEvent): void => {
+	protected handleBeforeInput = (event: InputEvent): void => {
 		const selection = this.editor.selection;
 		if (selection?.type !== "text") return;
 
@@ -325,7 +283,7 @@ export class ExpandedContentEditableBackend {
 	 * replaces the authority range at `compositionend`, and the caret's field
 	 * rebuilds its DOM from the document.
 	 */
-	private handleCompositionStart = (): void => {
+	protected handleCompositionStart = (): void => {
 		const element = this.element;
 		const selection = this.editor.selection;
 		if (!element || selection?.type !== "text") return;
@@ -339,7 +297,7 @@ export class ExpandedContentEditableBackend {
 		this.fieldEditor.notifyGestureEvent?.("compositionstart");
 	};
 
-	private handleCompositionEnd = (event: CompositionEvent): void => {
+	protected handleCompositionEnd = (event: CompositionEvent): void => {
 		if (!this.composingOverRange) return;
 		this.composingOverRange = false;
 		this.fieldEditor.setComposing(false);
@@ -355,7 +313,7 @@ export class ExpandedContentEditableBackend {
 		this.activateSingleBlockTextSelection();
 	};
 
-	private handleKeyDown = (event: KeyboardEvent): void => {
+	protected handleKeyDown = (event: KeyboardEvent): void => {
 		if (this.handleCompositionKeyDown(event)) {
 			return;
 		}

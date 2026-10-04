@@ -9,6 +9,7 @@ Selection of the backend is `_resolveBackendClass` in `src/field-editor/fieldEdi
 There are not three parallel implementations. The lifecycle is shared and a backend owns only the input technology it speaks (FE1/FE2):
 
 - `BackendLifecycleController` (`backendLifecycleController.ts`) owns which backend exists: create, replace on a surface-mode or element change, deactivate.
+- `InputBackendBase` (`inputBackendBase.ts`) owns what every backend holds while attached — element, attachment, editor, field editor — and the contenteditable host and input-event bindings; its `FieldInputBackendBase` adds the single-field state (`Y.Text`, observer, decoration signature), the field rebuild, the delta patch, and the decoration-change rebuild. A backend class extends one of them and adds its input technology (CS5).
 - `BackendAttachment` (`backendAttachment.ts`) owns what a backend holds while attached. Listeners, observers, and subscriptions are bound through it, and one `release()` undoes them — so teardown is total by construction rather than by a mirrored block of `removeEventListener` calls per backend. See `FIELD-EDITOR-TEARDOWN.md`.
 - `bindBackendTransferEvents` (`backendTransferEvents.ts`) owns clipboard and drag, which are identical in every backend: copy and cut go through the transfer path, drag is refused at both ends.
 - `inlineDecorationsForBlock` (`utils/inlineDecorations.ts`) owns which inline decorations a block renders.

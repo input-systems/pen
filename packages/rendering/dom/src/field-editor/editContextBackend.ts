@@ -1,18 +1,7 @@
 import { isCollapsed } from "@input/pen-core";
-import type { Editor, InlineDecoration } from "@input/pen-types";
-import type {
-	FieldEditorInputController,
-	PenFieldEditorFocusOptions,
-} from "./controller";
-import { BackendAttachment } from "./backendAttachment";
-import { bindBackendTransferEvents } from "./backendTransferEvents";
+import type { PenFieldEditorFocusOptions } from "./controller";
 import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
-import { applyDeltaToDOM } from "./reconciler";
-import {
-	focusedFieldDecorations,
-	focusedFieldDecorationsSignature,
-	rebuildFocusedField,
-} from "./fieldDomRebuild";
+import { FieldInputBackendBase } from "./inputBackendBase";
 import { getLogicalInlineText } from "./commandsShared";
 import { isNavigationSelectionKey } from "./contenteditableDomHelpers";
 import {
@@ -53,7 +42,6 @@ import type {
 } from "./editContextTypes";
 import { authorityOffsetsInBlock } from "./selectionReader";
 import type { DirectionalSelectionOffsets } from "./selectionMapping";
-import { inlineDecorationsRequireFullReconcile } from "../utils/inlineDecorations";
 import { handleEditContextBeforeInput } from "./editContextBeforeInput";
 import { handleFieldEditorKeyDown } from "./keyHandling";
 import { isHistoryTransactionOrigin } from "./transactionOrigin";
@@ -66,11 +54,7 @@ import {
 	applyInlineTextInput,
 } from "./textInputPipeline";
 import { isDomNode } from "../utils/domNodes";
-import type {
-	FieldEditorObserver,
-	FieldEditorTextChangeEvent,
-	FieldEditorTextLike,
-} from "./crdt";
+import type { FieldEditorTextChangeEvent, FieldEditorTextLike } from "./crdt";
 
 /**
  * Where an EditContext selection write came from. A `text-update` write
@@ -98,16 +82,8 @@ type EditContextTextUpdateInput = {
 	selectionEnd?: number;
 };
 
-export class EditContextBackend {
+export class EditContextBackend extends FieldInputBackendBase {
 	protected editContext: EditContext | null = null;
-	protected element: HTMLElement | null = null;
-	protected ytext: FieldEditorTextLike | null = null;
-	protected observer: FieldEditorObserver | null = null;
-	protected readonly attachment = new BackendAttachment();
-	protected inlineDecorationsSignature: readonly InlineDecoration[] | null =
-		null;
-	protected editor: Editor;
-	protected fieldEditor: FieldEditorInputController;
 	/**
 	 * FE9: the last caret a `textupdate` resolved. EditContext can report a
 	 * stale range after it, so it is input to `resolveEditContextTextUpdateRange`
@@ -120,11 +96,6 @@ export class EditContextBackend {
 	 * delta so the buffer sync never reads `Y.Text` back (SCALE6).
 	 */
 	protected modelText = "";
-
-	constructor(editor: Editor, fieldEditor: FieldEditorInputController) {
-		this.editor = editor;
-		this.fieldEditor = fieldEditor;
-	}
 
 	activate(
 		element: HTMLElement,
@@ -162,29 +133,12 @@ export class EditContextBackend {
 		).editContext = ec;
 		element.tabIndex = -1;
 
-		this.attachment.listen(element, "keydown", this.handleKeyDown);
-		this.attachment.listen(element, "beforeinput", this.handleBeforeInput);
-		this.attachment.listen(element, "paste", this.handlePasteEvent);
-		bindBackendTransferEvents(
-			this.attachment,
-			element,
-			this.editor,
-			this.fieldEditor,
-		);
-		this.attachment.listen(element, "pointerdown", this.handlePointerDown);
 		// Chromium fires composition events on the EditContext, before the
 		// first `textupdate` and after the last; the element listeners serve
 		// an engine that fires them on the element instead.
-		this.attachment.listen(
-			element,
-			"compositionstart",
-			this.handleCompositionStart,
-		);
-		this.attachment.listen(
-			element,
-			"compositionend",
-			this.handleCompositionEnd,
-		);
+		this.bindInputEvents(element);
+		this.attachment.listen(element, "paste", this.handlePasteEvent);
+		this.attachment.listen(element, "pointerdown", this.handlePointerDown);
 		this.attachment.listenEditContext(
 			ec,
 			"compositionstart",
@@ -211,14 +165,8 @@ export class EditContextBackend {
 			this.handleCharacterBoundsUpdate,
 		);
 
-		this.observer = (event) => this.handleYTextChange(event);
-		this.attachment.observeText(this.ytext, this.observer);
-		this.attachment.subscribe(
-			this.editor.on("decorationsChange", this.handleDecorationsChange),
-		);
-		this.inlineDecorationsSignature = this.getInlineDecorationsSignature();
-
-		this.reconcileFullAndNotify(this.ytext, element);
+		this.observeField(this.ytext);
+		this.rebuildField();
 		this.trustedTypingCaret = null;
 		this.updateSelection();
 		this.fieldEditor.requestDomFocus(
@@ -240,23 +188,20 @@ export class EditContextBackend {
 		// field's to move.
 		this.endComposition("commit", { detaching: true });
 		this.lastIdleTextUpdate = null;
-		this.attachment.release();
-		if (this.element) {
+		const element = this.element;
+		this.detach();
+		if (element) {
 			// After the EditContext listeners are gone, so the browser cannot
 			// deliver a textupdate against a context this backend no longer
 			// owns.
 			(
-				this.element as HTMLElement & {
+				element as HTMLElement & {
 					editContext: EditContext | null;
 				}
 			).editContext = null;
-			this.element.removeAttribute("tabindex");
+			element.removeAttribute("tabindex");
 		}
 		this.editContext = null;
-		this.element = null;
-		this.ytext = null;
-		this.observer = null;
-		this.inlineDecorationsSignature = null;
 		this.trustedTypingCaret = null;
 		this.fieldEditor.setComposing(false);
 	}
@@ -321,6 +266,10 @@ export class EditContextBackend {
 	 * (C1).
 	 */
 	protected lastIdleTextUpdate: PendingEditContextTextUpdate | null = null;
+
+	protected holdsComposition(): boolean {
+		return this.composition !== null;
+	}
 
 	protected handleCompositionStart = (): void => {
 		this.beginComposition();
@@ -444,7 +393,7 @@ export class EditContextBackend {
 		}
 		// The field could not take the edit in place: it shows `Y.Text`
 		// until the composition closes and rebuilds it.
-		this.reconcileFullAndNotify(this.ytext, this.element);
+		this.rebuildField();
 		return { ...composition, field: "model" };
 	}
 
@@ -484,7 +433,7 @@ export class EditContextBackend {
 				);
 			}
 			this.inlineDecorationsSignature = this.getInlineDecorationsSignature();
-			this.reconcileFullAndNotify(this.ytext, this.element);
+			this.rebuildField();
 			if (!detaching) {
 				this.updateSelection();
 			}
@@ -819,33 +768,12 @@ export class EditContextBackend {
 				this.editContext,
 				this.modelText,
 			);
-			this.reconcileFullAndNotify(this.ytext, this.element);
+			this.rebuildField();
 			this.updateSelection();
 			return;
 		}
 
-		const inlineDecorations = focusedFieldDecorations(this.editor, this.fieldEditor);
-		if (inlineDecorationsRequireFullReconcile(inlineDecorations)) {
-			this.reconcileFullAndNotify(
-				this.ytext,
-				this.element,
-				inlineDecorations,
-			);
-		} else {
-			const applied = applyDeltaToDOM(
-				event.delta,
-				this.element,
-				this.editor.schema,
-				urlPolicyFromEditor(this.editor),
-			);
-			if (!applied) {
-				this.reconcileFullAndNotify(
-					this.ytext,
-					this.element,
-					inlineDecorations,
-				);
-			}
-		}
+		this.reconcileDelta(this.fieldEditor.focusBlockId, event.delta);
 
 		// The buffer takes `Y.Text` by diff: a typed `textupdate` is already
 		// in it, while a command, an input rule, or another writer's apply is
@@ -859,30 +787,6 @@ export class EditContextBackend {
 		// buffer holds the one this backend wrote for its own edit, and P1
 		// projects the record once the apply returns.
 		this.writeBufferCaretIntoDom();
-	};
-
-	protected handleDecorationsChange = (): void => {
-		// The composing field is rebuilt with its decorations when the
-		// composition closes.
-		if (!this.element || !this.ytext || this.composition) {
-			return;
-		}
-		const nextInlineDecorationsSignature =
-			this.getInlineDecorationsSignature();
-		if (
-			nextInlineDecorationsSignature === this.inlineDecorationsSignature
-		) {
-			return;
-		}
-		// a decoration can change while another control owns focus; writing
-		// the caret back into this field would drag focus along with it
-		const projectSelection =
-			this.fieldEditor.shouldProjectSelectionAfterReconcile?.() ?? true;
-		this.inlineDecorationsSignature = nextInlineDecorationsSignature;
-		this.reconcileFullAndNotify(this.ytext, this.element);
-		if (projectSelection) {
-			this.updateSelection();
-		}
 	};
 
 	/**
@@ -906,28 +810,6 @@ export class EditContextBackend {
 		if (!anchorPoint || !focusPoint) return;
 
 		writeNativeRangeBetween(this.element, anchorPoint, focusPoint);
-	}
-
-	private reconcileFullAndNotify(
-		ytext: FieldEditorTextLike,
-		element: HTMLElement,
-		inlineDecorations?: readonly InlineDecoration[],
-	): void {
-		rebuildFocusedField(
-			this.editor,
-			this.fieldEditor,
-			ytext,
-			element,
-			inlineDecorations,
-		);
-	}
-
-	protected getInlineDecorationsSignature(): readonly InlineDecoration[] {
-		return focusedFieldDecorationsSignature(
-			this.editor,
-			this.fieldEditor,
-			this.inlineDecorationsSignature,
-		);
 	}
 
 	protected handleKeyDown = (event: KeyboardEvent): void => {
@@ -1026,11 +908,7 @@ export class EditContextBackend {
 		if (!this.editContext || !this.ytext) return;
 		if (this.composition) return;
 
-		const blockId = this.fieldEditor.focusBlockId;
-		if (!blockId || !this.editor.getBlock(blockId)) {
-			this.fieldEditor.deactivate();
-			return;
-		}
+		if (!this.liveFocusBlockId()) return;
 
 		handleEditContextBeforeInput({
 			event,

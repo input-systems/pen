@@ -1,15 +1,5 @@
 import { getLogicalInlineText } from "./commandsShared";
-import type { Editor, InlineDecoration } from "@input/pen-types";
-import type { FieldEditorInputController } from "./controller";
-import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
-import { inlineDecorationsRequireFullReconcile } from "../utils/inlineDecorations";
-import { applyDeltaToDOM } from "./reconciler";
-import {
-	focusedFieldDecorations,
-	focusedFieldDecorationsSignature,
-	rebuildFocusedField,
-	renderFieldFromModel,
-} from "./fieldDomRebuild";
+import type { InlineDecoration } from "@input/pen-types";
 import { extractTextFromDOM } from "./selectionBridge";
 import { computeAnchoredTextDiff, type TextDiffOp } from "./textDiff";
 import {
@@ -24,7 +14,6 @@ import {
 } from "./textInputPipeline";
 import type {
 	FieldEditorDelta,
-	FieldEditorObserver,
 	FieldEditorTextChangeEvent,
 	FieldEditorTextLike,
 } from "./crdt";
@@ -36,9 +25,7 @@ import {
 	caretAfterRebasedDiff,
 	requiresResolvedInputRange,
 } from "./contenteditableDomHelpers";
-import { BackendAttachment } from "./backendAttachment";
-import { bindBackendTransferEvents } from "./backendTransferEvents";
-import { bindSurfaceTabStop } from "./surfaceTabStop";
+import { FieldInputBackendBase } from "./inputBackendBase";
 import { mapBeforeInput } from "./beforeinputMap";
 import { applyBeforeInputPolicy } from "./commandDispatch";
 import { handleFieldEditorKeyDown } from "./keyHandling";
@@ -48,10 +35,7 @@ import {
 	resolveLiveTextSelection,
 } from "./selectionReader";
 
-export class ContentEditableBackend {
-	protected element: HTMLElement | null = null;
-	protected ytext: FieldEditorTextLike | null = null;
-	protected observer: FieldEditorObserver | null = null;
+export class ContentEditableBackend extends FieldInputBackendBase {
 	protected mutationObserver: MutationObserver | null = null;
 	protected isComposing = false;
 	/**
@@ -68,49 +52,14 @@ export class ContentEditableBackend {
 	protected compositionStartRange: { anchor: number; focus: number } | null =
 		null;
 	protected deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [];
-	protected readonly attachment = new BackendAttachment();
-	protected inlineDecorationsSignature: readonly InlineDecoration[] | null =
-		null;
-	protected editor: Editor;
-	protected fieldEditor: FieldEditorInputController;
-
-	constructor(editor: Editor, fieldEditor: FieldEditorInputController) {
-		this.editor = editor;
-		this.fieldEditor = fieldEditor;
-	}
 
 	activate(element: HTMLElement, ytext: unknown): void {
-		this.element = element;
 		const activeYText = ytext as FieldEditorTextLike;
 		this.ytext = activeYText;
+		this.attachEditableHost(element);
+		this.resetInputState();
 
-		element.contentEditable = "true";
-		bindSurfaceTabStop(this.attachment, element);
-		this.isComposing = false;
-		this.ignoreBrowserMutations = false;
-		this.lastWatchdogMismatch = null;
-		this.compositionStartText = null;
-		this.compositionStartRange = null;
-		this.fieldEditor.setComposing(false);
-
-		this.attachment.listen(element, "beforeinput", this.handleBeforeInput);
-		this.attachment.listen(
-			element,
-			"compositionstart",
-			this.handleCompositionStart,
-		);
-		this.attachment.listen(
-			element,
-			"compositionend",
-			this.handleCompositionEnd,
-		);
-		this.attachment.listen(element, "keydown", this.handleKeyDown);
-		bindBackendTransferEvents(
-			this.attachment,
-			element,
-			this.editor,
-			this.fieldEditor,
-		);
+		this.bindInputEvents(element);
 		this.attachment.listen(element, "pointerdown", this.handlePointerDown);
 
 		this.mutationObserver = this.attachment.observeMutations(
@@ -124,41 +73,24 @@ export class ContentEditableBackend {
 			},
 		);
 
-		this.observer = (event) => this.handleYTextChange(event);
-		this.attachment.observeText(activeYText, this.observer);
-		this.attachment.subscribe(
-			this.editor.on("decorationsChange", this.handleDecorationsChange),
-		);
-		this.inlineDecorationsSignature = this.getInlineDecorationsSignature();
-
-		rebuildFocusedField(this.editor, this.fieldEditor, activeYText, element);
+		this.observeField(activeYText);
+		this.rebuildField();
 		this.updateSelection();
 		this.discardObservedMutations();
 	}
 
-	protected discardObservedMutations(): void {
+	protected override discardObservedMutations(): void {
 		this.mutationObserver?.takeRecords();
 	}
 
 	deactivate(): void {
-		if (this.element) {
-			// remove, never `contentEditable = "false"`. When the surface
-			// expands, the blocks host becomes the editing host and this
-			// element stays inside it; an explicit `false` would leave a
-			// read-only island there. WebKit refuses to extend a selection
-			// out of such an island and clamps at its boundary, so a
-			// cross-block pointer drag that starts in this field can never
-			// reach the next block. Absent is equivalent while the parent is
-			// not editable, which is the single-field case.
-			this.element.removeAttribute("contenteditable");
-			this.element.removeAttribute("tabindex");
-		}
-		this.attachment.release();
+		this.releaseEditableHost();
+		this.detach();
 		this.mutationObserver = null;
-		this.element = null;
-		this.ytext = null;
-		this.observer = null;
-		this.inlineDecorationsSignature = null;
+		this.resetInputState();
+	}
+
+	private resetInputState(): void {
 		this.deferredRemoteDeltas = [];
 		this.isComposing = false;
 		this.ignoreBrowserMutations = false;
@@ -166,6 +98,10 @@ export class ContentEditableBackend {
 		this.compositionStartText = null;
 		this.compositionStartRange = null;
 		this.fieldEditor.setComposing(false);
+	}
+
+	protected holdsComposition(): boolean {
+		return this.isComposing;
 	}
 
 	protected _getActiveCellCoord(blockId: string): {
@@ -271,12 +207,7 @@ export class ContentEditableBackend {
 	protected handleBeforeInput = (event: InputEvent): void => {
 		if (this.isComposing) return;
 		if (!this.ytext || !this.element) return;
-
-		const blockId = this.fieldEditor.focusBlockId;
-		if (!blockId || !this.editor.getBlock(blockId)) {
-			this.fieldEditor.deactivate();
-			return;
-		}
+		if (!this.liveFocusBlockId()) return;
 
 		// map decides preventDefault / allow / block; DIRECT_HANDLERS only implement commands
 		const mapping = mapBeforeInput(event.inputType);
@@ -387,10 +318,7 @@ export class ContentEditableBackend {
 
 		if (this.deferredRemoteDeltas.length > 0) {
 			this.deferredRemoteDeltas = [];
-			this.reconcileFromModelDiscardingMutations(
-				this.ytext,
-				this.element!,
-			);
+			this.rebuildField();
 		}
 
 		this.compositionStartText = null;
@@ -484,11 +412,7 @@ export class ContentEditableBackend {
 		// do not put a foreign caret back — that re-dirties WebKit/Firefox
 		// contenteditable. The rebuild's own records are taken here, so the
 		// observer never sees them.
-		this.reconcileFromModelDiscardingMutations(
-			this.ytext,
-			this.element,
-			blockId,
-		);
+		this.rebuildField(undefined, blockId);
 	};
 
 	// ── CRDT→DOM reconciliation ───────────────────────────────
@@ -503,7 +427,7 @@ export class ContentEditableBackend {
 		if (!this.element || !this.ytext) return;
 		const blockId = this.fieldEditor.focusBlockId;
 		if (isHistoryTransactionOrigin(event.transaction?.origin)) {
-			this.fullReconcileActiveField(blockId);
+			this.rebuildField();
 			this.updateSelection();
 		} else {
 			this.reconcileDeltaAndProject(blockId, event.delta);
@@ -523,74 +447,15 @@ export class ContentEditableBackend {
 		this.fieldEditor.projectAfterRebuild?.([blockId]);
 	}
 
-	/** Patches the field with `delta`; true when it fell back to a full rebuild. */
-	protected reconcileDelta(
-		blockId: string | null,
-		delta: FieldEditorDelta[],
-	): boolean {
-		const inlineDecorations = focusedFieldDecorations(this.editor, this.fieldEditor);
-		if (this.requiresFullReconcile(blockId, inlineDecorations)) {
-			this.fullReconcileActiveField(blockId, inlineDecorations);
-			return true;
-		}
-		const applied = applyDeltaToDOM(
-			delta,
-			this.element!,
-			this.editor.schema,
-			urlPolicyFromEditor(this.editor),
-		);
-		if (!applied) {
-			this.fullReconcileActiveField(blockId);
-		}
-		return !applied;
-	}
-
-	/** Table cells and decorations that split text runs cannot take a delta patch. */
-	protected requiresFullReconcile(
+	/** Table cells cannot take a delta patch either. */
+	protected override requiresFullReconcile(
 		blockId: string | null,
 		inlineDecorations: readonly InlineDecoration[],
 	): boolean {
-		const isActiveCell = blockId
-			? !!this._getActiveCellCoord(blockId)
-			: false;
 		return (
-			isActiveCell ||
-			inlineDecorationsRequireFullReconcile(inlineDecorations)
+			(blockId ? !!this._getActiveCellCoord(blockId) : false) ||
+			super.requiresFullReconcile(blockId, inlineDecorations)
 		);
-	}
-
-	protected fullReconcileActiveField(
-		blockId: string | null,
-		inlineDecorations = focusedFieldDecorations(this.editor, this.fieldEditor),
-	): void {
-		if (!this.element || !this.ytext) return;
-		rebuildFocusedField(
-			this.editor,
-			this.fieldEditor,
-			this.ytext,
-			this.element,
-			inlineDecorations,
-			blockId ?? undefined,
-		);
-	}
-
-	/**
-	 * Rebuilds the active field from the model and takes the rebuild's own
-	 * mutation records, so the observer never sees them.
-	 */
-	protected reconcileFromModelDiscardingMutations(
-		ytext: FieldEditorTextLike,
-		element: HTMLElement,
-		blockId: string | undefined = this.fieldEditor.focusBlockId ?? undefined,
-	): void {
-		renderFieldFromModel(
-			this.editor,
-			ytext,
-			element,
-			focusedFieldDecorations(this.editor, this.fieldEditor),
-		);
-		this.discardObservedMutations();
-		this.fieldEditor.notifyDomReconciled(blockId);
 	}
 
 	protected applyTextDiffAsOps(
@@ -659,36 +524,9 @@ export class ContentEditableBackend {
 			return false;
 		}
 
-		this.reconcileFromModelDiscardingMutations(this.ytext, this.element);
+		this.rebuildField();
 		this.inlineDecorationsSignature = nextInlineDecorationsSignature;
 		return true;
-	}
-
-	protected handleDecorationsChange = (): void => {
-		if (this.isComposing) {
-			return;
-		}
-		if (
-			this.getInlineDecorationsSignature() ===
-			this.inlineDecorationsSignature
-		) {
-			return;
-		}
-		// a decoration can change while another control owns focus; writing
-		// the selection back into this field would drag focus along with it
-		const projectSelection =
-			this.fieldEditor.shouldProjectSelectionAfterReconcile?.() ?? true;
-		if (this.ensureActiveDOMMatchesYText() && projectSelection) {
-			this.updateSelection();
-		}
-	};
-
-	protected getInlineDecorationsSignature(): readonly InlineDecoration[] {
-		return focusedFieldDecorationsSignature(
-			this.editor,
-			this.fieldEditor,
-			this.inlineDecorationsSignature,
-		);
 	}
 
 	// ── Keyboard shortcuts ────────────────────────────────────
