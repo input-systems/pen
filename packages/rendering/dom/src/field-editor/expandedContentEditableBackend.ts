@@ -165,19 +165,9 @@ export class ExpandedContentEditableBackend {
 			case "insertReplacementText": {
 				const text = event.data ?? "";
 				if (!text) return;
-				if (
-					dispatchEditorCommand(
-						this.editor,
-						insertText,
-						{ text },
-						{
-							origin: "user",
-						},
-					)
-				) {
-					return;
+				if (!dispatchEditorCommand(this.editor, insertText, { text })) {
+					this.editor.replaceSelection(text);
 				}
-				this.editor.replaceSelection(text);
 				return;
 			}
 			case "insertParagraph":
@@ -194,11 +184,7 @@ export class ExpandedContentEditableBackend {
 					event.inputType === "insertLineBreak"
 						? insertLineBreak
 						: splitBlock;
-				if (
-					dispatchEditorCommand(this.editor, command, undefined, {
-						origin: "user",
-					})
-				) {
+				if (dispatchEditorCommand(this.editor, command, undefined)) {
 					this.activateSingleBlockTextSelection();
 					return;
 				}
@@ -248,11 +234,7 @@ export class ExpandedContentEditableBackend {
 					const param = (mapping.param ?? {
 						granularity: "grapheme",
 					}) as { granularity: "grapheme" | "word" | "line" };
-					if (
-						dispatchEditorCommand(this.editor, command, param, {
-							origin: "user",
-						})
-					) {
+					if (dispatchEditorCommand(this.editor, command, param)) {
 						return;
 					}
 				}
@@ -343,14 +325,7 @@ export class ExpandedContentEditableBackend {
 			this.updateSelection();
 			return;
 		}
-		if (
-			!dispatchEditorCommand(
-				this.editor,
-				insertText,
-				{ text },
-				{ origin: "user" },
-			)
-		) {
+		if (!dispatchEditorCommand(this.editor, insertText, { text })) {
 			this.editor.replaceSelection(text);
 		}
 		this.activateSingleBlockTextSelection();

@@ -138,9 +138,10 @@ export function domPointToLogicalOffset(
 	targetNode: Node,
 	targetOffset: number,
 ): number {
-	const boundaryAncestor = findInlineAtomCaretBoundaryAncestor(
+	const boundaryAncestor = findAncestorWithin(
 		targetNode,
 		container,
+		isInlineAtomCaretBoundaryNode,
 	);
 	if (boundaryAncestor) {
 		const side = boundaryAncestor.getAttribute(
@@ -153,7 +154,7 @@ export function domPointToLogicalOffset(
 		}
 	}
 
-	const atomAncestor = findInlineAtomAncestor(targetNode, container);
+	const atomAncestor = findAncestorWithin(targetNode, container, isInlineAtomNode);
 	if (atomAncestor) {
 		const logicalAtom = resolveLogicalInlineAtomUnit(atomAncestor);
 		const atomOffset = getOffsetBeforeNode(container, logicalAtom);
@@ -213,13 +214,15 @@ function isVirtualInlineDecorationNode(node: Node | null): node is HTMLElement {
 	);
 }
 
-function findInlineAtomCaretBoundaryAncestor(
+/** `node` or its nearest ancestor below `container` that `matches`. */
+function findAncestorWithin(
 	node: Node,
 	container: HTMLElement,
+	matches: (node: Node) => node is HTMLElement,
 ): HTMLElement | null {
 	let current: Node | null = node;
 	while (current && current !== container) {
-		if (isInlineAtomCaretBoundaryNode(current)) {
+		if (matches(current)) {
 			return current;
 		}
 		current = current.parentNode;
@@ -239,20 +242,6 @@ function hasInlineAtomCaretBoundaryAncestor(node: Node): boolean {
 		current = current.parentNode;
 	}
 	return false;
-}
-
-function findInlineAtomAncestor(
-	node: Node,
-	container: HTMLElement,
-): HTMLElement | null {
-	let current: Node | null = node;
-	while (current && current !== container) {
-		if (isInlineAtomNode(current)) {
-			return current;
-		}
-		current = current.parentNode;
-	}
-	return null;
 }
 
 function getOffsetBeforeNode(container: HTMLElement, target: Node): number {
