@@ -362,7 +362,12 @@ export function setDocumentProfile(
 	doc: CRDTDocument,
 	profile: DocumentProfile,
 ): void {
-	asYjsDoc(doc).penDocument.metadata.set(DOCUMENT_PROFILE, profile);
+	const yjsDoc = asYjsDoc(doc);
+	// A bare `metadata.set` opens an implicit transaction with no origin, which
+	// the observer reports as ORIGIN_UNKNOWN; the profile stamp is a system write.
+	yjsDoc.ydoc.transact(() => {
+		yjsDoc.penDocument.metadata.set(DOCUMENT_PROFILE, profile);
+	}, "system");
 }
 
 export function createYjsDocument(

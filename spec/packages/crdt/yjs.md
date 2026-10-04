@@ -21,6 +21,7 @@ Bridge Pen contracts to a specific CRDT implementation.
 - Summary and origin plumbing: `createSummarySource()`, `STRUCTURAL_ORIGIN_META_KEY`, `createRemoteUpdateOrigin()`, `originToOpOrigin()`
 - Document lifecycle: `validateDocument()`, `createYjsSubdocument()`, `getDocumentProfile()` / `setDocumentProfile()`, `getDocumentLoadReport()`, `readFormatStamp()` / `refreshFormatStamp()`
 - Format stamp helpers; new documents stamp `PEN_DOCUMENT_FORMAT` (`3`)
+- The adapter's own metadata writes (format stamp, `setDocumentProfile()`, load repairs) run in a `"system"`-origin transaction, so constructing an editor over a fresh document emits no `ORIGIN_UNKNOWN` diagnostic
 - Workspace scripts: `build`, `clean`, `dev`, `lint`, `test`, `typecheck`
 
 ## Dependencies And Boundaries
