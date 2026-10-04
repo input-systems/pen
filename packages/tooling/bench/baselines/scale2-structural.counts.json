@@ -4,7 +4,7 @@
 	"points": {
 		"enter.100": {
 			"blockOrderReads": 389,
-			"blocksMapReads": 127,
+			"blocksMapReads": 126,
 			"blocksMapIterations": 431,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
@@ -20,7 +20,7 @@
 		},
 		"enter.1000": {
 			"blockOrderReads": 3686,
-			"blocksMapReads": 1072,
+			"blocksMapReads": 1071,
 			"blocksMapIterations": 4211,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
@@ -36,7 +36,7 @@
 		},
 		"enter.5000": {
 			"blockOrderReads": 18386,
-			"blocksMapReads": 5272,
+			"blocksMapReads": 5271,
 			"blocksMapIterations": 21011,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
@@ -59,6 +59,10 @@
 		{
 			"date": "2026-10-03",
 			"reason": "W35 step 4 (N1): BlockHandle.length() reads Y.Text length instead of toString(), so an Enter does one fewer full text read"
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "apply validation checks the op type before block liveness, so an insert-block reads one blocks-map entry fewer (PR5 batch liveness)"
 		}
 	]
 }
