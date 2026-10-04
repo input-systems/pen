@@ -9,7 +9,12 @@ import type {
 } from "@input/pen-types";
 import { STRUCTURAL_ORIGIN_META_KEY } from "@input/pen-yjs";
 import { resolveRuntimeContentType } from "../schema/contentType";
-import { type CRDTUnknownMap, getMapProp, getTableContent } from "./crdtShapes";
+import {
+	type CRDTUnknownMap,
+	getArrayProp,
+	getMapProp,
+	getTableContent,
+} from "./crdtShapes";
 import type { ApplyPipelineDocumentAccess } from "./applyPipelineContext";
 import {
 	clearTableState,
@@ -72,11 +77,42 @@ export function deleteBlock(
 	pipeline: ApplyPipelineDocumentAccess,
 	op: DeleteBlockOp,
 ): string[] {
+	const descendants = childrenArrayDescendants(pipeline, op.blockId);
 	pipeline.mutableBlocks.delete(op.blockId);
+	// A `children` array lives inside its container's block map, so deleting
+	// the container drops every entry for its children: their block maps
+	// would survive in no array, rendered nowhere. They go with it. `parentId`
+	// children sit in `blockOrder` and are promoted by normalization instead.
+	for (const descendantId of descendants) {
+		pipeline.mutableBlocks.delete(descendantId);
+	}
 	removeBlockIdFromArray(pipeline.mutableBlockOrder, op.blockId);
 	removeBlockIdFromAllChildren(pipeline, op.blockId);
 
 	return [op.blockId];
+}
+
+/** Every block under `blockId` through `children` arrays, at any depth. */
+function childrenArrayDescendants(
+	pipeline: ApplyPipelineDocumentAccess,
+	blockId: string,
+): string[] {
+	const descendants: string[] = [];
+	const seen = new Set<string>([blockId]);
+	const visit = (parentId: string): void => {
+		const parentMap = getMutableBlockMap(pipeline, parentId);
+		const children = parentMap ? getArrayProp<string>(parentMap, "children") : null;
+		if (!children) return;
+		for (let i = 0; i < children.length; i++) {
+			const childId = children.get(i);
+			if (seen.has(childId)) continue;
+			seen.add(childId);
+			descendants.push(childId);
+			visit(childId);
+		}
+	};
+	visit(blockId);
+	return descendants;
 }
 
 export function moveBlock(

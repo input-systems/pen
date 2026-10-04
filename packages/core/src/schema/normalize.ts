@@ -314,7 +314,37 @@ export class SchemaEngineImpl implements SchemaEngine {
 		this.removeDanglingEntries();
 		this.deduplicateBlockIds(blockId);
 		this.enforceCrossArrayMembership(blockId);
+		this.keepOneNestingRoute(blockId);
 		this.breakParentCycle(blockId);
+	}
+
+	// ── RI6: One nesting route per block ────────────────────
+	// A `parentId` child sits in `blockOrder`; a `children` child does not.
+	// A block in a `children` array that also carries `parentId` (a move into
+	// a container, or `set-props parentId` on a container's child, either
+	// concurrent or local) is on both routes, and which parent the index
+	// reports would depend on map iteration order. The `children` array is
+	// where the block is stored, so it wins on every peer and the prop is
+	// cleared. A `parentId` naming that same container agrees with the array
+	// (convertBlockOps re-asserts it, and stored documents carry it), so it
+	// is left alone.
+
+	private keepOneNestingRoute(blockId: string): void {
+		const container = this.findParentWithChild(blockId);
+		if (!container) return;
+		const parentId = this.readParentIdProp(blockId);
+		if (!parentId || parentId === container) return;
+		const blockMap = this.getBlockMap(blockId);
+		const props = blockMap ? getMapProp(blockMap, "props") : null;
+		props?.delete?.("parentId");
+		this.onDiagnostic?.({
+			code: "nesting-route-conflict",
+			level: "warn",
+			source: "schema",
+			message: `Block "${blockId}" is in the children of "${container}" and also named "${parentId}" as its parentId; cleared the parentId.`,
+			remediation:
+				"Move a block out of a container's children before giving it a parentId. A block has one nesting route; the children array it is stored in wins.",
+		});
 	}
 
 	// ── Rule 2: Strip Superfluous Wrappers ──────────────────

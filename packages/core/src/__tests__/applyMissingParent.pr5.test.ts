@@ -59,13 +59,15 @@ describe("apply into a missing parent", () => {
 	it("PR5: a parent deleted and re-inserted in the same batch is a valid target again", () => {
 		const editor = createNestedEditor();
 		editor.apply([
-			{ type: "delete-block", blockId: "cols2-b" },
+			{ type: "move-block", blockId: "cols2-a", position: "first" },
 			{ type: "delete-block", blockId: "cols2" },
 			{ type: "insert-block", blockId: "cols2", blockType: "columns", props: {}, position: "last" },
 			{ type: "move-block", blockId: "cols2-a", position: { parent: "cols2", index: 0 } },
 			{ type: "insert-block", blockId: "cols2-c", blockType: "paragraph", props: {}, position: { parent: "cols2", index: 1 } },
 		]);
 		expect(editor.documentState.childrenOf("cols2")).toEqual(["cols2-a", "cols2-c"]);
+		// RI6: the old container's remaining child went with it.
+		expect(editor.getBlock("cols2-b")).toBeNull();
 		editor.destroy();
 	});
 });

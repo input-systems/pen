@@ -191,6 +191,11 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		sources: ["core/src/i18n/resolveEditorMessage.ts"],
 	},
 	{
+		code: "nesting-route-conflict",
+		levels: ["warn"],
+		sources: ["core/src/schema/normalize.ts"],
+	},
+	{
 		code: "normalize-cap",
 		levels: ["error"],
 		sources: ["core/src/schema/normalize.ts"],
