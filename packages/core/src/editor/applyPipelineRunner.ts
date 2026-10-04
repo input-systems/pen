@@ -599,7 +599,7 @@ function executeOps(
 	recordPhase(pipeline, "validate");
 	const affectedBlocks: string[] = [];
 	const validatedOps: DocumentOp[] = [];
-	const pendingBlockIds = new Set<string>();
+	const batch: BatchLiveness = { inserted: new Set(), deleted: new Set() };
 	const pendingBlockTypes = new Map<string, string>();
 
 	for (const op of transformedOps) {
@@ -612,10 +612,7 @@ function executeOps(
 			// so an insert naming a live block replaces its text, props, and
 			// meta, and normalization then strips the duplicate order entry —
 			// silent content loss. An id is claimed once per document.
-			if (
-				blockExists(pipeline, op.blockId) ||
-				pendingBlockIds.has(op.blockId)
-			) {
+			if (liveInBatch(pipeline, batch, op.blockId)) {
 				emitPipelineDiagnostic(pipeline, {
 					code: "PEN_APPLY_010",
 					level: "warn",
@@ -624,7 +621,6 @@ function executeOps(
 				});
 				continue;
 			}
-			pendingBlockIds.add(op.blockId);
 			pendingBlockTypes.set(op.blockId, op.blockType);
 		}
 
@@ -635,9 +631,8 @@ function executeOps(
 
 		if (
 			blockId &&
-			!blockExists(pipeline, blockId) &&
-			!pendingBlockIds.has(blockId) &&
-			nextOp.type !== "insert-block"
+			nextOp.type !== "insert-block" &&
+			!liveInBatch(pipeline, batch, blockId)
 		) {
 			emitPipelineDiagnostic(pipeline, {
 				code: "PEN_APPLY_003",
@@ -648,7 +643,7 @@ function executeOps(
 			continue;
 		}
 
-		const missingParent = missingParentId(pipeline, nextOp, pendingBlockIds);
+		const missingParent = missingParentId(pipeline, nextOp, batch);
 		if (missingParent !== null) {
 			// Executing it would write the block outside the tree: insert leaves
 			// an orphan, move detaches the block from wherever it was.
@@ -666,6 +661,7 @@ function executeOps(
 			continue;
 		}
 
+		recordBatchLiveness(batch, nextOp);
 		validatedOps.push(nextOp);
 	}
 
@@ -732,17 +728,47 @@ function executeOps(
 	});
 }
 
-/** The parent an insert or move targets when that parent does not exist. */
+/**
+ * Block liveness as the batch has left it so far. Validation runs before any
+ * op executes, so the document alone answers for the state before the batch;
+ * an op later in the batch sees the inserts and deletes validated before it.
+ */
+type BatchLiveness = {
+	readonly inserted: Set<string>;
+	readonly deleted: Set<string>;
+};
+
+function liveInBatch(
+	pipeline: ApplyPipelineInternal,
+	batch: BatchLiveness,
+	blockId: string,
+): boolean {
+	if (batch.inserted.has(blockId)) return true;
+	if (batch.deleted.has(blockId)) return false;
+	return blockExists(pipeline, blockId);
+}
+
+function recordBatchLiveness(batch: BatchLiveness, op: DocumentOp): void {
+	if (op.type === "insert-block") {
+		batch.inserted.add(op.blockId);
+		batch.deleted.delete(op.blockId);
+	} else if (op.type === "delete-block") {
+		batch.deleted.add(op.blockId);
+		batch.inserted.delete(op.blockId);
+	}
+}
+
+/** The parent an insert or move targets when that parent is not live at that point in the batch. */
 function missingParentId(
 	pipeline: ApplyPipelineInternal,
 	op: DocumentOp,
-	pendingBlockIds: ReadonlySet<string>,
+	batch: BatchLiveness,
 ): string | null {
 	if (op.type !== "insert-block" && op.type !== "move-block") return null;
 	const position = op.position;
 	if (typeof position !== "object" || !("parent" in position)) return null;
 	const parent = position.parent;
-	return blockExists(pipeline, parent) || pendingBlockIds.has(parent) ? null : parent;
+	return liveInBatch(pipeline, batch, parent) ? null : parent;
 }
 
 function emitApplyBoundary(

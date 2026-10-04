@@ -34,4 +34,38 @@ describe("apply into a missing parent", () => {
 		expect(editor.documentState.childrenOf("cols3")).toEqual(["cols3-a", "cols3-b"]);
 		editor.destroy();
 	});
+
+	it("PR5: a parent deleted earlier in the same batch is not a valid target", () => {
+		const editor = createNestedEditor();
+		const codes: string[] = [];
+		editor.on("diagnostic", (event) => codes.push(event.code));
+
+		editor.apply([
+			{ type: "delete-block", blockId: "cols" },
+			{ type: "move-block", blockId: "cols2-a", position: { parent: "cols", index: 0 } },
+			{ type: "insert-block", blockId: "late", blockType: "paragraph", props: {}, position: { parent: "cols", index: 0 } },
+		]);
+
+		expect(codes.filter((code) => code === "PEN_APPLY_003")).toHaveLength(2);
+		expect(editor.getBlock("cols")).toBeNull();
+		expect(editor.getBlock("late")).toBeNull();
+		// The move is dropped, so the block stays where it was instead of
+		// being written into the deleted parent's array and lost with it.
+		expect(editor.documentState.childrenOf("cols2")).toEqual(["cols2-a", "cols2-b"]);
+		expect(editor.documentState.preorderBlockIds()).toContain("cols2-a");
+		editor.destroy();
+	});
+
+	it("PR5: a parent deleted and re-inserted in the same batch is a valid target again", () => {
+		const editor = createNestedEditor();
+		editor.apply([
+			{ type: "delete-block", blockId: "cols2-b" },
+			{ type: "delete-block", blockId: "cols2" },
+			{ type: "insert-block", blockId: "cols2", blockType: "columns", props: {}, position: "last" },
+			{ type: "move-block", blockId: "cols2-a", position: { parent: "cols2", index: 0 } },
+			{ type: "insert-block", blockId: "cols2-c", blockType: "paragraph", props: {}, position: { parent: "cols2", index: 1 } },
+		]);
+		expect(editor.documentState.childrenOf("cols2")).toEqual(["cols2-a", "cols2-c"]);
+		editor.destroy();
+	});
 });
