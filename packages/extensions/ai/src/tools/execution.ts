@@ -25,6 +25,8 @@ import {
 } from "./authority";
 import { AI_TOOL_READ_ONLY_MUTATION_CODE } from "./constants";
 import type { AIToolRuntime } from "./types";
+import { disableTextStreamWriter } from "../utils/disableTextStreamWriter";
+import { layerMethod } from "../utils/methodLayers";
 
 /**
  * Every live generation's binding, in bind order (AIB3). Generations overlap
@@ -187,8 +189,7 @@ function toolAuthorityContext(context: ToolContext): ToolAuthorityContext {
 	const editor = resolveToolEditor(context);
 	return {
 		staged:
-			editor != null &&
-			stagesAsSuggestions(boundMutationMode(editor)),
+			editor != null && stagesAsSuggestions(boundMutationMode(editor)),
 	};
 }
 
@@ -341,41 +342,40 @@ function patchEditorApply(
 		onReadOnlyMutation: () => void;
 	},
 ): () => void {
-	const apply = editor.apply;
-	if (typeof apply !== "function") {
+	if (typeof editor.apply !== "function") {
 		return () => {};
 	}
-	const originalApply = apply.bind(editor);
-	editor.apply = (ops: DocumentOp[], applyOptions?: ApplyOptions) => {
-		if (!options.mutating) {
-			if (ops.length > 0) {
-				options.onReadOnlyMutation();
+	return layerMethod(
+		editor,
+		"apply",
+		(originalApply) => (ops, applyOptions) => {
+			if (!options.mutating) {
+				if (ops.length > 0) {
+					options.onReadOnlyMutation();
+				}
+				return;
 			}
-			return;
-		}
-		const turn = options.turn;
-		if (turn) {
-			const rejection = turn.tryRecordOps(ops.length);
-			if (rejection) {
-				// Reject the whole batch: a partially applied edit is worse than a
-				// failed tool call the model can see and retry.
-				throw new AIToolBudgetError(
-					rejection === "budget-total-ops-exhausted"
-						? "budget-total-ops-exhausted"
-						: "budget-ops-per-call-exhausted",
-					ops.length,
-					turn.limits,
-				);
+			const turn = options.turn;
+			if (turn) {
+				const rejection = turn.tryRecordOps(ops.length);
+				if (rejection) {
+					// Reject the whole batch: a partially applied edit is worse than a
+					// failed tool call the model can see and retry.
+					throw new AIToolBudgetError(
+						rejection === "budget-total-ops-exhausted"
+							? "budget-total-ops-exhausted"
+							: "budget-ops-per-call-exhausted",
+						ops.length,
+						turn.limits,
+					);
+				}
 			}
-		}
-		const resolvedOptions = turn
-			? applyOptionsWithTurn(applyOptions, turn)
-			: applyOptions;
-		applyToolOps(editor, originalApply, ops, resolvedOptions);
-	};
-	return () => {
-		editor.apply = originalApply;
-	};
+			const resolvedOptions = turn
+				? applyOptionsWithTurn(applyOptions, turn)
+				: applyOptions;
+			applyToolOps(editor, originalApply, ops, resolvedOptions);
+		},
+	);
 }
 
 function patchEditorOpenTextStream(
@@ -386,28 +386,27 @@ function patchEditorOpenTextStream(
 		onReadOnlyMutation: () => void;
 	},
 ): () => void {
-	const openTextStream = editor.openTextStream;
-	if (typeof openTextStream !== "function") {
+	if (typeof editor.openTextStream !== "function") {
 		return () => {};
 	}
-	const originalOpen = openTextStream.bind(editor);
-	editor.openTextStream = (target, streamOptions) => {
-		if (!options.mutating) {
-			options.onReadOnlyMutation();
-			return refuseTextStreamWriter(target.blockId);
-		}
-		const turn = options.turn;
-		if (!turn?.groupId) {
-			return originalOpen(target, streamOptions);
-		}
-		return originalOpen(target, {
-			...streamOptions,
-			origin: originWithGroupId(streamOptions.origin, turn.groupId),
-		});
-	};
-	return () => {
-		editor.openTextStream = originalOpen;
-	};
+	return layerMethod(
+		editor,
+		"openTextStream",
+		(originalOpen) => (target, streamOptions) => {
+			if (!options.mutating) {
+				options.onReadOnlyMutation();
+				return refuseTextStreamWriter(target.blockId);
+			}
+			const turn = options.turn;
+			if (!turn?.groupId) {
+				return originalOpen(target, streamOptions);
+			}
+			return originalOpen(target, {
+				...streamOptions,
+				origin: originWithGroupId(streamOptions.origin, turn.groupId),
+			});
+		},
+	);
 }
 
 function patchStreamingTarget(
@@ -428,22 +427,18 @@ function patchStreamingTarget(
 	}
 	const restores: Array<() => void> = [];
 	if (typeof streaming.appendDelta === "function") {
-		const originalAppend = streaming.appendDelta.bind(streaming);
-		streaming.appendDelta = () => {
-			options.onReadOnlyMutation();
-		};
-		restores.push(() => {
-			streaming.appendDelta = originalAppend;
-		});
+		restores.push(
+			layerMethod(streaming, "appendDelta", () => () => {
+				options.onReadOnlyMutation();
+			}),
+		);
 	}
 	if (typeof streaming.beginStreaming === "function") {
-		const originalBegin = streaming.beginStreaming.bind(streaming);
-		streaming.beginStreaming = () => {
-			options.onReadOnlyMutation();
-		};
-		restores.push(() => {
-			streaming.beginStreaming = originalBegin;
-		});
+		restores.push(
+			layerMethod(streaming, "beginStreaming", () => () => {
+				options.onReadOnlyMutation();
+			}),
+		);
 	}
 	restores.push(
 		disableParkedStreamWriter(streaming, options.onReadOnlyMutation),
@@ -473,24 +468,6 @@ function disableParkedStreamWriter(
 	return () => {};
 }
 
-function disableTextStreamWriter(
-	writer: TextStreamWriter,
-	onReadOnlyMutation: () => void,
-): () => void {
-	const originalAppend = writer.append.bind(writer);
-	const originalSplice = writer.splice.bind(writer);
-	writer.append = () => {
-		onReadOnlyMutation();
-	};
-	writer.splice = () => {
-		onReadOnlyMutation();
-	};
-	return () => {
-		writer.append = originalAppend;
-		writer.splice = originalSplice;
-	};
-}
-
 function refuseTextStreamWriter(blockId: string): TextStreamWriter {
 	return {
 		append() {},
@@ -510,22 +487,20 @@ function applyToolOps(
 	ops: DocumentOp[],
 	applyOptions: ApplyOptions | undefined,
 ): void {
-	if (
-		!stagesAsSuggestions(boundMutationMode(editor)) ||
-		ops.length === 0
-	) {
+	if (!stagesAsSuggestions(boundMutationMode(editor)) || ops.length === 0) {
 		originalApply(ops, applyOptions);
 		return;
 	}
-	const wrapped = editor.apply;
-	editor.apply = originalApply;
+	// Staging writes its suggestion marks through `editor.apply`; a pass-through
+	// layer lets them reach the document past this call's guard.
+	const releaseStaging = layerMethod(editor, "apply", () => originalApply);
 	try {
 		applySuggestedAIOperations(editor, {
 			operations: ops,
 			undoGroupId: applyOptions?.undoGroupId,
 		});
 	} finally {
-		editor.apply = wrapped;
+		releaseStaging();
 	}
 }
 

@@ -8,6 +8,8 @@ import type {
 	Unsubscribe,
 } from "@input/pen-types";
 
+import { disableTextStreamWriter } from "../utils/disableTextStreamWriter";
+
 export interface StreamingTarget {
 	readonly generationZone: GenerationZone | null;
 	beginStreaming(zoneId: string, blockId: string, origin?: OpOrigin): void;
@@ -111,18 +113,7 @@ export class StreamingTargetImpl implements StreamingTarget {
 		if (!writer) {
 			return () => {};
 		}
-		const originalAppend = writer.append.bind(writer);
-		const originalSplice = writer.splice.bind(writer);
-		writer.append = () => {
-			onReadOnlyMutation();
-		};
-		writer.splice = () => {
-			onReadOnlyMutation();
-		};
-		return () => {
-			writer.append = originalAppend;
-			writer.splice = originalSplice;
-		};
+		return disableTextStreamWriter(writer, onReadOnlyMutation);
 	}
 
 	endStreaming(status: "complete" | "cancelled" | "error"): void {
