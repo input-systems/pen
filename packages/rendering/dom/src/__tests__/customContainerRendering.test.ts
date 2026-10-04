@@ -9,7 +9,7 @@ import {
 	SchemaRegistryImpl,
 } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
-import type { Editor } from "@input/pen-types";
+import type { DocumentOp, Editor } from "@input/pen-types";
 import { mountEditor } from "../host/mountEditor";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 
@@ -51,6 +51,32 @@ function blockElement(root: HTMLElement, blockId: string): HTMLElement | null {
 	);
 }
 
+type InsertBlockOp = Extract<DocumentOp, { type: "insert-block" }>;
+
+/** The two ways a child joins a container: its children array, or a parentId prop. */
+const CHILD_PLACEMENTS: Array<{
+	name: string;
+	text: string;
+	place(parentId: string): Pick<InsertBlockOp, "props" | "position">;
+}> = [
+	{
+		name: "the container's children array",
+		text: "quoted line",
+		place: (parentId) => ({
+			props: {},
+			position: { parent: parentId, index: 0 },
+		}),
+	},
+	{
+		name: "the parentId prop",
+		text: "sibling child",
+		place: (parentId) => ({
+			props: { parentId },
+			position: { after: parentId },
+		}),
+	},
+];
+
 describe("host-defined container rendering", () => {
 	const cleanups: Array<() => void> = [];
 
@@ -72,84 +98,45 @@ describe("host-defined container rendering", () => {
 		return root;
 	}
 
-	it("nests children written to the container's children array", () => {
-		const editor = createQuoteEditor();
+	it.each(CHILD_PLACEMENTS)(
+		"nests children written through $name",
+		({ text, place }) => {
+			const editor = createQuoteEditor();
 
-		editor.apply(
-			[
-				{
-					type: "insert-block",
-					blockId: "quote-1",
-					blockType: "emailQuote",
-					props: {},
-					position: "last",
-				},
-				{
-					type: "insert-block",
-					blockId: "quoted-line",
-					blockType: "paragraph",
-					props: {},
-					position: { parent: "quote-1", index: 0 },
-				},
-				{
-					type: "splice-text",
-					blockId: "quoted-line",
-					from: 0,
-					to: 0,
-					insert: "quoted line",
-				},
-			],
-			{ origin: "user" },
-		);
+			editor.apply(
+				[
+					{
+						type: "insert-block",
+						blockId: "quote-1",
+						blockType: "emailQuote",
+						props: {},
+						position: "last",
+					},
+					{
+						type: "insert-block",
+						blockId: "child",
+						blockType: "paragraph",
+						...place("quote-1"),
+					},
+					{
+						type: "splice-text",
+						blockId: "child",
+						from: 0,
+						to: 0,
+						insert: text,
+					},
+				],
+				{ origin: "user" },
+			);
 
-		const root = mount(editor);
-		const quote = blockElement(root, "quote-1");
+			const root = mount(editor);
+			const quote = blockElement(root, "quote-1");
 
-		expect(quote).not.toBeNull();
-		expect(
-			blockElement(quote as HTMLElement, "quoted-line"),
-		).not.toBeNull();
-		expect(quote?.textContent).toContain("quoted line");
-	});
-
-	it("nests children written through the parentId prop", () => {
-		const editor = createQuoteEditor();
-
-		editor.apply(
-			[
-				{
-					type: "insert-block",
-					blockId: "quote-1",
-					blockType: "emailQuote",
-					props: {},
-					position: "last",
-				},
-				{
-					type: "insert-block",
-					blockId: "sibling-child",
-					blockType: "paragraph",
-					props: { parentId: "quote-1" },
-					position: { after: "quote-1" },
-				},
-				{
-					type: "splice-text",
-					blockId: "sibling-child",
-					from: 0,
-					to: 0,
-					insert: "sibling child",
-				},
-			],
-			{ origin: "user" },
-		);
-
-		const root = mount(editor);
-		const quote = blockElement(root, "quote-1");
-
-		expect(quote).not.toBeNull();
-		expect(
-			blockElement(quote as HTMLElement, "sibling-child"),
-		).not.toBeNull();
-	});
+			expect(quote).not.toBeNull();
+			expect(blockElement(quote as HTMLElement, "child")).not.toBeNull();
+			expect(quote?.textContent).toContain(text);
+		},
+	);
 
 	it("collapses children when the container is closed", () => {
 		const editor = createQuoteEditor();

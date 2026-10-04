@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DATA_ATTRS, buildDataAttributes } from "../utils/dataAttributes";
 
-const RENDERING_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..");
+const RENDERING_ROOT = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"../../..",
+);
 const CATALOG = new Set<string>(Object.values(DATA_ATTRS));
 
 function listProductionSources(dir: string): string[] {
@@ -16,10 +19,7 @@ function listProductionSources(dir: string): string[] {
 			files.push(...listProductionSources(path));
 			continue;
 		}
-		if (
-			/\.tsx?$/.test(entry.name) &&
-			!/\.test\.tsx?$/.test(entry.name)
-		) {
+		if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
 			files.push(path);
 		}
 	}
@@ -113,6 +113,21 @@ describe("DATA_ATTRS catalog pin", () => {
 			DATA_ATTRS.readonly,
 			DATA_ATTRS.empty,
 		]);
+	});
+
+	it("HOST6: true is valueless and false is omitted", () => {
+		expect(
+			buildDataAttributes({
+				[DATA_ATTRS.readonly]: true,
+				[DATA_ATTRS.empty]: false,
+				[DATA_ATTRS.focused]: undefined,
+			}),
+		).toEqual({
+			[DATA_ATTRS.readonly]: "",
+		});
+		expect(
+			Object.keys(buildDataAttributes({ [DATA_ATTRS.readonly]: false })),
+		).toEqual([]);
 	});
 
 	// setBooleanAttr passes a DATA_ATTRS value as `[name]`; the pin cannot

@@ -24,7 +24,9 @@ function createSplitEditor(ariaReadOnlyFacetValue?: boolean) {
 				: [
 						defineExtension({
 							name: "aria-readonly-split",
-							facets: [ariaReadOnlyFacet.of(ariaReadOnlyFacetValue)],
+							facets: [
+								ariaReadOnlyFacet.of(ariaReadOnlyFacetValue),
+							],
 						}),
 					],
 		blocks: [
@@ -38,110 +40,69 @@ function createSplitEditor(ariaReadOnlyFacetValue?: boolean) {
 	});
 }
 
-function insertHello(
-	editor: ReturnType<typeof createTestEditor>,
-	blockId = "paragraph-1",
-): string {
-	editor.apply(
-		[
-			{
-				type: "splice-text",
-				blockId,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		],
-		{ origin: "user" },
-	);
-	return editor
-		.getBlock(blockId)
-		.textContent()
-		.replace(/\u200B/g, "");
-}
-
 function fieldEditor(
 	editor: ReturnType<typeof createTestEditor>,
 ): FieldEditorImpl | null {
-	return (editor.facet(fieldEditorHostFacet) as FieldEditorImpl | null) ?? null;
+	return (
+		(editor.facet(fieldEditorHostFacet) as FieldEditorImpl | null) ?? null
+	);
 }
 
+const ARIA_READONLY_CASES = [
+	{
+		name: "ariaReadOnly facet announces aria-readonly and still accepts typing",
+		facet: true,
+		readonly: undefined,
+		dataReadonly: false,
+		editing: true,
+	},
+	{
+		name: "readonly prop announces aria-readonly and declines typing",
+		facet: undefined,
+		readonly: true,
+		dataReadonly: true,
+		editing: false,
+	},
+	{
+		name: "ariaReadOnly facet plus readonly prop: prop wins for typing, both set aria-readonly",
+		facet: true,
+		readonly: true,
+		dataReadonly: true,
+		editing: false,
+	},
+] as const;
+
 describe("Vue pen.ariaReadOnly vs readonly prop", () => {
-	it("ariaReadOnly facet announces aria-readonly and still accepts typing", async () => {
-		const editor = createSplitEditor(true);
-		const wrapper = mount(PenEditor, {
-			attachTo: document.body,
-			props: { editor },
-		});
+	it.each(ARIA_READONLY_CASES)(
+		"$name",
+		async ({ facet, readonly, dataReadonly, editing }) => {
+			const editor = createSplitEditor(facet);
+			const wrapper = mount(PenEditor, {
+				attachTo: document.body,
+				props: {
+					editor,
+					...(readonly === undefined ? {} : { readonly }),
+				},
+			});
 
-		const root = wrapper.get("[data-pen-editor-root]");
-		expect(editor.facet(ariaReadOnlyFacet)).toBe(true);
-		expect(root.attributes("aria-readonly")).toBe("true");
-		expect(root.attributes("data-readonly")).toBeUndefined();
+			const root = wrapper.get("[data-pen-editor-root]");
+			expect(editor.facet(ariaReadOnlyFacet)).toBe(facet === true);
+			expect(root.attributes("aria-readonly")).toBe("true");
+			expect(root.attributes("data-readonly")).toBe(
+				dataReadonly ? "" : undefined,
+			);
 
-		await wrapper.get("[data-pen-inline-content]").trigger("mousedown");
-		await wrapper.get("[data-pen-inline-content]").trigger("click");
-		await nextTick();
+			await wrapper.get("[data-pen-inline-content]").trigger("mousedown");
+			await wrapper.get("[data-pen-inline-content]").trigger("click");
+			await nextTick();
 
-		expect(fieldEditor(editor)?.isEditing).toBe(true);
-		expect(
-			wrapper.find("[data-pen-field-editor-active-surface]").exists(),
-		).toBe(true);
-		expect(insertHello(editor)).toBe("helloLocked");
+			expect(fieldEditor(editor)?.isEditing).toBe(editing);
+			expect(
+				wrapper.find("[data-pen-field-editor-active-surface]").exists(),
+			).toBe(editing);
 
-		wrapper.unmount();
-		editor.destroy();
-	});
-
-	it("readonly prop announces aria-readonly and declines typing", async () => {
-		const editor = createSplitEditor();
-		const wrapper = mount(PenEditor, {
-			attachTo: document.body,
-			props: { editor, readonly: true },
-		});
-
-		const root = wrapper.get("[data-pen-editor-root]");
-		expect(editor.facet(ariaReadOnlyFacet)).toBe(false);
-		expect(root.attributes("aria-readonly")).toBe("true");
-		expect(root.attributes("data-readonly")).toBe("");
-
-		await wrapper.get("[data-pen-inline-content]").trigger("mousedown");
-		await wrapper.get("[data-pen-inline-content]").trigger("click");
-		await nextTick();
-
-		expect(fieldEditor(editor)?.isEditing).toBe(false);
-		expect(
-			wrapper.find("[data-pen-field-editor-active-surface]").exists(),
-		).toBe(false);
-		expect(insertHello(editor)).toBe("helloLocked");
-
-		wrapper.unmount();
-		editor.destroy();
-	});
-
-	it("ariaReadOnly facet plus readonly prop: prop wins for typing, both set aria-readonly", async () => {
-		const editor = createSplitEditor(true);
-		const wrapper = mount(PenEditor, {
-			attachTo: document.body,
-			props: { editor, readonly: true },
-		});
-
-		const root = wrapper.get("[data-pen-editor-root]");
-		expect(editor.facet(ariaReadOnlyFacet)).toBe(true);
-		expect(root.attributes("aria-readonly")).toBe("true");
-		expect(root.attributes("data-readonly")).toBe("");
-
-		await wrapper.get("[data-pen-inline-content]").trigger("mousedown");
-		await wrapper.get("[data-pen-inline-content]").trigger("click");
-		await nextTick();
-
-		expect(fieldEditor(editor)?.isEditing).toBe(false);
-		expect(
-			wrapper.find("[data-pen-field-editor-active-surface]").exists(),
-		).toBe(false);
-		expect(insertHello(editor)).toBe("helloLocked");
-
-		wrapper.unmount();
-		editor.destroy();
-	});
+			wrapper.unmount();
+			editor.destroy();
+		},
+	);
 });

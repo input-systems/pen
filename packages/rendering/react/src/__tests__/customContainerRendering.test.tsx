@@ -12,6 +12,7 @@ import {
 	shouldRenderContainerChildren,
 } from "@input/pen-core";
 import type {
+	DocumentOp,
 	BlockHandle,
 	BlockRenderContext,
 } from "@input/pen-types";
@@ -119,96 +120,79 @@ async function mountEditor(
 	};
 }
 
+type InsertBlockOp = Extract<DocumentOp, { type: "insert-block" }>;
+
+/** The two ways a child joins a container: its children array, or a parentId prop. */
+const CHILD_PLACEMENTS: Array<{
+	name: string;
+	text: string;
+	place(parentId: string): Pick<InsertBlockOp, "props" | "position">;
+}> = [
+	{
+		name: "the container's children array",
+		text: "quoted line",
+		place: (parentId) => ({
+			props: {},
+			position: { parent: parentId, index: 0 },
+		}),
+	},
+	{
+		name: "the parentId prop",
+		text: "sibling child",
+		place: (parentId) => ({
+			props: { parentId },
+			position: { after: parentId },
+		}),
+	},
+];
+
 describe("custom container rendering", () => {
-	it("renders children of a host-defined container written to the children array", async () => {
-		const editor = createQuoteEditor();
-		const quoteId = crypto.randomUUID();
-		const childId = crypto.randomUUID();
+	it.each(CHILD_PLACEMENTS)(
+		"renders children of a host-defined container written through $name",
+		async ({ text, place }) => {
+			const editor = createQuoteEditor();
+			const quoteId = crypto.randomUUID();
+			const childId = crypto.randomUUID();
 
-		editor.apply(
-			[
-				{
-					type: "insert-block",
-					blockId: quoteId,
-					blockType: "emailQuote",
-					props: {},
-					position: "last",
-				},
-				{
-					type: "insert-block",
-					blockId: childId,
-					blockType: "paragraph",
-					props: {},
-					position: { parent: quoteId, index: 0 },
-				},
-				{
-					type: "splice-text",
-					blockId: childId,
-					from: 0,
-					to: 0,
-					insert: "quoted line",
-				},
-			],
-			{ origin: "user" },
-		);
-
-		const { container, unmount } = await mountEditor(editor);
-
-		try {
-			const childrenHost = container.querySelector(
-				`[data-testid="quote-children-${quoteId}"]`,
+			editor.apply(
+				[
+					{
+						type: "insert-block",
+						blockId: quoteId,
+						blockType: "emailQuote",
+						props: {},
+						position: "last",
+					},
+					{
+						type: "insert-block",
+						blockId: childId,
+						blockType: "paragraph",
+						...place(quoteId),
+					},
+					{
+						type: "splice-text",
+						blockId: childId,
+						from: 0,
+						to: 0,
+						insert: text,
+					},
+				],
+				{ origin: "user" },
 			);
-			expect(childrenHost).not.toBeNull();
-			expect(childrenHost?.textContent).toContain("quoted line");
-		} finally {
-			unmount();
-		}
-	});
 
-	it("renders children of a host-defined container written through parentId", async () => {
-		const editor = createQuoteEditor();
-		const quoteId = crypto.randomUUID();
-		const childId = crypto.randomUUID();
+			const { container, unmount } = await mountEditor(editor);
 
-		editor.apply(
-			[
-				{
-					type: "insert-block",
-					blockId: quoteId,
-					blockType: "emailQuote",
-					props: {},
-					position: "last",
-				},
-				{
-					type: "insert-block",
-					blockId: childId,
-					blockType: "paragraph",
-					props: { parentId: quoteId },
-					position: { after: quoteId },
-				},
-				{
-					type: "splice-text",
-					blockId: childId,
-					from: 0,
-					to: 0,
-					insert: "sibling child",
-				},
-			],
-			{ origin: "user" },
-		);
-
-		const { container, unmount } = await mountEditor(editor);
-
-		try {
-			const childrenHost = container.querySelector(
-				`[data-testid="quote-children-${quoteId}"]`,
-			);
-			expect(childrenHost).not.toBeNull();
-			expect(childrenHost?.textContent).toContain("sibling child");
-		} finally {
-			unmount();
-		}
-	});
+			try {
+				const childrenHost = container.querySelector(
+					`[data-testid="quote-children-${quoteId}"]`,
+				);
+				expect(childrenHost).not.toBeNull();
+				expect(childrenHost?.textContent).toContain(text);
+			} finally {
+				unmount();
+			}
+		},
+	);
 
 	it("lets the renderer collapse children through the shared predicate", async () => {
 		const editor = createQuoteEditor();
