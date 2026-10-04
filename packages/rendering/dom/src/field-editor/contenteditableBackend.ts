@@ -21,8 +21,7 @@ import { DIRECT_HANDLERS } from "./contenteditableDirectHandlers";
 import {
 	canResolveInputRange,
 	mapOffsetThroughRemoteDeltas,
-	rebaseTextDiffOps,
-	caretAfterRebasedDiff,
+	rebaseOverDeferredDeltas,
 	requiresResolvedInputRange,
 } from "./contenteditableDomHelpers";
 import { FieldInputBackendBase } from "./inputBackendBase";
@@ -302,16 +301,14 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 			this.compositionStartText ?? getLogicalInlineText(this.ytext);
 
 		if (domText !== baseText) {
-			const diff = rebaseTextDiffOps(
+			// With deferred remote text the DOM caret predates it; the caret
+			// goes to the end of the composed text as rebased (C2).
+			const { diff, caret } = rebaseOverDeferredDeltas(
 				computeAnchoredTextDiff(baseText, domText, this.compositionStartOffset),
 				this.deferredRemoteDeltas,
 				baseText.length,
 			);
-			// With deferred remote text the DOM caret predates it; the caret
-			// goes to the end of the composed text as rebased (C2).
-			const caret =
-				this.deferredRemoteDeltas.length > 0 ? caretAfterRebasedDiff(diff) : null;
-			this.applyTextDiffAsOps(blockId, diff, this.deferredRemoteDeltas, caret);
+			this.applyTextDiffAsOps(blockId, diff, caret);
 		} else {
 			this.restoreCompositionStartRange(blockId);
 		}
@@ -458,10 +455,15 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 		);
 	}
 
+	/**
+	 * Applies the composition's diff. The caret is `caretOverride` when the
+	 * diff was rebased over deferred remote deltas (C2), else the caret the
+	 * browser left after its own edit, which the authority cannot answer
+	 * before the diff reaches the model.
+	 */
 	protected applyTextDiffAsOps(
 		blockId: string,
 		diff: TextDiffOp[],
-		deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [],
 		caretOverride: number | null = null,
 	): void {
 		if (diff.length === 0) return;
@@ -469,31 +471,15 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 		if (!ytext) return;
 
 		const cellCoord = this._getActiveCellCoord(blockId);
-		// C2: the caret the browser left after its own edit, before the
-		// diff reaches the model; the authority cannot answer it yet.
-		const domCaret = this.liveFieldOffsets();
-		const selection = caretOverride !== null
+		const caret =
+			caretOverride !== null
+				? { start: caretOverride, end: caretOverride }
+				: this.liveFieldOffsets();
+		const selection = caret
 			? {
 					blockId,
-					anchorOffset: caretOverride,
-					focusOffset: caretOverride,
-					cell: cellCoord
-						? { row: cellCoord.row, col: cellCoord.col }
-						: undefined,
-				}
-			: domCaret
-			? {
-					blockId,
-					// The DOM caret predates deferred remote deltas (C2); map it
-					// the same way the diff was rebased.
-					anchorOffset: mapOffsetThroughRemoteDeltas(
-						domCaret.start,
-						deferredRemoteDeltas,
-					),
-					focusOffset: mapOffsetThroughRemoteDeltas(
-						domCaret.end,
-						deferredRemoteDeltas,
-					),
+					anchorOffset: caret.start,
+					focusOffset: caret.end,
 					cell: cellCoord
 						? { row: cellCoord.row, col: cellCoord.col }
 						: undefined,

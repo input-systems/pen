@@ -124,7 +124,7 @@ export function staticRangeToOffsets(
  */
 export function rebaseTextDiffOps(
 	ops: TextDiffOp[],
-	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
+	deferredRemoteDeltas: ReadonlyArray<{ delta: FieldEditorDelta[] }>,
 	baseLength: number,
 ): TextDiffOp[] {
 	if (deferredRemoteDeltas.length === 0 || ops.length === 0) {
@@ -224,8 +224,27 @@ function replayDelta(tokens: ReplayToken[], delta: FieldEditorDelta[]): ReplayTo
 	return next;
 }
 
+/**
+ * C2, shared by the contenteditable and EditContext compositions: `ops`, a
+ * composition's edit of its start text, rebased over the deltas deferred
+ * while it ran, and the caret after the composed text. With nothing
+ * deferred the edit stands and `caret` is null: the backend's own caret
+ * holds.
+ */
+export function rebaseOverDeferredDeltas(
+	ops: TextDiffOp[],
+	deferredRemoteDeltas: ReadonlyArray<{ delta: FieldEditorDelta[] }>,
+	baseLength: number,
+): { diff: TextDiffOp[]; caret: number | null } {
+	if (deferredRemoteDeltas.length === 0) {
+		return { diff: ops, caret: null };
+	}
+	const diff = rebaseTextDiffOps(ops, deferredRemoteDeltas, baseLength);
+	return { diff, caret: caretAfterRebasedDiff(diff) };
+}
+
 /** Where the caret sits after `rebased` applies: the end of the composed text. */
-export function caretAfterRebasedDiff(rebased: readonly TextDiffOp[]): number | null {
+function caretAfterRebasedDiff(rebased: readonly TextDiffOp[]): number | null {
 	const insert = rebased.find((op) => op.type === "insert");
 	const deletes = rebased.filter((op) => op.type === "delete");
 	if (insert?.type === "insert") {
@@ -249,7 +268,7 @@ export function caretAfterRebasedDiff(rebased: readonly TextDiffOp[]): number | 
  */
 export function mapOffsetThroughRemoteDeltas(
 	originalOffset: number,
-	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
+	deferredRemoteDeltas: ReadonlyArray<{ delta: FieldEditorDelta[] }>,
 ): number {
 	return mapOffsetThroughDeltas(
 		originalOffset,
@@ -265,7 +284,7 @@ export function mapOffsetThroughRemoteDeltas(
  */
 export function mapOffsetThroughRemoteDeltasUpstream(
 	originalOffset: number,
-	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
+	deferredRemoteDeltas: ReadonlyArray<{ delta: FieldEditorDelta[] }>,
 ): number {
 	return mapOffsetThroughDeltas(
 		originalOffset,
@@ -280,7 +299,7 @@ export function mapOffsetThroughRemoteDeltasUpstream(
  */
 function mapOffsetThroughDeltas(
 	originalOffset: number,
-	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
+	deferredRemoteDeltas: ReadonlyArray<{ delta: FieldEditorDelta[] }>,
 	bias: "downstream" | "upstream",
 ): number {
 	let mappedOffset = originalOffset;

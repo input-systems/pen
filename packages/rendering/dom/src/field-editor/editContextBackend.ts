@@ -458,14 +458,11 @@ export class EditContextBackend extends FieldInputBackendBase {
 				blockId,
 				text,
 				originRange: replaced,
-				selection:
-					commit.caret === null
-						? null
-						: {
-								blockId,
-								anchorOffset: commit.caret,
-								focusOffset: commit.caret,
-							},
+				selection: {
+					blockId,
+					anchorOffset: commit.caret,
+					focusOffset: commit.caret,
+				},
 			});
 			return;
 		}
@@ -475,14 +472,13 @@ export class EditContextBackend extends FieldInputBackendBase {
 			blockId,
 			diff: commit.diff,
 			ytext: this.ytext,
-			selection:
-				syncSelection && commit.caret !== null
-					? {
-							blockId,
-							anchorOffset: commit.caret,
-							focusOffset: commit.caret,
-						}
-					: null,
+			selection: syncSelection
+				? {
+						blockId,
+						anchorOffset: commit.caret,
+						focusOffset: commit.caret,
+					}
+				: null,
 		});
 	}
 

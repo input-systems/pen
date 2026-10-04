@@ -1,8 +1,5 @@
 import type { FieldEditorDelta } from "./crdt";
-import {
-	caretAfterRebasedDiff,
-	rebaseTextDiffOps,
-} from "./contenteditableDomHelpers";
+import { rebaseOverDeferredDeltas } from "./contenteditableDomHelpers";
 import type { TextDiffOp } from "./textDiff";
 
 /**
@@ -155,7 +152,7 @@ export function updateEditContextComposition(
  */
 export function commitEditContextComposition(
 	composition: EditContextComposition,
-): { diff: TextDiffOp[]; caret: number | null } | null {
+): { diff: TextDiffOp[]; caret: number } | null {
 	const { replaced, text } = composition;
 	if (!replaced || text.length === 0) {
 		return null;
@@ -169,13 +166,15 @@ export function commitEditContextComposition(
 		});
 	}
 	ops.push({ type: "insert", offset: replaced.start, text });
-	if (composition.deferred.length === 0) {
-		return { diff: ops, caret: replaced.start + text.length };
-	}
-	const diff = rebaseTextDiffOps(
+	const rebased = rebaseOverDeferredDeltas(
 		ops,
-		[...composition.deferred],
+		composition.deferred,
 		composition.baseText.length,
 	);
-	return { diff, caret: caretAfterRebasedDiff(diff) };
+	// With nothing deferred the caret ends the composed text where it went;
+	// a rebased edit always holds the insert, so it always has a caret.
+	return {
+		diff: rebased.diff,
+		caret: rebased.caret ?? replaced.start + text.length,
+	};
 }
