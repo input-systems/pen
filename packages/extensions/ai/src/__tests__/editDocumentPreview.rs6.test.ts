@@ -2,8 +2,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createEditor } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import type { Editor } from "@input/pen-types";
+import { toolsExtension } from "@input/pen-tools";
+import { undoExtension } from "@input/pen-undo";
 import { editDocumentReviewPreviewInput } from "../controller/streamingPreviewInput";
+import { aiExtension, getAIController } from "../index";
 import { buildStreamingReviewPreviewDecorations } from "../review/reviewPresentation";
+import { deltaStreamExtension } from "../stream";
 import { extractEditDocumentPreview } from "../runtime/editDocumentPreview";
 
 /**
@@ -288,4 +292,43 @@ describe("RS6: edit_document preview mapping", () => {
 		expect(hiddenBlockIds(live, input)).toEqual(expect.arrayContaining(["b", "e"]));
 	});
 
+	it("RS6: replace_block_text with empty text previews clearing the block", () => {
+		const live = createEditor({
+			schema: defaultSchema,
+			extensions: [undoExtension(), toolsExtension(), deltaStreamExtension(), aiExtension()],
+		});
+		live.apply(
+			[
+				{ type: "insert-block", blockId: "a", blockType: "paragraph", props: {}, position: "last" },
+				{ type: "splice-text", blockId: "a", from: 0, to: 0, insert: "Alpha" },
+			],
+			{ origin: "system" },
+		);
+		editor = live;
+		const input = editDocumentReviewPreviewInput(live, {
+			...SESSION,
+			operationIndex: 0,
+			blockIds: ["a"],
+			placement: null,
+			operation: "replace_block_text",
+			text: "",
+			complete: true,
+		});
+		expect(input).toMatchObject({ text: "", target: { kind: "text-range", blockId: "a", from: 0, to: 5 } });
+
+		const controller = getAIController(live)!;
+		controller.setStreamingReviewPreview(input!);
+		const previews = controller.getState().streamingReviewPreviews;
+		expect(previews).toHaveLength(1);
+		const struck = buildStreamingReviewPreviewDecorations({
+			editor: live,
+			preview: previews[0]!,
+			suggestionPresentation: "track-changes",
+		}).filter((decoration) => decoration.type === "inline");
+		expect(struck).toMatchObject([{ blockId: "a", from: 0, to: 5 }]);
+
+		// Nothing arrived yet is still a withdrawal, not a clear.
+		controller.setStreamingReviewPreview({ ...input!, complete: false });
+		expect(controller.getState().streamingReviewPreviews).toEqual([]);
+	});
 });

@@ -150,8 +150,13 @@ function mergeStreamingReviewPreview(
 	// An operation with nothing in it yet withdraws its own preview and only
 	// its own: the operations beside it in the same call are still proposing
 	// text that has not been written. A delete never has text; its blocks are
-	// the proposal.
-	if (text.length === 0 && input.deletesBlocks !== true) {
+	// the proposal. A finished operation with empty text is a proposal too:
+	// it replaces its target with nothing, so the preview shows the clear.
+	if (
+		text.length === 0 &&
+		input.deletesBlocks !== true &&
+		input.complete !== true
+	) {
 		return withdrawOperationPreview(previews, operationIndex, ownsTurn);
 	}
 	const previous = ownsTurn

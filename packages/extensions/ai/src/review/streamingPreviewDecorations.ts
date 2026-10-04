@@ -56,7 +56,14 @@ function previewTextDecorations({
 }): Decoration[] {
 	const text = preview.text;
 	if (text.length === 0) {
-		return [];
+		// Finished with no text: the operation clears its target (RS6).
+		return preview.complete === true
+			? deletionDecorationsForTarget({
+					editor,
+					suggestionPresentation,
+					target: preview.target,
+				})
+			: [];
 	}
 	const anchor = resolveStreamingPreviewAnchor(preview);
 	if (!anchor) {
