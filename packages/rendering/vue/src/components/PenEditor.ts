@@ -8,6 +8,7 @@ import {
 	adoptEditorChrome,
 	bindEditorDocumentKeyDown,
 	FieldEditorImpl,
+	bindEditorRootFocus,
 	handleFieldEditorRootFocus,
 	handleFieldEditorPointerActivate,
 	registerVerticalCaretMeasure,
@@ -174,27 +175,21 @@ export const PenEditor = defineComponent({
 					nextElement,
 				);
 
-				const handleFocusIn = (event: FocusEvent) => {
-					focused.value = true;
-					fieldEditor.setFocused(true);
-					handleFieldEditorRootFocus({
-						event,
-						editor: props.editor,
-						fieldEditor,
-						root: nextElement,
-						readonly: props.readonly,
-					});
-				};
-
-				const handleFocusOut = () => {
-					const activeElement =
-						nextElement.ownerDocument?.activeElement;
-					const nextFocused =
-						activeElement instanceof Node &&
-						nextElement.contains(activeElement);
-					focused.value = nextFocused;
-					fieldEditor.setFocused(nextFocused);
-				};
+				const unbindRootFocus = bindEditorRootFocus(nextElement, {
+					onFocusChange(nextFocused) {
+						focused.value = nextFocused;
+						fieldEditor.setFocused(nextFocused);
+					},
+					onFocusIn(event) {
+						handleFieldEditorRootFocus({
+							event,
+							editor: props.editor,
+							fieldEditor,
+							root: nextElement,
+							readonly: props.readonly,
+						});
+					},
+				});
 
 				const unbindDocumentKeys = bindEditorDocumentKeyDown({
 					editor: props.editor,
@@ -221,12 +216,9 @@ export const PenEditor = defineComponent({
 					});
 				};
 
-				nextElement.addEventListener("focusin", handleFocusIn);
-				nextElement.addEventListener("focusout", handleFocusOut);
 				nextElement.addEventListener("mousedown", handlePointerActivate);
 				onCleanup(() => {
-					nextElement.removeEventListener("focusin", handleFocusIn);
-					nextElement.removeEventListener("focusout", handleFocusOut);
+					unbindRootFocus();
 					nextElement.removeEventListener(
 						"mousedown",
 						handlePointerActivate,

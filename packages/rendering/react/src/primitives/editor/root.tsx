@@ -30,6 +30,7 @@ import {
 	adoptEditorChrome,
 	bindEditorDocumentKeyDown,
 	FieldEditorImpl,
+	bindEditorRootFocus,
 	handleFieldEditorRootFocus,
 	RegionSelectionStore,
 	registerInlineAtomInteractionRoot,
@@ -210,34 +211,21 @@ export function EditorRoot(props: EditorRootProps) {
 			return;
 		}
 
-		const handleFocusIn = (event: FocusEvent) => {
-			setFocused(true);
-			fieldEditor.setFocused(true);
-			handleFieldEditorRootFocus({
-				event,
-				editor,
-				fieldEditor,
-				root,
-				readonly,
-			});
-		};
-
-		const handleFocusOut = () => {
-			const ownerDocument = root.ownerDocument;
-			const activeElement = ownerDocument?.activeElement;
-			const nextFocused =
-				activeElement instanceof Node && root.contains(activeElement);
-			setFocused(nextFocused);
-			fieldEditor.setFocused(nextFocused);
-		};
-
-		root.addEventListener("focusin", handleFocusIn);
-		root.addEventListener("focusout", handleFocusOut);
-
-		return () => {
-			root.removeEventListener("focusin", handleFocusIn);
-			root.removeEventListener("focusout", handleFocusOut);
-		};
+		return bindEditorRootFocus(root, {
+			onFocusChange(nextFocused) {
+				setFocused(nextFocused);
+				fieldEditor.setFocused(nextFocused);
+			},
+			onFocusIn(event) {
+				handleFieldEditorRootFocus({
+					event,
+					editor,
+					fieldEditor,
+					root,
+					readonly,
+				});
+			},
+		});
 	}, [editor, readonly, rootElement]);
 
 	useEffect(() => {

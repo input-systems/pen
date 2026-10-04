@@ -15,6 +15,7 @@
 - attachInlineAtomWrapperInteractions
 - attachRemoteCarets
 - bindEditorDocumentKeyDown
+- bindEditorRootFocus
 - canDestructure
 - captureFocusReturn
 - createGeometryReader
@@ -33,6 +34,7 @@
 - handleFieldEditorRootFocus
 - handleTableCellSelectionKeyDown
 - intersectRegionSelectionRect
+- isEditorRootFocused
 - isFieldEditorTextEditingKey
 - isInlineAtomDragSource
 - measureWithRoot
@@ -128,6 +130,7 @@
 - BlockTextAlignment
 - ContentGestureRegionGesture
 - ContentGestureState
+- EditorRootFocusHandlers
 - FieldEditorPointerActivateOptions
 - FieldEditorPointerTarget
 - FieldEditorRootFocusOptions

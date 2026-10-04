@@ -13,6 +13,11 @@ export {
 	handleFieldEditorRootFocus,
 	type FieldEditorRootFocusOptions,
 } from "./host/rootFocus";
+export {
+	bindEditorRootFocus,
+	isEditorRootFocused,
+	type EditorRootFocusHandlers,
+} from "./host/rootFocusTracking";
 export type {
 	FieldEditorFocusReason,
 	FieldEditorFocusRequest,
