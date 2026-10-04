@@ -10,6 +10,7 @@ import {
 	admitClipboardBlocks,
 	emitClipboardIngestReport,
 	withForbiddenKeyDrops,
+	type ClipboardIngestResult,
 } from "../utils/clipboardIngest";
 import {
 	decodePenBlocksFromHtml,
@@ -26,6 +27,7 @@ import {
 	getTransferCursorContext,
 	selectionSnapshotMatches,
 	snapshotTransferSelection,
+	type TransferCursorContext,
 } from "./transferSelection";
 import {
 	canAcceptImageTransfer,
@@ -41,6 +43,27 @@ import {
 } from "./transferTypes";
 import { shouldAllowDirectBlockPaste } from "../utils/flowCapabilities";
 import { originForTransfer } from "./selectionReader";
+
+/**
+ * Reports what the clipboard ingest dropped, then pastes the admitted Pen
+ * blocks over the selection when they can land directly.
+ */
+function tryDirectPasteAdmittedBlocks(
+	editor: Editor,
+	fieldEditor: FieldEditorTransferController,
+	cursorBefore: TransferCursorContext | null,
+	admitted: ClipboardIngestResult,
+): boolean {
+	emitClipboardIngestReport(editor, admitted);
+	if (!canDirectPastePenBlocks(editor, admitted.blocks)) {
+		return false;
+	}
+	const { cursorAfter } = deleteSelectionForTransfer(editor, cursorBefore);
+	pasteBlocks(admitted.blocks, editor, fieldEditor, cursorAfter, {
+		undoGroup: false,
+	});
+	return true;
+}
 
 export async function executePasteTransfer(
 	options: ExecuteTransferOptions,
@@ -67,15 +90,14 @@ export async function executePasteTransfer(
 				admitClipboardBlocks(parsed.payload.blocks, editor),
 				parsed.forbiddenKeyCount,
 			);
-			emitClipboardIngestReport(editor, admitted);
-			if (canDirectPastePenBlocks(editor, admitted.blocks)) {
-				const { cursorAfter } = deleteSelectionForTransfer(
+			if (
+				tryDirectPasteAdmittedBlocks(
 					editor,
+					fieldEditor,
 					cursorBefore,
-				);
-				pasteBlocks(admitted.blocks, editor, fieldEditor, cursorAfter, {
-					undoGroup: false,
-				});
+					admitted,
+				)
+			) {
 				return true;
 			}
 		} else {
@@ -96,21 +118,14 @@ export async function executePasteTransfer(
 					decodePenBlocksFromHtml(penMatch[1]),
 					editor,
 				);
-				emitClipboardIngestReport(editor, admitted);
-				if (canDirectPastePenBlocks(editor, admitted.blocks)) {
-					const { cursorAfter } = deleteSelectionForTransfer(
-						editor,
-						cursorBefore,
-					);
-					pasteBlocks(
-						admitted.blocks,
+				if (
+					tryDirectPasteAdmittedBlocks(
 						editor,
 						fieldEditor,
-						cursorAfter,
-						{
-							undoGroup: false,
-						},
-					);
+						cursorBefore,
+						admitted,
+					)
+				) {
 					return true;
 				}
 			} catch (error) {

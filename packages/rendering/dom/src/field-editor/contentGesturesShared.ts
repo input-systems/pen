@@ -14,8 +14,7 @@ import type { FieldEditorSession } from "./controller";
 import { getBlockBoundaryPoint } from "./selectionBridge";
 
 export const EDITOR_ROOT_SELECTOR = "[data-pen-editor-root]";
-export const IGNORE_POINTER_GESTURE_SELECTOR =
-	"[data-pen-ignore-pointer-gesture]";
+const IGNORE_POINTER_GESTURE_SELECTOR = "[data-pen-ignore-pointer-gesture]";
 export const DRAG_THRESHOLD_PX = 3;
 
 export interface ContentGestureRegionGesture {
@@ -47,7 +46,7 @@ export interface ContentGesturesContext<
 	runSync: (run: () => void) => void;
 }
 
-export function isWithinNestedEditorRoot(
+function isWithinNestedEditorRoot(
 	ctx: ContentGesturesContext,
 	target: EventTarget | null,
 ): boolean {
@@ -62,7 +61,7 @@ export function isWithinNestedEditorRoot(
 	return targetRoot != null && targetRoot !== ctx.currentEditorRoot;
 }
 
-export function resolveEventTargetElement(
+function resolveEventTargetElement(
 	target: EventTarget | null,
 ): HTMLElement | null {
 	if (target instanceof HTMLElement) {

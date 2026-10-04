@@ -254,39 +254,11 @@ export function mapOffsetThroughRemoteDeltas(
 	originalOffset: number,
 	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
 ): number {
-	let mappedOffset = originalOffset;
-
-	for (const { delta } of deferredRemoteDeltas) {
-		let cursor = 0;
-		for (const part of delta) {
-			if (part.retain != null) {
-				cursor += part.retain;
-				continue;
-			}
-
-			if (part.delete != null) {
-				if (cursor < mappedOffset) {
-					const deletedBeforeOffset = Math.min(
-						part.delete,
-						mappedOffset - cursor,
-					);
-					mappedOffset -= deletedBeforeOffset;
-				}
-				continue;
-			}
-
-			if (part.insert != null) {
-				const insertedLength =
-					typeof part.insert === "string" ? part.insert.length : 1;
-				if (cursor <= mappedOffset) {
-					mappedOffset += insertedLength;
-				}
-				cursor += insertedLength;
-			}
-		}
-	}
-
-	return mappedOffset;
+	return mapOffsetThroughDeltas(
+		originalOffset,
+		deferredRemoteDeltas,
+		"downstream",
+	);
 }
 
 /**
@@ -298,6 +270,22 @@ export function mapOffsetThroughRemoteDeltasUpstream(
 	originalOffset: number,
 	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
 ): number {
+	return mapOffsetThroughDeltas(
+		originalOffset,
+		deferredRemoteDeltas,
+		"upstream",
+	);
+}
+
+/**
+ * `downstream` moves the offset past a remote insert at exactly that offset;
+ * `upstream` leaves it in front.
+ */
+function mapOffsetThroughDeltas(
+	originalOffset: number,
+	deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }>,
+	bias: "downstream" | "upstream",
+): number {
 	let mappedOffset = originalOffset;
 	for (const { delta } of deferredRemoteDeltas) {
 		let cursor = 0;
@@ -308,14 +296,20 @@ export function mapOffsetThroughRemoteDeltasUpstream(
 			}
 			if (part.delete != null) {
 				if (cursor < mappedOffset) {
-					mappedOffset -= Math.min(part.delete, mappedOffset - cursor);
+					mappedOffset -= Math.min(
+						part.delete,
+						mappedOffset - cursor,
+					);
 				}
 				continue;
 			}
 			if (part.insert != null) {
 				const insertedLength =
 					typeof part.insert === "string" ? part.insert.length : 1;
-				if (cursor < mappedOffset) {
+				if (
+					cursor < mappedOffset ||
+					(bias === "downstream" && cursor === mappedOffset)
+				) {
 					mappedOffset += insertedLength;
 				}
 				cursor += insertedLength;
@@ -345,10 +339,10 @@ export function isNavigationSelectionKey(event: KeyboardEvent): boolean {
  * Which end of the visual line box to seek. On an RTL line `"start"` is the
  * right edge, so this is a visual direction and not a logical offset order.
  */
-export type VisualLineEdge = "start" | "end";
+type VisualLineEdge = "start" | "end";
 
 /** A caret position as the line-edge measure addresses it. */
-export type VisualLinePoint = {
+type VisualLinePoint = {
 	readonly blockId: string;
 	readonly offset: number;
 };
@@ -366,7 +360,7 @@ export type VisualLinePoint = {
  * bidi space. The scan runs inside `measureWithRoot`, so it belongs to a read
  * phase (SCH2) even though the checker cannot see that through the call chain.
  */
-export function measureVisualLineEdge(
+function measureVisualLineEdge(
 	current: VisualLinePoint,
 	edge: VisualLineEdge,
 ): VisualLinePoint | null {

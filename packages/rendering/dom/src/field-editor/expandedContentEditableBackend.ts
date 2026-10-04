@@ -22,6 +22,7 @@ import {
 import { applyEnterBehavior, toggleInlineMark } from "./commands";
 import {
 	activateFieldEditorFromSelection,
+	applyBeforeInputPolicy,
 	dispatchEditorCommand,
 	keymapContextFromSelection,
 } from "./commandDispatch";
@@ -117,6 +118,20 @@ export class ExpandedContentEditableBackend {
 		writeNativeRange(element, selection.anchor, selection.focus);
 	}
 
+	/** Hands a selection that collapsed into one block back to its field. */
+	private activateSingleBlockTextSelection(): void {
+		const selection = this.editor.selection;
+		if (selection?.type !== "text" || isMultiBlock(selection)) {
+			return;
+		}
+		this.fieldEditor.activateTextSelection(
+			selection.anchor.blockId,
+			selection.anchor.offset,
+			selection.focus.offset,
+			{ origin: "keyboard" },
+		);
+	}
+
 	private handleBeforeInput = (event: InputEvent): void => {
 		const selection = this.editor.selection;
 		if (selection?.type !== "text") return;
@@ -124,24 +139,8 @@ export class ExpandedContentEditableBackend {
 		// map decides preventDefault / allow / block; the switch is expanded-mode implementation
 		const mapping = mapBeforeInput(event.inputType);
 		if ("policy" in mapping) {
-			switch (mapping.policy) {
-				case "allow":
-					return;
-				case "block":
-					event.preventDefault();
-					this.editor.internals.emit("diagnostic", {
-						code: mapping.code,
-						level: "warn",
-						source: "beforeinput",
-						message: `unhandled beforeinput inputType: ${event.inputType}`,
-						inputType: event.inputType,
-					});
-					return;
-				default: {
-					const _exhaustive: never = mapping;
-					return _exhaustive;
-				}
-			}
+			applyBeforeInputPolicy(this.editor, event, mapping);
+			return;
 		}
 
 		event.preventDefault();
@@ -173,18 +172,7 @@ export class ExpandedContentEditableBackend {
 
 				if (isMultiBlock(selection)) {
 					this.editor.replaceSelection("\n");
-					const nextSelection = this.editor.selection;
-					if (
-						nextSelection?.type === "text" &&
-						!isMultiBlock(nextSelection)
-					) {
-						this.fieldEditor.activateTextSelection(
-							nextSelection.anchor.blockId,
-							nextSelection.anchor.offset,
-							nextSelection.focus.offset,
-							{ origin: "keyboard" },
-						);
-					}
+					this.activateSingleBlockTextSelection();
 					return;
 				}
 
@@ -197,18 +185,7 @@ export class ExpandedContentEditableBackend {
 						origin: "user",
 					})
 				) {
-					const nextSelection = this.editor.selection;
-					if (
-						nextSelection?.type === "text" &&
-						!isMultiBlock(nextSelection)
-					) {
-						this.fieldEditor.activateTextSelection(
-							nextSelection.anchor.blockId,
-							nextSelection.anchor.offset,
-							nextSelection.focus.offset,
-							{ origin: "keyboard" },
-						);
-					}
+					this.activateSingleBlockTextSelection();
 					return;
 				}
 

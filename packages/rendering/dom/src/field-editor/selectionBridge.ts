@@ -38,10 +38,6 @@ import {
 	type SelectionPoint,
 } from "./selectionMapping";
 
-function isNodeWithinOrEqual(container: HTMLElement, node: Node): boolean {
-	return node === container || container.contains(node);
-}
-
 interface CaretPositionLike {
 	offsetNode: Node;
 	offset: number;

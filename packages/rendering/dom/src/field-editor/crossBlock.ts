@@ -10,12 +10,6 @@ import { getBlockSelectionRoleFromSchema } from "../utils/blockSelectionSemantic
  * and managing shared Y.Text observation.
  */
 
-interface CrossBlockState {
-	isExpanded: boolean;
-	blockIds: readonly string[];
-	anchorBlockId: string | null;
-}
-
 export type FieldEditorSurfaceMode =
 	| "inactive"
 	| "single"

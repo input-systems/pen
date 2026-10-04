@@ -7,7 +7,6 @@ import {
 import { generateId, type Editor, type Point } from "@input/pen-types";
 import { measureWithRoot } from "../geometry/rootGeometry";
 import { getEditorBlockSelectionRole } from "../utils/blockSelectionSemantics";
-import { DATA_ATTRS } from "../utils/dataAttributes";
 import { getPreorderBlockIds } from "../utils/documentPreorder";
 import { getDocumentPlaceholderTargetBlockId } from "../utils/editorEmptyState";
 import { getRootBlockEndpoints } from "../utils/parentIdTree";

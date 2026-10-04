@@ -88,19 +88,6 @@ export class CellEditingController {
 		return this.resolveCellElement(coord.blockId, coord.row, coord.col);
 	}
 
-	resolveActiveCellElement(
-		rootElement?: HTMLElement | null,
-	): HTMLElement | null {
-		const coord = this.coord;
-		if (!coord) return null;
-		return this.resolveCellElement(
-			coord.blockId,
-			coord.row,
-			coord.col,
-			rootElement,
-		);
-	}
-
 	resolveCellElement(
 		blockId: string,
 		row: number,

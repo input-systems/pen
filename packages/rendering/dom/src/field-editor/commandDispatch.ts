@@ -9,6 +9,10 @@ import type {
 	FieldEditorFocusOptions,
 	SelectionState,
 } from "@input/pen-types";
+import type {
+	BeforeInputAllowPolicy,
+	BeforeInputBlockPolicy,
+} from "./beforeinputMap";
 
 export interface FieldEditorCommandTarget {
 	readonly focusBlockId?: string | null;
@@ -159,6 +163,35 @@ export function keymapContextFromSelection(
 			return "text";
 		default: {
 			const _exhaustive: never = selection;
+			return _exhaustive;
+		}
+	}
+}
+
+/**
+ * Applies a `beforeinput` policy row: `allow` leaves the event to the browser,
+ * `block` cancels it and reports the unhandled input type.
+ */
+export function applyBeforeInputPolicy(
+	editor: Editor,
+	event: InputEvent,
+	mapping: BeforeInputAllowPolicy | BeforeInputBlockPolicy,
+): void {
+	switch (mapping.policy) {
+		case "allow":
+			return;
+		case "block":
+			event.preventDefault();
+			editor.internals.emit("diagnostic", {
+				code: mapping.code,
+				level: "warn",
+				source: "beforeinput",
+				message: `unhandled beforeinput inputType: ${event.inputType}`,
+				inputType: event.inputType,
+			});
+			return;
+		default: {
+			const _exhaustive: never = mapping;
 			return _exhaustive;
 		}
 	}

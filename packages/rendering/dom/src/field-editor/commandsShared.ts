@@ -1,19 +1,6 @@
 import { INLINE_ATOM_REPLACEMENT_TEXT } from "./inlineAtomModel";
-import {
-	INPUT_RULES_ENGINE_SLOT_KEY,
-	generateId,
-	type DocumentOp,
-	type Editor,
-} from "@input/pen-types";
-import {
-	toggleInlineMark as toggleInlineMarkCommand,
-	setInlineMark as setInlineMarkCommand,
-} from "@input/pen-shortcuts";
-import { matchListInputRule } from "../utils/listInputRule";
-import {
-	getAdjacentVisibleBlockId,
-	isInsideParentIdContainer,
-} from "../utils/parentIdTree";
+import { type DocumentOp, type Editor } from "@input/pen-types";
+import { getAdjacentVisibleBlockId } from "../utils/parentIdTree";
 import {
 	getEditorFlowCapability,
 	isContinuousTextFlowCapability,

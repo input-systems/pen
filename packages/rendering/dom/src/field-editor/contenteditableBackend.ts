@@ -38,6 +38,7 @@ import {
 import { BackendAttachment } from "./backendAttachment";
 import { bindBackendTransferEvents } from "./backendTransferEvents";
 import { mapBeforeInput } from "./beforeinputMap";
+import { applyBeforeInputPolicy } from "./commandDispatch";
 import { handleFieldEditorKeyDown } from "./keyHandling";
 import {
 	authorityOffsetsInBlock,
@@ -286,26 +287,9 @@ export class ContentEditableBackend {
 		// map decides preventDefault / allow / block; DIRECT_HANDLERS only implement commands
 		const mapping = mapBeforeInput(event.inputType);
 		if ("policy" in mapping) {
-			switch (mapping.policy) {
-				case "allow":
-					this.ignoreBrowserMutations = false;
-					return;
-				case "block":
-					event.preventDefault();
-					this.ignoreBrowserMutations = true;
-					this.editor.internals.emit("diagnostic", {
-						code: mapping.code,
-						level: "warn",
-						source: "beforeinput",
-						message: `unhandled beforeinput inputType: ${event.inputType}`,
-						inputType: event.inputType,
-					});
-					return;
-				default: {
-					const _exhaustive: never = mapping;
-					return _exhaustive;
-				}
-			}
+			this.ignoreBrowserMutations = mapping.policy === "block";
+			applyBeforeInputPolicy(this.editor, event, mapping);
+			return;
 		}
 
 		event.preventDefault();
@@ -406,13 +390,9 @@ export class ContentEditableBackend {
 
 		if (this.deferredRemoteDeltas.length > 0) {
 			this.deferredRemoteDeltas = [];
-			fullReconcileToDOM(this.ytext, this.element!, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.discardObservedMutations();
-			this.fieldEditor.notifyDomReconciled(
-				this.fieldEditor.focusBlockId ?? undefined,
+			this.reconcileFromModelDiscardingMutations(
+				this.ytext,
+				this.element!,
 			);
 		}
 
@@ -471,12 +451,11 @@ export class ContentEditableBackend {
 		// do not put a foreign caret back — that re-dirties WebKit/Firefox
 		// contenteditable. The rebuild's own records are taken here, so the
 		// observer never sees them.
-		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-			urlPolicy: urlPolicyFromEditor(this.editor),
-			inlineDecorations: this.getInlineDecorationsForBlock(),
-		});
-		this.discardObservedMutations();
-		this.fieldEditor.notifyDomReconciled(blockId);
+		this.reconcileFromModelDiscardingMutations(
+			this.ytext,
+			this.element,
+			blockId,
+		);
 	};
 
 	// ── CRDT→DOM reconciliation ───────────────────────────────
@@ -564,6 +543,23 @@ export class ContentEditableBackend {
 		this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
 	}
 
+	/**
+	 * Rebuilds the active field from the model and takes the rebuild's own
+	 * mutation records, so the observer never sees them.
+	 */
+	protected reconcileFromModelDiscardingMutations(
+		ytext: FieldEditorTextLike,
+		element: HTMLElement,
+		blockId: string | undefined = this.fieldEditor.focusBlockId ?? undefined,
+	): void {
+		fullReconcileToDOM(ytext, element, this.editor.schema, {
+			urlPolicy: urlPolicyFromEditor(this.editor),
+			inlineDecorations: this.getInlineDecorationsForBlock(),
+		});
+		this.discardObservedMutations();
+		this.fieldEditor.notifyDomReconciled(blockId);
+	}
+
 	protected applyTextDiffAsOps(
 		blockId: string,
 		diff: InlineTextDiffOp[],
@@ -630,14 +626,7 @@ export class ContentEditableBackend {
 			return false;
 		}
 
-		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-			urlPolicy: urlPolicyFromEditor(this.editor),
-			inlineDecorations: this.getInlineDecorationsForBlock(),
-		});
-		this.discardObservedMutations();
-		this.fieldEditor.notifyDomReconciled(
-			this.fieldEditor.focusBlockId ?? undefined,
-		);
+		this.reconcileFromModelDiscardingMutations(this.ytext, this.element);
 		this.inlineDecorationsSignature = nextInlineDecorationsSignature;
 		return true;
 	}

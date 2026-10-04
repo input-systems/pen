@@ -20,12 +20,10 @@ import {
 import type { SelectionRange } from "./commands";
 import { getAutocompleteController } from "../utils/autocompleteController";
 import {
-	collectKeyBindings,
 	isRedoShortcut,
 	isSelectAllShortcut,
 	isUndoShortcut,
-	matchesBindingContext,
-	matchesKey,
+	runMatchingKeyBinding,
 	tryHandleHistoryOverrideBinding,
 } from "./keyBindingShortcuts";
 import { dispatchKeymapEvent } from "./keymap";
@@ -342,18 +340,7 @@ export function handleEditorKeyBindings(
 		return true;
 	}
 
-	const bindings = collectKeyBindings(editor);
-	for (const binding of bindings) {
-		if (
-			matchesBindingContext(editor, binding.context) &&
-			matchesKey(binding.key, event) &&
-			binding.handler(editor, event)
-		) {
-			return true;
-		}
-	}
-
-	return false;
+	return runMatchingKeyBinding(editor, event);
 }
 
 export function handleSelectAllShortcut(

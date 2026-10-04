@@ -9,11 +9,7 @@ import {
 	clearTrailingLineBreak,
 	syncTrailingLineBreak,
 } from "./trailingLineBreak";
-import {
-	createInlineAtomElement,
-	getLogicalNodeLength,
-	isInlineAtomNode,
-} from "./inlineAtomDom";
+import { getLogicalNodeLength, isInlineAtomNode } from "./inlineAtomDom";
 import { createMarkedNode } from "./reconcilerMarks";
 
 export function applyDeltaToDOM(

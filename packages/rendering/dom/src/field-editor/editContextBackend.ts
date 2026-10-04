@@ -204,13 +204,7 @@ export class EditContextBackend {
 		);
 		this.inlineDecorationsSignature = this.getInlineDecorationsSignature();
 
-		fullReconcileToDOM(this.ytext, element, this.editor.schema, {
-			urlPolicy: urlPolicyFromEditor(this.editor),
-			inlineDecorations: this.getInlineDecorationsForBlock(),
-		});
-		this.fieldEditor.notifyDomReconciled(
-			this.fieldEditor.focusBlockId ?? undefined,
-		);
+		this.reconcileFullAndNotify(this.ytext, element);
 		this.trustedTypingCaret = null;
 		this.updateSelection();
 		this.fieldEditor.requestDomFocus(
@@ -433,13 +427,7 @@ export class EditContextBackend {
 
 	protected dropPendingTextUpdate(): void {
 		if (this.paintedCompositionPreview && this.element && this.ytext) {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.fieldEditor.notifyDomReconciled(
-				this.fieldEditor.focusBlockId ?? undefined,
-			);
+			this.reconcileFullAndNotify(this.ytext, this.element);
 			this.updateSelection();
 		}
 		this.pendingTextUpdate = null;
@@ -499,13 +487,7 @@ export class EditContextBackend {
 			return;
 		}
 		resyncEditContextSpan(this.editContext, getLogicalInlineText(this.ytext));
-		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-			urlPolicy: urlPolicyFromEditor(this.editor),
-			inlineDecorations: this.getInlineDecorationsForBlock(),
-		});
-		this.fieldEditor.notifyDomReconciled(
-			this.fieldEditor.focusBlockId ?? undefined,
-		);
+		this.reconcileFullAndNotify(this.ytext, this.element);
 		this.updateSelection();
 	}
 
@@ -835,25 +817,17 @@ export class EditContextBackend {
 		if (isHistory) {
 			this.trustedTypingCaret = null;
 			replaceEditContextText(this.editContext, this.ytext.toString());
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.fieldEditor.notifyDomReconciled(
-				this.fieldEditor.focusBlockId ?? undefined,
-			);
+			this.reconcileFullAndNotify(this.ytext, this.element);
 			this.updateSelection();
 			return;
 		}
 
 		const inlineDecorations = this.getInlineDecorationsForBlock();
 		if (inlineDecorationsRequireFullReconcile(inlineDecorations)) {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
+			this.reconcileFullAndNotify(
+				this.ytext,
+				this.element,
 				inlineDecorations,
-			});
-			this.fieldEditor.notifyDomReconciled(
-				this.fieldEditor.focusBlockId ?? undefined,
 			);
 		} else {
 			const applied = applyDeltaToDOM(
@@ -863,17 +837,10 @@ export class EditContextBackend {
 				urlPolicyFromEditor(this.editor),
 			);
 			if (!applied) {
-				fullReconcileToDOM(
+				this.reconcileFullAndNotify(
 					this.ytext,
 					this.element,
-					this.editor.schema,
-					{
-						urlPolicy: urlPolicyFromEditor(this.editor),
-						inlineDecorations,
-					},
-				);
-				this.fieldEditor.notifyDomReconciled(
-					this.fieldEditor.focusBlockId ?? undefined,
+					inlineDecorations,
 				);
 			}
 		}
@@ -959,6 +926,20 @@ export class EditContextBackend {
 		if (!anchorPoint || !focusPoint) return;
 
 		writeNativeRangeBetween(this.element, anchorPoint, focusPoint);
+	}
+
+	private reconcileFullAndNotify(
+		ytext: FieldEditorTextLike,
+		element: HTMLElement,
+		inlineDecorations: readonly InlineDecoration[] = this.getInlineDecorationsForBlock(),
+	): void {
+		fullReconcileToDOM(ytext, element, this.editor.schema, {
+			urlPolicy: urlPolicyFromEditor(this.editor),
+			inlineDecorations,
+		});
+		this.fieldEditor.notifyDomReconciled(
+			this.fieldEditor.focusBlockId ?? undefined,
+		);
 	}
 
 	protected getInlineDecorationsForBlock(): readonly InlineDecoration[] {

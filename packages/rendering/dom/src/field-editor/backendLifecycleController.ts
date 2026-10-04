@@ -39,13 +39,6 @@ export class BackendLifecycleController {
 		return this.backend;
 	}
 
-	ensure(BackendClass: InputBackendConstructor): InputBackend {
-		if (this.backend?.constructor === BackendClass) {
-			return this.backend;
-		}
-		return this.replace(BackendClass);
-	}
-
 	activate(
 		element: HTMLElement,
 		ytext: FieldEditorTextLike,

@@ -65,9 +65,6 @@ export type ReaderSnapshot = {
 	readonly has?: (blockId: string) => boolean;
 };
 
-type GestureWindowKind =
-	"pointer" | "ime" | "context-menu" | "drag" | "native-range";
-
 export type GestureWindowState = {
 	readonly pointer: boolean;
 	readonly ime: boolean;

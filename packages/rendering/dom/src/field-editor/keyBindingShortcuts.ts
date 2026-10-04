@@ -1,10 +1,6 @@
-import {
-	collectEditorKeyBindings,
-	isCollapsed,
-	usesInlineTextSelection,
-} from "@input/pen-core";
+import { collectEditorKeyBindings, isCollapsed } from "@input/pen-core";
 import type { Editor, KeyBindingContext } from "@input/pen-types";
-import { getEditorBlockSelectionLength } from "../utils/blockSelectionSemantics";
+import { matchesKey } from "./keymap";
 
 export function tryHandleHistoryOverrideBinding(
 	editor: Editor,
@@ -14,6 +10,14 @@ export function tryHandleHistoryOverrideBinding(
 		return false;
 	}
 
+	return runMatchingKeyBinding(editor, event);
+}
+
+/** Runs the first in-context binding for `event` that reports it handled it. */
+export function runMatchingKeyBinding(
+	editor: Editor,
+	event: KeyboardEvent,
+): boolean {
 	const bindings = collectKeyBindings(editor);
 	for (const binding of bindings) {
 		if (
@@ -28,37 +32,7 @@ export function tryHandleHistoryOverrideBinding(
 	return false;
 }
 
-function getDocumentTextRange(editor: Editor): {
-	start: { blockId: string; offset: number };
-	end: { blockId: string; offset: number };
-	focusBlockId: string;
-} | null {
-	const blockOrder = editor.documentState.blockOrder;
-	const firstBlockId = blockOrder[0];
-	const lastBlockId = blockOrder[blockOrder.length - 1];
-	if (!firstBlockId || !lastBlockId) {
-		return null;
-	}
-
-	const focusBlockId =
-		blockOrder.find((blockId) => {
-			const block = editor.getBlock(blockId);
-			if (!block) return false;
-			const schema = editor.schema.resolve(block.type);
-			return usesInlineTextSelection(schema);
-		}) ?? firstBlockId;
-
-	return {
-		start: { blockId: firstBlockId, offset: 0 },
-		end: {
-			blockId: lastBlockId,
-			offset: getEditorBlockSelectionLength(editor, lastBlockId),
-		},
-		focusBlockId,
-	};
-}
-
-export function collectKeyBindings(editor: Editor): ReadonlyArray<{
+function collectKeyBindings(editor: Editor): ReadonlyArray<{
 	key: string;
 	context?: KeyBindingContext;
 	handler: (editor: Editor, event: KeyboardEvent) => boolean;
@@ -66,7 +40,7 @@ export function collectKeyBindings(editor: Editor): ReadonlyArray<{
 	return collectEditorKeyBindings(editor);
 }
 
-export function matchesBindingContext(
+function matchesBindingContext(
 	editor: Editor,
 	context: KeyBindingContext | undefined,
 ): boolean {
@@ -142,39 +116,6 @@ function isWithinLayout(
 	}
 
 	return false;
-}
-
-export function matchesKey(pattern: string, event: KeyboardEvent): boolean {
-	const parts = pattern.split("-").map((part) => part.toLowerCase());
-	const key = parts.pop()?.toLowerCase() ?? "";
-
-	const needsCtrl = parts.includes("ctrl");
-	const needsMeta = parts.includes("meta");
-	const needsMod = parts.includes("mod");
-	const needsShift = parts.includes("shift");
-	const needsAlt = parts.includes("alt");
-
-	const isMac =
-		typeof navigator !== "undefined" &&
-		/Mac|iPhone|iPad/.test(navigator.platform ?? "");
-
-	const allowCtrl = needsCtrl || (needsMod && !isMac);
-	const allowMeta = needsMeta || (needsMod && isMac);
-
-	const modMatch = needsMod ? (isMac ? event.metaKey : event.ctrlKey) : true;
-	const ctrlMatch = allowCtrl ? event.ctrlKey : !event.ctrlKey;
-	const metaMatch = allowMeta ? event.metaKey : !event.metaKey;
-	const shiftMatch = needsShift ? event.shiftKey : !event.shiftKey;
-	const altMatch = needsAlt ? event.altKey : !event.altKey;
-
-	return (
-		modMatch &&
-		ctrlMatch &&
-		metaMatch &&
-		shiftMatch &&
-		altMatch &&
-		event.key.toLowerCase() === key
-	);
 }
 
 export function isSelectAllShortcut(event: KeyboardEvent): boolean {
