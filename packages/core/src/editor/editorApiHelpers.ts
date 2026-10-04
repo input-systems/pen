@@ -178,14 +178,18 @@ export function applyEditorOps(
 	}
 
 	// AIB4: writes join the undo step of their group id (or of their origin
-	// type when ungrouped); an ungrouped write never closes an open group.
-	const run = () => self._pipeline.apply(ops, origin, options?.structural);
-	if (undo) {
-		undo.withCapture(origin, groupId ?? null, run);
-	} else {
-		run();
-	}
-	self._recordMutationGroupMetadata(origin, groupId);
+	// type when ungrouped); an ungrouped write never closes an open group. The
+	// capture key travels with the apply: one issued from inside another apply
+	// is queued and runs after this call returns, under its own key.
+	const capture = (run: () => void) => {
+		if (undo) {
+			undo.withCapture(origin, groupId ?? null, run);
+		} else {
+			run();
+		}
+		self._recordMutationGroupMetadata(origin, groupId);
+	};
+	self._pipeline.apply(ops, origin, options?.structural, capture);
 }
 
 export function recordMutationGroupMetadata(

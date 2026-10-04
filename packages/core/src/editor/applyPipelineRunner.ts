@@ -9,7 +9,7 @@ import type {
 import type { DiagnosticEvent } from "@input/pen-types";
 import { toStructuredOrigin } from "./commitEvent";
 import { isCRDTMap } from "./crdtShapes";
-import type { ApplyPipelineInternal } from "./applyPipelineContext";
+import type { ApplyCapture, ApplyPipelineInternal } from "./applyPipelineContext";
 import { validateOpProps } from "./validateOpProps";
 import { blockExists, opBlockId } from "./applySharedHelpers";
 import {
@@ -39,6 +39,7 @@ export function applyInternal(
 	ops: DocumentOp[],
 	origin: OpOrigin,
 	structural?: StructuralOriginTag,
+	capture?: ApplyCapture,
 ): void {
 	if (pipeline._applying) {
 		if (pipeline._applyTurnCount >= APPLY_STORM_QUEUE_LIMIT) {
@@ -46,7 +47,7 @@ export function applyInternal(
 			return;
 		}
 		pipeline._applyTurnCount += 1;
-		pipeline._queue.push({ ops, origin, structural });
+		pipeline._queue.push({ ops, origin, structural, capture });
 		return;
 	}
 
@@ -54,19 +55,35 @@ export function applyInternal(
 	pipeline._applyTurnCount = 1;
 	pipeline._applyStormEmitted = false;
 	try {
-		executeOps(pipeline, ops, origin, structural);
+		executeCaptured(pipeline, ops, origin, structural, capture);
 		while (pipeline._queue.length > 0) {
-			const {
-				ops: queued,
-				origin: queuedOrigin,
-				structural: queuedStructural,
-			} = pipeline._queue.shift()!;
-			executeOps(pipeline, queued, queuedOrigin, queuedStructural);
+			const queued = pipeline._queue.shift()!;
+			executeCaptured(
+				pipeline,
+				queued.ops,
+				queued.origin,
+				queued.structural,
+				queued.capture,
+			);
 		}
 	} finally {
 		pipeline._applying = false;
 		pipeline._applyTurnCount = 0;
 		pipeline._applyStormEmitted = false;
+	}
+}
+
+function executeCaptured(
+	pipeline: ApplyPipelineInternal,
+	ops: DocumentOp[],
+	origin: OpOrigin,
+	structural: StructuralOriginTag | undefined,
+	capture: ApplyCapture | undefined,
+): void {
+	if (capture) {
+		capture(() => executeOps(pipeline, ops, origin, structural));
+	} else {
+		executeOps(pipeline, ops, origin, structural);
 	}
 }
 

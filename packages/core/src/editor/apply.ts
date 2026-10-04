@@ -13,6 +13,7 @@ import type {
 } from "@input/pen-types";
 import type { SchemaEngineImpl } from "../schema/normalize";
 import {
+	type ApplyCapture,
 	type ApplyPipelineCRDTBlockMap,
 	type ApplyPipelineInternal,
 	type ApplyPipelineMutableAppStore,
@@ -45,6 +46,7 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 		ops: DocumentOp[];
 		origin: OpOrigin;
 		structural?: StructuralOriginTag;
+		capture?: ApplyCapture;
 	}[] = [];
 	readonly _applyBoundaryHooks: Array<
 		(event: {
@@ -204,8 +206,9 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 		ops: DocumentOp[],
 		origin: OpOrigin,
 		structural?: StructuralOriginTag,
+		capture?: ApplyCapture,
 	): void {
-		applyInternal(this, ops, origin, structural);
+		applyInternal(this, ops, origin, structural, capture);
 	}
 
 	runBeforeApplyHooks(ops: DocumentOp[], origin: OpOrigin): DocumentOp[] {

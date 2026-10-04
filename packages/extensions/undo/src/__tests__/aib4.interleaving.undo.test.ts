@@ -129,4 +129,30 @@ describe("@input/pen-undo AIB4 interleaving", () => {
 		}
 		expect(seen).toEqual(["Base", "Base AI", "Base", ""]);
 	});
+
+	it("AIB4: an AI apply issued from a commit listener inside a user apply captures under its own group", () => {
+		const { editor } = setup();
+		typeAtEnd(editor, "b1", "u");
+		let fire = true;
+		const off = editor.internals.onApplyBoundary((event) => {
+			if (!fire || event.phase !== "after" || event.origin !== "user") return;
+			fire = false;
+			editor.apply(
+				[{ type: "splice-text", blockId: "b2", from: 0, to: 0, insert: "A" }],
+				{ origin: AI },
+			);
+		});
+		typeAtEnd(editor, "b1", "v");
+		off();
+		aiAtEnd(editor, "b2", "B");
+		expect(text(editor, "b1")).toBe("uv");
+		expect(text(editor, "b2")).toBe("AB");
+
+		expect(editor.undoManager.undo()).toBe(true);
+		expect(text(editor, "b2")).toBe("");
+		expect(text(editor, "b1")).toBe("uv");
+		expect(editor.undoManager.undo()).toBe(true);
+		expect(text(editor, "b1")).toBe("");
+		expect(editor.undoManager.canUndo()).toBe(false);
+	});
 });

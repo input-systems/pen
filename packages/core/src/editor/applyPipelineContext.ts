@@ -17,6 +17,14 @@ import type { PipelinePhase } from "./pipelinePhases";
 import type { SelectionAuthorityImpl } from "./selection";
 import type { TableGridExecutor } from "./tableGridExecutor";
 
+/**
+ * Wraps one apply's execution, e.g. in its undo capture key (AIB4). It runs
+ * when the ops execute, so an apply queued behind the running one still
+ * executes under its own wrapper rather than whatever was ambient when it
+ * was issued.
+ */
+export type ApplyCapture = (run: () => void) => void;
+
 export type ApplyPipelineMutableMap = CRDTUnknownMap & {
 	delete(key: string): void;
 };
@@ -62,6 +70,7 @@ export interface ApplyPipelineOrchestrationContext extends ApplyPipelineDocument
 		ops: DocumentOp[];
 		origin: OpOrigin;
 		structural?: StructuralOriginTag;
+		capture?: ApplyCapture;
 	}[];
 	readonly _engine: SchemaEngineImpl;
 	readonly _selection: SelectionAuthorityImpl;
