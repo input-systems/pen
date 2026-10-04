@@ -19,7 +19,7 @@ export const ATOM_CARET_IDS = {
 	empty: "ac-empty",
 } as const;
 
-/** Text before the atom in `ac-wrap`; long enough that the atom wraps at 320 px. */
+/** Text before the atom in `ac-wrap`; long enough to wrap several times in a narrow viewport. */
 export const ATOM_CARET_WRAP_PREFIX =
 	"A wrapping line of plain words that runs on until the mention wraps ";
 

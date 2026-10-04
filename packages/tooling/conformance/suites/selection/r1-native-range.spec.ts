@@ -7,8 +7,11 @@ test.use({ hasTouch: true, isMobile: true });
 
 test.skip(
 	({ browserName }) => browserName !== "chromium",
-	"Chromium only: the long-press is a CDP synthesized touch gesture",
+	"Chromium only: the long-press comes from Chromium's CDP touch emulator",
 );
+
+/** How long a held press may take to become a long-press before the scenario fails. */
+const LONG_PRESS_TIMEOUT_MS = 5_000;
 
 /** Viewport centre of `start`..`end` in block `block`'s text node. */
 async function textCenter(
@@ -36,23 +39,69 @@ async function textCenter(
 }
 
 /**
- * A touch press held `duration` ms. Chromium's gesture pipeline turns a
- * long hold into a long-press: `selectstart`, `contextmenu` and the word.
- * (`Input.dispatchTouchEvent` start/end with a wait reaches the page as a
- * tap in headless Chromium, so it cannot stand in for a long-press.)
+ * A touch press through Chromium's touch emulator: with
+ * `Emulation.setEmitTouchEventsForMouse` a mouse press becomes a touch
+ * point and the emulator's gesture detector raises the gestures, so a
+ * held press is a real long-press (`selectstart`, `contextmenu`, the word
+ * selected) on every platform. `Input.synthesizeTapGesture` routes through
+ * the platform gesture recognizer instead, and headless Linux Chromium
+ * raises no gesture from it at all (touch events only, no tap or
+ * long-press); `Input.dispatchTouchEvent` held reaches the page as a tap.
+ *
+ * `long` holds until the page sees `contextmenu`; `tap` releases at once.
+ * The emulator consumes the mouse events, so their CDP acks never arrive
+ * and are not awaited.
  */
 async function touchPress(
+	page: Page,
 	cdp: CDPSession,
 	point: { x: number; y: number },
-	duration: number,
+	kind: "long" | "tap",
 ) {
-	await cdp.send("Input.synthesizeTapGesture", {
+	// Listen before pressing; wrapped so `evaluateHandle` does not await it.
+	const contextMenu =
+		kind === "long"
+			? await page.evaluateHandle(
+					(timeout) => ({
+						fired: new Promise<void>((resolve, reject) => {
+							document.addEventListener(
+								"contextmenu",
+								() => resolve(),
+								{
+									once: true,
+									capture: true,
+								},
+							);
+							setTimeout(
+								() =>
+									reject(
+										new Error(
+											`no long-press contextmenu within ${timeout} ms`,
+										),
+									),
+								timeout,
+							);
+						}),
+					}),
+					LONG_PRESS_TIMEOUT_MS,
+				)
+			: null;
+	const mouse = {
 		x: point.x,
 		y: point.y,
-		duration,
-		tapCount: 1,
-		gestureSourceType: "touch",
-	});
+		button: "left",
+		clickCount: 1,
+	} as const;
+	void cdp
+		.send("Input.dispatchMouseEvent", { type: "mousePressed", ...mouse })
+		.catch(() => {});
+	if (contextMenu) {
+		await contextMenu.evaluate(({ fired }) => fired);
+		await contextMenu.dispose();
+	}
+	void cdp
+		.send("Input.dispatchMouseEvent", { type: "mouseReleased", ...mouse })
+		.catch(() => {});
 }
 
 /** Stands in for a handle drag in block 0: the native range moves, nothing else fires. */
@@ -91,9 +140,13 @@ scenario(
 	async (s, page) => {
 		await s.load("two-paragraph", { pointer: false });
 		const cdp = await page.context().newCDPSession(page);
+		await cdp.send("Emulation.setEmitTouchEventsForMouse", {
+			enabled: true,
+			configuration: "mobile",
+		});
 
 		// Long-press "bravo".
-		await touchPress(cdp, await textCenter(page, 0, 6, 11), 1500);
+		await touchPress(page, cdp, await textCenter(page, 0, 6, 11), "long");
 		await expect
 			.poll(() => settled(page))
 			.toEqual({
@@ -119,7 +172,7 @@ scenario(
 		await s.assert.domMatchesAuthority();
 
 		// A tap elsewhere in the content closes the window.
-		await touchPress(cdp, await textCenter(page, 1, 6, 10), 50);
+		await touchPress(page, cdp, await textCenter(page, 1, 6, 10), "tap");
 		await expect
 			.poll(async () => {
 				const { origin, anchor, focus } = await settled(page);

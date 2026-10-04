@@ -5,7 +5,7 @@ import {
 } from "../../fixtures/atomCaret";
 import { localCarets, readSettledLayer } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
-import type { ScenarioApi } from "../../src/types";
+import type { GeometryLineBox, ScenarioApi } from "../../src/types";
 
 /**
  * O1, O2, N1, M2, G1, G3 beside inline atoms and chips (W35.G7, §6.3). Every
@@ -17,6 +17,10 @@ const SURFACES = [
 	{ name: "react", url: "/" },
 	{ name: "vanilla", url: "/?surface=vanilla" },
 ] as const;
+
+/** Viewport widths searched for the `ac-wrap` break; the prefix wraps several times in this range. */
+const WRAP_SEARCH_MAX_WIDTH = 480;
+const WRAP_SEARCH_MIN_WIDTH = 240;
 
 type Box = { left: number; right: number; top: number; bottom: number; width: number; height: number };
 /** `leading`/`trailing` are logical (the side of travel in the block's direction); `left`/`right` are visual. */
@@ -48,6 +52,74 @@ async function blockDirection(page: Page, blockId: string): Promise<"ltr" | "rtl
 			? "rtl"
 			: "ltr";
 	}, blockId);
+}
+
+/**
+ * In page: the least free room at the end of any line from the block start
+ * through its first atom. Line extents come from the range's client rects,
+ * grouped by vertical overlap; a hanging trailing space only shrinks the
+ * room, so the narrowing step never overshoots a break.
+ */
+function tightestLineRoom(blockId: string): number {
+	const block = document.querySelector(`[data-pen-editor-block][data-block-id="${blockId}"]`);
+	const inline = block?.querySelector("[data-pen-inline-content]");
+	const atom = block?.querySelector("[data-pen-inline-atom]");
+	if (!(inline instanceof HTMLElement) || !atom) {
+		throw new Error(`missing inline content or atom in ${blockId}`);
+	}
+	const style = getComputedStyle(inline);
+	const lineEnd =
+		inline.getBoundingClientRect().right -
+		parseFloat(style.paddingRight) -
+		parseFloat(style.borderRightWidth);
+	const range = document.createRange();
+	range.setStart(inline, 0);
+	range.setEndAfter(atom);
+	const lineRows: { top: number; bottom: number; right: number }[] = [];
+	for (const rect of range.getClientRects()) {
+		if (rect.width === 0) continue;
+		const row = lineRows.find(
+			(r) =>
+				Math.min(r.bottom, rect.bottom) - Math.max(r.top, rect.top) >
+				Math.min(r.bottom - r.top, rect.height) / 2,
+		);
+		if (row) {
+			row.right = Math.max(row.right, rect.right);
+		} else {
+			lineRows.push({ top: rect.top, bottom: rect.bottom, right: rect.right });
+		}
+	}
+	return Math.min(...lineRows.map((row) => lineEnd - row.right));
+}
+
+/**
+ * Narrow the viewport until `ac-wrap` soft-wraps right before its atom, so
+ * the atom starts a line. Where the break lands depends on the platform's
+ * font metrics, so the width is found by measuring rather than assumed.
+ * Each step narrows by one pixel more than the tightest line's free room
+ * (over the lines up to the atom), so exactly one break moves per step and
+ * the width where the atom is pushed to a fresh line cannot be skipped.
+ */
+async function narrowUntilWrapBeforeAtom(
+	s: ScenarioApi,
+	page: Page,
+): Promise<{ lines: GeometryLineBox[]; wrap: GeometryLineBox }> {
+	let lines: GeometryLineBox[] = [];
+	let width = WRAP_SEARCH_MAX_WIDTH;
+	while (width >= WRAP_SEARCH_MIN_WIDTH) {
+		await page.setViewportSize({ width, height: 800 });
+		await s.geometry.invalidate();
+		lines = await s.geometry.lineBoxes(ID.wrap);
+		const wrap = lines.find(
+			(line, i) => i > 0 && line.startOffset === ATOM_CARET_WRAP_PREFIX.length,
+		);
+		if (wrap) return { lines, wrap };
+		const room = await page.evaluate(tightestLineRoom, ID.wrap);
+		width -= Math.max(1, Math.floor(room) + 1);
+	}
+	throw new Error(
+		`ac-wrap never wraps right before the atom between ${WRAP_SEARCH_MIN_WIDTH} and ${WRAP_SEARCH_MAX_WIDTH} px: ${JSON.stringify(lines)}`,
+	);
 }
 
 /** Click just outside one side of an atom, vertically centred on it. */
@@ -254,18 +326,12 @@ for (const surface of SURFACES) {
 	}, options);
 
 	scenario(on("G3: at a soft wrap beside an atom the caret follows affinity"), async (s, page) => {
-		await page.setViewportSize({ width: 320, height: 800 });
 		await s.load("atom-caret");
-		const lines = await s.geometry.lineBoxes(ID.wrap);
-		// The wrap at the atom: the line that starts with it.
-		const wrap = lines.find(
-			(line, i) => i > 0 && line.startOffset === ATOM_CARET_WRAP_PREFIX.length,
-		);
-		expect(wrap, `ac-wrap wraps before the atom at 320 px: ${JSON.stringify(lines)}`).toBeDefined();
-		const offset = wrap!.startOffset;
-		const upper = lines[lines.indexOf(wrap!) - 1]!;
+		const { lines, wrap } = await narrowUntilWrapBeforeAtom(s, page);
+		const offset = wrap.startOffset;
+		const upper = lines[lines.indexOf(wrap) - 1]!;
 		await clickBesideAtom(page, ID.wrap, "right");
-		for (const [affinity, line] of [["upstream", upper], ["downstream", wrap!]] as const) {
+		for (const [affinity, line] of [["upstream", upper], ["downstream", wrap]] as const) {
 			await page.evaluate(
 				({ id, at, a }) => window.__penConformance.selectCaretWithAffinity(id, at, a),
 				{ id: ID.wrap, at: offset, a: affinity },
