@@ -2,7 +2,7 @@
 
 These rules govern selection end to end: the authority that owns selection truth, the normal-position policy, how DOM-originated proposals are read, when the authority is projected back into the DOM, overlay caret rendering, selection type transitions, IME containment, and the standing invariants. The authority lives in `@input/pen-core` (`packages/core/src/editor/selection.ts`), the normal-position and transition functions in `packages/core/src/selection/`, and the reader, projector, and input backends in `@input/pen-dom` (`packages/rendering/dom/src/field-editor/`). The library owns selection: the DOM is a sensor (pointer, IME) and a display (native caret inside the active field, overlays everywhere else). No component infers selection truth from the DOM outside the reading rules below, and no component writes the DOM selection outside the projector.
 
-Selection bridging inside `@input/pen-dom` is the one part of the shipped surface still unsettled. The rules here are the contract; the current bridge modules do not yet implement all of them, and `spec/packages/rendering/dom.md` marks that bridging as unsettled for the same reason. Treat a divergence as a defect against these rules, not as a second contract.
+The rules here are the contract for selection bridging inside `@input/pen-dom`: one reader (`selectionReader.ts`) and one writer (`selectionProjector.ts`) implement them, and conformance and the seeded DOM fuzzer check them in real browsers. Treat a divergence as a defect against these rules, not as a second contract.
 
 The letter `R` names two unrelated families. `R1`–`R3` in this document are reader gesture-window admissibility rules. `R1`–`R8` in `spec/rules/facets.md` are facet provider and combine rules. Neither family was renamed.
 

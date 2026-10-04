@@ -78,7 +78,7 @@ Important rules:
 - An empty text-capable field renders exactly one `<br data-pen-empty="">` child. Reconciliation writes and removes it. `extractTextFromDOM` ignores `data-pen-empty` nodes, so field `textContent` and extracted text are `""`. The caret overlay `data-offset` on an empty field is `0`. The placeholder is never serialized.
 - A text-capable field whose logical text ends with `\n` renders exactly one `<br data-pen-trailing-break="">` as its last child, because `white-space: pre-wrap` gives a trailing newline no line box of its own (RI5). Both reconcile paths maintain it. It contributes no logical length and no logical text, so `extractTextFromDOM` and offset mapping read through it, and it is never serialized.
 - `resolveSelectionRect()` (`./utils/selectionPlacement`) is the placement rect for a floating surface over a text selection. A selection inside one block is the union of the reader's `rangeRects`. A selection that spans blocks is measured block by block through the reader's DOM block order, because the range rects of the whole span include the border box of every block it fully covers, which is the column width rather than where the text is. Empty blocks in the span contribute nothing.
-- Selection bridging and geometry are under redesign. Do not treat the current selection-bridge or bidi-geometry details in this package as a settled contract.
+- Selection bridging follows `spec/rules/selection.md`: `field-editor/selectionReader.ts` is the only DOM selection reader and `field-editor/selectionProjector.ts` the only writer (S1). Geometry follows the G rules in `spec/rules/dom.md`.
 
 ## Integration Notes
 

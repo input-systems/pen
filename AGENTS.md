@@ -32,7 +32,7 @@ The monorepo is layered; dependencies point strictly downward:
 - Prefer non-fatal behavior in runtime paths: drop invalid input with a `diagnostic` event rather than throwing from hooks, observers, or extension code.
 - Normalization is incremental and idempotent; repeated passes must not produce new changes.
 - The `\u200B` empty-block sentinel is removed from storage (`spec/rules/empty-blocks.md` EM1–EM8). Do not add new code that tests for it. The two-seam confinement in `spec/rules/selection.md` §2 was the interim v2 position and is retired (I11 → I14).
-- Selection code is under redesign; do not add `requestAnimationFrame`/`setTimeout` retries, suppression flags, or intent counters to selection paths (`spec/rules/selection.md` S4). If a selection bug cannot be fixed without one, stop and surface it.
+- Selection has one reader and one writer in `@input/pen-dom` (`spec/rules/selection.md` S1); do not add `requestAnimationFrame`/`setTimeout` retries, suppression flags, or intent counters to selection paths (S4). If a selection bug cannot be fixed without one, stop and surface it.
 - Follow `.cursor/rules/*.mdc` for import style (extensionless), extension resilience, and headless React primitive conventions.
 
 ## Commands
