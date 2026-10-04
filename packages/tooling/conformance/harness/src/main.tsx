@@ -33,7 +33,7 @@ const SURFACES = new Map<string, (target: HTMLElement) => void>([
 ]);
 const surface = query.get("surface") ?? "react";
 const mount = SURFACES.get(surface);
-if (!mount) {
+if (typeof mount !== "function") {
 	throw new Error(`conformance harness: unknown surface "${surface}"`);
 }
 mount(root);
