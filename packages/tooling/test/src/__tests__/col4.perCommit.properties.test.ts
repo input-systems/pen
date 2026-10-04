@@ -1,4 +1,4 @@
-import type { DocumentOp, Editor } from "@input/pen-types";
+import type { DocumentOp } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,6 +6,7 @@ import {
 	findStructuralViolations,
 	type PeerHarness,
 	type PeerHarnessOptions,
+	type TestEditor,
 } from "../index";
 import { mulberry32 } from "../seededRandom";
 
@@ -111,13 +112,13 @@ function randomOp(random: () => number, tag: string): DocumentOp {
 	};
 }
 
-function typeIntoAnchor(editor: Editor): void {
+function typeIntoAnchor(editor: TestEditor): void {
 	editor.apply([
 		{ type: "splice-text", blockId: "anchor", from: 0, to: 0, insert: "." },
 	]);
 }
 
-function unreachableLiveBlocks(editor: Editor): string[] {
+function unreachableLiveBlocks(editor: TestEditor): string[] {
 	const reachable = new Set(editor.documentState.preorderBlockIds());
 	return [...editor.document.blocks.keys()].filter((id) => !reachable.has(id));
 }
