@@ -52,9 +52,9 @@ Generated from the conformance `scale-render` baselines by `pnpm --filter @input
 
 | Row | Surface | Root blocks | Total blocks | Grade | Mount p50 (ms) | Floor p50 (ms) | Keystroke→frame p50 (ms) | Caret down→frame p50 (ms) | Machine | Date |
 | --- | ------- | ----------- | ------------ | ----- | -------------- | -------------- | ------------------------ | ------------------------- | ------- | ---- |
-| `renderer.react.1k` | react | 1,000 | 1,050 | measured | 124.00 | 27.70 | 7.30 | 11.90 | macos-arm64 | 2026-10-03 |
-| `renderer.react.5k` | react | 5,000 | 5,250 | measured | 1039.80 | 100.50 | 30.80 | 167.20 | macos-arm64 | 2026-10-03 |
-| `renderer.react.10k` | react | 10,000 | 10,500 | measured | — | — | — | — | unrecorded | unrecorded |
+| `renderer.react.1k` | react | 1,000 | 1,050 | measured | 124.00 | 27.70 | 7.30 | 11.90 | macos-arm64 | 2026-10-04 |
+| `renderer.react.5k` | react | 5,000 | 5,250 | measured | 1039.80 | 100.50 | 30.80 | 167.20 | macos-arm64 | 2026-10-04 |
+| `renderer.react.10k` | react | 10,000 | 10,500 | measured | 2638.50 | 218.50 | 61.80 | 673.10 | macos-arm64 | 2026-10-04 |
 | `renderer.react.50k` | react | 50,000 | 52,500 | measured | — | — | — | — | unrecorded | unrecorded |
 | `renderer.vue.1k` | vue | 1,000 | 1,050 | measured | 86.30 | 27.50 | 5.40 | 9.50 | macos-arm64 | 2026-10-03 |
 | `renderer.vue.5k` | vue | 5,000 | 5,250 | measured | — | — | — | — | unrecorded | unrecorded |
