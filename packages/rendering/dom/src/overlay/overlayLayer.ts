@@ -157,10 +157,18 @@ function labelAttributes(item: OverlayPaintItem): Record<string, string> {
 	return attributes;
 }
 
+/**
+ * A painted node's identity: the item's key namespaced by its contributor,
+ * so a host contributor reusing a built-in key never shares (or steals) a
+ * built-in item's node. The contributor id is length-prefixed, so no pair of
+ * ids and keys can spell the same identity. The local caret adds its blink
+ * epoch: a new epoch is a new node, which restarts the CSS animation.
+ */
 function itemIdentity(item: OverlayPaintItem): string {
+	const identity = `${item.contributor.length}:${item.contributor}:${item.key}`;
 	return item.kind === "caret" && item.role === "local"
-		? `${item.key}:${item.epoch}`
-		: item.key;
+		? `${identity}:${item.epoch}`
+		: identity;
 }
 
 function itemAttributes(item: OverlayPaintItem): Record<string, string> {

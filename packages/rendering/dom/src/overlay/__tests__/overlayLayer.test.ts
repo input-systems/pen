@@ -122,6 +122,30 @@ describe("overlay layer painter (OV1, OV2, AX7)", () => {
 		expect(layer.style.top).toBe("0px");
 	});
 
+	it("OV1: equal keys from different contributors paint separate nodes", () => {
+		const { layer, painter } = setup();
+		const builtIn = item({
+			key: "range:first",
+			kind: "range",
+			contributor: "selection",
+		});
+		const host = item({
+			key: "range:first",
+			kind: "block-outline",
+			blockId: "b1",
+			contributor: "host",
+		});
+		painter.apply([builtIn, host], OPTIONS);
+		expect(paintedItems(layer).map((node) => node.dataset.penOverlayItem)).toEqual(
+			["range", "block-outline"],
+		);
+
+		// Dropping the host item leaves the built-in node untouched.
+		const [rangeNode] = paintedItems(layer);
+		painter.apply([builtIn], OPTIONS);
+		expect(paintedItems(layer)).toEqual([rangeNode]);
+	});
+
 	it("AX7: the layer and every item carry aria-hidden true and pointer-events none inline", () => {
 		const { layer, painter } = setup();
 		painter.apply(everyKind(), OPTIONS);
