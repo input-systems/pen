@@ -48,16 +48,9 @@ export interface ContentGesturesContext<
 
 function isWithinNestedEditorRoot(
 	ctx: ContentGesturesContext,
-	target: EventTarget | null,
+	target: HTMLElement,
 ): boolean {
-	if (!(target instanceof Node)) {
-		return false;
-	}
-	const element =
-		target instanceof HTMLElement ? target : target.parentElement;
-	const targetRoot = element?.closest(
-		EDITOR_ROOT_SELECTOR,
-	) as HTMLElement | null;
+	const targetRoot = target.closest<HTMLElement>(EDITOR_ROOT_SELECTOR);
 	return targetRoot != null && targetRoot !== ctx.currentEditorRoot;
 }
 
@@ -139,19 +132,17 @@ export function getBoundaryPoint(
 	);
 }
 
-export function getBlockIdRange(
+/** Whether `anchorBlockId` precedes or is `targetBlockId`; null unless both are in the document. */
+export function isPreorderForward(
 	ctx: ContentGesturesContext,
 	anchorBlockId: string,
 	targetBlockId: string,
-): string[] | null {
+): boolean | null {
 	const blockOrder = getPreorderBlockIds(ctx.editor);
 	const anchorIdx = blockOrder.indexOf(anchorBlockId);
 	const targetIdx = blockOrder.indexOf(targetBlockId);
 	if (anchorIdx < 0 || targetIdx < 0) return null;
-	return blockOrder.slice(
-		Math.min(anchorIdx, targetIdx),
-		Math.max(anchorIdx, targetIdx) + 1,
-	);
+	return anchorIdx <= targetIdx;
 }
 
 export function ensureEditorFocus(
@@ -191,21 +182,15 @@ export function activateCanonicalSelection(
 		anchor: anchorPoint,
 		focus: focusPoint,
 	});
-	if (normalizedSelection.type === "block") {
-		if (!ctx.blockSelectionEnabled) return;
-		ctx.editor.selectBlocks(normalizedSelection.blockIds, {
-			origin: "pointer",
-		});
-		ctx.fieldEditor.deactivate();
+	if (
+		isPreorderForward(
+			ctx,
+			normalizedSelection.anchor.blockId,
+			normalizedSelection.focus.blockId,
+		) === null
+	) {
 		return;
 	}
-
-	const selectedIds = getBlockIdRange(
-		ctx,
-		normalizedSelection.anchor.blockId,
-		normalizedSelection.focus.blockId,
-	);
-	if (!selectedIds) return;
 	ctx.fieldEditor.applyDocumentTextSelection(
 		normalizedSelection.anchor,
 		normalizedSelection.focus,

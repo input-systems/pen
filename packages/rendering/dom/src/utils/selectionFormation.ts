@@ -7,16 +7,11 @@ type DomSelectionPoints = {
 	focus: SelectionPoint;
 };
 
-type NormalizedSelectionIntent =
-	| {
-			type: "text";
-			anchor: SelectionPoint;
-			focus: SelectionPoint;
-	  }
-	| {
-			type: "block";
-			blockIds: string[];
-	  };
+type NormalizedSelectionIntent = {
+	type: "text";
+	anchor: SelectionPoint;
+	focus: SelectionPoint;
+};
 
 export function normalizeSelectionFormation(
 	editor: Editor,

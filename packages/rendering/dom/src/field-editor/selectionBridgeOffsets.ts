@@ -15,6 +15,7 @@ import {
 } from "./selectionDomQueries";
 import type { SelectionPoint } from "./selectionBridge";
 import { getBlockSurfaceRole } from "./selectionMapping";
+import { getDistanceToRect } from "../geometry/types";
 
 export function getSelectionPointRect(
 	root: HTMLElement,
@@ -186,59 +187,25 @@ function getInlineCaretRectFromOffset(
 	const placeholder = findEmptyBlockPlaceholder(inlineEl);
 	const inlineRect = (placeholder ?? inlineEl).getBoundingClientRect();
 	if (textLength <= 0) {
-		return {
-			x: inlineRect.left,
-			y: inlineRect.top,
-			left: inlineRect.left,
-			top: inlineRect.top,
-			right: inlineRect.left,
-			bottom: inlineRect.bottom,
-			width: 0,
-			height: inlineRect.height,
-			toJSON() {
-				return {};
-			},
-		} as DOMRect;
+		return caretRect(inlineRect.left, inlineRect.top, inlineRect.height);
 	}
 
 	if (offset <= 0) {
 		const firstRect = getCharacterRectAtOffset(inlineEl, 0);
-		const left = firstRect?.left ?? inlineRect.left;
-		const top = firstRect?.top ?? inlineRect.top;
-		const height = firstRect?.height ?? inlineRect.height;
-		return {
-			x: left,
-			y: top,
-			left,
-			top,
-			right: left,
-			bottom: top + height,
-			width: 0,
-			height,
-			toJSON() {
-				return {};
-			},
-		} as DOMRect;
+		return caretRect(
+			firstRect?.left ?? inlineRect.left,
+			firstRect?.top ?? inlineRect.top,
+			firstRect?.height ?? inlineRect.height,
+		);
 	}
 
 	if (offset >= textLength) {
 		const lastRect = getCharacterRectAtOffset(inlineEl, textLength - 1);
-		const left = lastRect?.right ?? inlineRect.right;
-		const top = lastRect?.top ?? inlineRect.top;
-		const height = lastRect?.height ?? inlineRect.height;
-		return {
-			x: left,
-			y: top,
-			left,
-			top,
-			right: left,
-			bottom: top + height,
-			width: 0,
-			height,
-			toJSON() {
-				return {};
-			},
-		} as DOMRect;
+		return caretRect(
+			lastRect?.right ?? inlineRect.right,
+			lastRect?.top ?? inlineRect.top,
+			lastRect?.height ?? inlineRect.height,
+		);
 	}
 
 	const previousRect = getCharacterRectAtOffset(inlineEl, offset - 1);
@@ -252,38 +219,24 @@ function getInlineCaretRectFromOffset(
 		? (nextRect?.left ?? inlineRect.left)
 		: (previousRect?.right ?? nextRect?.left ?? inlineRect.left);
 
+	return caretRect(left, sourceRect.top, sourceRect.height);
+}
+
+/** A zero-width caret box at `left`, `top`. */
+function caretRect(left: number, top: number, height: number): DOMRect {
 	return {
 		x: left,
-		y: sourceRect.top,
+		y: top,
 		left,
-		top: sourceRect.top,
+		top,
 		right: left,
-		bottom: sourceRect.top + sourceRect.height,
+		bottom: top + height,
 		width: 0,
-		height: sourceRect.height,
+		height,
 		toJSON() {
 			return {};
 		},
 	} as DOMRect;
-}
-
-function getCaretDistanceMetrics(
-	rect: DOMRect,
-	clientX: number,
-	clientY: number,
-): {
-	dx: number;
-	dy: number;
-} {
-	return {
-		dx: Math.abs(clientX - rect.left),
-		dy:
-			clientY < rect.top
-				? rect.top - clientY
-				: clientY > rect.bottom
-					? clientY - rect.bottom
-					: 0,
-	};
 }
 
 function stabilizeWrappedLineOffset(
@@ -308,12 +261,12 @@ function stabilizeWrappedLineOffset(
 		return candidateOffset;
 	}
 
-	const previousMetrics = getCaretDistanceMetrics(
+	const previousMetrics = getDistanceToRect(
 		previousRect,
 		clientX,
 		clientY,
 	);
-	const candidateMetrics = getCaretDistanceMetrics(
+	const candidateMetrics = getDistanceToRect(
 		candidateRect,
 		clientX,
 		clientY,
@@ -373,7 +326,7 @@ export function approximateInlineOffsetFromPoint(
 
 	const scoreAt = (offset: number): number => {
 		const rect = getInlineCaretRectFromOffset(inlineEl, offset);
-		const { dx, dy } = getCaretDistanceMetrics(rect, clientX, clientY);
+		const { dx, dy } = getDistanceToRect(rect, clientX, clientY);
 		return dy * 1000 + dx;
 	};
 	for (let offset = 0; offset <= textLength; offset++) {

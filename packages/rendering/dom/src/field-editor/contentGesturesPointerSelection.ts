@@ -7,7 +7,6 @@ import {
 import { generateId, type Editor, type Point } from "@input/pen-types";
 import { measureWithRoot } from "../geometry/rootGeometry";
 import { getEditorBlockSelectionRole } from "../utils/blockSelectionSemantics";
-import { getPreorderBlockIds } from "../utils/documentPreorder";
 import { getDocumentPlaceholderTargetBlockId } from "../utils/editorEmptyState";
 import { getRootBlockEndpoints } from "../utils/parentIdTree";
 import {
@@ -21,7 +20,7 @@ import {
 	DRAG_THRESHOLD_PX,
 	EDITOR_ROOT_SELECTOR,
 	ensureEditorFocus,
-	getBlockIdRange,
+	isPreorderForward,
 	getBoundaryPoint,
 	resolveClickedBlockId,
 	resolveClickedCellCoord,
@@ -47,6 +46,30 @@ export function createPointerSelectionGestures<
 		blockSelectionEnabled,
 	} = ctx;
 
+	const insertParagraphAndActivate = (
+		position: "first" | { before: string } | { after: string },
+	): true => {
+		const newBlockId = generateId();
+		editor.apply(
+			[
+				{
+					type: "insert-block",
+					blockId: newBlockId,
+					blockType: "paragraph",
+					props: {},
+					position,
+				},
+			],
+			{ origin: "user" },
+		);
+		// No frame wait: the model selection lands now, and if the host
+		// has not mounted the new block yet the projector parks the
+		// record and the scheduler's P1 slot projects it once the
+		// element exists (S4). A rAF here guessed at one frame.
+		fieldEditor.activateTextSelection?.(newBlockId, 0, 0);
+		return true;
+	};
+
 	const handleClickOutsideBlocks = (event: MouseEvent): boolean => {
 		const blocksHost = getBlocksHost();
 		if (!blocksHost) return false;
@@ -56,25 +79,7 @@ export function createPointerSelectionGestures<
 		const { firstBlockId, lastBlockId } = getRootBlockEndpoints(editor);
 
 		if (!firstBlockId || !lastBlockId) {
-			const newBlockId = generateId();
-			editor.apply(
-				[
-					{
-						type: "insert-block",
-						blockId: newBlockId,
-						blockType: "paragraph",
-						props: {},
-						position: "first",
-					},
-				],
-				{ origin: "user" },
-			);
-			// No frame wait: the model selection lands now, and if the host
-			// has not mounted the new block yet the projector parks the
-			// record and the scheduler's P1 slot projects it once the
-			// element exists (S4). A rAF here guessed at one frame.
-			fieldEditor.activateTextSelection?.(newBlockId, 0, 0);
-			return true;
+			return insertParagraphAndActivate("first");
 		}
 
 		const placeholderTargetBlockId =
@@ -111,24 +116,9 @@ export function createPointerSelectionGestures<
 			return true;
 		}
 
-		const newBlockId = generateId();
-		const position = clickedAbove
-			? { before: adjacentBlock.id }
-			: { after: adjacentBlock.id };
-		editor.apply(
-			[
-				{
-					type: "insert-block",
-					blockId: newBlockId,
-					blockType: "paragraph",
-					props: {},
-					position,
-				},
-			],
-			{ origin: "user" },
+		return insertParagraphAndActivate(
+			clickedAbove ? { before: adjacentBlock.id } : { after: adjacentBlock.id },
 		);
-		fieldEditor.activateTextSelection?.(newBlockId, 0, 0);
-		return true;
 	};
 
 	let shiftClickAnchor: Point | null = null;
@@ -167,12 +157,12 @@ export function createPointerSelectionGestures<
 		shiftClickAnchor = null;
 		if (!anchorPoint || anchorPoint.blockId === blockId) return;
 
-		const selectedIds = getBlockIdRange(ctx, anchorPoint.blockId, blockId);
-		if (!selectedIds) return;
-		const blockOrder = getPreorderBlockIds(editor);
-		const selectingForward =
-			blockOrder.indexOf(anchorPoint.blockId) <=
-			blockOrder.indexOf(blockId);
+		const selectingForward = isPreorderForward(
+			ctx,
+			anchorPoint.blockId,
+			blockId,
+		);
+		if (selectingForward === null) return;
 		activateCanonicalSelection(
 			ctx,
 			anchorPoint,
@@ -439,22 +429,22 @@ export function createPointerSelectionGestures<
 				);
 				return true;
 			}
+			// A caret at the pointer, else the block's field.
+			const activateAtPointer = (): true => {
+				const pointerPoint = root
+					? pointToEditorSelectionPoint(root, clientX, clientY)
+					: null;
+				if (pointerPoint) {
+					activateCanonicalSelection(ctx, pointerPoint, pointerPoint);
+				} else {
+					fieldEditor.activate(blockId);
+				}
+				gesture.committed = true;
+				return true;
+			};
 			if (blockPointerIntent === "enter-edit") {
 				if (usesInlineTextSelection(schema)) {
-					const pointerPoint = root
-						? pointToEditorSelectionPoint(root, clientX, clientY)
-						: null;
-					if (pointerPoint) {
-						activateCanonicalSelection(
-							ctx,
-							pointerPoint,
-							pointerPoint,
-						);
-					} else {
-						fieldEditor.activate(blockId);
-					}
-					gesture.committed = true;
-					return true;
+					return activateAtPointer();
 				}
 				if (!blockSelectionEnabled) {
 					return false;
@@ -475,24 +465,7 @@ export function createPointerSelectionGestures<
 				gesture.committed = true;
 				return true;
 			}
-			if (!root) {
-				fieldEditor.activate(blockId);
-				gesture.committed = true;
-				return true;
-			}
-			const pointerPoint = pointToEditorSelectionPoint(
-				root,
-				clientX,
-				clientY,
-			);
-			if (!pointerPoint) {
-				fieldEditor.activate(blockId);
-				gesture.committed = true;
-				return true;
-			}
-			activateCanonicalSelection(ctx, pointerPoint, pointerPoint);
-			gesture.committed = true;
-			return true;
+			return activateAtPointer();
 		};
 
 		const finalizePointerSelection = () => {

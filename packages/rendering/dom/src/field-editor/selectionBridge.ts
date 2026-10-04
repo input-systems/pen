@@ -145,47 +145,25 @@ export function pointToEditorSelectionPoint(
 		caretRangeFromPoint?: (x: number, y: number) => Range | null;
 	};
 
-	const position = caretFromPoint.caretPositionFromPoint?.(clientX, clientY);
-	if (position) {
-		const inlineBoundaryPoint = resolveInlineContainerBoundaryPoint(
+	const resolveCaretHit = (node: Node, offset: number) =>
+		resolveInlineContainerBoundaryPoint(
 			root,
-			position.offsetNode,
-			position.offset,
+			node,
+			offset,
 			clientX,
 			clientY,
 			options,
-		);
-		if (inlineBoundaryPoint) return inlineBoundaryPoint;
+		) ?? resolveSelectionPoint(root, node, offset, options);
 
-		const resolved = resolveSelectionPoint(
-			root,
-			position.offsetNode,
-			position.offset,
-			options,
-		);
-		if (resolved) return resolved;
-	}
+	const position = caretFromPoint.caretPositionFromPoint?.(clientX, clientY);
+	const positionPoint =
+		position && resolveCaretHit(position.offsetNode, position.offset);
+	if (positionPoint) return positionPoint;
 
 	const range = caretFromPoint.caretRangeFromPoint?.(clientX, clientY);
-	if (range) {
-		const inlineBoundaryPoint = resolveInlineContainerBoundaryPoint(
-			root,
-			range.startContainer,
-			range.startOffset,
-			clientX,
-			clientY,
-			options,
-		);
-		if (inlineBoundaryPoint) return inlineBoundaryPoint;
-
-		const resolved = resolveSelectionPoint(
-			root,
-			range.startContainer,
-			range.startOffset,
-			options,
-		);
-		if (resolved) return resolved;
-	}
+	const rangePoint =
+		range && resolveCaretHit(range.startContainer, range.startOffset);
+	if (rangePoint) return rangePoint;
 
 	const hoveredBlockEl = getClosestBlockElementFromPoint(
 		root,

@@ -97,6 +97,25 @@ export function createRegionGestures<
 		return false;
 	};
 
+	/** The region from the gesture's press to `event`, bounded, and the blocks it covers. */
+	const resolveRegion = (
+		gesture: { clientX: number; clientY: number },
+		event: MouseEvent,
+		config: Parameters<typeof resolveRegionRect>[0],
+	) => {
+		const boundedRect = intersectRegionSelectionRect(
+			createRegionSelectionRect(
+				gesture.clientX,
+				gesture.clientY,
+				event.clientX,
+				event.clientY,
+			),
+			resolveRegionRect(config),
+		);
+		const selectedIds = boundedRect ? getIntersectedBlockIds(boundedRect) : [];
+		return { boundedRect, selectedIds };
+	};
+
 	const handleMouseMove = (event: MouseEvent): boolean => {
 		const gesture = regionGestureRef.current;
 		if (!gesture) {
@@ -115,19 +134,8 @@ export function createRegionGestures<
 		}
 		gesture.isSelecting = true;
 		event.preventDefault();
-		const boundedRect = intersectRegionSelectionRect(
-			createRegionSelectionRect(
-				gesture.clientX,
-				gesture.clientY,
-				event.clientX,
-				event.clientY,
-			),
-			resolveRegionRect(config),
-		);
+		const { boundedRect, selectedIds } = resolveRegion(gesture, event, config);
 		regionSelectionStore.setLiveRect(boundedRect);
-		const selectedIds = boundedRect
-			? getIntersectedBlockIds(boundedRect)
-			: [];
 		if (selectedIds.length > 0) {
 			editor.selectBlocks(selectedIds, { origin: "pointer" });
 		} else {
@@ -151,19 +159,11 @@ export function createRegionGestures<
 				clearRegionSelectionState();
 				return true;
 			}
-			const config = regionSelectionStore.getSnapshot().config;
-			const boundedRect = intersectRegionSelectionRect(
-				createRegionSelectionRect(
-					regionGesture.clientX,
-					regionGesture.clientY,
-					event.clientX,
-					event.clientY,
-				),
-				resolveRegionRect(config),
+			const { selectedIds } = resolveRegion(
+				regionGesture,
+				event,
+				regionSelectionStore.getSnapshot().config,
 			);
-			const selectedIds = boundedRect
-				? getIntersectedBlockIds(boundedRect)
-				: [];
 			if (selectedIds.length > 0) {
 				editor.selectBlocks(selectedIds, { origin: "pointer" });
 				if (regionRoot) {
