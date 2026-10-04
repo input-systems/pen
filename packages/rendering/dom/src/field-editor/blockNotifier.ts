@@ -636,8 +636,11 @@ class BlockNotifierImpl implements BlockNotifier {
 				case "block-inserted":
 					addCurrent(change.blockId);
 					break;
+				// A `parentId`-route child's summary names no parent; the
+				// container that rendered it still lists it (AX1).
 				case "block-removed":
 					add(change.parentId);
+					add(this._cachedParentOf(change.blockId));
 					break;
 				case "block-moved":
 					add(change.fromParentId);
