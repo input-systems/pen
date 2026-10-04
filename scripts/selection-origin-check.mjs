@@ -9,10 +9,11 @@
  *
  * Usage: node scripts/selection-origin-check.mjs [--self-test]
  */
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import { listProductionSources } from "./lib/productionSources.mjs";
 
 const REPO_ROOT = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -39,32 +40,8 @@ export const SETTER_ARITY = new Map([
 /** Only editor receivers are setters; a scheduler's `setSelection(record)` is not. */
 const EDITOR_RECEIVER = /(^|\.)(_?editor|ed)$/;
 
-function isTestFile(file) {
-	return (
-		/(^|\/)__tests__\//.test(file) ||
-		/\.(test|spec)\.[cm]?[jt]sx?$/.test(file)
-	);
-}
-
 function listSources(root) {
-	const files = [];
-	const walk = (dir) => {
-		for (const entry of readdirSync(dir, { withFileTypes: true })) {
-			const full = path.join(dir, entry.name);
-			if (entry.isDirectory()) {
-				walk(full);
-			} else if (
-				/\.tsx?$/.test(entry.name) &&
-				!entry.name.endsWith(".d.ts")
-			) {
-				files.push(full);
-			}
-		}
-	};
-	walk(path.join(REPO_ROOT, root));
-	return files
-		.map((file) => path.relative(REPO_ROOT, file).replace(/\\/g, "/"))
-		.filter((file) => !isTestFile(file));
+	return listProductionSources(REPO_ROOT, root, /\.tsx?$/);
 }
 
 function enclosingSymbol(node) {

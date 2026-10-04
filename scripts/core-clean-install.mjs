@@ -22,7 +22,6 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -34,6 +33,7 @@ import {
 	reachableBareSpecifiers,
 	requiredThirdPartyPeers,
 } from "./lib/thirdPartyClosure.mjs";
+import { loadPublishedManifests } from "./lib/workspacePackages.mjs";
 
 /** API2: the only third-party peer a core consumer must install. */
 const EXPECTED_CORE_PEERS = ["yjs"];
@@ -45,16 +45,6 @@ const DEFAULT_REPO_ROOT = path.resolve(SCRIPT_DIR, "..");
 const WORKSPACE_SCOPE = "@input/pen-";
 const CORE_PACKAGE = "@input/pen-core";
 const CORE_STACK_LAYERS = new Set(["types", "crdt", "core"]);
-
-const IGNORE_DIR_NAMES = new Set([
-	"node_modules",
-	"dist",
-	"coverage",
-	".turbo",
-	".git",
-	"playwright-report",
-	"test-results",
-]);
 
 /**
  * Production edges a consumer install follows. DevDependencies are
@@ -404,57 +394,14 @@ function assert(condition, message) {
 	}
 }
 
-async function collectPackageJsonPaths(directory) {
-	const entries = await fs.readdir(directory, { withFileTypes: true });
-	const packageJsonPaths = [];
-
-	for (const entry of entries) {
-		const entryPath = path.join(directory, entry.name);
-		if (entry.isDirectory()) {
-			if (!IGNORE_DIR_NAMES.has(entry.name)) {
-				packageJsonPaths.push(
-					...(await collectPackageJsonPaths(entryPath)),
-				);
-			}
-			continue;
-		}
-		if (entry.isFile() && entry.name === "package.json") {
-			packageJsonPaths.push(entryPath);
-		}
-	}
-
-	return packageJsonPaths;
-}
-
 export async function loadConsumerPackages(repoRoot) {
-	const packagesRoot = path.join(repoRoot, "packages");
-	const packageJsonPaths = await collectPackageJsonPaths(packagesRoot);
-	const packages = [];
-
-	for (const packageJsonPath of packageJsonPaths) {
-		const packageJson = JSON.parse(
-			await fs.readFile(packageJsonPath, "utf8"),
-		);
-		if (
-			packageJson.private === true ||
-			typeof packageJson.name !== "string"
-		) {
-			continue;
-		}
-		const dir = path
-			.relative(repoRoot, path.dirname(packageJsonPath))
-			.split(path.sep)
-			.join(path.posix.sep);
-		packages.push({
-			name: packageJson.name,
-			dir,
-			dependencies: consumerDependencyNames(packageJson),
-			thirdPartyPeers: requiredThirdPartyPeers(packageJson),
-		});
-	}
-
-	packages.sort((left, right) => left.name.localeCompare(right.name));
-	return packages;
+	const manifests = await loadPublishedManifests(repoRoot);
+	return manifests.map(({ name, dir, packageJson }) => ({
+		name,
+		dir,
+		dependencies: consumerDependencyNames(packageJson),
+		thirdPartyPeers: requiredThirdPartyPeers(packageJson),
+	}));
 }
 
 /**

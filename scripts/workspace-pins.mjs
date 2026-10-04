@@ -20,6 +20,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadPublishedManifests } from "./lib/workspacePackages.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = path.resolve(SCRIPT_DIR, "..");
@@ -31,16 +32,6 @@ const STAR_PIN = "workspace:*";
 const PIN_FIELDS = ["dependencies", "peerDependencies"];
 const JS_INDEX = "/dist/index.js";
 const MJS_INDEX = "/dist/index.mjs";
-
-const IGNORE_DIR_NAMES = new Set([
-	"node_modules",
-	"dist",
-	"coverage",
-	".turbo",
-	".git",
-	"playwright-report",
-	"test-results",
-]);
 
 const PIN_REASON_RE =
 	/P\.8|F34|E\.4|conversion deferred|workspace:\*|exact version/i;
@@ -667,59 +658,16 @@ function assert(condition, message) {
 	}
 }
 
-async function collectPackageJsonPaths(directory) {
-	const entries = await fs.readdir(directory, { withFileTypes: true });
-	const packageJsonPaths = [];
-
-	for (const entry of entries) {
-		const entryPath = path.join(directory, entry.name);
-		if (entry.isDirectory()) {
-			if (!IGNORE_DIR_NAMES.has(entry.name)) {
-				packageJsonPaths.push(
-					...(await collectPackageJsonPaths(entryPath)),
-				);
-			}
-			continue;
-		}
-		if (entry.isFile() && entry.name === "package.json") {
-			packageJsonPaths.push(entryPath);
-		}
-	}
-
-	return packageJsonPaths;
-}
-
 export async function loadPublishedPackages(repoRoot) {
-	const packagesRoot = path.join(repoRoot, "packages");
-	const packageJsonPaths = await collectPackageJsonPaths(packagesRoot);
-	const packages = [];
-
-	for (const packageJsonPath of packageJsonPaths) {
-		const packageJson = JSON.parse(
-			await fs.readFile(packageJsonPath, "utf8"),
-		);
-		if (
-			packageJson.private === true ||
-			typeof packageJson.name !== "string"
-		) {
-			continue;
-		}
-		const dir = path
-			.relative(repoRoot, path.dirname(packageJsonPath))
-			.split(path.sep)
-			.join(path.posix.sep);
-		packages.push({
-			name: packageJson.name,
-			dir,
-			packageJson,
-			pins: collectWorkspacePins(packageJson),
-			esmArtifact: esmArtifactPath(packageJson),
-			sideEffects: packageJson.sideEffects,
-		});
-	}
-
-	packages.sort((left, right) => left.name.localeCompare(right.name));
-	return packages;
+	const manifests = await loadPublishedManifests(repoRoot);
+	return manifests.map(({ name, dir, packageJson }) => ({
+		name,
+		dir,
+		packageJson,
+		pins: collectWorkspacePins(packageJson),
+		esmArtifact: esmArtifactPath(packageJson),
+		sideEffects: packageJson.sideEffects,
+	}));
 }
 
 export async function loadAllowlist(
