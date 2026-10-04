@@ -8,4 +8,4 @@ List items are announced as lists (AX1): each run of list items renders inside a
 
 List items now sit one element deeper, and an item that moves between groups when a run splits or merges is remounted by React and Vue. Host CSS that relies on `[data-pen-editor-block] + [data-pen-editor-block]` across a list boundary needs a `[data-pen-list-group]` selector too, and host code that walks the blocks host's direct children must also look inside `[data-pen-list-group]`.
 
-Breaking: yes
+Breaking: yes — hosts that walk the blocks host's direct children or style list items with sibling combinators (`[data-pen-editor-block] + [data-pen-editor-block]`) must look inside `[data-pen-list-group]` wrappers, which now hold each run of list items one element deeper
