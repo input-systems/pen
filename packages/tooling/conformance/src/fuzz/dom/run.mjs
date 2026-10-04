@@ -45,16 +45,24 @@ function stageReplay(file) {
 }
 
 const { project, passthrough } = parseArgs(process.argv.slice(2));
+// Log only the fuzz variables read by name, never values off the full
+// environment copy handed to Playwright.
+const nightly = Boolean(process.env.PEN_FUZZ_NIGHTLY);
+const seed =
+	process.env.PEN_FUZZ_SEED || (nightly ? `${Date.now()}` : undefined);
+const replay = process.env.PEN_FUZZ_REPLAY
+	? stageReplay(process.env.PEN_FUZZ_REPLAY)
+	: undefined;
 const env = { ...process.env };
-if (env.PEN_FUZZ_NIGHTLY && !env.PEN_FUZZ_SEED) {
-	env.PEN_FUZZ_SEED = `${Date.now()}`;
+if (seed) {
+	env.PEN_FUZZ_SEED = seed;
 }
-if (env.PEN_FUZZ_REPLAY) {
-	env.PEN_FUZZ_REPLAY = stageReplay(env.PEN_FUZZ_REPLAY);
-	console.log(`fuzz:dom replaying ${env.PEN_FUZZ_REPLAY}`);
+if (replay) {
+	env.PEN_FUZZ_REPLAY = replay;
+	console.log(`fuzz:dom replaying ${replay}`);
 } else {
 	console.log(
-		`fuzz:dom seed: ${env.PEN_FUZZ_SEED ?? "PR seeds"}${env.PEN_FUZZ_NIGHTLY ? " (nightly)" : ""}`,
+		`fuzz:dom seed: ${seed ?? "PR seeds"}${nightly ? " (nightly)" : ""}`,
 	);
 }
 

@@ -74,7 +74,9 @@ const MODIFIER_CHAIN_RE =
 const MODIFIER_NAME_RE = /\.\s*([A-Za-z_$][\w$]*)/g;
 const CALL_OPEN_RE = /\s*\(\s*/y;
 const QUOTED_RE = /(['"])((?:\\.|(?!\1)[^\\])*)\1/y;
-const TEMPLATE_RE = /`((?:\\.|\$\{[^}]*\}|[^`\\])*)`/y;
+// Alternatives are disjoint (`$` only stands alone when no `{` follows) so a
+// long run of `${}` cannot backtrack exponentially.
+const TEMPLATE_RE = /`((?:\\.|\$\{[^}]*\}|\$(?!\{)|[^`\\$])*)`/y;
 
 // ── Inventory ────────────────────────────────────────────────
 

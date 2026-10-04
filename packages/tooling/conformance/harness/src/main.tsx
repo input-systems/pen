@@ -25,14 +25,14 @@ if (!root) {
  * the same harness session and renders the same `[data-fixture]` marker, so
  * scenarios load fixtures the same way on each.
  */
-const SURFACES: Record<string, (target: HTMLElement) => void> = {
-	react: (target) => createRoot(target).render(<App />),
-	vue: mountVueHost,
-	vanilla: mountVanillaHost,
-	static: mountStaticHost,
-};
+const SURFACES = new Map<string, (target: HTMLElement) => void>([
+	["react", (target) => createRoot(target).render(<App />)],
+	["vue", mountVueHost],
+	["vanilla", mountVanillaHost],
+	["static", mountStaticHost],
+]);
 const surface = query.get("surface") ?? "react";
-const mount = SURFACES[surface];
+const mount = SURFACES.get(surface);
 if (!mount) {
 	throw new Error(`conformance harness: unknown surface "${surface}"`);
 }
