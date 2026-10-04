@@ -301,3 +301,4 @@ rules/selection#O5
 rules/dom#FE5
 rules/interop#IOP11
 rules/dom#FE2
+rules/dom#RI6
