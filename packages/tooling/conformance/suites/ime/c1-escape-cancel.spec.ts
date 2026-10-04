@@ -1,10 +1,13 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
 import {
+	disableEditContext,
 	dispatchComposingKey,
+	readBackend,
 	readDocumentText,
+	readFocusOffset,
 	readSurfaceText,
 	replayCompositionStart,
 } from "./compose";
@@ -124,3 +127,62 @@ scenario(
 		).toBe(false);
 	},
 );
+
+/**
+ * C1: a cancelled composition leaves the caret where the composition
+ * started. Every update moves the browser's caret inside the composed run;
+ * once the IME empties the run, the authority caret is the composition start
+ * again, so the next keystroke lands there.
+ */
+async function cancelCompositionThenType(
+	page: Page,
+	updates: readonly string[],
+): Promise<{ text: string; caretAfterCancel: number | null }> {
+	await page.evaluate(() =>
+		window.__penConformance.selectTextById("hello-p1", 5, 5),
+	);
+	const cdp = await page.context().newCDPSession(page);
+	for (const update of updates) {
+		await cdp.send("Input.imeSetComposition", {
+			text: update,
+			selectionStart: update.length,
+			selectionEnd: update.length,
+		});
+	}
+	await cdp.send("Input.imeSetComposition", {
+		text: "",
+		selectionStart: 0,
+		selectionEnd: 0,
+	});
+	const caretAfterCancel = await readFocusOffset(page);
+	await page.keyboard.type("Q");
+	return { text: await readDocumentText(page), caretAfterCancel };
+}
+
+const CANCEL_CASES: ReadonlyArray<{ label: string; updates: readonly string[] }> = [
+	{ label: "three updates", updates: ["k", "ka", "kan"] },
+	{ label: "one update", updates: ["kan"] },
+];
+
+for (const { label, updates } of CANCEL_CASES) {
+	scenario(
+		`C1: a cancelled composition restores the caret to its start (contenteditable, ${label})`,
+		async (s, page) => {
+			test.skip(
+				test.info().project.name !== "chromium",
+				"Input.imeSetComposition is Chromium CDP",
+			);
+			await s.load("hello-world");
+			expect((await readBackend(page)).hasEditContext).toBe(false);
+			const { text, caretAfterCancel } = await cancelCompositionThenType(
+				page,
+				updates,
+			);
+			expect(caretAfterCancel, "the caret is back at the composition start").toBe(5);
+			expect(text).toBe("HelloQ world");
+			expect(await readFocusOffset(page), "the caret follows the typed Q").toBe(6);
+			await s.assert.domMatchesAuthority();
+		},
+		{ initScript: disableEditContext },
+	);
+}

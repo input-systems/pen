@@ -67,6 +67,9 @@ export class ContentEditableBackend {
 	protected compositionStartText: string | null = null;
 	/** C2: start of the authority selection at compositionstart, a logical offset. */
 	protected compositionStartOffset = 0;
+	/** C1: the authority range at compositionstart, restored by a cancel. */
+	protected compositionStartRange: { anchor: number; focus: number } | null =
+		null;
 	protected deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [];
 	protected readonly attachment = new BackendAttachment();
 	protected inlineDecorationsSignature: readonly InlineDecoration[] | null =
@@ -90,6 +93,7 @@ export class ContentEditableBackend {
 		this.ignoreBrowserMutations = false;
 		this.lastWatchdogMismatch = null;
 		this.compositionStartText = null;
+		this.compositionStartRange = null;
 		this.fieldEditor.setComposing(false);
 
 		this.attachment.listen(element, "beforeinput", this.handleBeforeInput);
@@ -163,6 +167,7 @@ export class ContentEditableBackend {
 		this.ignoreBrowserMutations = false;
 		this.lastWatchdogMismatch = null;
 		this.compositionStartText = null;
+		this.compositionStartRange = null;
 		this.fieldEditor.setComposing(false);
 	}
 
@@ -333,6 +338,7 @@ export class ContentEditableBackend {
 		this.ignoreBrowserMutations = false;
 		this.compositionStartText = this.ytext ? getLogicalInlineText(this.ytext) : "";
 		this.compositionStartOffset = this.readCompositionStartOffset();
+		this.compositionStartRange = this.readCompositionStartRange();
 		this.deferredRemoteDeltas = [];
 		this.fieldEditor.setComposing(true);
 		this.fieldEditor.notifyGestureEvent?.("compositionstart");
@@ -378,6 +384,8 @@ export class ContentEditableBackend {
 			const caret =
 				this.deferredRemoteDeltas.length > 0 ? caretAfterRebasedDiff(diff) : null;
 			this.applyTextDiffAsOps(blockId, diff, this.deferredRemoteDeltas, caret);
+		} else {
+			this.restoreCompositionStartRange(blockId);
 		}
 
 		if (this.deferredRemoteDeltas.length > 0) {
@@ -389,8 +397,44 @@ export class ContentEditableBackend {
 		}
 
 		this.compositionStartText = null;
+		this.compositionStartRange = null;
 		this.updateSelection();
 		this.discardObservedMutations();
+	}
+
+	protected readCompositionStartRange(): { anchor: number; focus: number } | null {
+		const blockId = this.fieldEditor.focusBlockId;
+		if (!blockId) return null;
+		return authorityOffsetsInBlock(
+			this.editor,
+			blockId,
+			this._getActiveCellCoord(blockId),
+		);
+	}
+
+	/**
+	 * C1: a composition that changed nothing (cancelled, or committed empty)
+	 * leaves the authority where it started. The reader followed the browser
+	 * caret through the composed run (`ime` window), so the record holds a
+	 * caret inside text that no longer exists.
+	 */
+	protected restoreCompositionStartRange(blockId: string): void {
+		const range = this.compositionStartRange;
+		if (!range) return;
+		const anchor = mapOffsetThroughRemoteDeltas(
+			range.anchor,
+			this.deferredRemoteDeltas,
+		);
+		const focus = mapOffsetThroughRemoteDeltas(
+			range.focus,
+			this.deferredRemoteDeltas,
+		);
+		const cell = this._getActiveCellCoord(blockId);
+		if (cell) {
+			this.fieldEditor.syncCellTextSelection(cell, anchor, focus);
+		} else {
+			this.fieldEditor.syncTextSelection(blockId, anchor, focus);
+		}
 	}
 
 	/** The start of the authority's text selection in this field, else the DOM caret. */
