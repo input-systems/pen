@@ -497,7 +497,9 @@ function heldDrift(
 	if (selection?.type !== "text") {
 		return null;
 	}
-	const { from, to } = editor.internals.selectionAnchors();
+	const held = editor.internals.selectionAnchors?.();
+	const from = held?.from;
+	const to = held?.to;
 	if (!from || !to) {
 		return null;
 	}
@@ -533,7 +535,7 @@ function repairDriftAnchor(
 	commitId: number,
 ): Anchor {
 	return (
-		editor.internals.selectionAnchorRepair(anchor, commitId) ??
+		editor.internals.selectionAnchorRepair?.(anchor, commitId) ??
 		repairAnchor(editor, anchor, moves)
 	);
 }

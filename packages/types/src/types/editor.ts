@@ -493,9 +493,11 @@ export interface EditorInternals {
 	 * The anchors the selection authority holds for the current selection's
 	 * anchor and focus (AS1), both null when it holds none, as for a text
 	 * endpoint on a divider or table. A consumer that keeps them across
-	 * commits repairs its copies itself (AN14).
+	 * commits repairs its copies itself (AN14). Optional so an internals
+	 * object built outside core (a test double) still type-checks; a
+	 * consumer treats its absence as holding no anchors.
 	 */
-	selectionAnchors(): {
+	selectionAnchors?(): {
 		readonly from: Anchor | null;
 		readonly to: Anchor | null;
 	};
@@ -504,7 +506,8 @@ export interface EditorInternals {
 	 * authority held it going into that commit (AN14); `undefined` otherwise.
 	 * The authority resolves its anchors before the `commit` event, which
 	 * overwrites the pre-commit target a repair reads, so a consumer sharing
-	 * them takes this result instead of repairing its copy itself.
+	 * them takes this result instead of repairing its copy itself. Optional
+	 * for the same reason as `selectionAnchors`.
 	 */
-	selectionAnchorRepair(anchor: Anchor, commitId: number): Anchor | undefined;
+	selectionAnchorRepair?(anchor: Anchor, commitId: number): Anchor | undefined;
 }
