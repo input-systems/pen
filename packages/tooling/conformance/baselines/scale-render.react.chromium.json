@@ -60,7 +60,7 @@
 				"render.reactCommits": 2,
 				"scan.blockOrderReads": 27,
 				"scan.blocksMapIterations": 1049,
-				"scan.blocksMapReads": 64756,
+				"scan.blocksMapReads": 38190,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 3071,
@@ -169,7 +169,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 209,
+				"scan.blocksMapReads": 205,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 22,
@@ -191,7 +191,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 598,
+				"scan.blocksMapReads": 402,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 23,
@@ -210,7 +210,7 @@
 				"render.reactCommits": 2,
 				"scan.blockOrderReads": 2,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 212,
+				"scan.blocksMapReads": 167,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 8,
@@ -231,7 +231,7 @@
 				"render.reactCommits": 2,
 				"scan.blockOrderReads": 135,
 				"scan.blocksMapIterations": 5245,
-				"scan.blocksMapReads": 323700,
+				"scan.blocksMapReads": 190934,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 15355,
@@ -340,7 +340,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 209,
+				"scan.blocksMapReads": 205,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 22,
@@ -362,7 +362,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 598,
+				"scan.blocksMapReads": 402,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 23,
@@ -381,7 +381,7 @@
 				"render.reactCommits": 2,
 				"scan.blockOrderReads": 2,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 212,
+				"scan.blocksMapReads": 167,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 8,
@@ -1469,18 +1469,22 @@
 		},
 		{
 			"date": "2026-10-05",
-			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"reason": "Block notifier review fixes: reads attach the notifier, so a render-before-subscribe mount reads blocks through the shared run context and kept root ids (React mount -41%); list slices keep across non-structural events; numbered ordinals come from the AX1 run walk with block types read once (Enter in a numbered run or paragraph and a remote insert read fewer blocks). Decreases only.",
 			"moved": [
-				"react/scale-1k/enterParagraph/scan.blocksMapReads: 209 !== 211",
-				"react/scale-1k/enterNumbered/scan.blocksMapReads: 598 !== 600"
+				"react/scale-1k/mount/scan.blocksMapReads: 38190 !== 64756",
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 205 !== 211",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 402 !== 600",
+				"react/scale-1k/remoteInsert/scan.blocksMapReads: 167 !== 212"
 			]
 		},
 		{
 			"date": "2026-10-05",
-			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"reason": "Block notifier review fixes: reads attach the notifier, so a render-before-subscribe mount reads blocks through the shared run context and kept root ids (React mount -41%); list slices keep across non-structural events; numbered ordinals come from the AX1 run walk with block types read once (Enter in a numbered run or paragraph and a remote insert read fewer blocks). Decreases only.",
 			"moved": [
-				"react/scale-5k/enterParagraph/scan.blocksMapReads: 209 !== 211",
-				"react/scale-5k/enterNumbered/scan.blocksMapReads: 598 !== 600"
+				"react/scale-5k/mount/scan.blocksMapReads: 190934 !== 323700",
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 205 !== 211",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 402 !== 600",
+				"react/scale-5k/remoteInsert/scan.blocksMapReads: 167 !== 212"
 			]
 		}
 	]

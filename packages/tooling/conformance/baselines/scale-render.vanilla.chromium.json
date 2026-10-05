@@ -57,7 +57,7 @@
 				"listeners.invoked.diagnostic": 1,
 				"scan.blockOrderReads": 27,
 				"scan.blocksMapIterations": 1049,
-				"scan.blocksMapReads": 32791,
+				"scan.blocksMapReads": 32291,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 2048,
@@ -149,7 +149,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 264,
+				"scan.blocksMapReads": 254,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 26,
@@ -167,7 +167,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 824,
+				"scan.blocksMapReads": 442,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 27,
@@ -182,7 +182,7 @@
 				"listeners.invoked.store": 1,
 				"scan.blockOrderReads": 2,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 211,
+				"scan.blocksMapReads": 166,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 7,
@@ -198,7 +198,7 @@
 				"listeners.invoked.diagnostic": 1,
 				"scan.blockOrderReads": 135,
 				"scan.blocksMapIterations": 5245,
-				"scan.blocksMapReads": 163939,
+				"scan.blocksMapReads": 161439,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 10240,
@@ -290,7 +290,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 264,
+				"scan.blocksMapReads": 254,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 26,
@@ -308,7 +308,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 824,
+				"scan.blocksMapReads": 442,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 27,
@@ -323,7 +323,7 @@
 				"listeners.invoked.store": 1,
 				"scan.blockOrderReads": 2,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 211,
+				"scan.blocksMapReads": 166,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 7,
@@ -1251,18 +1251,22 @@
 		},
 		{
 			"date": "2026-10-05",
-			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"reason": "Block notifier review fixes: reads attach the notifier, so a render-before-subscribe mount reads blocks through the shared run context and kept root ids (React mount -41%); list slices keep across non-structural events; numbered ordinals come from the AX1 run walk with block types read once (Enter in a numbered run or paragraph and a remote insert read fewer blocks). Decreases only.",
 			"moved": [
-				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 264 !== 266",
-				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 824 !== 826"
+				"vanilla/scale-1k/mount/scan.blocksMapReads: 32291 !== 32791",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 254 !== 266",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 442 !== 826",
+				"vanilla/scale-1k/remoteInsert/scan.blocksMapReads: 166 !== 211"
 			]
 		},
 		{
 			"date": "2026-10-05",
-			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"reason": "Block notifier review fixes: reads attach the notifier, so a render-before-subscribe mount reads blocks through the shared run context and kept root ids (React mount -41%); list slices keep across non-structural events; numbered ordinals come from the AX1 run walk with block types read once (Enter in a numbered run or paragraph and a remote insert read fewer blocks). Decreases only.",
 			"moved": [
-				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 264 !== 266",
-				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 824 !== 826"
+				"vanilla/scale-5k/mount/scan.blocksMapReads: 161439 !== 163939",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 254 !== 266",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 442 !== 826",
+				"vanilla/scale-5k/remoteInsert/scan.blocksMapReads: 166 !== 211"
 			]
 		}
 	]

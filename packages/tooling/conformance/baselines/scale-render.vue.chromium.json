@@ -59,7 +59,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 27,
 				"scan.blocksMapIterations": 1049,
-				"scan.blocksMapReads": 36163,
+				"scan.blocksMapReads": 35659,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 3055,
@@ -163,7 +163,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 200,
+				"scan.blocksMapReads": 190,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 24,
@@ -184,7 +184,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 708,
+				"scan.blocksMapReads": 398,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 25,
@@ -202,7 +202,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 2,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 205,
+				"scan.blocksMapReads": 160,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 8,
@@ -222,7 +222,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 135,
 				"scan.blocksMapIterations": 5245,
-				"scan.blocksMapReads": 180783,
+				"scan.blocksMapReads": 178279,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 15275,
@@ -326,7 +326,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 200,
+				"scan.blocksMapReads": 190,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 24,
@@ -347,7 +347,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 708,
+				"scan.blocksMapReads": 398,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 25,
@@ -365,7 +365,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 2,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 205,
+				"scan.blocksMapReads": 160,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 8,
@@ -1285,18 +1285,22 @@
 		},
 		{
 			"date": "2026-10-05",
-			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"reason": "Block notifier review fixes: reads attach the notifier, so a render-before-subscribe mount reads blocks through the shared run context and kept root ids (React mount -41%); list slices keep across non-structural events; numbered ordinals come from the AX1 run walk with block types read once (Enter in a numbered run or paragraph and a remote insert read fewer blocks). Decreases only.",
 			"moved": [
-				"vue/scale-1k/enterParagraph/scan.blocksMapReads: 200 !== 202",
-				"vue/scale-1k/enterNumbered/scan.blocksMapReads: 708 !== 710"
+				"vue/scale-1k/mount/scan.blocksMapReads: 35659 !== 36163",
+				"vue/scale-1k/enterParagraph/scan.blocksMapReads: 190 !== 202",
+				"vue/scale-1k/enterNumbered/scan.blocksMapReads: 398 !== 710",
+				"vue/scale-1k/remoteInsert/scan.blocksMapReads: 160 !== 205"
 			]
 		},
 		{
 			"date": "2026-10-05",
-			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"reason": "Block notifier review fixes: reads attach the notifier, so a render-before-subscribe mount reads blocks through the shared run context and kept root ids (React mount -41%); list slices keep across non-structural events; numbered ordinals come from the AX1 run walk with block types read once (Enter in a numbered run or paragraph and a remote insert read fewer blocks). Decreases only.",
 			"moved": [
-				"vue/scale-5k/enterParagraph/scan.blocksMapReads: 200 !== 202",
-				"vue/scale-5k/enterNumbered/scan.blocksMapReads: 708 !== 710"
+				"vue/scale-5k/mount/scan.blocksMapReads: 178279 !== 180783",
+				"vue/scale-5k/enterParagraph/scan.blocksMapReads: 190 !== 202",
+				"vue/scale-5k/enterNumbered/scan.blocksMapReads: 398 !== 710",
+				"vue/scale-5k/remoteInsert/scan.blocksMapReads: 160 !== 205"
 			]
 		}
 	]
