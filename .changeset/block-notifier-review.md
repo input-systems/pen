@@ -8,5 +8,6 @@ Block notifier fixes:
 - A multi-block text range with an endpoint in a `children`-array child orders its endpoints by document (preorder) position, so the other endpoint's partial range is no longer reversed.
 - A block a concurrent delete removed (COL4) and a later write re-inserted is back in the document snapshot's `rootIds`, including when the re-insert arrived while the notifier was detached.
 - A keystroke or caret move in a numbered list item keeps its `list` slice, ordinal included, instead of re-reading the whole numbered run (a 5,000-item run read about 12,500 blocks per keystroke).
+- A container subscribed only through `subscribeListSegments` re-segments when a `parentId`-route child is removed, re-parented or merged away, and a merge re-segments the array its source left (`sourceParentId`).
 
 Breaking: no

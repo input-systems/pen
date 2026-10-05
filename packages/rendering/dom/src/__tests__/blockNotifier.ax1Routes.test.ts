@@ -251,6 +251,42 @@ describe("block notifier (AX1 list semantics on every child route)", () => {
 		editor.destroy();
 	});
 
+	it("AX1: a container-only segment subscription follows parentId-route removals, re-parents and merges", () => {
+		const cases: { name: string; ops: (editor: Editor) => void }[] = [
+			{
+				name: "delete a parentId child",
+				ops: (editor) => editor.apply([{ type: "delete-block", blockId: "bq-b" }], { origin: "user" }),
+			},
+			{
+				name: "re-parent a child to the root",
+				ops: (editor) =>
+					editor.apply([{ type: "set-props", blockId: "bq-b", props: { parentId: null } }], { origin: "user" }),
+			},
+			{
+				name: "merge a child into the previous one",
+				ops: (editor) =>
+					applyMergeBlocks(editor, { targetBlockId: "bq-a", sourceBlockId: "bq-b", applyOptions: { origin: "user" } }),
+			},
+			{
+				name: "merge a child into a block in another container",
+				ops: (editor) =>
+					applyMergeBlocks(editor, { targetBlockId: "bq2-c", sourceBlockId: "bq-b", applyOptions: { origin: "user" } }),
+			},
+		];
+		for (const { name, ops } of cases) {
+			const editor = createRoutedEditor();
+			const notifier = createBlockNotifier(editor);
+			// Only the container's segment channel: no block of it is subscribed.
+			const unsubscribe = notifier.subscribeListSegments("bq", () => {});
+			expect(notifier.getListSegments("bq"), `${name} before`).toEqual(getListSegments(editor, siblingsOf(editor, "bq")));
+			ops(editor);
+			expect(editor.documentState.childrenOf("bq"), name).not.toContain("bq-b");
+			expect(notifier.getListSegments("bq"), name).toEqual(getListSegments(editor, siblingsOf(editor, "bq")));
+			unsubscribe();
+			editor.destroy();
+		}
+	});
+
 	it("AX1: a numbered item's ordinal counts over the sibling list its posinset does", () => {
 		const editor = createEditor({ schema: defaultSchema });
 		const first = editor.firstBlock()!.id;

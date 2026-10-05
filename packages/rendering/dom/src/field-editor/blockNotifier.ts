@@ -50,6 +50,8 @@ interface Entry {
 	readonly subscribers: Set<() => void>;
 	domSyncVersion: number;
 	lastCommit: LastCommit | undefined;
+	/** The parent the snapshot was built under: the container a later commit's summary may not name. */
+	parentId: string | null;
 }
 
 /** Per-event scratch: ordinals and list semantics are computed once per touched run. */
@@ -111,6 +113,13 @@ class BlockNotifierImpl implements BlockNotifier {
 	private readonly _segments = new Map<string | null, readonly BlockListSegment[]>();
 	/** The sibling list each cached segment list was computed over. */
 	private readonly _segmentBasis = new Map<string | null, readonly string[]>();
+	/**
+	 * The containers whose cached segment basis lists each child, so a
+	 * container rendered through its segment channel alone is found when a
+	 * `parentId`-route child leaves it (AX1). The root list is left out: it is
+	 * the fallback, and indexing it would cost O(n) per structural commit.
+	 */
+	private readonly _segmentParents = new Map<string, Set<string>>();
 	private _sources: Unsubscribe[] = [];
 	private _completion: InlineCompletionController | null = null;
 	private _completionBlockId: string | null = null;
@@ -225,7 +234,7 @@ class BlockNotifierImpl implements BlockNotifier {
 			if (set.size === 0 && this._segmentSubscribers.get(parentId) === set) {
 				this._segmentSubscribers.delete(parentId);
 				this._segments.delete(parentId);
-				this._segmentBasis.delete(parentId);
+				this._setSegmentBasis(parentId, null);
 			}
 			// After the channel is gone, so the last one out detaches.
 			this._detachIfIdle();
@@ -270,6 +279,7 @@ class BlockNotifierImpl implements BlockNotifier {
 		this._segmentSubscribers.clear();
 		this._segments.clear();
 		this._segmentBasis.clear();
+		this._segmentParents.clear();
 		this._deadIds.clear();
 		this._detach();
 	}
@@ -596,7 +606,7 @@ class BlockNotifierImpl implements BlockNotifier {
 						: null;
 				next = patched ?? patchSegments(previous, siblings, context);
 				if (next === previous || (!patched && segmentsEqual(previous, next))) {
-					this._segmentBasis.set(parentId, siblings);
+					this._setSegmentBasis(parentId, siblings);
 					continue;
 				}
 			}
@@ -611,7 +621,29 @@ class BlockNotifierImpl implements BlockNotifier {
 		basis: readonly string[],
 	): void {
 		this._segments.set(parentId, segments);
-		this._segmentBasis.set(parentId, basis);
+		this._setSegmentBasis(parentId, basis);
+	}
+
+	/** Records (or, with null, drops) the list a parent's cached segments cover. */
+	private _setSegmentBasis(parentId: string | null, basis: readonly string[] | null): void {
+		const previous = this._segmentBasis.get(parentId);
+		if (previous === basis) return;
+		if (basis === null) this._segmentBasis.delete(parentId);
+		else this._segmentBasis.set(parentId, basis);
+		if (parentId === null) return;
+		for (const childId of previous ?? EMPTY_IDS) {
+			const parents = this._segmentParents.get(childId);
+			parents?.delete(parentId);
+			if (parents?.size === 0) this._segmentParents.delete(childId);
+		}
+		for (const childId of basis ?? EMPTY_IDS) {
+			let parents = this._segmentParents.get(childId);
+			if (!parents) {
+				parents = new Set();
+				this._segmentParents.set(childId, parents);
+			}
+			parents.add(parentId);
+		}
 	}
 
 	/** Widens a changed span to every position this event's run walk read, then patches it. */
@@ -722,7 +754,9 @@ class BlockNotifierImpl implements BlockNotifier {
 		for (const [parentId, blockIds] of touched) {
 			const siblings = this._siblingsOf(parentId);
 			const previous =
-				parentId === null ? previousRootIds : (this._entries.get(parentId)?.snapshot.childIds ?? null);
+				parentId === null
+					? previousRootIds
+					: (this._entries.get(parentId)?.snapshot.childIds ?? this._segmentBasis.get(parentId) ?? null);
 			const around = (index: number) => {
 				for (const at of [index - 1, index, index + 1]) {
 					for (const runId of this._walkRun(siblings, at, context)) ids.add(runId);
@@ -758,11 +792,23 @@ class BlockNotifierImpl implements BlockNotifier {
 			if (blockId !== undefined) blockIds.add(blockId);
 		};
 		const addCurrent = (blockId: string) => add(state.parentOf(blockId), blockId);
-		// No cached parent: the block rendered in the root list.
+		// Where the block rendered before the commit, which core's index no
+		// longer knows: every cached container listing it — a container's
+		// snapshot or the basis of its segment channel — and the parent its
+		// own snapshot was built under. Known by none, it rendered in the root.
 		const addCached = (blockId: string) => {
-			const parents = this._cachedParents.get(blockId);
-			if (!parents) add(null);
-			else for (const parentId of parents) add(parentId);
+			let found = false;
+			for (const parentId of this._cachedParentsOf(blockId)) {
+				add(parentId);
+				found = true;
+			}
+			for (const parentId of this._segmentParents.get(blockId) ?? EMPTY_IDS) {
+				add(parentId);
+				found = true;
+			}
+			const entry = this._entries.get(blockId);
+			if (entry) add(entry.parentId);
+			else if (!found) add(null);
 		};
 		for (const change of summary.structural) {
 			switch (change.type) {
@@ -796,6 +842,8 @@ class BlockNotifierImpl implements BlockNotifier {
 				case "blocks-merged":
 					addCurrent(change.targetBlockId);
 					addCurrent(change.sourceBlockId);
+					// The array the source left, when the commit removed an entry.
+					if (change.sourceParentId !== undefined) add(change.sourceParentId);
 					addCached(change.sourceBlockId);
 					break;
 				case "block-props-changed":
@@ -837,6 +885,7 @@ class BlockNotifierImpl implements BlockNotifier {
 				subscribers: new Set(),
 				domSyncVersion: 0,
 				lastCommit: undefined,
+				parentId: null,
 			};
 			this._setSnapshot(blockId, entry, this._buildSnapshot(blockId, entry, this._readContext()));
 			this._entries.set(blockId, entry);
@@ -934,6 +983,7 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _setSnapshot(blockId: string, entry: Entry, next: BlockSnapshot): void {
 		const previous = entry.snapshot as BlockSnapshot | undefined;
 		entry.snapshot = next;
+		entry.parentId = this._editor.documentState.parentOf(blockId);
 		if (previous?.childIds === next.childIds) return;
 		if (previous) this._unlinkChildren(blockId, previous.childIds);
 		for (const childId of next.childIds) {
