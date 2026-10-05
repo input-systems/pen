@@ -43,7 +43,7 @@
     },
     {
       "file": "packages/rendering/react/src/primitives/ai/contextualPromptComposer.tsx",
-      "symbol": "AIContextualPromptComposer",
+      "symbol": "ContextualPromptComposerBody",
       "reason": "editor-level subscription, not per block (HB2): the contextual prompt tracks its target selection through the selection authority (W3.R5 chrome rule)."
     },
     {

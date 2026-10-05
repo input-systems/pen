@@ -4,7 +4,11 @@ import {
 	isMultiBlock,
 	resolveEditorMessage,
 } from "@input/pen-core";
-import type { AIContextualPromptAnchor, AISession } from "@input/pen-ai";
+import type {
+	AIContextualPromptAnchor,
+	AISession,
+	GenerationState,
+} from "@input/pen-ai";
 import type { Editor, TextSelection } from "@input/pen-types";
 import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
 import { queryBlockElement } from "@input/pen-dom/field-editor/selectionBridge";
@@ -36,28 +40,38 @@ export interface AIContextualPromptComposerProps extends AsChildProps {
 export function AIContextualPromptComposer(
 	props: AIContextualPromptComposerProps,
 ) {
-	const { autoFocus = true, ref, ...rest } = props;
+	const { editor } = useAIContext();
+	const session = useContextualPromptSession(editor);
+	// The body's hooks run only once a session exists, so their order never
+	// changes when one opens.
+	if (!session) {
+		return null;
+	}
+	return <ContextualPromptComposerBody {...props} session={session} />;
+}
+
+function ContextualPromptComposerBody(
+	props: AIContextualPromptComposerProps & { session: AISession },
+) {
+	const { autoFocus = true, ref, session, ...rest } = props;
 	const { editor, state } = useAIContext();
 	const placeholder =
 		props.placeholder ??
 		resolveEditorMessage(editor, "pen.ai.prompt.placeholder");
-	const session = useContextualPromptSession(editor);
 	const actions = useAISessionActions(editor);
 	const fieldEditorContext = useFieldEditorContext();
 	const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
 	const composerRef = React.useRef<HTMLElement | null>(null);
 	const focusReturnRef = React.useRef<FocusReturnToken | null>(null);
-	const composerOpen = session?.contextualPrompt?.composer.isOpen === true;
-	const isRunningCurrentSession =
-		state.activeGeneration?.sessionId != null &&
-		state.activeGeneration.sessionId === session?.id &&
-		state.activeGeneration.status === "streaming";
-	const sessionTurns = session?.turns ?? [];
-	const activeTurnId =
-		state.activeGeneration?.turnId ?? session?.activeTurnId ?? null;
-	const draftPrompt = session?.contextualPrompt?.composer.draftPrompt ?? "";
-	const hasSubmittedPrompt = sessionTurns.length > 0;
-	const latestTurnId = sessionTurns[sessionTurns.length - 1]?.id ?? null;
+	const {
+		composerOpen,
+		isRunningCurrentSession,
+		sessionTurns,
+		activeTurnId,
+		draftPrompt,
+		hasSubmittedPrompt,
+		latestTurnId,
+	} = resolveComposerSessionState(session, state.activeGeneration);
 
 	const focusComposerInput = React.useCallback(() => {
 		const input = inputRef.current;
@@ -98,7 +112,7 @@ export function AIContextualPromptComposer(
 	useIsomorphicLayoutEffect(() => {
 		if (
 			!autoFocus ||
-			!session?.contextualPrompt?.composer.isOpen ||
+			!session.contextualPrompt?.composer.isOpen ||
 			session.contextualPrompt.composer.openReason === "history"
 		) {
 			return;
@@ -125,14 +139,11 @@ export function AIContextualPromptComposer(
 		focusComposerInput,
 		isRunningCurrentSession,
 		latestTurnId,
-		session?.contextualPrompt?.composer.openReason,
-		session?.contextualPrompt?.composer.isOpen,
-		session?.id,
+		session.contextualPrompt?.composer.openReason,
+		session.contextualPrompt?.composer.isOpen,
+		session.id,
 	]);
 
-	if (!session) {
-		return null;
-	}
 	const sessionId = session.id;
 	const selectionSnapshot =
 		session.contextualPrompt?.anchor.selectionSnapshot ?? null;
@@ -503,6 +514,34 @@ export function AIContextualPromptComposer(
 	return renderAsChild(composerProps, "div", {
 		"data-pen-ai-contextual-prompt-composer": "",
 	});
+}
+
+/** What the composer reads from its session and the running generation. */
+function resolveComposerSessionState(
+	session: AISession,
+	activeGeneration: GenerationState | null,
+) {
+	const sessionTurns = session.turns ?? [];
+	return {
+		composerOpen: session.contextualPrompt?.composer.isOpen === true,
+		isRunningCurrentSession: isStreamingSession(activeGeneration, session.id),
+		sessionTurns,
+		activeTurnId: activeGeneration?.turnId ?? session.activeTurnId ?? null,
+		draftPrompt: session.contextualPrompt?.composer.draftPrompt ?? "",
+		hasSubmittedPrompt: sessionTurns.length > 0,
+		latestTurnId: sessionTurns[sessionTurns.length - 1]?.id ?? null,
+	};
+}
+
+function isStreamingSession(
+	activeGeneration: GenerationState | null,
+	sessionId: string,
+): boolean {
+	return (
+		activeGeneration?.sessionId != null &&
+		activeGeneration.sessionId === sessionId &&
+		activeGeneration.status === "streaming"
+	);
 }
 
 function resolveInlineSessionTurnStatusLabel(
