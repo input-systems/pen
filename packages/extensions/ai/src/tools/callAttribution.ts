@@ -102,10 +102,12 @@ function isAIOrigin(origin: OpOrigin): boolean {
  * on the synchronous stack whenever it writes through its call view, so that
  * frame decides. A write with no open call's frame that names a non-AI
  * origin — the user typing, undo, an input rule — is no call's and runs
- * unguarded. Any other unframed write — a handler that captured the shared
- * editor, a timer — belongs to the only open call; with several open it
- * cannot be attributed, so it is refused while any of them is read-only and
- * otherwise goes to the newest mutating call.
+ * unguarded. An unframed AI write that carries an open mutating call's
+ * group — a stream writer's timed flush, which no frame covers — is that
+ * call's. Any other unframed write — a handler that captured the shared
+ * editor — belongs to the only open call; with several open it cannot be
+ * attributed, so it is refused while any of them is read-only and otherwise
+ * goes to the newest mutating call.
  */
 export function resolveWriteOwner(
 	editor: object,
@@ -129,6 +131,10 @@ export function resolveWriteOwner(
 	if (live.length === 0) {
 		return NO_OWNER;
 	}
+	const grouped = groupOwner(live, origin);
+	if (grouped) {
+		return { kind: "call", call: grouped };
+	}
 	if (live.length === 1) {
 		return { kind: "call", call: live[0] };
 	}
@@ -137,6 +143,29 @@ export function resolveWriteOwner(
 		return { kind: "refused", readOnly };
 	}
 	return { kind: "call", call: live[live.length - 1] };
+}
+
+/**
+ * The newest open mutating call whose turn's group `origin` carries. A
+ * read-only call cannot own a stream writer (opening one is refused), so
+ * only mutating calls are candidates; calls of one turn share its group and
+ * its undo step, so the newest stands for them.
+ */
+function groupOwner(
+	live: readonly GuardedCall[],
+	origin: OpOrigin | undefined,
+): GuardedCall | undefined {
+	const groupId = typeof origin === "object" ? origin.groupId : undefined;
+	if (groupId === undefined) {
+		return undefined;
+	}
+	for (let index = live.length - 1; index >= 0; index -= 1) {
+		const call = live[index]!;
+		if (call.mutating && call.turn?.groupId === groupId) {
+			return call;
+		}
+	}
+	return undefined;
 }
 
 /** Reports a refused write against the call(s) it belongs to. */

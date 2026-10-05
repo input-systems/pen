@@ -282,6 +282,7 @@ function openGuardedCall(
 				return closeResult;
 			}
 			closed = true;
+			flushCallWriters(editor, call);
 			restoreWrites();
 			turn?.closeCall();
 			if (readOnlyMutation) {
@@ -453,15 +454,54 @@ function patchEditorOpenTextStream(editor: Editor): () => void {
 				return refuseTextStreamWriter(target.blockId);
 			}
 			const groupId = owner.call.turn?.groupId;
-			if (!groupId) {
-				return originalOpen(target, streamOptions);
-			}
-			return originalOpen(target, {
-				...streamOptions,
-				origin: originWithGroupId(streamOptions.origin, groupId),
-			});
+			const writer = originalOpen(
+				target,
+				groupId
+					? {
+							...streamOptions,
+							origin: originWithGroupId(streamOptions.origin, groupId),
+						}
+					: streamOptions,
+			);
+			trackCallWriter(owner.call, writer);
+			return writer;
 		},
 	);
+}
+
+/** The stream writers each open call opened, flushed when it closes. */
+const callWriters = new WeakMap<GuardedCall, Set<TextStreamWriter>>();
+
+function trackCallWriter(call: GuardedCall, writer: TextStreamWriter): void {
+	let writers = callWriters.get(call);
+	if (!writers) {
+		writers = new Set();
+		callWriters.set(call, writers);
+	}
+	writers.add(writer);
+}
+
+/**
+ * A writer buffers and flushes on a timer, so text a call appended can still
+ * be pending when it closes; once its guard is gone that flush would land
+ * unguarded and unbudgeted. It lands now, as the call's write (AIB3).
+ */
+function flushCallWriters(
+	editor: Editor | null | undefined,
+	call: GuardedCall,
+): void {
+	const writers = callWriters.get(call);
+	if (!editor || !writers) {
+		return;
+	}
+	callWriters.delete(call);
+	for (const writer of writers) {
+		try {
+			runAsCall(editor, call, () => writer.flush());
+		} catch {
+			// A budget refusal drops the pending text, as it would mid-call.
+		}
+	}
 }
 
 function patchStreamingTarget(editor: Editor): () => void {

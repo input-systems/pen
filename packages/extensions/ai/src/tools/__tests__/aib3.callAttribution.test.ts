@@ -7,7 +7,7 @@ import type {
 	ToolContext,
 	ToolDefinition,
 } from "@input/pen-types";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { StreamingTargetImpl } from "../../stream/streamingTarget";
 import {
@@ -97,6 +97,74 @@ function createRecordingEditor() {
 	};
 }
 
+/**
+ * An editor whose stream writers buffer and flush on a timer through the
+ * shared `editor.apply`, as core's do, so a flush runs outside any call.
+ */
+function createBufferingEditor() {
+	const applied: Array<{ ops: DocumentOp[]; options?: ApplyOptions }> = [];
+	const diagnostics: Array<{ code: string; message: string }> = [];
+	const editor = {
+		apply(ops: DocumentOp[], options?: ApplyOptions) {
+			applied.push({ ops, options });
+		},
+		openTextStream(
+			target: { blockId: string },
+			options: OpenTextStreamOptions,
+		) {
+			let pending = "";
+			let timer: ReturnType<typeof setTimeout> | null = null;
+			const flush = () => {
+				if (timer !== null) {
+					clearTimeout(timer);
+					timer = null;
+				}
+				if (pending.length === 0) {
+					return;
+				}
+				const insert = pending;
+				pending = "";
+				editor.apply(
+					[
+						{
+							type: "splice-text",
+							blockId: target.blockId,
+							from: 0,
+							to: 0,
+							insert,
+						},
+					],
+					{ origin: options.origin },
+				);
+			};
+			return {
+				append(text: string) {
+					pending += text;
+					timer ??= setTimeout(flush, 24);
+				},
+				splice() {},
+				get position() {
+					return { blockId: target.blockId, offset: 0 };
+				},
+				flush,
+				close: flush,
+				abort() {},
+			};
+		},
+		on: () => () => {},
+		facet: () => null,
+		internals: {
+			emit(
+				_event: string,
+				diagnostic: { code: string; message: string },
+			) {
+				diagnostics.push(diagnostic);
+			},
+		},
+	} as unknown as Editor;
+	return { editor, applied, diagnostics };
+}
+
 function deferred(): { promise: Promise<void>; resolve: () => void } {
 	let resolve = () => {};
 	const promise = new Promise<void>((done) => {
@@ -149,6 +217,10 @@ function createRuntime(): AIToolRuntimeImpl {
 }
 
 describe("AIB3 per-call write attribution", () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it("AIB3: a read-only call's write is refused while a newer mutating call is open, and is not booked to that call", async () => {
 		const { editor, applied, diagnostics } = createRecordingEditor();
 		const runtime = new AIToolRuntimeImpl();
@@ -338,6 +410,80 @@ describe("AIB3 per-call write attribution", () => {
 		});
 		expect(writeCall.turn.ops).toBe(1);
 		writeCall.close({ ok: true });
+	});
+
+	it("AIB3: a stream writer's timed flush lands as its call's write while a read-only call of another turn is open", async () => {
+		vi.useFakeTimers();
+		const { editor, applied, diagnostics } = createBufferingEditor();
+		const runtime = createRuntime();
+		const writeCall = await openCall(
+			runtime,
+			editor,
+			"insert_block",
+			"g-a",
+		);
+		const readCall = await openCall(
+			runtime,
+			editor,
+			"read_document",
+			"g-b",
+		);
+
+		const writer = writeCall.context.editor.openTextStream(
+			{ blockId: "b" },
+			{ origin: "ai" },
+		);
+		writer.append("streamed");
+		vi.advanceTimersByTime(24);
+
+		expect(applied).toHaveLength(1);
+		expect(applied[0].options?.origin).toMatchObject({ groupId: "g-a" });
+		expect(writeCall.turn.ops).toBe(1);
+		expect(readOnlyMutations(diagnostics)).toEqual([]);
+		expect(readCall.close({ ok: true })).toEqual({ ok: true });
+		writeCall.close({ ok: true });
+	});
+
+	it("AIB3: a stream writer's timed flush is booked to its own call, not the newest mutating call", async () => {
+		vi.useFakeTimers();
+		const { editor, applied } = createBufferingEditor();
+		const runtime = createRuntime();
+		const older = await openCall(runtime, editor, "insert_block", "g-a");
+		const newer = await openCall(runtime, editor, "insert_block", "g-b");
+
+		older.context.editor
+			.openTextStream({ blockId: "b" }, { origin: "ai" })
+			.append("from older");
+		vi.advanceTimersByTime(24);
+
+		expect(applied[0].options?.undoGroupId).toBe("g-a");
+		expect(older.turn.ops).toBe(1);
+		expect(newer.turn.ops).toBe(0);
+		older.close({ ok: true });
+		newer.close({ ok: true });
+	});
+
+	it("AIB3: text a call's writer still buffers when the call closes lands as the call's write, not unguarded after it", async () => {
+		vi.useFakeTimers();
+		const { editor, applied } = createBufferingEditor();
+		const runtime = createRuntime();
+		const writeCall = await openCall(
+			runtime,
+			editor,
+			"insert_block",
+			"g-a",
+		);
+
+		writeCall.context.editor
+			.openTextStream({ blockId: "b" }, { origin: "ai" })
+			.append("tail");
+		writeCall.close({ ok: true });
+
+		expect(applied).toHaveLength(1);
+		expect(applied[0].options?.undoGroupId).toBe("g-a");
+		expect(writeCall.turn.ops).toBe(1);
+		vi.advanceTimersByTime(24);
+		expect(applied).toHaveLength(1);
 	});
 
 	it("AIB3: a write no call can be named for is refused while any read-only call is open", async () => {
