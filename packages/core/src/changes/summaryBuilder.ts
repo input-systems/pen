@@ -250,11 +250,6 @@ function buildStructuralChanges(
 	// removal or deleted-map paths below. A map that arrived in the commit
 	// is judged by the summary source's own read (`absentBlockIds`), so an
 	// ordinary insert or move reads nothing more (SCALE2).
-	const mapDeleted = (blockId: string) =>
-		blockExists !== undefined &&
-		index.typeById.has(blockId) &&
-		delta.blockMapChanges.get(blockId)?.size === 0 &&
-		!blockExists(blockId);
 	const danglingInserted: ArrayInsert[] = [];
 	const inserted: ArrayInsert[] = [];
 	for (const item of edits.inserted) {
@@ -264,7 +259,7 @@ function buildStructuralChanges(
 			blockExists &&
 			item.id !== splitNewId &&
 			(held
-				? mapDeleted(item.id)
+				? mapChange?.size === 0 && !blockExists(item.id)
 				: mapChange === undefined
 					? !blockExists(item.id)
 					: (delta.absentBlockIds?.has(item.id) ?? false))
@@ -394,12 +389,13 @@ function buildStructuralChanges(
 	// COL4: concurrent moves can list a block in two arrays; a repair that
 	// removes one entry leaves it in the other, where it now renders.
 	let listings: ReadonlyMap<string, readonly (string | null)[]> | null = null;
-	// A block whose map the same commit deleted does not stay: its other
-	// entry is left naming no block, so it is reported removed where it sat,
-	// as a move arriving with the delete of the block it moves is.
+	// A block whose map is not stored — the same commit deleted it, or an
+	// earlier one did while a peer's entry kept it listed (COL4) — does not
+	// stay: its other entry names no block, so it is reported removed where
+	// it sat, as a move arriving with the delete of the block it moves is.
 	const survivingParent = (item: (typeof removed)[number]) => {
 		if (listedMoreThanOnce && !listedMoreThanOnce(item.id)) return undefined;
-		if (mapDeleted(item.id)) return undefined;
+		if (blockExists && !blockExists(item.id)) return undefined;
 		listings ??= parentListings(index);
 		for (const parentId of listings.get(item.id) ?? []) {
 			if (parentId === item.parentId) continue;

@@ -10,7 +10,11 @@ import { searchExtension, getSearchController } from "@input/pen-search";
 import { undoExtension } from "@input/pen-undo";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { loadAuditInternals, type AuditInternals } from "../cacheAudit/internals";
+import {
+	loadAuditInternals,
+	type AuditBlockNotifier,
+	type AuditInternals,
+} from "../cacheAudit/internals";
 import {
 	checkBlockIndex,
 	checkDocumentIndex,
@@ -90,6 +94,13 @@ function touchedProblems(editor: Editor, run: () => void): string[] {
 		off();
 	}
 	return checkTouchedIds(before, storedBlockStates(editor), summaries);
+}
+
+/** The root ids a block notifier's document snapshot renders. */
+function documentRootIds(notifier: AuditBlockNotifier): readonly string[] {
+	return (
+		notifier as unknown as { getDocumentSnapshot(): { rootIds: readonly string[] } }
+	).getDocumentSnapshot().rootIds;
 }
 
 function engineOf(editor: Editor): { passIndex: unknown } {
@@ -545,9 +556,7 @@ describe("cache property findings", () => {
 		]);
 		expect(receiver.getBlock("scale-block-3")).toBeNull();
 		expect(receiver.documentState.rootBlockIds()).toContain("scale-block-3");
-		const rootIds = (notifier as unknown as { getDocumentSnapshot(): { rootIds: readonly string[] } })
-			.getDocumentSnapshot().rootIds;
-		expect(rootIds).not.toContain("scale-block-3");
+		expect(documentRootIds(notifier)).not.toContain("scale-block-3");
 		off();
 		notifier.destroy();
 	});
@@ -592,6 +601,46 @@ describe("cache property findings", () => {
 		expect(notifier.getListSegments(null)).toEqual(fresh.getListSegments(null));
 		expect(notifier.getListSegments(null)).toHaveLength(3);
 		fresh.destroy();
+		off();
+		notifier.destroy();
+	});
+
+	it("a dead block losing one of its two entries is removed, not moved to the other", () => {
+		const peers = fork(3, [...generateMixedBlockSpecs(20), callout("callout-a")]);
+		const [receiver, nester, mover] = peers as [TestEditor, TestEditor, TestEditor];
+		const notifier = internals.createBlockNotifier(receiver);
+		const off = notifier.subscribeDocument(() => {});
+		// COL4: against the receiver's delete, one peer moves x into
+		// callout-a and another to a new root position; the receiver lists
+		// x in both, with no map.
+		receiver.apply([{ type: "delete-block", blockId: "scale-block-3" }]);
+		nester.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-a", index: 0 } },
+		]);
+		mover.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { after: "scale-block-12" } },
+		]);
+		harness!.deliver(1, 0);
+		harness!.deliver(2, 0);
+		expect(receiver.documentState.blockOrder).toContain("scale-block-3");
+		expect(receiver.getBlock("scale-block-3")).toBeNull();
+		// The nester's delete drops the callout-a entry; the root entry is
+		// left naming no block, so x is removed where it sat.
+		nester.apply([{ type: "delete-block", blockId: "scale-block-3" }]);
+		const summaries: ChangeSummary[] = [];
+		const offCommit = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		harness!.deliver(1, 0);
+		offCommit();
+		const types = summaries.flatMap((summary) =>
+			summary.structural.flatMap((change) =>
+				"blockId" in change && change.blockId === "scale-block-3" ? [change.type] : [],
+			),
+		);
+		expect(types).not.toContain("block-moved");
+		expect(receiver.documentState.blockOrder).toContain("scale-block-3");
+		expect(documentRootIds(notifier)).not.toContain("scale-block-3");
 		off();
 		notifier.destroy();
 	});
