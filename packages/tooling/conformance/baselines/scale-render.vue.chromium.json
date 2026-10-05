@@ -163,7 +163,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 190,
+				"scan.blocksMapReads": 188,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 24,
@@ -184,7 +184,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 398,
+				"scan.blocksMapReads": 396,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 25,
@@ -326,7 +326,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 190,
+				"scan.blocksMapReads": 188,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 24,
@@ -347,7 +347,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 398,
+				"scan.blocksMapReads": 396,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 25,
@@ -1301,6 +1301,22 @@
 				"vue/scale-5k/enterParagraph/scan.blocksMapReads: 190 !== 202",
 				"vue/scale-5k/enterNumbered/scan.blocksMapReads: 398 !== 710",
 				"vue/scale-5k/remoteInsert/scan.blocksMapReads: 160 !== 205"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes on top of the parentId sibling sort lower enter block reads by 2",
+			"moved": [
+				"vue/scale-1k/enterParagraph/scan.blocksMapReads: 188 !== 190",
+				"vue/scale-1k/enterNumbered/scan.blocksMapReads: 396 !== 398"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes on top of the parentId sibling sort lower enter block reads by 2",
+			"moved": [
+				"vue/scale-5k/enterParagraph/scan.blocksMapReads: 188 !== 190",
+				"vue/scale-5k/enterNumbered/scan.blocksMapReads: 396 !== 398"
 			]
 		}
 	]

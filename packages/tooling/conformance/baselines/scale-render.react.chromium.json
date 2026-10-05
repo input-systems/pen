@@ -169,7 +169,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 205,
+				"scan.blocksMapReads": 203,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 22,
@@ -191,7 +191,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 402,
+				"scan.blocksMapReads": 400,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 23,
@@ -340,7 +340,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 205,
+				"scan.blocksMapReads": 203,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 22,
@@ -362,7 +362,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 402,
+				"scan.blocksMapReads": 400,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 23,
@@ -1485,6 +1485,22 @@
 				"react/scale-5k/enterParagraph/scan.blocksMapReads: 205 !== 211",
 				"react/scale-5k/enterNumbered/scan.blocksMapReads: 402 !== 600",
 				"react/scale-5k/remoteInsert/scan.blocksMapReads: 167 !== 212"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes on top of the parentId sibling sort lower enter block reads by 2",
+			"moved": [
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 203 !== 205",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 400 !== 402"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes on top of the parentId sibling sort lower enter block reads by 2",
+			"moved": [
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 203 !== 205",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 400 !== 402"
 			]
 		}
 	]

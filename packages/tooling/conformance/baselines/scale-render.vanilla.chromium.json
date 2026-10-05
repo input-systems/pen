@@ -149,7 +149,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 254,
+				"scan.blocksMapReads": 252,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 26,
@@ -167,7 +167,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 442,
+				"scan.blocksMapReads": 440,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 27,
@@ -290,7 +290,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 254,
+				"scan.blocksMapReads": 252,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 26,
@@ -308,7 +308,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 442,
+				"scan.blocksMapReads": 440,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 27,
@@ -1267,6 +1267,22 @@
 				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 254 !== 266",
 				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 442 !== 826",
 				"vanilla/scale-5k/remoteInsert/scan.blocksMapReads: 166 !== 211"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes on top of the parentId sibling sort lower enter block reads by 2",
+			"moved": [
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 252 !== 254",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 440 !== 442"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes on top of the parentId sibling sort lower enter block reads by 2",
+			"moved": [
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 252 !== 254",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 440 !== 442"
 			]
 		}
 	]

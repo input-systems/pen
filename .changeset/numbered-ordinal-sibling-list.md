@@ -7,4 +7,4 @@ Numbered list values count over the item's AX1 sibling list. `getNumberedListIte
 
 Host note: a numbered item that follows a container holding numbered `parentId` children (for example a blockquote) now starts at 1 instead of continuing from the container's last child, matching its `aria-posinset`; markdown export's list `start` follows the same count. The function's signature is unchanged.
 
-Breaking: yes
+Breaking: yes — hosts or snapshots that expect a numbered item after a container with numbered `parentId` children to continue that count, or each `children`-array item to show 1, update the expected numbering; no API changes
