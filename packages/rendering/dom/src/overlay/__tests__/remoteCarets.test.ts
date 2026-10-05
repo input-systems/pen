@@ -55,7 +55,7 @@ function cursor(
 	};
 }
 
-describe("remote carets on the paint plan (W35.R12)", () => {
+describe("remote carets on the paint plan (OV1)", () => {
 	let fixture: OverlayFixture;
 
 	beforeEach(() => {

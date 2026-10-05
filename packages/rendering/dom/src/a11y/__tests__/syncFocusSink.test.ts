@@ -62,7 +62,7 @@ describe("syncFocusSink (AX1)", () => {
 		editor.destroy();
 	});
 
-	it("AX1: a text range in a D5 substitute state reveals the sink as a text range and takes focus", () => {
+	it("AX1: a text range in a large-range substitute state reveals the sink as a text range and takes focus", () => {
 		const editor = createHeadlessEditor({ schema: defaultSchema });
 		const first = editor.firstBlock()!.id;
 		const second = "sink-second";
@@ -175,7 +175,7 @@ describe("syncFocusSink (AX1)", () => {
 		editor.destroy();
 	});
 
-	it("D18: a null selection focuses the root when the editor owns focus", () => {
+	it("AX1: a null selection focuses the root when the editor owns focus", () => {
 		const editor = createHeadlessEditor({ schema: defaultSchema });
 		const sink = makeSink();
 		const root = document.createElement("div");

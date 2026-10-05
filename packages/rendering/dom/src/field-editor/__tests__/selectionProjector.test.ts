@@ -188,7 +188,7 @@ function rootWithNativeRange(): HTMLElement {
 }
 
 describe("SelectionProjector non-text and settle projections (fuzz seeds 23, 37, 41)", () => {
-	it("S2 D18: a null record clears the native range and completes without a text read-back", () => {
+	it("S2: a null record clears the native range and completes without a text read-back", () => {
 		const root = rootWithNativeRange();
 		let attached = 0;
 		const { controller, diagnostics } = createController(

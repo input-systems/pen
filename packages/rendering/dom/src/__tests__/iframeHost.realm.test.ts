@@ -107,7 +107,7 @@ describe("an editor mounted in an iframe document", () => {
 		).toBe(false);
 	});
 
-	it("W3.R1: a projection with focus on its target reads back as focused, so no mismatch is reported", () => {
+	it("P: a projection with focus on its target reads back as focused, so no mismatch is reported", () => {
 		const { editor, blockId, mounted, diagnostics } = mountInIframe();
 		mounted.fieldEditor.activateTextSelection(blockId, 0, 5);
 

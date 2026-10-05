@@ -51,7 +51,7 @@ function caret(blockId: string, offset: number): ReaderSelection {
 	};
 }
 
-describe("single selection reader (S1, W3.R4)", () => {
+describe("single selection reader (S1)", () => {
 	it("S1: the reader's one selectionchange listener maps the live selection inside its root", () => {
 		const { editor, blockId, root, placeCaret } = seed();
 		const read = vi.fn(() => "accept" as const);
@@ -91,7 +91,7 @@ describe("single selection reader (S1, W3.R4)", () => {
 		expect(read).not.toHaveBeenCalled();
 	});
 
-	it("R: a non-equivalent read goes to the decision; no backend pre-filters it (W3.R4)", () => {
+	it("R: a non-equivalent read goes to the decision; no backend pre-filters it (S1)", () => {
 		const { editor, blockId, root, placeCaret } = seed();
 		editor.selectText(blockId, 0, 0);
 		const read = vi.fn(() => "diverge" as const);
@@ -140,7 +140,7 @@ describe("reader gesture windows (R1–R3)", () => {
 		]);
 	});
 
-	it("R1: the document pointerup reads the live selection while the pointer window is still open (D19)", () => {
+	it("R1: the document pointerup reads the live selection while the pointer window is still open", () => {
 		const { editor, blockId, root, placeCaret } = seed();
 		const windowsAtRead: boolean[] = [];
 		const reader = createSelectionReader({

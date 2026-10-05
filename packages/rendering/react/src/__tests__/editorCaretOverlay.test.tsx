@@ -111,7 +111,7 @@ function editorRoot(container: HTMLElement): HTMLElement {
 	return root;
 }
 
-describe("@input/pen-react editor caret overlay (W35.R9)", () => {
+describe("@input/pen-react editor caret overlay (OV3)", () => {
 	it("O: Pen.Editor.CaretOverlay holds customCaret mode while mounted and releases it on unmount", async () => {
 		const { editor } = createHelloEditor();
 		const modes: string[] = [];
@@ -193,21 +193,18 @@ describe("@input/pen-react editor caret overlay (W35.R9)", () => {
 		expect(props?.point).toEqual({ blockId, offset: 2 });
 		expect(props?.affinity).toBe("downstream");
 		expect(props?.attributes["data-affinity"]).toBe("downstream");
-		expect(props?.caretStyle.transform).toMatch(/^translate3d\(/);
 		// OV2: left and top stay 0, so an RTL host keeps the transform's position.
-		expect(props?.caretStyle.left).toBe("0px");
-		expect(props?.caretStyle.top).toBe("0px");
-		expect(props?.caretStyle.position).toBe("absolute");
-		expect(props?.caretStyle.height).toBe("24px");
-		expect(props?.caretStyle.width).toBe(
-			"var(--pen-editor-caret-width, var(--pen-caret-width, 2px))",
-		);
-		expect(props?.caretStyle.borderRadius).toBe(
-			"var(--pen-editor-caret-radius, var(--pen-caret-radius, 999px))",
-		);
-		expect(props?.caretStyle.background).toBe(
-			"var(--pen-editor-caret-color, var(--pen-caret-color, var(--palette-blue, #0a84ff)))",
-		);
+		expect(props?.caretStyle).toMatchObject({
+			transform: expect.stringMatching(/^translate3d\(/),
+			left: "0px",
+			top: "0px",
+			position: "absolute",
+			height: "24px",
+			width: "var(--pen-editor-caret-width, var(--pen-caret-width, 2px))",
+			borderRadius: "var(--pen-editor-caret-radius, var(--pen-caret-radius, 999px))",
+			background:
+				"var(--pen-editor-caret-color, var(--pen-caret-color, var(--palette-blue, #0a84ff)))",
+		});
 		await view.unmount();
 		editor.destroy();
 	});

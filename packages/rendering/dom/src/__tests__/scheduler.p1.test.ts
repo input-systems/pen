@@ -24,7 +24,7 @@ function flushFrame(): void {
 	}
 }
 
-describe("DomScheduler without a projector slot (W3.R8)", () => {
+describe("DomScheduler without a projector slot (P4)", () => {
 	beforeEach(() => {
 		installMockRaf();
 	});

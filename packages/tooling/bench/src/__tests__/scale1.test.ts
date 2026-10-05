@@ -456,7 +456,7 @@ describe("SCALE1 envelope ladder", () => {
 		);
 	});
 
-	it("SCALE1: the concurrent-peer count is measured, not the constant (W5.R7)", () => {
+	it("SCALE1: the concurrent-peer count is measured, not the constant", () => {
 		expect(measureSharedSeedPeerCount()).toBe(2);
 		expect(measureSharedSeedPeerCount(5)).toBe(5);
 	});

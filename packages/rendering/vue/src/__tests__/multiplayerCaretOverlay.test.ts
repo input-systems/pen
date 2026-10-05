@@ -37,7 +37,7 @@ async function flushFrames(): Promise<void> {
 	);
 }
 
-describe("PenMultiplayerCaretOverlay (W35.R12)", () => {
+describe("PenMultiplayerCaretOverlay (OV3)", () => {
 	it("OV3: remote carets from the multiplayer controller paint into the overlay layer", async () => {
 		// jsdom has no layout: every caret Range measures as a 24px line.
 		const box = () => new DOMRect(24, 32, 0, 24);

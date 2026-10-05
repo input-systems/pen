@@ -95,7 +95,7 @@ async function flushFrames(count = 2): Promise<void> {
 	}
 }
 
-describe("session reconciler projection while composing (P3, W3.R6)", () => {
+describe("session reconciler projection while composing (P3, C1)", () => {
 	it("P3: an expanded rebuild after a remote commit on an active block is withheld while the ime window is open and projects once on compositionend-completed", async () => {
 		const { editor, fieldEditor, first, projected } = mount();
 		editor.setSelection(

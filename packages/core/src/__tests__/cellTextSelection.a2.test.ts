@@ -47,7 +47,7 @@ function editCell(
 	});
 }
 
-describe("CellSelection.text (W3.R18)", () => {
+describe("CellSelection.text (A2)", () => {
 	it("A2: cell selections with different text are not equal", () => {
 		const editor = createTableEditor();
 		const versions: SelectionRecord[] = [];

@@ -12,7 +12,7 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe("PenEditor overlay layer (W35.R2, W35.R5)", () => {
+describe("PenEditor overlay layer (OV1, OV2)", () => {
   it("OV2: PenEditor's root gets one overlay layer and the readonly prop reaches the field editor", async () => {
     const editor = createTestEditor({
       blocks: [{ id: "p1", type: "paragraph", props: {}, content: "Hello" }],

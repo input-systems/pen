@@ -12,7 +12,7 @@ import {
 	type OverlayFixture,
 } from "./overlayFixture";
 
-describe("overlay controller (W35.R1, W35.R11)", () => {
+describe("overlay controller (OV1)", () => {
 	let fixture: OverlayFixture;
 
 	beforeEach(() => {
@@ -216,7 +216,7 @@ describe("overlay controller (W35.R1, W35.R11)", () => {
 		expect(readonly).toEqual([false, true]);
 	});
 
-	it("S2: the D5 substitute reaches the read context from the field's getSubstituteState and repaints when it changes", () => {
+	it("S2: the large-range substitute reaches the read context from the field's getSubstituteState and repaints when it changes", () => {
 		const { controller } = fixture;
 		const substitutes: unknown[] = [];
 		controller.registerContributor({

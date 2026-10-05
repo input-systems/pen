@@ -310,7 +310,7 @@ describe("local-selection contributor (§3.5)", () => {
 			isEditing: false,
 		} as const;
 
-		it("D5: a remote append to the first block extends range:first", () => {
+		it("S2: a remote append to the first block extends range:first", () => {
 			editor = createDocument();
 			const read = reader(text(["b2", 3], ["b55", 2]), surface);
 			expect(read()).toContainEqual(
@@ -328,7 +328,7 @@ describe("local-selection contributor (§3.5)", () => {
 			);
 		});
 
-		it("D5: a remote delete of the first covered block moves range:covered", () => {
+		it("S2: a remote delete of the first covered block moves range:covered", () => {
 			editor = createDocument();
 			const read = reader(text(["b2", 3], ["b55", 2]), surface);
 			expect(read()).toContainEqual(
@@ -349,7 +349,7 @@ describe("local-selection contributor (§3.5)", () => {
 			);
 		});
 
-		it("D5: a remote insert after the first block joins range:covered", () => {
+		it("S2: a remote insert after the first block joins range:covered", () => {
 			editor = createDocument();
 			const read = reader(text(["b2", 3], ["b55", 2]), surface);
 			read();

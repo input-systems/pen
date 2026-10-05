@@ -88,7 +88,7 @@ describe("SF2 format barrels", () => {
 		expect(typeof markdown.parseMarkdownWithReport).toBe("function");
 	});
 
-	it("json barrel exports both json importers under the D9 names", () => {
+	it("json barrel exports both json importers as jsonImporter and jsonDocumentImporter", () => {
 		assertNamed(json, "jsonExporter", "./json");
 		assertNamed(json, "jsonImporter", "./json");
 		assertNamed(json, "jsonDocumentImporter", "./json");

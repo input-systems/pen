@@ -93,7 +93,7 @@ const DROPPED: ProjectionReadBack = {
 	},
 };
 
-describe("selection projector read-back (W3.R1)", () => {
+describe("selection projector read-back (P)", () => {
 	it("P1: a read-back that does not map to the record emits selection-projection-mismatch with both values", () => {
 		const { controller, diagnostics, writes } = createDroppingController(
 			() => DROPPED,
@@ -228,7 +228,7 @@ describe("selection projector non-text projection (S2)", () => {
 	});
 });
 
-describe("selection projector triggers and guards (W3.R6, W3.R7)", () => {
+describe("selection projector triggers and guards (P1, P2, HOST9)", () => {
 	const AGREEING: ProjectionReadBack = {
 		...DROPPED,
 		equivalent: true,
@@ -275,7 +275,7 @@ describe("selection projector triggers and guards (W3.R6, W3.R7)", () => {
 	});
 });
 
-describe("selection projector equivalence skip (W3.R6)", () => {
+describe("selection projector equivalence skip (P)", () => {
 	const AGREEING: ProjectionReadBack = {
 		...DROPPED,
 		equivalent: true,
@@ -326,7 +326,7 @@ describe("selection projector equivalence skip (W3.R6)", () => {
 	});
 });
 
-describe("selection projector D5 substitute states (W3.R17)", () => {
+describe("selection projector substitute states for ranges over 50 blocks (S2)", () => {
 	function rangeRecord(
 		version: number,
 		focusBlockId: string,

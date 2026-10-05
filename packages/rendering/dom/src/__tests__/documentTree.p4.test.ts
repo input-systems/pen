@@ -25,7 +25,7 @@ function mount() {
 	return { editor, mounted };
 }
 
-describe("vanilla document tree mount acks (W3.R8)", () => {
+describe("vanilla document tree mount acks (P4)", () => {
 	it("P4: the vanilla tree acks each block element it creates, connected, in the commit's turn", () => {
 		const { editor, mounted } = mount();
 		const ack = vi.spyOn(mounted.fieldEditor, "ackBlockMounted");

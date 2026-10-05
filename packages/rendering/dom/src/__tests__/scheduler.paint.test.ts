@@ -11,7 +11,7 @@ import {
 } from "../overlay/__tests__/overlayFixture";
 import { DomScheduler, type OverlayPainter } from "../scheduler";
 
-describe("DomScheduler overlay paint slot (W35.R1)", () => {
+describe("DomScheduler overlay paint slot (OV1)", () => {
 	let fixture: OverlayFixture | null = null;
 
 	beforeEach(() => {

@@ -112,7 +112,7 @@ async function longPressWord(fixture: ReturnType<typeof seed>) {
 	fixture.nativeRange(0, 5);
 }
 
-describe("R1 native-range window (D21, W3.R26)", () => {
+describe("R1 native-range window for touch selection handles", () => {
 	it("R1: the native-range window opens on a coarse-pointer selectstart followed by a non-collapsed range", async () => {
 		const fixture = seed();
 		await fixture.tap("touch");

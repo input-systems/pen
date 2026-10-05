@@ -10,7 +10,7 @@ import {
 	type OverlayFixture,
 } from "./overlayFixture";
 
-describe("overlay blink epoch (W35.R6)", () => {
+describe("overlay blink epoch (OV1)", () => {
 	let fixture: OverlayFixture;
 
 	beforeEach(() => {

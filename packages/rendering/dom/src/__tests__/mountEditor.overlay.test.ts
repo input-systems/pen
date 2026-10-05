@@ -13,7 +13,7 @@ const noDefaultExtensionsPreset = {
 	},
 };
 
-describe("mountEditor overlay layer (W35.R2)", () => {
+describe("mountEditor overlay layer (OV2)", () => {
 	afterEach(() => {
 		document.body.replaceChildren();
 	});

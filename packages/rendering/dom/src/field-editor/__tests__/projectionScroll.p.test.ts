@@ -49,7 +49,7 @@ function rect(top: number, bottom: number) {
 	};
 }
 
-describe("projection scroll policy (W3.R15)", () => {
+describe("projection scroll policy (P)", () => {
 	it("P: auto scroll is on for keyboard, ime, restore and local-user mapped records and off for pointer, programmatic and collaborator-mapped", () => {
 		const nearest = { align: "nearest" };
 		const local = { commitId: 5, originType: "user" };
@@ -135,7 +135,7 @@ describe("projection scroll policy (W3.R15)", () => {
 	});
 });
 
-describe("projection scroll jobs (W3.R15)", () => {
+describe("projection scroll jobs (P)", () => {
 	function projectorFor(origin: SelectionRecord["origin"]) {
 		const element = document.createElement("span");
 		document.body.append(element);
@@ -200,7 +200,7 @@ describe("projection scroll jobs (W3.R15)", () => {
 		expect(vi.mocked(applyScrollPlan)).toHaveBeenCalledTimes(1);
 	});
 
-	it("P: scrollIntoView queues the same read and write for W4's scrollToBlock", () => {
+	it("P: scrollIntoView queues the same read and write for a host's scrollToBlock", () => {
 		const { projector, jobs, flush } = projectorFor("pointer");
 		projector.scrollIntoView({ blockId: "first" }, { align: "start" });
 		flush();

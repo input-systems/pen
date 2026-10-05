@@ -17,7 +17,7 @@ function editedCell(row: number, col: number, blockId = BLOCK_ID) {
 	};
 }
 
-describe("resolveEditedCellText (W3.R18)", () => {
+describe("resolveEditedCellText (T6)", () => {
 	it("FE6: restores the record's CellSelection.text when it names the active cell", () => {
 		expect(
 			resolveEditedCellText(editedCell(0, 0), BLOCK_ID, ACTIVE),
