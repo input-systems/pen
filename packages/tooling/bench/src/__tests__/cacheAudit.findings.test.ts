@@ -207,6 +207,34 @@ describe("cache property findings", () => {
 		expect(cacheProblems(left)).toEqual([]);
 	});
 
+	it("finding 7: a duplicate root entry landing directly before the original is reported", () => {
+		const peers = fork(2);
+		for (const editor of peers) {
+			editor.apply([
+				{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-9" } },
+			]);
+		}
+		// One of the two deliveries lands the peer's entry directly before the
+		// receiver's own; both must report that the root order gained an entry.
+		for (const [from, to] of [
+			[0, 1],
+			[1, 0],
+		] as const) {
+			const summaries: ChangeSummary[] = [];
+			const off = peers[to]!.on("commit", (event: CommitEvent) => {
+				summaries.push(event.summary);
+			});
+			harness!.deliver(from, to);
+			off();
+			const named = summaries.flatMap((summary) =>
+				summary.structural.map((change) => ("blockId" in change ? change.blockId : null)),
+			);
+			expect(named).toContain("scale-block-5");
+			expect(peers[to]!.documentState.blockOrder.filter((id) => id === "scale-block-5")).toHaveLength(2);
+			expect(cacheProblems(peers[to]!)).toEqual([]);
+		}
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },

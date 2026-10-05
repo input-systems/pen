@@ -262,8 +262,21 @@ function buildStructuralChanges(
 				!item.repair &&
 				fromParentId === item.parentId &&
 				fromIndex === item.index
-			)
+			) {
+				// A child an arrived array lists where the index held it
+				// did not move. An array edit inserting an id the commit
+				// removed nowhere adds a second entry (COL4: two peers moved
+				// the block to one place) that landed directly before the
+				// first: the list gained an entry, so it is reported.
+				if (item.arrived) continue;
+				structural.push({
+					type: "block-inserted",
+					blockId: item.id,
+					parentId: item.parentId,
+					index: item.index,
+				});
 				continue;
+			}
 			structural.push({
 				type: "block-moved",
 				blockId: item.id,
@@ -490,7 +503,7 @@ function addReplacedChildArrays(
  * per-block index reads it. Bounded by the inserted subtrees (SCALE2).
  */
 function addInsertedDescendants(
-	inserted: { id: string; parentId: string | null; index: number }[],
+	inserted: ArrayInsert[],
 	arrivedChildArrays: ReadonlyMap<string, readonly string[]>,
 ): void {
 	const seen = new Set(inserted.map((item) => item.id));
@@ -500,7 +513,7 @@ function addInsertedDescendants(
 			const childId = children[at]!;
 			if (seen.has(childId)) continue;
 			seen.add(childId);
-			inserted.push({ id: childId, parentId: blockId, index: at });
+			inserted.push({ id: childId, parentId: blockId, index: at, arrived: true });
 			visit(childId);
 		}
 	};
@@ -530,13 +543,16 @@ function parentListings(
  * An id an array edit placed. `repair` marks the surviving entry of a
  * duplicate the commit removed (COL4): it reports as a move even when the
  * surviving entry is where the block already rendered, because its sibling
- * list lost an entry.
+ * list lost an entry. `arrived` marks an entry of an array that arrived
+ * whole, which names a block the index may already hold there.
  */
 interface ArrayInsert {
 	readonly id: string;
 	readonly parentId: string | null;
 	readonly index: number;
 	readonly repair?: boolean;
+	/** Read from an array that arrived whole (`arrivedChildArrays`), not from an array edit. */
+	readonly arrived?: boolean;
 }
 
 function collectArrayEdits(
