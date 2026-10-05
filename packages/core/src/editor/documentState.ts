@@ -842,20 +842,21 @@ export class DocumentStateImpl implements DocumentState {
 			);
 			return "forgotten";
 		}
-		const parentId = readParentIdProp(blockMap);
 		// A `parentId` child that left the root order for no array (COL4,
 		// until the next local pass re-homes it) is ordered first among its
 		// parent's `parentId` children by the full build, by map iteration
-		// order among several: it rebuilds rather than guess that order.
+		// order among several: it rebuilds rather than guess that order. Its
+		// props are read only for a block the root order lost (SCALE2).
 		if (
-			parentId !== null &&
 			rootEdits.removed.has(blockId) &&
 			!this._inRootOrder(blockId) &&
-			!(cachedParent !== undefined && this._arrayChildren.get(cachedParent)?.includes(blockId))
+			!(cachedParent !== undefined && this._arrayChildren.get(cachedParent)?.includes(blockId)) &&
+			readParentIdProp(blockMap) !== null
 		) {
 			return "rebuild";
 		}
 		if (!rootEdits.inserted.has(blockId)) return "same";
+		const parentId = readParentIdProp(blockMap);
 		if (parentId === null || (cachedParent !== undefined && cachedParent !== parentId)) {
 			return "same";
 		}
