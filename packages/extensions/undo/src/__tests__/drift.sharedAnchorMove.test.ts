@@ -66,4 +66,38 @@ describe("@input/pen-undo drift over shared anchors", () => {
 		});
 		editor.destroy();
 	});
+
+	it("AN14: the live caret undo holds between entries follows a move, so the next entry's before-caret is where the user typed", () => {
+		const { editor } = createUndoEditor();
+		const end = BODY_TEXT.length;
+		editor.selectText(BODY_ID, end, end);
+
+		// A collaborator move (same-length delete in the body, insert in the
+		// title) re-mints the authority's anchors; the commit dispatch then
+		// emits the `mapped` selection, which refreshes undo's live caret.
+		editor.apply(
+			[
+				{ type: "splice-text", blockId: BODY_ID, from: 10, to: 14, insert: "" },
+				{ type: "splice-text", blockId: TITLE_ID, from: 0, to: 0, insert: "abcd" },
+			],
+			{ origin: "collaborator" },
+		);
+		const caret = end - 4;
+		expect(editor.selection).toMatchObject({
+			anchor: { blockId: BODY_ID, offset: caret },
+		});
+
+		editor.apply(
+			[{ type: "splice-text", blockId: BODY_ID, from: caret, to: caret, insert: "!" }],
+			{ origin: "user" },
+		);
+		expect(editor.undoManager.undo()).toBe(true);
+
+		expect(editor.selection).toMatchObject({
+			type: "text",
+			anchor: { blockId: BODY_ID, offset: caret },
+			focus: { blockId: BODY_ID, offset: caret },
+		});
+		editor.destroy();
+	});
 });
