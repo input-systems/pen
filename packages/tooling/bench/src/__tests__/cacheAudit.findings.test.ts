@@ -174,6 +174,39 @@ describe("cache property findings", () => {
 		expect(cacheProblems(local!)).toEqual([]);
 	});
 
+	it("finding 5: a block two children arrays list keeps a parent when one entry goes", () => {
+		const callout = (id: string) => ({
+			id,
+			type: "callout",
+			content: id,
+			children: [{ id: `${id}-1`, type: "paragraph", content: "one" }],
+		});
+		const peers = fork(2, [
+			...generateMixedBlockSpecs(20),
+			callout("callout-a"),
+			callout("callout-b"),
+		]);
+		const [left, right] = peers as [TestEditor, TestEditor];
+		left.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-a", index: 0 } },
+		]);
+		right.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-b", index: 1 } },
+		]);
+		harness!.deliver(0, 1);
+		harness!.deliver(1, 0);
+		for (const editor of peers) expect(cacheProblems(editor)).toEqual([]);
+		// Undo takes `scale-block-3` out of callout-b and back into the root
+		// order, while callout-a still lists it.
+		const manager = right.undoManager;
+		manager.stopCapturing();
+		expect(manager.undo()).toBe(true);
+		expect(right.documentState.parentOf("scale-block-3")).toBe("callout-a");
+		expect(cacheProblems(right)).toEqual([]);
+		harness!.deliver(1, 0);
+		expect(cacheProblems(left)).toEqual([]);
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },

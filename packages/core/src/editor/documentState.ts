@@ -66,6 +66,13 @@ export class DocumentStateImpl implements DocumentState {
 	private _arrayChildren = new Map<string, readonly string[]>();
 	/** Blocks whose `children` array a transaction since the last `incrementalUpdate` edited, created or dropped. */
 	private _childArrayEdits = new Set<string>();
+	/**
+	 * Whether the last rebuild met an id listed by two `children` arrays
+	 * (COL4, until normalization repairs it): the parent index holds one of
+	 * them, so an edit to either array cannot tell whether the block keeps a
+	 * parent, and every array edit rebuilds until a rebuild finds none.
+	 */
+	private _arraysShareChild = false;
 	private _generation = 0;
 	/** Nested preorder, built on first read; root and `children` edits patch it span by span. */
 	private _preorder: Preorder | null = null;
@@ -357,6 +364,7 @@ export class DocumentStateImpl implements DocumentState {
 		this._parentIndex = new Map();
 		this._childIndex = new Map();
 		this._arrayChildren = new Map();
+		this._arraysShareChild = false;
 
 		const rootIds: string[] = [];
 		for (let i = 0; i < order.length; i++) {
@@ -382,6 +390,7 @@ export class DocumentStateImpl implements DocumentState {
 				const childIds: string[] = [];
 				for (let i = 0; i < children.length; i++) {
 					const childId = children.get(i);
+					if (nestedChildIds.has(childId)) this._arraysShareChild = true;
 					this._parentIndex.set(childId, blockId);
 					nestedChildIds.add(childId);
 					childIds.push(childId);
@@ -420,6 +429,7 @@ export class DocumentStateImpl implements DocumentState {
 		this._childIndex.clear();
 		this._arrayChildren.clear();
 		this._childArrayEdits.clear();
+		this._arraysShareChild = false;
 		this._generation++;
 	}
 
@@ -550,7 +560,10 @@ export class DocumentStateImpl implements DocumentState {
 		this._rootEdits = emptyRootEdits();
 		const arrayEdits = this._childArrayEdits;
 		this._childArrayEdits = new Set();
-		if (this._doc.blockOrder.length !== this._rootIds().length) {
+		if (
+			this._doc.blockOrder.length !== this._rootIds().length ||
+			(this._arraysShareChild && arrayEdits.size > 0)
+		) {
 			this.rebuild();
 			return;
 		}
