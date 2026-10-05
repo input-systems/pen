@@ -52,7 +52,7 @@ import {
 	applyInlineTextDiffInput,
 	applyInlineTextInput,
 } from "./textInputPipeline";
-import { isDomNode } from "../utils/domNodes";
+import { isDomCompositionEvent, isDomNode } from "../utils/domNodes";
 import type { FieldEditorTextChangeEvent, FieldEditorTextLike } from "./crdt";
 
 /**
@@ -275,8 +275,7 @@ export class EditContextBackend extends FieldInputBackendBase {
 	};
 
 	protected handleCompositionEnd = (event?: Event): void => {
-		const committed =
-			event instanceof CompositionEvent ? (event.data ?? "") : "";
+		const committed = isDomCompositionEvent(event) ? (event.data ?? "") : "";
 		this.endComposition(committed.length === 0 ? "drop" : "commit");
 	};
 

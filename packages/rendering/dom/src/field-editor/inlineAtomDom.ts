@@ -23,15 +23,16 @@ const inlineAtomElementData = new WeakMap<HTMLElement, InlineAtomElementData>();
 
 export function createInlineAtomCaretBoundaryElement(
 	side: InlineAtomCaretBoundarySide,
+	doc: Document = document,
 ): HTMLElement {
-	const element = document.createElement("span");
+	const element = doc.createElement("span");
 	element.setAttribute(DATA_ATTRS.inlineAtomCaretBoundary, "");
 	element.setAttribute(DATA_ATTRS.inlineAtomCaretSide, side);
 	// The `<br>` keeps `(boundary, 0)` a selectable DOM position beside the
 	// chip, but a rendered `<br>` inside an inline span is a forced line
 	// break: every atom sat on its own line (G1, D12). Hidden, it adds no
 	// line box, and the overlay draws the visible caret (O1).
-	const lineBreak = document.createElement("br");
+	const lineBreak = doc.createElement("br");
 	lineBreak.style.display = "none";
 	element.appendChild(lineBreak);
 	return element;
@@ -40,9 +41,10 @@ export function createInlineAtomCaretBoundaryElement(
 function createInlineAtomChipElement(
 	insert: unknown,
 	registry: SchemaRegistry,
+	doc: Document,
 ): HTMLElement {
 	const atom = resolveInlineAtomInsert(insert);
-	const element = document.createElement("span");
+	const element = doc.createElement("span");
 	element.setAttribute(DATA_ATTRS.inlineAtom, "");
 	element.contentEditable = "false";
 
@@ -70,15 +72,17 @@ function createInlineAtomChipElement(
 	return element;
 }
 
+/** Created in `doc`, the field's own document (an iframe's when mounted there). */
 export function createInlineAtomElement(
 	insert: unknown,
 	registry: SchemaRegistry,
+	doc: Document = document,
 ): HTMLElement {
-	const host = document.createElement("span");
+	const host = doc.createElement("span");
 	host.setAttribute(DATA_ATTRS.inlineAtomHost, "");
-	host.appendChild(createInlineAtomCaretBoundaryElement("before"));
-	host.appendChild(createInlineAtomChipElement(insert, registry));
-	host.appendChild(createInlineAtomCaretBoundaryElement("after"));
+	host.appendChild(createInlineAtomCaretBoundaryElement("before", doc));
+	host.appendChild(createInlineAtomChipElement(insert, registry, doc));
+	host.appendChild(createInlineAtomCaretBoundaryElement("after", doc));
 	return host;
 }
 

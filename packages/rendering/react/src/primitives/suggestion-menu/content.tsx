@@ -9,6 +9,7 @@ import {
 	type MenuPlacementSide,
 } from "../../utils/menuPosition";
 import { useSuggestionMenuContext } from "./root";
+import { resolveEditorOwnerDocument } from "../../utils/aiDomScope";
 
 type Side = MenuPlacementSide;
 type SuggestionMenuPosition = AnchoredMenuPosition;
@@ -128,11 +129,12 @@ export function SuggestionMenuContent(props: SuggestionMenuContentProps) {
 
 		// `pointerdown`, not `mousedown`: a control that cancels its
 		// pointerdown suppresses the compatibility mouse events.
-		document.addEventListener("pointerdown", handlePointerDown, true);
+		const doc = resolveEditorOwnerDocument(editor);
+		doc.addEventListener("pointerdown", handlePointerDown, true);
 		return () => {
-			document.removeEventListener("pointerdown", handlePointerDown, true);
+			doc.removeEventListener("pointerdown", handlePointerDown, true);
 		};
-	}, [dismiss, open]);
+	}, [dismiss, editor, open]);
 
 	useEffect(() => {
 		if (!open) {

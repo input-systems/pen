@@ -25,6 +25,7 @@ import {
 } from "./contextualPromptGeometry";
 import { useContextualPromptSession } from "./contextualPromptPlacement";
 import { useAIContext } from "./root";
+import { isDomHTMLElement, isDomNode } from "@input/pen-dom/utils/domNodes";
 
 export interface AIContextualPromptComposerProps extends AsChildProps {
 	placeholder?: string;
@@ -241,9 +242,9 @@ export function AIContextualPromptComposer(
 				"[data-pen-editor-root]",
 			) as HTMLElement | null;
 			const targetElement =
-				event.target instanceof HTMLElement
+				isDomHTMLElement(event.target)
 					? event.target
-					: event.target instanceof Node
+					: isDomNode(event.target)
 						? event.target.parentElement
 						: null;
 			const targetEditorRoot = targetElement?.closest(
@@ -552,7 +553,7 @@ function resolveInlineSessionTargetState(
 	const activeElement = ownerDocument.activeElement;
 	if (
 		promptElement &&
-		activeElement instanceof Node &&
+		isDomNode(activeElement) &&
 		promptElement.contains(activeElement)
 	) {
 		return "active";

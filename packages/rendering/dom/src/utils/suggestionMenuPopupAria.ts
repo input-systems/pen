@@ -9,7 +9,10 @@ export function resolveSuggestionMenuField(
 ): HTMLElement | null {
 	const editorRoot =
 		from?.closest(`[${DATA_ATTRS.editorRoot}]`) ??
-		document.querySelector(`[${DATA_ATTRS.editorRoot}]`);
+		from?.ownerDocument.querySelector(`[${DATA_ATTRS.editorRoot}]`) ??
+		(typeof document === "undefined"
+			? null
+			: document.querySelector(`[${DATA_ATTRS.editorRoot}]`));
 	return (
 		editorRoot?.querySelector<HTMLElement>(
 			`[${DATA_ATTRS.fieldEditorActiveSurface}]`,

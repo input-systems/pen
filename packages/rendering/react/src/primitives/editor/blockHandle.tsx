@@ -15,6 +15,7 @@ import {
 import { useFieldEditorContext } from "../../context/fieldEditorContext";
 import { resolveChromeEditorRoot } from "../../utils/aiDomScope";
 import { buildMoveBlockOps } from "./blockDragSession";
+import { isDomNode } from "@input/pen-dom/utils/domNodes";
 
 /** Command name (`spec/rules/commands.md`). Menu items dispatch this even when the command is not wired. */
 export const PEN_MOVE_BLOCK_UP = "pen.moveBlockUp";
@@ -179,7 +180,9 @@ export function EditorBlockHandle(props: BlockHandleProps) {
 				),
 			);
 			if (items.length === 0) return;
-			const from = items.indexOf(document.activeElement as HTMLElement);
+			const from = items.indexOf(
+				event.currentTarget.ownerDocument.activeElement as HTMLElement,
+			);
 			const delta = event.key === "ArrowDown" ? 1 : -1;
 			const next = items[(from + delta + items.length) % items.length];
 			next?.focus();
@@ -196,7 +199,7 @@ export function EditorBlockHandle(props: BlockHandleProps) {
 			const menu = menuRef.current;
 			const handle = handleRef.current;
 			const target = event.target;
-			if (!(target instanceof Node)) return;
+			if (!isDomNode(target)) return;
 			if (
 				(menu && menu.contains(target)) ||
 				(handle && handle.contains(target))

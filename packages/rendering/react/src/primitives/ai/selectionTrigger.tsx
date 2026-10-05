@@ -3,6 +3,7 @@ import { foldAndNormalize, isCollapsed } from "@input/pen-core";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { shouldIgnoreAIKeyboardEvent } from "../../utils/aiKeyboardScope";
 import { useAIContext } from "./root";
+import { resolveEditorOwnerDocument } from "../../utils/aiDomScope";
 
 export interface AISelectionTriggerProps extends AsChildProps {
 	shortcut?: string;
@@ -48,10 +49,11 @@ export function AISelectionTrigger(props: AISelectionTriggerProps) {
 			event.preventDefault();
 			openInlineSession();
 		};
-		document.addEventListener("keydown", handleKeyDown, true);
+		const doc = resolveEditorOwnerDocument(editor);
+		doc.addEventListener("keydown", handleKeyDown, true);
 		return () =>
-			document.removeEventListener("keydown", handleKeyDown, true);
-	}, [openInlineSession, shortcut]);
+			doc.removeEventListener("keydown", handleKeyDown, true);
+	}, [editor, openInlineSession, shortcut]);
 	const triggerProps: AsChildProps & {
 		ref?: React.Ref<HTMLElement>;
 	} & Record<string, unknown> = {

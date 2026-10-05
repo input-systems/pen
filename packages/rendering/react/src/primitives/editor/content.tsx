@@ -36,6 +36,7 @@ import {
 	getInlineAtomDragSnapshot,
 	subscribeInlineAtomDragSnapshot,
 } from "@input/pen-dom";
+import { isDomNode } from "@input/pen-dom/utils/domNodes";
 
 export interface EditorContentProps extends AsChildProps {
 	emptyPlaceholder?: string;
@@ -237,7 +238,7 @@ export function EditorContent(props: EditorContentProps) {
 	const handleBlockDragLeave = (event: React.DragEvent<HTMLElement>) => {
 		const relatedTarget = event.relatedTarget;
 		if (
-			relatedTarget instanceof Node &&
+			isDomNode(relatedTarget) &&
 			event.currentTarget.contains(relatedTarget)
 		) {
 			return;

@@ -17,6 +17,7 @@ import type {
 	ContextualPromptSide,
 } from "./contextualPromptTypes";
 import { useAIContext } from "./root";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 
 export interface AIContextualPromptSurfaceProps extends AsChildProps {
 	mode?: ContextualPromptMode;
@@ -86,7 +87,7 @@ export function AIContextualPromptSurface(
 		const aiRootElement = surfaceRef.current.closest("[data-pen-ai-root]");
 		const hostElement =
 			aiRootElement?.querySelector("[data-pen-editor-content]") ?? null;
-		if (!(hostElement instanceof HTMLElement)) {
+		if (!isDomHTMLElement(hostElement)) {
 			return;
 		}
 
@@ -94,7 +95,7 @@ export function AIContextualPromptSurface(
 			hostElement,
 			layout.anchorBlockId,
 		);
-		if (!(anchorBlock instanceof HTMLElement)) {
+		if (!isDomHTMLElement(anchorBlock)) {
 			return;
 		}
 

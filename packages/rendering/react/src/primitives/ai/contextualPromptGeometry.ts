@@ -16,6 +16,7 @@ import {
 	resolveEditorContentElement,
 } from "../../utils/aiDomScope";
 import type { ContextualPromptPlacement } from "./contextualPromptTypes";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 
 export function resolveAnchorRect(
 	hostElement: HTMLElement,
@@ -142,7 +143,7 @@ export function resolvePromptHostElement(
 			(anchorBlock?.closest(
 				"[data-pen-editor-content]",
 			) as HTMLElement | null);
-		if (hostElement instanceof HTMLElement) {
+		if (isDomHTMLElement(hostElement)) {
 			return hostElement;
 		}
 	}
@@ -152,7 +153,7 @@ export function resolvePromptHostElement(
 
 function geometryRoot(hostElement: HTMLElement): HTMLElement {
 	const root = hostElement.closest(`[${DATA_ATTRS.editorRoot}]`);
-	return root instanceof HTMLElement ? root : hostElement;
+	return isDomHTMLElement(root) ? root : hostElement;
 }
 
 function readBlockDomRects(

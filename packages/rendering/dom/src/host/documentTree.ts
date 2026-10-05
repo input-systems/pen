@@ -266,7 +266,7 @@ function updateBlockNodes(
 ): void {
 	setAttr(nodes.element, DATA_ATTRS.blockType, block.type);
 	const body = nodes.element.firstElementChild;
-	if (body instanceof HTMLElement) {
+	if (isDomHTMLElement(body)) {
 		setAttr(body, DATA_ATTRS.blockType, block.type);
 	}
 	setAttr(nodes.element, "dir", resolvedContentDir(editor, block) ?? null);

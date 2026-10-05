@@ -325,7 +325,9 @@ export class ExpandedContentEditableBackend extends InputBackendBase {
 			return;
 		}
 
-		ensureLineEdgeMeasure(this.editor);
+		if (this.element) {
+			ensureLineEdgeMeasure(this.editor, this.element.ownerDocument);
+		}
 
 		if (
 			!event.defaultPrevented &&

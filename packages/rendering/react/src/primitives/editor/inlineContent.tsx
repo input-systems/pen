@@ -30,6 +30,7 @@ import {
 	resolveNextInlineAtomTargets,
 	type InlineAtomRenderTarget,
 } from "./inlineAtomTargets";
+import { isDomNode } from "@input/pen-dom/utils/domNodes";
 
 export interface InlineContentProps extends AsChildProps {
 	blockId: string;
@@ -161,7 +162,7 @@ export const InlineContent = memo(function InlineContent(props: InlineContentPro
 		const isBackendOwned =
 			!!elementRef.current &&
 			isActive &&
-			(activeElement instanceof Node
+			(isDomNode(activeElement)
 				? elementRef.current.contains(activeElement)
 				: false);
 		const shouldForceCommitReconcile =

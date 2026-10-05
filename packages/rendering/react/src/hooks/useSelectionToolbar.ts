@@ -7,6 +7,8 @@ import { queryBlockElement } from "@input/pen-dom/field-editor/selectionBridge";
 import { resolveSelectionRect } from "../selection/placement";
 import { useIsomorphicLayoutEffect } from "./useIsomorphicLayoutEffect";
 import { useSyncExternalStoreWithSelector } from "../utils/useSyncExternalStoreWithSelector";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
+import { resolveEditorOwnerDocument } from "../utils/aiDomScope";
 
 export interface SelectionToolbarState {
 	isOpen: boolean;
@@ -100,8 +102,9 @@ function resolveEditorRoot(
 	editor: Editor,
 	selection: Editor["selection"],
 ): HTMLElement | null {
+	const doc = resolveEditorOwnerDocument(editor);
 	if (selection?.type === "text") {
-		const roots = document.querySelectorAll<HTMLElement>(
+		const roots = doc.querySelectorAll<HTMLElement>(
 			`[${DATA_ATTRS.editorRoot}]`,
 		);
 		for (const root of roots) {
@@ -111,12 +114,12 @@ function resolveEditorRoot(
 		}
 	}
 
-	const activeRoot = resolveNodeRoot(document.activeElement);
+	const activeRoot = resolveNodeRoot(doc.activeElement);
 	if (activeRoot) {
 		return activeRoot;
 	}
 
-	const roots = document.querySelectorAll<HTMLElement>(
+	const roots = doc.querySelectorAll<HTMLElement>(
 		`[${DATA_ATTRS.editorRoot}]`,
 	);
 	return roots.length === 1 ? roots[0] : null;
@@ -127,7 +130,7 @@ function resolveNodeRoot(node: Node | null | undefined): HTMLElement | null {
 		return null;
 	}
 
-	if (node instanceof HTMLElement) {
+	if (isDomHTMLElement(node)) {
 		return node.closest(`[${DATA_ATTRS.editorRoot}]`);
 	}
 

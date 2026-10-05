@@ -1,5 +1,6 @@
 import { fullReconcileDeltasToDOM } from "@input/pen-dom/field-editor/reconciler";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 import { isInlineContentEmpty } from "@input/pen-dom/utils/editorEmptyState";
 import { fieldEditorTextEntryAttrs } from "@input/pen-dom/utils/fieldEditorTextEntryAttrs";
 import {
@@ -191,7 +192,7 @@ export const PenInlineContent = defineComponent({
 						element: Element | ComponentPublicInstance | null,
 					) => {
 						elementRef.value =
-							element instanceof HTMLElement ? element : null;
+							isDomHTMLElement(element) ? element : null;
 					},
 					[DATA_ATTRS.inlineContent]: "",
 					[DATA_ATTRS.fieldEditorSurface]: "",

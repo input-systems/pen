@@ -39,6 +39,31 @@ export function isDomDocument(value: unknown): value is Document {
 	return isDomNode(value) && value.nodeType === DOCUMENT_NODE;
 }
 
+/** `value instanceof Event`, for an event from any window. */
+export function isDomEvent(value: unknown): value is Event {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		typeof (value as { type?: unknown }).type === "string" &&
+		typeof (value as { preventDefault?: unknown }).preventDefault ===
+			"function"
+	);
+}
+
+/**
+ * `value instanceof CompositionEvent`, for an event from any window: a
+ * `composition*` event that carries its `data`.
+ */
+export function isDomCompositionEvent(
+	value: unknown,
+): value is CompositionEvent {
+	return (
+		isDomEvent(value) &&
+		value.type.startsWith("composition") &&
+		"data" in value
+	);
+}
+
 /** The element `target` is, or the parent element of a non-element node. */
 export function closestDomElement(target: unknown): Element | null {
 	if (isDomElement(target)) {

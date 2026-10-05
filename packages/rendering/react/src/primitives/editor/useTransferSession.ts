@@ -10,6 +10,7 @@ import {
 import { executeTransfer } from "@input/pen-dom/field-editor/transfer";
 import { canAcceptImageTransfer } from "@input/pen-dom/field-editor/transferImages";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
+import { isDomElement, isDomNode } from "@input/pen-dom/utils/domNodes";
 
 interface InlineDropCaretStyle {
 	left: number;
@@ -57,13 +58,13 @@ export function useTransferSession(
 		};
 
 		const isNodeWithinRoot = (target: EventTarget | null): boolean =>
-			target instanceof Node && rootElement.contains(target);
+			isDomNode(target) && rootElement.contains(target);
 
 		const isNodeWithinContent = (target: EventTarget | null): boolean =>
-			target instanceof Node && contentElement.contains(target);
+			isDomNode(target) && contentElement.contains(target);
 
 		const isIgnoredTransferTarget = (target: EventTarget | null): boolean =>
-			target instanceof Element &&
+			isDomElement(target) &&
 			target.closest(`[${DATA_ATTRS.ignoreTransfer}]`) !== null;
 
 		const readPointWithinElement = (

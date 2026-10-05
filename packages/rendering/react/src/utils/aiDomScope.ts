@@ -4,5 +4,6 @@ export {
 	querySuggestionAnchorElements,
 	resolveChromeEditorRoot,
 	resolveEditorContentElement,
+	resolveEditorOwnerDocument,
 	resolveEditorRootElement,
 } from "@input/pen-dom/utils/aiDomScope";

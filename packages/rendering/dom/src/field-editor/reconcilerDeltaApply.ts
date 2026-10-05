@@ -63,7 +63,7 @@ export function applyDeltaToDOM(
 					if (isInlineAtomNode(span)) {
 						if (textOffset !== 0) return false;
 						element.insertBefore(
-							document.createTextNode(text),
+							element.ownerDocument.createTextNode(text),
 							span,
 						);
 						childIndex++;
@@ -79,7 +79,7 @@ export function applyDeltaToDOM(
 						existing.slice(textOffset);
 					textOffset += text.length;
 				} else {
-					element.appendChild(document.createTextNode(text));
+					element.appendChild(element.ownerDocument.createTextNode(text));
 					childIndex = element.childNodes.length - 1;
 					textOffset = text.length;
 				}
@@ -90,6 +90,7 @@ export function applyDeltaToDOM(
 						entry.attributes,
 						registry,
 						policy,
+						element.ownerDocument,
 					);
 					const ref = element.childNodes[childIndex] ?? null;
 					element.insertBefore(node, ref);

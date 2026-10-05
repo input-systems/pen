@@ -3,6 +3,7 @@ import { isCollapsed } from "@input/pen-core";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { matchesShortcut } from "./selectionTrigger";
 import { useAIContext } from "./root";
+import { resolveEditorOwnerDocument } from "../../utils/aiDomScope";
 
 export interface AIContextualPromptTriggerProps extends AsChildProps {
 	shortcut?: string;
@@ -48,10 +49,11 @@ export function AIContextualPromptTrigger(
 			event.preventDefault();
 			openContextualPrompt();
 		};
-		document.addEventListener("keydown", handleKeyDown, true);
+		const doc = resolveEditorOwnerDocument(editor);
+		doc.addEventListener("keydown", handleKeyDown, true);
 		return () =>
-			document.removeEventListener("keydown", handleKeyDown, true);
-	}, [openContextualPrompt, shortcut]);
+			doc.removeEventListener("keydown", handleKeyDown, true);
+	}, [editor, openContextualPrompt, shortcut]);
 
 	const triggerProps: AsChildProps & {
 		ref?: React.Ref<HTMLElement>;

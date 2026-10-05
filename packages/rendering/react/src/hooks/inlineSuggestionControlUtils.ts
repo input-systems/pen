@@ -7,6 +7,7 @@ import type { useAIActions } from "./useAIActions";
 import type { InlineSuggestionControlPosition } from "./useInlineSuggestionControls";
 import { areAdjacentSiblingBlocks } from "@input/pen-dom/utils/parentIdTree";
 import { querySuggestionAnchorElements } from "../utils/aiDomScope";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 
 const SUGGESTION_CONTROL_VIEWPORT_PADDING = 8;
 const SUGGESTION_CONTROL_WIDTH_ESTIMATE = 268;
@@ -168,7 +169,7 @@ function resolveSuggestionControlHost(
 	scrollContainer: HTMLElement,
 ): HTMLElement {
 	const editorContent = element.closest("[data-pen-editor-content]");
-	if (editorContent instanceof HTMLElement) {
+	if (isDomHTMLElement(editorContent)) {
 		return editorContent;
 	}
 	return scrollContainer;

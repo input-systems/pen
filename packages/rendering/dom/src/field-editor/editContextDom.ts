@@ -7,6 +7,7 @@ import {
 import { findLogicalDOMPoint, getLogicalNodeLength } from "./inlineAtomDom";
 import { INLINE_ATOM_REPLACEMENT_TEXT } from "./inlineAtomModel";
 import { applyDeltaToDOM } from "./reconciler";
+import { isDomText } from "../utils/domNodes";
 
 /**
  * Applies a `Y.Text` delta to the field's logical text (one U+FFFC per
@@ -50,7 +51,7 @@ export function paintEditContextComposition(
 	const { offset, deleteLength, text } = edit;
 	const point = findLogicalDOMPoint(element, offset);
 	if (
-		point.node instanceof Text &&
+		isDomText(point.node) &&
 		getLogicalNodeLength(point.node) === point.node.length &&
 		point.offset + deleteLength <= point.node.length
 	) {
@@ -82,7 +83,7 @@ export function applyEditContextTextFormats(
 
 		const inlineEls = element.querySelectorAll("[data-pen-inline-content]");
 		for (const el of inlineEls) {
-			const walker = document.createTreeWalker(
+			const walker = element.ownerDocument.createTreeWalker(
 				el,
 				NodeFilter.SHOW_TEXT,
 				null,
@@ -131,7 +132,7 @@ export function findTextPosition(
 function getCharacterRect(element: HTMLElement, charOffset: number): DOMRect {
 	const start = findLogicalDOMPoint(element, Math.max(0, charOffset));
 	const end = findLogicalDOMPoint(element, Math.max(0, charOffset + 1));
-	const range = document.createRange();
+	const range = element.ownerDocument.createRange();
 	range.setStart(start.node, start.offset);
 	range.setEnd(end.node, end.offset);
 	const rect = range.getBoundingClientRect();

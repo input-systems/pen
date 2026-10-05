@@ -28,6 +28,7 @@ import {
 	tryHandleHistoryOverrideBinding,
 } from "./keyBindingShortcuts";
 import { dispatchKeymapEvent } from "./keymap";
+import { closestDomElement } from "../utils/domNodes";
 import { resolveEditedCellText } from "./selectionReader";
 import {
 	ensureLineEdgeMeasure,
@@ -83,7 +84,12 @@ export function handleFieldEditorKeyDown(options: {
 		syncEditorTextSelection(editor, blockId, range);
 	}
 
-	ensureLineEdgeMeasure(editor);
+	const keyDocument =
+		closestDomElement(event.target)?.ownerDocument ??
+		(typeof document === "undefined" ? null : document);
+	if (keyDocument) {
+		ensureLineEdgeMeasure(editor, keyDocument);
+	}
 
 	if (
 		dispatchKeymapEvent(editor, event, {

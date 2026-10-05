@@ -2,6 +2,7 @@ import {
   buildDataAttributes,
   DATA_ATTRS,
 } from "@input/pen-dom/utils/dataAttributes";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 import { fieldEditorTextEntryAttrs } from "@input/pen-dom/utils/fieldEditorTextEntryAttrs";
 import {
   computed,
@@ -83,7 +84,7 @@ export const PenContent = defineComponent({
             {
               ref: (element: Element | ComponentPublicInstance | null) => {
                 blocksHostElement.value =
-                  element instanceof HTMLElement ? element : null;
+                  isDomHTMLElement(element) ? element : null;
               },
               "data-pen-editor-blocks-host": "",
               ...(isExpanded.value

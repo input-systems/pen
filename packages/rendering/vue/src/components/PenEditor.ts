@@ -18,6 +18,7 @@ import {
 	buildDataAttributes,
 	DATA_ATTRS,
 } from "@input/pen-dom/utils/dataAttributes";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 import type {
 	AssetProvider,
 	Editor,
@@ -203,7 +204,7 @@ export const PenEditor = defineComponent({
 					const blocksHost = nextElement.querySelector(
 						`[${DATA_ATTRS.editorBlocksHost}]`,
 					);
-					if (!(blocksHost instanceof HTMLElement)) {
+					if (!isDomHTMLElement(blocksHost)) {
 						return;
 					}
 					handleFieldEditorPointerActivate({
@@ -266,7 +267,7 @@ export const PenEditor = defineComponent({
 						element: Element | ComponentPublicInstance | null,
 					) => {
 						rootElement.value =
-							element instanceof HTMLElement ? element : null;
+							isDomHTMLElement(element) ? element : null;
 					},
 					[DATA_ATTRS.editorRoot]: "",
 					[DATA_ATTRS.viewId]: props.editor.internals.viewId,

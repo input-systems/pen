@@ -17,6 +17,7 @@ import { composeRefs } from "../../utils/composeRefs";
 import { captureFocusReturn, restoreFocusReturn } from "@input/pen-dom";
 import { resolveChromeEditorRoot } from "../../utils/aiDomScope";
 import { getAttachedFieldEditorSession } from "../../utils/fieldEditor";
+import { isDomNode } from "@input/pen-dom/utils/domNodes";
 
 /**
  * AX3 detached surface: `role="toolbar"`, roving tabindex, arrow-key
@@ -54,7 +55,7 @@ export function ToolbarRoot(props: ToolbarRootProps) {
 			const item = items.find(
 				(el) =>
 					el === event.target ||
-					(event.target instanceof Node && el.contains(event.target)),
+					(isDomNode(event.target) && el.contains(event.target)),
 			);
 			if (!item) {
 				return;
@@ -200,7 +201,7 @@ function moveRovingFocus(root: HTMLElement, event: React.KeyboardEvent): void {
 	const currentIndex = items.findIndex(
 		(item) =>
 			item === event.target ||
-			(event.target instanceof Node && item.contains(event.target)),
+			(isDomNode(event.target) && item.contains(event.target)),
 	);
 	if (currentIndex === -1) {
 		return;

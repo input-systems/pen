@@ -5,6 +5,7 @@ import type { FieldEditorDelta } from "./crdt";
 import { domPointToLogicalOffset } from "./inlineAtomDom";
 import type { TextDiffOp } from "./textDiff";
 import { findInlineContentElement } from "./selectionDomQueries";
+import { isDomHTMLElement, isDomText } from "../utils/domNodes";
 
 const LINE_EDGE_SEAM = Symbol.for("pen.lineEdgeSeam");
 
@@ -14,7 +15,16 @@ type LineEdgeMeasure = (
 	edge: "start" | "end",
 ) => { blockId: string; offset: number } | null;
 
-export function ensureLineEdgeMeasure(editor: Editor): void {
+/** The document of the field that last handled a key, per editor. */
+const lineEdgeDocuments = new WeakMap<Editor, Document>();
+
+/**
+ * Installs the DOM line-edge measure for `pen.caretLineStart` /
+ * `pen.caretLineEnd` (M3), measuring in `doc`, the document of the field
+ * handling the key, which is an iframe's when the host mounts there.
+ */
+export function ensureLineEdgeMeasure(editor: Editor, doc: Document): void {
+	lineEdgeDocuments.set(editor, doc);
 	const host = editor as unknown as Record<
 		symbol,
 		LineEdgeMeasure | undefined
@@ -22,8 +32,12 @@ export function ensureLineEdgeMeasure(editor: Editor): void {
 	if (host[LINE_EDGE_SEAM]) {
 		return;
 	}
-	host[LINE_EDGE_SEAM] = (_ed, current, edge) =>
-		measureVisualLineEdge(current, edge);
+	// Keyed by the editor the seam is installed on: core may hand the
+	// measure a different editor object (a view) for the same document.
+	host[LINE_EDGE_SEAM] = (_measured, current, edge) => {
+		const lineDoc = lineEdgeDocuments.get(editor);
+		return lineDoc ? measureVisualLineEdge(lineDoc, current, edge) : null;
+	};
 }
 
 export function requiresResolvedInputRange(inputType: string): boolean {
@@ -377,30 +391,29 @@ type VisualLinePoint = {
  * phase (SCH2) even though the checker cannot see that through the call chain.
  */
 function measureVisualLineEdge(
+	doc: Document,
 	current: VisualLinePoint,
 	edge: VisualLineEdge,
 ): VisualLinePoint | null {
-	if (typeof document === "undefined") {
-		return null;
-	}
-	const block = document.querySelector(
+	const block = doc.querySelector(
 		`[${DATA_ATTRS.blockId}="${current.blockId}"]`,
 	);
-	if (!(block instanceof HTMLElement)) {
+	if (!isDomHTMLElement(block)) {
 		return null;
 	}
 	const root =
 		block.closest(`[${DATA_ATTRS.editorRoot}]`) ??
 		block.closest(`[${DATA_ATTRS.editorContent}]`);
-	if (!(root instanceof HTMLElement)) {
+	if (!isDomHTMLElement(root)) {
 		return null;
 	}
 	const inline = findInlineContentElement(block);
 	const host = inline ?? block;
+	const view = doc.defaultView;
 	const rtl =
 		block.getAttribute("dir") === "rtl" ||
-		getComputedStyle(block).direction === "rtl" ||
-		getComputedStyle(host).direction === "rtl";
+		view?.getComputedStyle(block).direction === "rtl" ||
+		view?.getComputedStyle(host).direction === "rtl";
 
 	return measureWithRoot(root, (geometry) => {
 		const lines = geometry.reader.lineBoxes(current.blockId);
@@ -437,10 +450,10 @@ function measureVisualLineEdge(
 					: lineRight;
 
 		let length = 0;
-		const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+		const walker = doc.createTreeWalker(host, NodeFilter.SHOW_TEXT);
 		while (walker.nextNode()) {
 			const node = walker.currentNode;
-			if (node instanceof Text) {
+			if (isDomText(node)) {
 				length += node.data.length;
 			}
 		}
@@ -479,13 +492,14 @@ function measureVisualLineEdge(
 }
 
 function collapsedCaretRect(host: HTMLElement, offset: number): DOMRect | null {
-	const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+	const doc = host.ownerDocument;
+	const walker = doc.createTreeWalker(host, NodeFilter.SHOW_TEXT);
 	let remaining = offset;
 	let node: Text | null = null;
 	let offsetInNode = 0;
 	while (walker.nextNode()) {
 		const current = walker.currentNode;
-		if (!(current instanceof Text)) {
+		if (!isDomText(current)) {
 			continue;
 		}
 		if (remaining <= current.data.length) {
@@ -498,7 +512,7 @@ function collapsedCaretRect(host: HTMLElement, offset: number): DOMRect | null {
 	if (!node) {
 		return null;
 	}
-	const range = document.createRange();
+	const range = doc.createRange();
 	range.setStart(node, offsetInNode);
 	range.collapse(true);
 	const rect = range.getBoundingClientRect();

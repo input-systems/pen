@@ -11,6 +11,7 @@ import {
 } from "@input/pen-dom";
 import { resolveChromeEditorRoot } from "../utils/aiDomScope";
 import { getAttachedFieldEditorSession } from "../utils/fieldEditor";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 
 type MenuColumnType =
 	| "text"
@@ -130,7 +131,7 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 		if (items.length === 0) return;
 
 		const focusedIndex = items.indexOf(
-			document.activeElement as HTMLElement,
+			menu.ownerDocument.activeElement as HTMLElement,
 		);
 		const from = focusedIndex >= 0 ? focusedIndex : activeIndex;
 		let next = from;
@@ -167,7 +168,8 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 		const target = event.target;
 		if (
 			event.key === "Enter" &&
-			target instanceof HTMLInputElement &&
+			isDomHTMLElement(target) &&
+			target.tagName === "INPUT" &&
 			target.dataset.penColumnMenuItem !== undefined
 		) {
 			event.preventDefault();
@@ -275,8 +277,9 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 		};
 		// `pointerdown`, not `mousedown`: a control that cancels its
 		// pointerdown suppresses the compatibility mouse events.
-		document.addEventListener("pointerdown", handler);
-		return () => document.removeEventListener("pointerdown", handler);
+		const doc = anchorEl.ownerDocument;
+		doc.addEventListener("pointerdown", handler);
+		return () => doc.removeEventListener("pointerdown", handler);
 	}, [anchorEl, onClose, title]);
 
 	useIsomorphicLayoutEffect(() => {

@@ -1,4 +1,5 @@
 import { DATA_ATTRS } from "./dataAttributes";
+import { isDomHTMLElement } from "./domNodes";
 
 export function getSlashMenuOptionId(listboxId: string, index: number): string {
 	return `${listboxId}-option-${index}`;
@@ -8,7 +9,7 @@ export function resolveSlashMenuField(
 	from: HTMLElement | null,
 ): HTMLElement | null {
 	const editorRoot = from?.closest(`[${DATA_ATTRS.editorRoot}]`);
-	if (!(editorRoot instanceof HTMLElement)) {
+	if (!isDomHTMLElement(editorRoot)) {
 		return null;
 	}
 	return (

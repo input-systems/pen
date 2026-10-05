@@ -709,8 +709,10 @@ _no exports_
 
 ### guard
 
+- isDomCompositionEvent
 - isDomDocument
 - isDomElement
+- isDomEvent
 - isDomHTMLElement
 - isDomNode
 - isDomText
@@ -849,6 +851,7 @@ _no exports_
 - resolveAIRootElement
 - resolveChromeEditorRoot
 - resolveEditorContentElement
+- resolveEditorOwnerDocument
 - resolveEditorRootElement
 
 ## ./utils/aiKeyboardScope

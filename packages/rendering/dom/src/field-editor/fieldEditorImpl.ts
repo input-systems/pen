@@ -88,6 +88,10 @@ import {
 import { getPreorderBlockIds } from "../utils/documentPreorder";
 import { arraysEqual } from "../utils/arraysEqual";
 import { closestDomElement, isDomElement } from "../utils/domNodes";
+import {
+	forgetEditorRootElement,
+	recordEditorRootElement,
+} from "../utils/editorDocument";
 
 type FieldEditorOptions = {
 	selectAllBehavior?: EditorSelectAllBehavior;
@@ -615,8 +619,12 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	setRootElement(element: HTMLElement | null): void {
 		this._unbindRoot();
+		if (this._rootElement) {
+			forgetEditorRootElement(this._editor, this._rootElement);
+		}
 		this._rootElement = element;
 		if (element) {
+			recordEditorRootElement(this._editor, element);
 			this.reader.attach(element);
 			this._bindFocusSink(element);
 			this._unsubscribeAnnouncer = bindEditorAnnouncer(
@@ -1354,6 +1362,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._unbindRoot();
 		// Nothing projects into, or activates for, a root this instance has
 		// let go; a re-install binds it again through setRootElement.
+		if (this._rootElement) {
+			forgetEditorRootElement(this._editor, this._rootElement);
+		}
 		this._rootElement = null;
 		this._unsubscribeSelection?.();
 		this._unsubscribeSelection = null;

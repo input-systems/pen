@@ -158,7 +158,7 @@ function getCharacterRectAtOffset(
 	charOffset: number,
 ): DOMRect | null {
 	const domPoint = findLogicalDOMPoint(container, charOffset);
-	const range = document.createRange();
+	const range = container.ownerDocument.createRange();
 	try {
 		range.setStart(domPoint.node, domPoint.offset);
 		range.setEnd(domPoint.node, domPoint.offset);

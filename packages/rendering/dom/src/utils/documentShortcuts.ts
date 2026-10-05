@@ -26,6 +26,7 @@ import {
 	isUndecidedCompositionKeyDown,
 } from "./compositionKeyDown";
 import { DATA_ATTRS } from "./dataAttributes";
+import { isDomHTMLElement } from "./domNodes";
 import { handleEscapeSelectionTransition } from "./escapeSelection";
 import { handleTableCellSelectionKeyDown } from "./tableCellNavigation";
 import { shouldHandleEditorKeyboardEvent } from "./textEntryTarget";
@@ -449,7 +450,7 @@ function shouldUseDocumentTextDeletionFallback(
 
 	const activeElement = root.ownerDocument?.activeElement;
 	if (
-		!(activeElement instanceof HTMLElement) ||
+		!isDomHTMLElement(activeElement) ||
 		!root.contains(activeElement)
 	) {
 		return true;

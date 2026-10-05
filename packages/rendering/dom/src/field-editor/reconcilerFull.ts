@@ -73,7 +73,8 @@ export function fullReconcileDeltasToDOM(
 		};
 	});
 
-	const fragment = document.createDocumentFragment();
+	const doc = element.ownerDocument;
+	const fragment = doc.createDocumentFragment();
 	let hasContent = false;
 	let endsWithNewline = false;
 	for (const delta of orderedDeltas) {
@@ -86,17 +87,17 @@ export function fullReconcileDeltasToDOM(
 			typeof delta.insert === "string" && delta.insert.endsWith("\n");
 		let node: Node =
 			typeof delta.insert === "string"
-				? document.createTextNode(delta.insert)
-				: createInlineAtomElement(delta.insert, registry);
+				? doc.createTextNode(delta.insert)
+				: createInlineAtomElement(delta.insert, registry, doc);
 		if (delta.attributes) {
 			node = wrapWithMarks(node, delta.attributes, registry, policy);
 		}
 		fragment.appendChild(node);
 	}
 	if (!hasContent) {
-		fragment.appendChild(createEmptyBlockPlaceholder());
+		fragment.appendChild(createEmptyBlockPlaceholder(doc));
 	} else if (endsWithNewline) {
-		fragment.appendChild(createTrailingLineBreak());
+		fragment.appendChild(createTrailingLineBreak(doc));
 	}
 
 	patchDOM(element, fragment);

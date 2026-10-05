@@ -13,6 +13,7 @@ import {
 	type ContentGesturesContext,
 } from "./contentGesturesShared";
 import { pointToEditorSelectionPoint } from "./selectionBridge";
+import { isDomNode } from "../utils/domNodes";
 
 export function createDragGestures<
 	InteractionModel extends PointerInteractionModel,
@@ -125,7 +126,7 @@ export function createDragGestures<
 		handleContentMouseDown: (event: MouseEvent) => void,
 	) => {
 		const target = event.target;
-		if (target instanceof Node && gestureEl.contains(target)) {
+		if (isDomNode(target) && gestureEl.contains(target)) {
 			return;
 		}
 		handleContentMouseDown(event);

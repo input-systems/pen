@@ -2,7 +2,7 @@ import { buildTransitionSnapshot } from "@input/pen-core";
 import type { Editor, Point } from "@input/pen-types";
 import { getEditorBlockSelectionLength } from "../utils/blockSelectionSemantics";
 import { DATA_ATTRS } from "../utils/dataAttributes";
-import { isDomNode } from "../utils/domNodes";
+import { isDomHTMLElement, isDomNode } from "../utils/domNodes";
 import { getPreorderBlockIds } from "../utils/documentPreorder";
 import type { PointerInteractionModel } from "../utils/editorInteractionModel";
 import {
@@ -58,10 +58,10 @@ function isWithinNestedEditorRoot(
 function resolveEventTargetElement(
 	target: EventTarget | null,
 ): HTMLElement | null {
-	if (target instanceof HTMLElement) {
+	if (isDomHTMLElement(target)) {
 		return target;
 	}
-	if (target instanceof Node) {
+	if (isDomNode(target)) {
 		return target.parentElement;
 	}
 	return null;

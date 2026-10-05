@@ -8,9 +8,13 @@ import type {
 	FieldEditorFocusRequest,
 	FieldEditorTableNavigationController,
 } from "../field-editor/controller";
+import { attachContentGestures } from "../field-editor/contentGestures";
+import { FieldEditorImpl } from "../field-editor/fieldEditorImpl";
 import { isInlineAtomChipNode } from "../field-editor/inlineAtomDom";
 import { mountEditor } from "../host/mountEditor";
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import type { PointerSelectionGesture } from "../utils/pointerSelection";
+import { RegionSelectionStore } from "../utils/regionSelection";
 import { handleTableCellSelectionKeyDown } from "../utils/tableCellNavigation";
 
 const cleanups: Array<() => void> = [];
@@ -201,5 +205,213 @@ describe("an editor mounted in an iframe document", () => {
 			row: 0,
 			col: 0,
 		});
+	});
+});
+
+/**
+ * Two paragraphs mounted by hand in an iframe, with a bare `FieldEditorImpl`
+ * and the content gestures React attaches (`attachContentGestures`), so only
+ * those gestures handle the pointer (vanilla's host activation is absent).
+ */
+function mountGesturesInIframe() {
+	const { frameDocument, frameWindow } = createFrame();
+	const editor = createEditor({ schema: defaultSchema });
+	const first = editor.firstBlock()!.id;
+	const second = "second";
+	editor.apply([
+		{ type: "splice-text", blockId: first, from: 0, to: 0, insert: "Hello world" },
+		{
+			type: "insert-block",
+			blockId: second,
+			blockType: "paragraph",
+			props: {},
+			position: { after: first },
+		},
+		{ type: "splice-text", blockId: second, from: 0, to: 0, insert: "Second line" },
+	]);
+	const root = frameDocument.createElement("div");
+	root.setAttribute(DATA_ATTRS.editorRoot, "");
+	const content = frameDocument.createElement("div");
+	content.setAttribute(DATA_ATTRS.editorContent, "");
+	const blocksHost = frameDocument.createElement("div");
+	blocksHost.setAttribute(DATA_ATTRS.editorBlocksHost, "");
+	const inlines = new Map<string, HTMLElement>();
+	for (const [blockId, text] of [
+		[first, "Hello world"],
+		[second, "Second line"],
+	] as const) {
+		const block = frameDocument.createElement("div");
+		block.setAttribute(DATA_ATTRS.editorBlock, "");
+		block.setAttribute(DATA_ATTRS.blockId, blockId);
+		const inline = frameDocument.createElement("div");
+		inline.setAttribute(DATA_ATTRS.inlineContent, "");
+		inline.textContent = text;
+		block.append(inline);
+		blocksHost.append(block);
+		inlines.set(blockId, inline);
+	}
+	content.append(blocksHost);
+	root.append(content);
+	frameDocument.body.append(root);
+	const fieldEditor = new FieldEditorImpl(editor);
+	fieldEditor.setRootElement(root);
+	const state = {
+		regionGesture: { current: null },
+		pointerGesture: { current: null as PointerSelectionGesture | null },
+		pointerGestureVersion: { current: 0 },
+		interactionModel: { current: { clickToSelect: false } },
+		clearPointerSelectionState: () => {
+			state.pointerGesture.current = null;
+		},
+	};
+	const detach = attachContentGestures({
+		editor,
+		fieldEditor,
+		contentElement: content,
+		getBlocksHost: () => blocksHost,
+		regionSelectionStore: new RegionSelectionStore(),
+		state,
+		blockSelectionEnabled: true,
+	});
+	cleanups.push(() => {
+		detach();
+		fieldEditor.destroy();
+		editor.destroy();
+	});
+	const mouse = (
+		type: "mousedown" | "mouseup" | "click",
+		target: EventTarget,
+		shiftKey = false,
+	) =>
+		target.dispatchEvent(
+			new frameWindow.MouseEvent(type, {
+				bubbles: true,
+				cancelable: true,
+				button: 0,
+				detail: 1,
+				shiftKey,
+			}),
+		);
+	return { editor, fieldEditor, first, second, inlines, state, mouse };
+}
+
+describe("React content gestures over an editor in an iframe document", () => {
+	it("T2: a press on a block in the iframe starts a pointer gesture on that block", () => {
+		const { second, inlines, state, mouse } = mountGesturesInIframe();
+
+		mouse("mousedown", inlines.get(second)!);
+
+		expect(state.pointerGesture.current?.blockId).toBe(second);
+	});
+
+	it("T5: a shift-click on another block in the iframe extends the caret into it", () => {
+		const { editor, fieldEditor, first, second, inlines, mouse } =
+			mountGesturesInIframe();
+		fieldEditor.activateTextSelection(first, 2, 2, { origin: "pointer" });
+		const target = inlines.get(second)!;
+
+		mouse("mousedown", target, true);
+		mouse("mouseup", target, true);
+		mouse("click", target, true);
+
+		expect(editor.selection).toMatchObject({
+			type: "text",
+			anchor: { blockId: first, offset: 2 },
+			focus: { blockId: second },
+		});
+	});
+});
+
+describe("field input in an iframe document", () => {
+	it("M3: the line-edge measure a key installs looks the block up in the iframe's document", () => {
+		const { editor, blockId, root, mounted, frameDocument, frameWindow } =
+			mountInIframe();
+		mounted.fieldEditor.activateTextSelection(blockId, 5, 5);
+		const inline = root.querySelector<HTMLElement>(
+			`[${DATA_ATTRS.inlineContent}]`,
+		)!;
+		inline.dispatchEvent(
+			new frameWindow.KeyboardEvent("keydown", {
+				key: "ArrowLeft",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+		const measure = (
+			editor as unknown as Record<
+				symbol,
+				| ((
+						editor: unknown,
+						current: { blockId: string; offset: number },
+						edge: "start" | "end",
+				  ) => unknown)
+				| undefined
+			>
+		)[Symbol.for("pen.lineEdgeSeam")];
+		expect(measure, "a field key installs the measure").toBeTypeOf("function");
+		const query = vi.spyOn(frameDocument, "querySelector");
+
+		measure!(editor, { blockId, offset: 5 }, "start");
+
+		expect(
+			query.mock.calls.some(([selector]) =>
+				selector.includes(`${DATA_ATTRS.blockId}="${blockId}"`),
+			),
+		).toBe(true);
+	});
+
+	it("C1: an EditContext compositionend from the iframe's realm commits its data", () => {
+		const listeners = new Map<string, Set<(event: Event) => void>>();
+		class RealmEditContext {
+			text = "";
+			selectionStart = 0;
+			selectionEnd = 0;
+			updateText(start: number, end: number, text: string): void {
+				this.text = `${this.text.slice(0, start)}${text}${this.text.slice(end)}`;
+			}
+			updateSelection(start: number, end: number): void {
+				this.selectionStart = start;
+				this.selectionEnd = end;
+			}
+			updateCharacterBounds(): void {}
+			addEventListener(type: string, handler: (event: Event) => void): void {
+				const handlers = listeners.get(type) ?? new Set();
+				handlers.add(handler);
+				listeners.set(type, handlers);
+			}
+			removeEventListener(type: string, handler: (event: Event) => void): void {
+				listeners.get(type)?.delete(handler);
+			}
+		}
+		const emit = (type: string, init: Record<string, unknown>) => {
+			const event = Object.assign(new Event(type), init);
+			for (const handler of listeners.get(type) ?? []) handler(event);
+		};
+		(globalThis as { EditContext?: unknown }).EditContext = RealmEditContext;
+		cleanups.push(() => {
+			delete (globalThis as { EditContext?: unknown }).EditContext;
+		});
+		const { editor, blockId, root, mounted, frameWindow } = mountInIframe();
+		mounted.fieldEditor.activateTextSelection(blockId, 11, 11);
+		const inline = root.querySelector<HTMLElement>(
+			`[${DATA_ATTRS.inlineContent}]`,
+		)!;
+
+		emit("textupdate", {
+			text: "nihao",
+			updateRangeStart: 11,
+			updateRangeEnd: 11,
+			selectionStart: 16,
+			selectionEnd: 16,
+		});
+		emit("textformatupdate", { getTextFormats: () => [] });
+		inline.dispatchEvent(
+			new frameWindow.CompositionEvent("compositionend", {
+				bubbles: true,
+				data: "nihao",
+			}),
+		);
+
+		expect(editor.getBlock(blockId)?.textContent()).toBe("Hello worldnihao");
 	});
 });

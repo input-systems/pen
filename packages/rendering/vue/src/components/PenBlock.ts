@@ -12,6 +12,7 @@ import {
 	DATA_ATTRS,
 	listItemHostAttributes,
 } from "@input/pen-dom/utils/dataAttributes";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 import { isCellInSelection } from "@input/pen-dom/utils/cellSelection";
 import type { BlockHandle, CellSelection } from "@input/pen-types";
 import {
@@ -130,7 +131,7 @@ export const PenBlock = defineComponent({
 						element: Element | ComponentPublicInstance | null,
 					) => {
 						blockElement.value =
-							element instanceof HTMLElement ? element : null;
+							isDomHTMLElement(element) ? element : null;
 					},
 					...blockHostAttributes(editor, block, {
 						isSelected,
@@ -548,7 +549,7 @@ function renderTable(
 
 							const currentTarget = event.currentTarget;
 							const cellElement =
-								currentTarget instanceof HTMLElement
+								isDomHTMLElement(currentTarget)
 									? (currentTarget.querySelector(
 											`[${DATA_ATTRS.fieldEditorSurface}]`,
 										) as HTMLElement | null)

@@ -1,7 +1,11 @@
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomHTMLElement } from "../utils/domNodes";
 
-export function createEmptyBlockPlaceholder(): HTMLElement {
-	const br = document.createElement("br");
+/** Created in `doc`, the field's own document (an iframe's when mounted there). */
+export function createEmptyBlockPlaceholder(
+	doc: Document = document,
+): HTMLElement {
+	const br = doc.createElement("br");
 	br.setAttribute(DATA_ATTRS.emptyBlock, "");
 	return br;
 }
@@ -10,7 +14,7 @@ export function isEmptyBlockPlaceholder(
 	node: Node | null,
 ): node is HTMLElement {
 	return (
-		node instanceof HTMLElement &&
+		isDomHTMLElement(node) &&
 		node.tagName === "BR" &&
 		node.hasAttribute(DATA_ATTRS.emptyBlock)
 	);
@@ -50,7 +54,7 @@ export function ensureEmptyBlockPlaceholder(element: HTMLElement): void {
 	while (element.firstChild) {
 		element.removeChild(element.firstChild);
 	}
-	element.appendChild(createEmptyBlockPlaceholder());
+	element.appendChild(createEmptyBlockPlaceholder(element.ownerDocument));
 }
 
 function fieldHasNonPlaceholderContent(element: HTMLElement): boolean {
@@ -67,7 +71,7 @@ function fieldHasNonPlaceholderContent(element: HTMLElement): boolean {
 			}
 			continue;
 		}
-		if (child instanceof HTMLElement) {
+		if (isDomHTMLElement(child)) {
 			return true;
 		}
 	}
