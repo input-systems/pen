@@ -136,9 +136,9 @@ interface NotifierInternals {
 	_siblingsOf(parentId: string | null): readonly string[];
 	_walkRun(siblings: readonly string[], index: number, context: unknown): readonly string[];
 	_buildSegments(parentId: string | null): readonly unknown[];
+	_storeSegments(parentId: string | null, segments: readonly unknown[], basis: readonly string[]): void;
 	_notifyAll(subscribers: ReadonlySet<() => void>): void;
 	readonly _segmentSubscribers: Map<string | null, Set<() => void>>;
-	readonly _segments: Map<string | null, readonly unknown[]>;
 	readonly _editor: Editor;
 }
 
@@ -185,7 +185,10 @@ function notifierSwitch(audit: AuditEditor): CacheSwitch {
 				for (const parentId of parents.keys()) {
 					const subscribers = notifier._segmentSubscribers.get(parentId);
 					if (!subscribers) continue;
-					notifier._segments.set(parentId, notifier._buildSegments(parentId));
+					// Recorded with its sibling list, as the notifier stores one,
+					// so the next incremental commit patches it rather than
+					// re-reading it whole.
+					notifier._storeSegments(parentId, notifier._buildSegments(parentId), notifier._siblingsOf(parentId));
 					notifier._notifyAll(subscribers);
 				}
 			},

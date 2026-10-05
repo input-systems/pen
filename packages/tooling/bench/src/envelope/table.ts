@@ -86,7 +86,7 @@ ${enforcementRows}
 
 ## Past the ceiling
 
-Past these sizes, full-document mount and the renderer side of a structural commit (the block notifier's root list and sibling-list patch), which stay linear in block count, degrade first — Pen does not virtualize (\`spec/rules/dom.md\`). The core side of a structural commit advances its indexes by what the commit touched (SCALE2); \`CACHE-AUDIT.md\` records its cost at 1,000, 10,000 and 50,000 root blocks. Hosts that need larger documents window blocks themselves (\`packages/rendering/react/VIRTUALIZATION.md\`, SCALE5).
+Past these sizes, full-document mount, which stays linear in block count, degrades first — Pen does not virtualize (\`spec/rules/dom.md\`). A structural commit, core and block notifier alike, advances its indexes by what the commit touched (SCALE2, SCALE6), leaving only native array copies linear; \`CACHE-AUDIT.md\` records its cost at 1,000, 10,000 and 50,000 root blocks. Hosts that need larger documents window blocks themselves (\`packages/rendering/react/VIRTUALIZATION.md\`, SCALE5).
 `;
 }
 

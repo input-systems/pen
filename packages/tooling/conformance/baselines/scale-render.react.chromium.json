@@ -62,7 +62,7 @@
 				"scan.blocksMapIterations": 1049,
 				"scan.blocksMapReads": 64756,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 4210,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 3071,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 999,
@@ -90,7 +90,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 82,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 2,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 11,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
@@ -171,7 +171,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 215,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 1053,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 22,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
@@ -193,7 +193,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 604,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 1053,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 23,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
@@ -212,7 +212,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 212,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 1053,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 8,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
@@ -233,7 +233,7 @@
 				"scan.blocksMapIterations": 5245,
 				"scan.blocksMapReads": 323700,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 21010,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 15355,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 4995,
@@ -261,7 +261,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 82,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 2,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 11,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
@@ -342,7 +342,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 215,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 5253,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 22,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
@@ -364,7 +364,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 604,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 5253,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 23,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
@@ -383,7 +383,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 212,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 5253,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 8,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
@@ -1419,6 +1419,28 @@
 				"react/scale-5k/remoteInsert/scan.blockOrderReads: 2 !== 10502",
 				"react/scale-5k/remoteInsert/scan.blocksMapIterations: 0 !== 10502",
 				"react/scale-5k/remoteInsert/scan.blocksMapReads: 212 !== 5462"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2c: root ids and the empty-document placeholder read core's top-level list instead of copying blockOrder, the block notifier stops scanning every cached snapshot, and children-array edits stop rebuilding the document index; every count that moved went down",
+			"moved": [
+				"react/scale-1k/mount/scan.orderArrayReads: 0 !== 4210",
+				"react/scale-1k/keystroke/scan.orderArrayReads: 0 !== 2",
+				"react/scale-1k/enterParagraph/scan.orderArrayReads: 0 !== 1053",
+				"react/scale-1k/enterNumbered/scan.orderArrayReads: 0 !== 1053",
+				"react/scale-1k/remoteInsert/scan.orderArrayReads: 0 !== 1053"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2c: root ids and the empty-document placeholder read core's top-level list instead of copying blockOrder, the block notifier stops scanning every cached snapshot, and children-array edits stop rebuilding the document index; every count that moved went down",
+			"moved": [
+				"react/scale-5k/mount/scan.orderArrayReads: 0 !== 21010",
+				"react/scale-5k/keystroke/scan.orderArrayReads: 0 !== 2",
+				"react/scale-5k/enterParagraph/scan.orderArrayReads: 0 !== 5253",
+				"react/scale-5k/enterNumbered/scan.orderArrayReads: 0 !== 5253",
+				"react/scale-5k/remoteInsert/scan.orderArrayReads: 0 !== 5253"
 			]
 		}
 	]

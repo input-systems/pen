@@ -61,7 +61,7 @@
 				"scan.blocksMapIterations": 1049,
 				"scan.blocksMapReads": 36163,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 2104,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 3055,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1050,
@@ -88,7 +88,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 74,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 2,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 11,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
@@ -165,7 +165,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 206,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 1053,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 24,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
@@ -186,7 +186,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 714,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 1053,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 25,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 3,
@@ -204,7 +204,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 205,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 1053,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 8,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
@@ -224,7 +224,7 @@
 				"scan.blocksMapIterations": 5245,
 				"scan.blocksMapReads": 180783,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 10504,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 15275,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 5250,
@@ -251,7 +251,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 74,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 2,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 11,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 1,
@@ -328,7 +328,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 206,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 5253,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 24,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 2,
@@ -349,7 +349,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 714,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 5253,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 25,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 3,
@@ -367,7 +367,7 @@
 				"scan.blocksMapIterations": 0,
 				"scan.blocksMapReads": 205,
 				"scan.documentWalks": 0,
-				"scan.orderArrayReads": 5253,
+				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 8,
 				"scheduler.measureNow": 0,
 				"render.blocksRendered": 1,
@@ -1235,6 +1235,28 @@
 				"vue/scale-5k/remoteInsert/scan.blockOrderReads: 2 !== 10502",
 				"vue/scale-5k/remoteInsert/scan.blocksMapIterations: 0 !== 10502",
 				"vue/scale-5k/remoteInsert/scan.blocksMapReads: 205 !== 5455"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2c: root ids and the empty-document placeholder read core's top-level list instead of copying blockOrder, the block notifier stops scanning every cached snapshot, and children-array edits stop rebuilding the document index; every count that moved went down",
+			"moved": [
+				"vue/scale-1k/mount/scan.orderArrayReads: 0 !== 2104",
+				"vue/scale-1k/keystroke/scan.orderArrayReads: 0 !== 2",
+				"vue/scale-1k/enterParagraph/scan.orderArrayReads: 0 !== 1053",
+				"vue/scale-1k/enterNumbered/scan.orderArrayReads: 0 !== 1053",
+				"vue/scale-1k/remoteInsert/scan.orderArrayReads: 0 !== 1053"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2c: root ids and the empty-document placeholder read core's top-level list instead of copying blockOrder, the block notifier stops scanning every cached snapshot, and children-array edits stop rebuilding the document index; every count that moved went down",
+			"moved": [
+				"vue/scale-5k/mount/scan.orderArrayReads: 0 !== 10504",
+				"vue/scale-5k/keystroke/scan.orderArrayReads: 0 !== 2",
+				"vue/scale-5k/enterParagraph/scan.orderArrayReads: 0 !== 5253",
+				"vue/scale-5k/enterNumbered/scan.orderArrayReads: 0 !== 5253",
+				"vue/scale-5k/remoteInsert/scan.orderArrayReads: 0 !== 5253"
 			]
 		}
 	]
