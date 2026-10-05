@@ -748,7 +748,10 @@ export class EditContextBackend extends FieldInputBackendBase {
 				this.modelText,
 			);
 			this.rebuildField();
-			this.updateSelection();
+			// The buffer follows the record even when HOST9 withholds the
+			// native range.
+			this.writeSelectionState();
+			this.projectRebuiltField();
 			return;
 		}
 

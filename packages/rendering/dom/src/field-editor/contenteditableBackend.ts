@@ -441,7 +441,7 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 		const blockId = this.fieldEditor.focusBlockId;
 		if (isHistoryTransactionOrigin(event.transaction?.origin)) {
 			this.rebuildField();
-			this.updateSelection();
+			this.projectRebuiltField();
 		} else {
 			this.reconcileDeltaAndProject(blockId, event.delta);
 		}

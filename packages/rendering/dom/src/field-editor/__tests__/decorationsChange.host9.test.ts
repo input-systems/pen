@@ -8,7 +8,7 @@ import {
 } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Editor } from "@input/pen-types";
+import { HISTORY_ORIGIN_TAG, type Editor } from "@input/pen-types";
 import { ContentEditableBackend } from "../contenteditableBackend";
 import type { FieldEditorInputController } from "../controller";
 import type { FieldEditorTextLike } from "../crdt";
@@ -304,5 +304,47 @@ describe.each(backends)("HOST9: attaching the $name backend", ({ create }) => {
 
 	it("writes the record's native range when the attach may take focus", () => {
 		expect(attach()).toBeGreaterThan(0);
+	});
+});
+
+describe.each(backends)("S1/P3: an undo or redo rebuild of the $name field", ({ create }) => {
+	function rebuildFromHistory(projectAfterRebuild?: (blockIds: readonly string[]) => void) {
+		const { editor, blockId } = seedEditor();
+		const element = inlineElement(blockId);
+		const { controller } = stubController(editor, blockId, true);
+		if (projectAfterRebuild) {
+			(controller as { projectAfterRebuild?: unknown }).projectAfterRebuild =
+				projectAfterRebuild;
+		}
+		const backend = create(editor, controller);
+		fixtures.push({ editor, backend });
+		backend.activate(element, getYText(editor, blockId));
+		const setBaseAndExtent = vi.spyOn(Selection.prototype, "setBaseAndExtent");
+		const addRange = vi.spyOn(Selection.prototype, "addRange");
+		(
+			backend as unknown as {
+				handleYTextChange(event: unknown): void;
+			}
+		).handleYTextChange({
+			delta: [],
+			transaction: { origin: { [HISTORY_ORIGIN_TAG]: true }, local: true },
+		});
+		return {
+			blockId,
+			writes: setBaseAndExtent.mock.calls.length + addRange.mock.calls.length,
+		};
+	}
+
+	it("projects through the projector, which applies HOST9 and the chrome rule, instead of writing the range itself", () => {
+		const projected: Array<readonly string[]> = [];
+		const { blockId, writes } = rebuildFromHistory((blockIds) => {
+			projected.push(blockIds);
+		});
+		expect(projected).toEqual([[blockId]]);
+		expect(writes).toBe(0);
+	});
+
+	it("still writes the range under a host-built controller with no projector part", () => {
+		expect(rebuildFromHistory().writes).toBeGreaterThan(0);
 	});
 });

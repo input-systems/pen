@@ -54,6 +54,22 @@ export abstract class InputBackendBase implements InputBackend {
 	abstract deactivate(): void;
 	abstract updateSelection(): void;
 
+	/**
+	 * P3: a rebuild of this field that no input of its own caused (undo,
+	 * redo) projects the record through the projector, which withholds it
+	 * under HOST9 and while editor chrome holds focus (S1). A host-built
+	 * controller without the projector part writes it, as before the part
+	 * existed.
+	 */
+	protected projectRebuiltField(): void {
+		const blockId = this.fieldEditor.focusBlockId;
+		if (blockId && this.fieldEditor.projectAfterRebuild) {
+			this.fieldEditor.projectAfterRebuild([blockId]);
+			return;
+		}
+		this.updateSelection();
+	}
+
 	/** Makes `element` the editing host, tabbable only while focused (AX1). */
 	protected attachEditableHost(element: HTMLElement): void {
 		this.element = element;
