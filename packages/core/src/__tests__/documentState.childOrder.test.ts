@@ -241,6 +241,23 @@ describe("DocumentState child order", () => {
 		editor.destroy();
 	});
 
+	it("SCALE2: one apply that inserts a parentId child and moves an older sibling past it keeps root order", () => {
+		const editor = createRoutedEditor();
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: "bq-new",
+				blockType: "paragraph",
+				props: { parentId: "bq" },
+				position: { after: "bq-c1" },
+			},
+			{ type: "move-block", blockId: "bq-c0", position: { after: "bq-c2" } },
+		]);
+		expect(editor.documentState.childrenOf("bq")).toEqual(["bq-c1", "bq-new", "bq-c2", "bq-c0"]);
+		expectIndexMatchesRebuild(editor, "after insert and move");
+		editor.destroy();
+	});
+
 	it("SCALE2: the incremental index equals a full rebuild over random edits on every route", () => {
 		for (let seed = 1; seed <= 300; seed += 1) {
 			const editor = createRoutedEditor();

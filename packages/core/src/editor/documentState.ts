@@ -831,7 +831,10 @@ export class DocumentStateImpl implements DocumentState {
 	/**
 	 * Puts a `parentId` child among its parent's children: after the parent's
 	 * `children` array entries, in root order among the other `parentId`
-	 * children, as `rebuild` sorts them. O(its siblings).
+	 * children, as `rebuild` sorts them. The other `parentId` children are
+	 * sorted with it rather than scanned, because a commit that moves several
+	 * of them places them one at a time, and those not yet placed still sit
+	 * in their old slots. O(its siblings · log).
 	 */
 	private _placeParentIdChild(parentId: string, blockId: string): void {
 		const siblings = (this._childIndex.get(parentId) ?? []).filter(
@@ -840,13 +843,11 @@ export class DocumentStateImpl implements DocumentState {
 		const array = (this._doc.blocks as CRDTBlockMap)
 			.get(parentId)
 			?.get("children") as CRDTArray<string> | undefined;
-		const position = this.indexOf(blockId);
-		let at = Math.min(array?.length ?? 0, siblings.length);
-		while (at < siblings.length && this.indexOf(siblings[at]!) < position) {
-			at += 1;
-		}
-		siblings.splice(at, 0, blockId);
-		this._setChildren(parentId, siblings);
+		const arrayLength = Math.min(array?.length ?? 0, siblings.length);
+		const parentIdChildren = siblings.slice(arrayLength);
+		parentIdChildren.push(blockId);
+		parentIdChildren.sort((a, b) => this.indexOf(a) - this.indexOf(b));
+		this._setChildren(parentId, [...siblings.slice(0, arrayLength), ...parentIdChildren]);
 	}
 
 	private _setChildren(parentId: string, childIds: string[]): void {
