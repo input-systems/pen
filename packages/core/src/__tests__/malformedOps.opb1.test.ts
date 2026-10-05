@@ -269,6 +269,115 @@ describe("OPB1: validate rejects payloads the CRDT cannot encode", () => {
 		},
 	);
 
+	it.each<[string, unknown]>([
+		["function", () => 1],
+		["symbol", Symbol("s")],
+		["bigint", 1n],
+		["Date", new Date(0)],
+		["Map", new Map([["k", 1]])],
+		["null-prototype object", Object.create(null)],
+		["Float32Array", new Float32Array([1])],
+		["nested Date", { at: new Date(0) }],
+		["nested function", [() => 1]],
+	])(
+		"OPB1: set-props with a %s value is dropped without writing the props before it",
+		(_label, value) => {
+			const { editor, ydoc, diagnostics, blockId } = createPeer();
+
+			editor.apply([
+				{
+					type: "set-props",
+					blockId,
+					props: { a: 1, bad: value, z: 2 },
+				} as unknown as DocumentOp,
+			]);
+
+			expect(diagnostics).toContainEqual(
+				expect.objectContaining({ code: MALFORMED_CODE }),
+			);
+			expect(editor.getBlock(blockId)!.props).not.toHaveProperty("a");
+			expect(() => Y.encodeStateAsUpdate(ydoc)).not.toThrow();
+
+			editor.destroy();
+		},
+	);
+
+	it("OPB1: insert-block with a function prop leaves no stored block outside the order", () => {
+		const { editor, ydoc, diagnostics } = createPeer();
+
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: "fresh",
+				blockType: "paragraph",
+				props: { x: () => 1 },
+				position: "last",
+			} as unknown as DocumentOp,
+		]);
+
+		expect(diagnostics).toContainEqual(
+			expect.objectContaining({ code: MALFORMED_CODE }),
+		);
+		expect(ydoc.getMap("blocks").has("fresh")).toBe(false);
+		expect(editor.getBlock("fresh")).toBeFalsy();
+
+		editor.destroy();
+	});
+
+	it.each<[string, Record<string, unknown>]>([
+		["Infinity", { color: Number.POSITIVE_INFINITY }],
+		["nested NaN", { link: { n: Number.NaN } }],
+		["Uint8Array", { bold: new Uint8Array([1]) }],
+		["nested function", { link: { href: "x", f: () => 1 } }],
+	])(
+		"OPB1: format-text with a %s mark value is dropped because peers would decode it differently",
+		(_label, marks) => {
+			const { editor, diagnostics, blockId } = createPeer();
+
+			editor.apply([
+				{ type: "format-text", blockId, from: 0, to: 2, marks },
+			]);
+
+			expect(diagnostics).toContainEqual(
+				expect.objectContaining({ code: MALFORMED_CODE }),
+			);
+
+			editor.destroy();
+		},
+	);
+
+	it("OPB1: plain data, a Uint8Array and nested null-prototype objects still write as props", () => {
+		const { editor, ydoc, diagnostics, blockId } = createPeer();
+		const nested = Object.assign(Object.create(null), { k: 1 });
+
+		editor.apply([
+			{
+				type: "set-props",
+				blockId,
+				props: {
+					n: 1.5,
+					s: "x",
+					b: true,
+					nil: null,
+					list: [1, { a: "b" }],
+					bytes: new Uint8Array([1, 2]),
+					nested: { inner: nested },
+				},
+			},
+		]);
+
+		expect(diagnostics.filter((d) => d.code === MALFORMED_CODE)).toEqual(
+			[],
+		);
+		expect(editor.getBlock(blockId)!.props).toMatchObject({
+			n: 1.5,
+			list: [1, { a: "b" }],
+		});
+		expect(() => Y.encodeStateAsUpdate(ydoc)).not.toThrow();
+
+		editor.destroy();
+	});
+
 	it("OPB1: random malformed ops never throw from apply nor leave the document unencodable", () => {
 		const random = mulberry32(0x5e7ae7a);
 		const pick = <T>(items: readonly T[]): T =>

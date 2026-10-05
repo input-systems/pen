@@ -353,7 +353,11 @@ function snapshotPlain(value: unknown): unknown {
 	if (Array.isArray(value)) {
 		return value.map(snapshotPlain);
 	}
-	const next: Record<string | symbol, unknown> = {};
+	const prototype = Object.getPrototypeOf(value);
+	if (prototype !== Object.prototype && prototype !== null) {
+		return snapshotInstance(value);
+	}
+	const next: Record<string | symbol, unknown> = Object.create(prototype);
 	for (const key of Object.keys(value as object)) {
 		Object.defineProperty(next, key, {
 			value: snapshotPlain((value as Record<string, unknown>)[key]),
@@ -362,7 +366,12 @@ function snapshotPlain(value: unknown): unknown {
 			writable: true,
 		});
 	}
-	for (const key of Object.getOwnPropertySymbols(value as object)) {
+	snapshotSymbolKeys(value, next);
+	return next;
+}
+
+function snapshotSymbolKeys(value: object, next: object): void {
+	for (const key of Object.getOwnPropertySymbols(value)) {
 		const descriptor = Object.getOwnPropertyDescriptor(value, key);
 		if (!descriptor?.enumerable) {
 			continue;
@@ -374,7 +383,16 @@ function snapshotPlain(value: unknown): unknown {
 			writable: true,
 		});
 	}
-	return next;
+}
+
+/**
+ * A class instance is not plain data: copying its own keys would turn a
+ * `Date` or `Map` into `{}`, which validate would then accept. It passes
+ * through as is so validate sees what the caller sent (OPB1); only a
+ * `Uint8Array`, which the CRDT stores, is copied.
+ */
+function snapshotInstance(value: object): unknown {
+	return value instanceof Uint8Array ? value.slice() : value;
 }
 
 function snapshotOps(ops: readonly DocumentOp[]): DocumentOp[] {
@@ -550,7 +568,7 @@ function malformedOpMessage(op: DocumentOp): string | null {
 				return "insert-block requires a non-empty blockType";
 			}
 			if (!isRecord(op.props) || !hasStorableValues(op.props)) {
-				return "insert-block requires a props object of acyclic values";
+				return "insert-block requires a props object of acyclic plain-data values";
 			}
 			if (!isPosition(op.position)) {
 				return "insert-block requires a valid position";
@@ -569,7 +587,7 @@ function malformedOpMessage(op: DocumentOp): string | null {
 				return "set-props requires a non-empty blockId";
 			}
 			if (!isRecord(op.props) || !hasStorableValues(op.props)) {
-				return "set-props requires a props object of acyclic values";
+				return "set-props requires a props object of acyclic plain-data values";
 			}
 			return null;
 		case "set-meta":
@@ -583,7 +601,7 @@ function malformedOpMessage(op: DocumentOp): string | null {
 				op.data !== null &&
 				(!isRecord(op.data) || !isStorableMapValue(op.data))
 			) {
-				return "set-meta requires a data object of acyclic values, or null";
+				return "set-meta requires a data object of acyclic plain-data values, or null";
 			}
 			return null;
 		case "delete-block":
@@ -617,10 +635,10 @@ function malformedOpMessage(op: DocumentOp): string | null {
 					(!isRecord(op.change.config) ||
 						!hasStorableValues(op.change.config))
 				) {
-					return "app create config must be an object of acyclic values";
+					return "app create config must be an object of acyclic plain-data values";
 				}
 				if (!isStorableMapValue(op.change.placement)) {
-					return "app create placement must be acyclic";
+					return "app create placement must be acyclic plain data";
 				}
 			} else if (
 				op.change.kind === "update" ||
@@ -634,7 +652,7 @@ function malformedOpMessage(op: DocumentOp): string | null {
 					(!isRecord(op.change.patch) ||
 						!hasStorableValues(op.change.patch))
 				) {
-					return "app update requires a patch object of acyclic values";
+					return "app update requires a patch object of acyclic plain-data values";
 				}
 			}
 			return null;
