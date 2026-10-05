@@ -173,4 +173,62 @@ describe("cache property findings", () => {
 		expect(touched).toEqual([]);
 		expect(cacheProblems(local!)).toEqual([]);
 	});
+
+	describe.each([
+		{ name: "both keep their first child", deleteOn: null },
+		{ name: "the lower peer deletes its first child", deleteOn: 0 },
+		{ name: "the higher peer deletes its first child", deleteOn: 1 },
+	])("finding 4: concurrent first-child inserts into one container ($name)", ({ deleteOn }) => {
+		it("reports the losing array's children, re-homes them on every peer and converges", () => {
+			const peers = fork(2);
+			// `scale-block-14` is a blockquote: a container without a `children` array.
+			const inserted = peers.map((editor, at) => {
+				const blockId = `first-${at}`;
+				editor.apply([
+					{
+						type: "insert-block",
+						blockId,
+						blockType: "paragraph",
+						props: {},
+						position: { parent: "scale-block-14", index: 0 },
+					},
+					{ type: "splice-text", blockId, from: 0, to: 0, insert: "fox" },
+				]);
+				return blockId;
+			});
+			if (deleteOn !== null) {
+				peers[deleteOn]!.apply([{ type: "delete-block", blockId: inserted[deleteOn]! }]);
+			}
+			const touched = [
+				touchedProblems(peers[1]!, () => harness!.deliver(0, 1)),
+				touchedProblems(peers[0]!, () => harness!.deliver(1, 0)),
+			];
+			expect(touched).toEqual([[], []]);
+			for (const editor of peers) expect(cacheProblems(editor)).toEqual([]);
+
+			// The next local pass on each peer re-homes what its merge orphaned.
+			for (const editor of peers) {
+				editor.apply([
+					{ type: "splice-text", blockId: "scale-block-1", from: 0, to: 0, insert: "o" },
+				]);
+				expect(cacheProblems(editor)).toEqual([]);
+			}
+			harness!.syncAll();
+			for (const editor of peers) {
+				editor.apply([
+					{ type: "splice-text", blockId: "scale-block-2", from: 0, to: 0, insert: "o" },
+				]);
+			}
+			harness!.syncAll();
+			harness!.assertConverged();
+			const survivors = inserted.filter((_, at) => at !== deleteOn);
+			for (const editor of peers) {
+				expect(cacheProblems(editor)).toEqual([]);
+				const preorder = editor.documentState.preorderBlockIds();
+				for (const blockId of survivors) {
+					expect(preorder.filter((id) => id === blockId)).toHaveLength(1);
+				}
+			}
+		});
+	});
 });

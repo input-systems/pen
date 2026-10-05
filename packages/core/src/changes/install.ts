@@ -156,13 +156,17 @@ function flushDeferredCRDTEvent(host: ChangeSummaryHost): void {
 	host._dispatchCRDTEvent(deferred);
 }
 
-/** Whether a commit edited an order array or added or removed a block map. */
+/**
+ * Whether a commit edited an order array, added or removed a block map, or
+ * set or removed a block's `children` array — a replaced array (concurrent
+ * first-child inserts, COL4) drops the entries of the one it replaced.
+ */
 function reshapesIndex(delta: RawCommitDelta): boolean {
 	if (delta.blockOrderDelta.length > 0 || delta.childArrayDeltas.size > 0) {
 		return true;
 	}
 	for (const keys of delta.blockMapChanges.values()) {
-		if (keys.size === 0) return true;
+		if (keys.size === 0 || keys.has("children")) return true;
 	}
 	return false;
 }

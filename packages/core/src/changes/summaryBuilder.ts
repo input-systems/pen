@@ -203,6 +203,7 @@ function buildStructuralChanges(
 		index,
 		listedMoreThanOnce,
 	);
+	addReplacedChildArrays(removed, delta, index);
 	if (delta.arrivedChildArrays?.size) {
 		addInsertedDescendants(inserted, delta.arrivedChildArrays);
 	}
@@ -449,6 +450,34 @@ function buildStructuralChanges(
 	}
 
 	return structural;
+}
+
+/**
+ * A `children` key replaced or removed on a block the index already held —
+ * two peers' concurrent first-child inserts each create an array and Yjs
+ * keeps one, or an undo takes back the array a first child created — drops
+ * every entry of the array it replaced, and no array edit names them. Each
+ * entry the new array (`arrivedChildArrays`, absent when empty or gone) does
+ * not list is reported removed from the old one; one the commit placed
+ * elsewhere reads as a move. Bounded by the replaced arrays (SCALE2).
+ */
+function addReplacedChildArrays(
+	removed: { id: string; parentId: string | null; index: number }[],
+	delta: RawCommitDelta,
+	index: BlockIndexSnapshot,
+): void {
+	for (const [blockId, keys] of delta.blockMapChanges) {
+		if (!keys.has("children") || !index.typeById.has(blockId)) continue;
+		// An array edited in place reports its own delta.
+		if (delta.childArrayDeltas.has(blockId)) continue;
+		const pre = index.childrenByParentId.get(blockId) ?? [];
+		if (pre.length === 0) continue;
+		const kept = new Set(delta.arrivedChildArrays?.get(blockId) ?? []);
+		for (let at = 0; at < pre.length; at += 1) {
+			const childId = pre[at]!;
+			if (!kept.has(childId)) removed.push({ id: childId, parentId: blockId, index: at });
+		}
+	}
 }
 
 /**
