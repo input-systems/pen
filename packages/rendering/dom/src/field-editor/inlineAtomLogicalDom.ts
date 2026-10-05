@@ -1,3 +1,4 @@
+import { computeBidiRuns, type BlockDirection } from "../bidi";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import { isEmptyBlockPlaceholder } from "./emptyBlockPlaceholder";
 import { INLINE_ATOM_REPLACEMENT_TEXT } from "./inlineAtomModel";
@@ -104,12 +105,12 @@ export function getInlineAtomPointerOffset(
 
 	let bestOffset: number | null = null;
 	let bestScore = Number.POSITIVE_INFINITY;
-	// The half a click lands on is the side it takes (O1): the visual left
-	// half is the atom's logical start in left-to-right text, its end in
-	// right-to-left text.
-	const rtl =
-		container.ownerDocument.defaultView?.getComputedStyle(container)
-			.direction === "rtl";
+	// The half a click lands on is the side it takes (O1, T5): the visual
+	// left half is the atom's logical start in a left-to-right run, its end
+	// in a right-to-left run. The run is the atom's own, resolved over the
+	// block's text (BR2), so a mention among Latin words in a right-to-left
+	// block reads left to right, as the overlay draws its caret.
+	let runLevels: AtomRunLevels | null = null;
 
 	for (const atomElement of atomElements) {
 		const rect = atomElement.getBoundingClientRect();
@@ -132,12 +133,37 @@ export function getInlineAtomPointerOffset(
 
 		const logicalAtom = resolveLogicalInlineAtomUnit(atomElement);
 		const atomOffset = getOffsetBeforeNode(container, logicalAtom);
+		runLevels ??= readAtomRunLevels(container);
+		const rtl = runLevels.isRightToLeftAt(atomOffset);
 		const inLeftHalf = clientX <= rect.left + rect.width / 2;
 		bestOffset = inLeftHalf !== rtl ? atomOffset : atomOffset + 1;
 		bestScore = score;
 	}
 
 	return bestOffset;
+}
+
+type AtomRunLevels = {
+	isRightToLeftAt(offset: number): boolean;
+};
+
+/** BR2: the bidi runs of `container`'s logical text, atoms as U+FFFC. */
+function readAtomRunLevels(container: HTMLElement): AtomRunLevels {
+	const base: BlockDirection =
+		container.ownerDocument.defaultView?.getComputedStyle(container)
+			.direction === "rtl"
+			? "rtl"
+			: "ltr";
+	const runs = computeBidiRuns(getLogicalTextContent(container), base);
+	return {
+		isRightToLeftAt(offset) {
+			const run = runs.find(
+				(candidate) => candidate.from <= offset && offset < candidate.to,
+			);
+			const level = run?.level ?? (base === "rtl" ? 1 : 0);
+			return level % 2 === 1;
+		},
+	};
 }
 
 export function domPointToLogicalOffset(

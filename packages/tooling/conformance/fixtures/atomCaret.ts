@@ -17,6 +17,8 @@ export const ATOM_CARET_IDS = {
 	rtl: "ac-rtl",
 	wrap: "ac-wrap",
 	empty: "ac-empty",
+	rtlBlockLtrRun: "ac-rtl-ltr-run",
+	ltrBlockRtlRun: "ac-ltr-rtl-run",
 } as const;
 
 /** Text before the atom in `ac-wrap`; long enough to wrap several times in a narrow viewport. */
@@ -50,6 +52,22 @@ export const ATOM_CARET_BLOCKS: readonly TestBlock[] = [
 		content: `${ATOM_CARET_WRAP_PREFIX} and after`,
 	},
 	{ id: ATOM_CARET_IDS.empty, type: "paragraph", content: "" },
+	// "مرحبا abc " @Ada " def عالم": atom at 10..11, in a left-to-right run
+	// inside a right-to-left block (T5).
+	{
+		id: ATOM_CARET_IDS.rtlBlockLtrRun,
+		type: "paragraph",
+		props: { direction: "rtl" },
+		content: "مرحبا abc  def عالم",
+	},
+	// "hello שלום " @דנה " עולם world": atom at 11..12, in a right-to-left
+	// run inside a left-to-right block (T5). The label is Hebrew so the chip
+	// reads right to left too.
+	{
+		id: ATOM_CARET_IDS.ltrBlockRtlRun,
+		type: "paragraph",
+		content: "hello שלום  עולם world",
+	},
 ];
 
 function mention(blockId: string, at: number, label: string): DocumentOp {
@@ -85,5 +103,7 @@ export function atomCaretOps(): DocumentOp[] {
 		},
 		mention(ATOM_CARET_IDS.rtl, 6, "Ada"),
 		mention(ATOM_CARET_IDS.wrap, ATOM_CARET_WRAP_PREFIX.length, "Ada"),
+		mention(ATOM_CARET_IDS.rtlBlockLtrRun, 10, "Ada"),
+		mention(ATOM_CARET_IDS.ltrBlockRtlRun, 11, "דנה"),
 	];
 }

@@ -233,4 +233,46 @@ for (const { suffix, url } of ATOM_SURFACES) {
 		},
 		{ url },
 	);
+
+	scenario(
+		`R1 S2 T5 O1: a shift-click inside an atom takes the side in its bidi run's direction, not the block's${suffix}`,
+		async (s, page) => {
+			await s.load("atom-caret");
+			await clickAt(page, ATOM.end, 2);
+			await expect
+				.poll(() => textSelection(page))
+				.toBe(`${ATOM.end}:2 -> ${ATOM.end}:2`);
+
+			// "مرحبا abc " @Ada " def عالم": the atom is 10..11 in a left-to-right
+			// run inside a right-to-left block, so its visual left half is its
+			// logical start.
+			await clickInAtom(page, ATOM.rtlBlockLtrRun, ATOM_LEFT_HALF, true);
+			await expect
+				.poll(() => textSelection(page))
+				.toBe(`${ATOM.end}:2 -> ${ATOM.rtlBlockLtrRun}:10`);
+			await expectDomMatchesAuthority(page);
+
+			await clickInAtom(page, ATOM.rtlBlockLtrRun, ATOM_RIGHT_HALF, true);
+			await expect
+				.poll(() => textSelection(page))
+				.toBe(`${ATOM.end}:2 -> ${ATOM.rtlBlockLtrRun}:11`);
+			await expectDomMatchesAuthority(page);
+
+			// "hello שלום " @דנה " עולם world": the atom is 11..12 in a
+			// right-to-left run inside a left-to-right block, so its visual
+			// right half is its logical start.
+			await clickInAtom(page, ATOM.ltrBlockRtlRun, ATOM_RIGHT_HALF, true);
+			await expect
+				.poll(() => textSelection(page))
+				.toBe(`${ATOM.end}:2 -> ${ATOM.ltrBlockRtlRun}:11`);
+			await expectDomMatchesAuthority(page);
+
+			await clickInAtom(page, ATOM.ltrBlockRtlRun, ATOM_LEFT_HALF, true);
+			await expect
+				.poll(() => textSelection(page))
+				.toBe(`${ATOM.end}:2 -> ${ATOM.ltrBlockRtlRun}:12`);
+			await expectDomMatchesAuthority(page);
+		},
+		{ url },
+	);
 }

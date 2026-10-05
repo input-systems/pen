@@ -362,6 +362,26 @@ for (const surface of SURFACES) {
 		await expectAtomCaret(s, page, { blockId: ID.rtl, offset: 7, edge: "trailing" });
 	}, options);
 
+	scenario(on("T5 O1: clicking either half of a chip takes the side in its bidi run's direction, not the block's"), async (s, page) => {
+		await s.load("atom-caret");
+		// "مرحبا abc " @Ada " def عالم": a left-to-right run in a right-to-left
+		// block, so the visual left half is the logical start.
+		const ltrRun = await atomBox(page, ID.rtlBlockLtrRun);
+		const ltrRunY = ltrRun.top + ltrRun.height / 2;
+		await page.mouse.click(ltrRun.left + ltrRun.width / 2 - 2, ltrRunY);
+		await expectAtomCaret(s, page, { blockId: ID.rtlBlockLtrRun, offset: 10, edge: "left" });
+		await page.mouse.click(ltrRun.left + ltrRun.width / 2 + 2, ltrRunY);
+		await expectAtomCaret(s, page, { blockId: ID.rtlBlockLtrRun, offset: 11, edge: "right" });
+		// "hello שלום " @דנה " עולם world": a right-to-left run in a
+		// left-to-right block, so the visual right half is the logical start.
+		const rtlRun = await atomBox(page, ID.ltrBlockRtlRun);
+		const rtlRunY = rtlRun.top + rtlRun.height / 2;
+		await page.mouse.click(rtlRun.left + rtlRun.width / 2 + 2, rtlRunY);
+		await expectAtomCaret(s, page, { blockId: ID.ltrBlockRtlRun, offset: 11, edge: "right" });
+		await page.mouse.click(rtlRun.left + rtlRun.width / 2 - 2, rtlRunY);
+		await expectAtomCaret(s, page, { blockId: ID.ltrBlockRtlRun, offset: 12, edge: "left" });
+	}, options);
+
 	scenario(on("O1: clicking the empty tail after a block-final atom puts the caret after it"), async (s, page) => {
 		await s.load("atom-caret");
 		await clickBesideAtom(page, ID.end, "right", 0, 40);
