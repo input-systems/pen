@@ -171,7 +171,8 @@ type Entry = readonly [childId: string, parentId: string | null];
 
 /**
  * The commit's array edits as entries removed and added, applied to a copy
- * of `pre`. Null when an op runs past the held array or inserts a non-id.
+ * of `pre`, or to `pre` itself when `inPlace`. Null when an op runs past the
+ * held array or inserts a non-id.
  */
 function applyArrayDelta(
 	pre: readonly string[],
@@ -179,8 +180,9 @@ function applyArrayDelta(
 	parentId: string | null,
 	removed: Entry[],
 	added: Entry[],
+	inPlace = false,
 ): string[] | null {
-	const next = pre.slice();
+	const next = inPlace ? (pre as string[]) : pre.slice();
 	let at = 0;
 	for (const op of delta) {
 		if (op.retain != null) {
@@ -233,12 +235,16 @@ function advanceStructure(
 	const added: Entry[] = [];
 
 	if (delta.blockOrderDelta.length > 0) {
+		// In place: the index owns its root order, and a refused advance
+		// replaces the whole index, so a partly applied delta is never read.
+		// A copy would cost the whole order on every root edit (SCALE2).
 		const roots = applyArrayDelta(
 			index.roots,
 			delta.blockOrderDelta,
 			null,
 			removed,
 			added,
+			true,
 		);
 		if (!roots) return false;
 		index.roots = roots;

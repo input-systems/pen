@@ -151,12 +151,12 @@ export function resolvePosition(
 
 	// The first entry, read from the pass index rather than the order (SCALE2).
 	if (typeof position === "object" && "after" in position) {
-		const at = pipeline._engine.structure().rootIds.indexOf(position.after);
+		const at = pipeline._engine.structure().rootIndexOf(position.after);
 		return at < 0 ? blockOrder.length : at + 1;
 	}
 
 	if (typeof position === "object" && "before" in position) {
-		const at = pipeline._engine.structure().rootIds.indexOf(position.before);
+		const at = pipeline._engine.structure().rootIndexOf(position.before);
 		return at < 0 ? 0 : at;
 	}
 

@@ -1,19 +1,32 @@
-/** Stale lookups after an edit before the positions after it are re-indexed. */
-const STALE_READS_BEFORE_REINDEX = 32;
+/** Splices held in the edit log before the positions after them are re-indexed. */
+const EDITS_BEFORE_REINDEX = 128;
+
+/** One splice: `removed` ids left at `at` and `inserted` ids took their place. */
+interface Edit {
+	readonly at: number;
+	readonly removed: number;
+	readonly inserted: number;
+}
 
 /**
  * A list of unique ids with their positions, kept proportional to edits
  * (SCALE2). A splice re-indexes nothing: positions before the first edited
- * index stay exact, and a lookup past it scans the array from there until
- * enough lookups have paid for re-indexing the tail. An edit of one entry in
- * a list of M costs O(M) native array moves, never O(M) map writes.
+ * index stay exact, and a lookup past it replays the splices made since its
+ * position was stored, so it costs O(splices), not O(list). After enough
+ * splices the tail is re-indexed once, which the splices it absorbs pay for.
+ * An edit of one entry in a list of M costs O(M) native array moves and
+ * O(M / 128) amortized map writes.
  */
 export class PositionedList {
 	private readonly _ids: string[];
+	/** Each id's position when it was last stored: exact below `_validBelow`. */
 	private readonly _positions = new Map<string, number>();
 	/** Positions below this index are exact. */
 	private _validBelow: number;
-	private _staleReads = 0;
+	/** Splices since the positions at or past `_validBelow` were last exact. */
+	private _edits: Edit[] = [];
+	/** For an id placed since then: how many logged splices its position already reflects. */
+	private readonly _placedAfter = new Map<string, number>();
 
 	private constructor(ids: string[]) {
 		this._ids = ids;
@@ -42,15 +55,17 @@ export class PositionedList {
 	}
 
 	indexOf(id: string): number {
-		const at = this._positions.get(id);
+		let at = this._positions.get(id);
 		if (at === undefined) return -1;
 		if (at < this._validBelow) return at;
-		this._staleReads += 1;
-		if (this._staleReads > STALE_READS_BEFORE_REINDEX) {
-			this._reindexTail();
-			return this._positions.get(id) ?? -1;
+		for (let k = this._placedAfter.get(id) ?? 0; k < this._edits.length; k += 1) {
+			const edit = this._edits[k]!;
+			if (at >= edit.at + edit.removed) at += edit.inserted - edit.removed;
 		}
-		return this._ids.indexOf(id, this._validBelow);
+		if (this._ids[at] === id) return at;
+		// Unreachable while every edit goes through `splice`; stay exact anyway.
+		this._reindexTail();
+		return this._positions.get(id) ?? -1;
 	}
 
 	/**
@@ -74,13 +89,18 @@ export class PositionedList {
 			adding.add(id);
 		}
 		const removed = this._ids.splice(at, deleteCount, ...inserted);
-		for (const id of removed) this._positions.delete(id);
+		if (deleteCount === 0 && inserted.length === 0) return removed;
+		for (const id of removed) {
+			this._positions.delete(id);
+			this._placedAfter.delete(id);
+		}
+		this._edits.push({ at, removed: deleteCount, inserted: inserted.length });
 		for (let k = 0; k < inserted.length; k += 1) {
 			this._positions.set(inserted[k]!, at + k);
+			this._placedAfter.set(inserted[k]!, this._edits.length);
 		}
-		if (deleteCount > 0 || inserted.length > 0) {
-			this._validBelow = Math.min(this._validBelow, at);
-		}
+		this._validBelow = Math.min(this._validBelow, at);
+		if (this._edits.length >= EDITS_BEFORE_REINDEX) this._reindexTail();
 		return removed;
 	}
 
@@ -89,6 +109,7 @@ export class PositionedList {
 			this._positions.set(this._ids[at]!, at);
 		}
 		this._validBelow = this._ids.length;
-		this._staleReads = 0;
+		this._edits = [];
+		this._placedAfter.clear();
 	}
 }

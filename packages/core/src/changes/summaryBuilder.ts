@@ -193,7 +193,11 @@ function buildStructuralChanges(
 	{ blockExists, listedMoreThanOnce }: SummaryLookups,
 ): StructuralChange[] {
 	const structural: StructuralChange[] = [];
-	const { inserted, removed } = collectArrayEdits(delta, index);
+	const { inserted, removed } = collectArrayEdits(
+		delta,
+		index,
+		listedMoreThanOnce,
+	);
 	if (delta.arrivedChildArrays?.size) {
 		addInsertedDescendants(inserted, delta.arrivedChildArrays);
 	}
@@ -504,6 +508,7 @@ interface ArrayInsert {
 function collectArrayEdits(
 	delta: RawCommitDelta,
 	index: BlockIndexSnapshot,
+	listedMoreThanOnce: SummaryLookups["listedMoreThanOnce"],
 ): {
 	inserted: ArrayInsert[];
 	removed: { id: string; parentId: string | null; index: number }[];
@@ -512,7 +517,11 @@ function collectArrayEdits(
 	const removed: { id: string; parentId: string | null; index: number }[] =
 		[];
 
-	const rootEdits = interpretArrayDelta(index.roots, delta.blockOrderDelta);
+	const rootEdits = interpretArrayDelta(
+		index.roots,
+		delta.blockOrderDelta,
+		listedMoreThanOnce,
+	);
 	inserted.push(
 		...rootEdits.inserted.map((item) => ({ ...item, parentId: null })),
 	);
@@ -522,7 +531,7 @@ function collectArrayEdits(
 
 	for (const [parentId, arrayDelta] of delta.childArrayDeltas) {
 		const pre = index.childrenByParentId.get(parentId) ?? [];
-		const edits = interpretArrayDelta(pre, arrayDelta);
+		const edits = interpretArrayDelta(pre, arrayDelta, listedMoreThanOnce);
 		inserted.push(...edits.inserted.map((item) => ({ ...item, parentId })));
 		removed.push(...edits.removed.map((item) => ({ ...item, parentId })));
 	}
@@ -533,6 +542,7 @@ function collectArrayEdits(
 function interpretArrayDelta(
 	pre: readonly string[],
 	delta: YArrayDelta,
+	listedMoreThanOnce: SummaryLookups["listedMoreThanOnce"],
 ): {
 	inserted: Omit<ArrayInsert, "parentId">[];
 	removed: { id: string; index: number }[];
@@ -568,7 +578,12 @@ function interpretArrayDelta(
 
 	// A repair of a duplicate entry (COL4) removes one entry and leaves the
 	// block listed at the other: that is a move to the surviving entry.
-	const survivors = survivingDuplicates(pre, delta, removed);
+	const survivors = survivingDuplicates(
+		pre,
+		delta,
+		removed,
+		listedMoreThanOnce,
+	);
 	if (survivors.size === 0) return { inserted, removed };
 	for (const [id, at] of survivors)
 		inserted.push({ id, index: at, repair: true });
@@ -587,9 +602,18 @@ function survivingDuplicates(
 	pre: readonly string[],
 	delta: YArrayDelta,
 	removed: readonly { id: string; index: number }[],
+	listedMoreThanOnce: SummaryLookups["listedMoreThanOnce"],
 ): Map<string, number> {
 	const survivors = new Map<string, number>();
 	if (removed.length === 0) return survivors;
+	// An id the index lists once cannot sit in this array twice, so an
+	// ordinary removal reads no array (SCALE2).
+	if (
+		listedMoreThanOnce &&
+		!removed.some((item) => listedMoreThanOnce(item.id))
+	) {
+		return survivors;
+	}
 	const removedIds = new Set(removed.map((item) => item.id));
 	let repeated = false;
 	const seen = new Set<string>();

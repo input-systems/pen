@@ -22,8 +22,13 @@ export function getDocumentPlaceholderTargetBlockId(
 ): string | null {
 	// Stop at the second content block: the answer is already null, and a
 	// commit must not scan the document to learn that (SCALE2).
+	// `blockAt` rather than `blockOrder`, whose copy is O(document) after a
+	// root edit.
+	const state = editor.documentState;
 	let blockId: string | null = null;
-	for (const candidate of editor.documentState.blockOrder) {
+	for (let index = 0; ; index += 1) {
+		const candidate = state.blockAt(index);
+		if (candidate === null) break;
 		if (isChromeBlock(editor, candidate)) continue;
 		if (blockId !== null) return null;
 		blockId = candidate;

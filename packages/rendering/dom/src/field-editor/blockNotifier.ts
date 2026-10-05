@@ -63,6 +63,19 @@ interface EventContext {
 	readonly listItems: Map<string, boolean>;
 }
 
+/**
+ * Where a sibling list changed, in its new positions: `[from, to]` replaced
+ * the previous list's middle (`to === from - 1` for a pure removal), and the
+ * list grew by `shift`. Null when the previous list is unknown.
+ */
+interface ChangedSpan {
+	readonly from: number;
+	readonly to: number;
+	readonly shift: number;
+	/** The list before the commit. */
+	readonly previous: readonly string[];
+}
+
 function newContext(structural = false): EventContext {
 	return { structural, ordinals: new Map(), semantics: new Map(), listItems: new Map() };
 }
@@ -94,6 +107,8 @@ class BlockNotifierImpl implements BlockNotifier {
 	private readonly _surfaceSubscribers = new Set<() => void>();
 	private readonly _segmentSubscribers = new Map<string | null, Set<() => void>>();
 	private readonly _segments = new Map<string | null, readonly BlockListSegment[]>();
+	/** The sibling list each cached segment list was computed over. */
+	private readonly _segmentBasis = new Map<string | null, readonly string[]>();
 	private _sources: Unsubscribe[] = [];
 	private _completion: InlineCompletionController | null = null;
 	private _completionBlockId: string | null = null;
@@ -104,12 +119,22 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _document: DocumentSnapshot | null = null;
 	/** `documentState.generation` the cached root ids were read at. */
 	private _rootIdsGeneration = -1;
+	/** Core's top-level list the root ids were last read as, while no dead id was filtered out. */
+	private _coreRootIds: readonly string[] | null = null;
 	/**
 	 * COL4: ids still in an order array whose block a concurrent delete
 	 * removed. Remote commits do not normalize, and a delete that only drops
 	 * the block map entry names no structural change, so renderers skip these.
 	 */
 	private readonly _deadIds = new Set<string>();
+	/**
+	 * The parents whose cached snapshot lists each child: the pre-commit
+	 * parent a commit's summary does not name. Kept as snapshots change, so
+	 * a lookup reads one entry rather than every cached snapshot.
+	 */
+	private readonly _cachedParents = new Map<string, Set<string>>();
+	/** Entries read without a subscriber, dropped at the next event (SCALE4). */
+	private readonly _unsubscribed = new Set<string>();
 	private _sharedReadContext: EventContext | null = null;
 	private _deliveries = 0;
 	private readonly _fanout = emptyFanout();
@@ -138,10 +163,11 @@ class BlockNotifierImpl implements BlockNotifier {
 		this._attach();
 		const entry = this._entryFor(blockId);
 		entry.subscribers.add(onChange);
+		this._unsubscribed.delete(blockId);
 		return () => {
 			entry.subscribers.delete(onChange);
 			if (entry.subscribers.size === 0 && this._entries.get(blockId) === entry) {
-				this._entries.delete(blockId);
+				this._forget(blockId, entry);
 			}
 			this._detachIfIdle();
 		};
@@ -195,6 +221,7 @@ class BlockNotifierImpl implements BlockNotifier {
 			if (set.size === 0) {
 				this._segmentSubscribers.delete(parentId);
 				this._segments.delete(parentId);
+				this._segmentBasis.delete(parentId);
 			}
 		};
 	}
@@ -205,9 +232,10 @@ class BlockNotifierImpl implements BlockNotifier {
 		if (cached && this._segmentSubscribers.has(parentId) && this._sources.length > 0) return cached;
 		// Otherwise read now, keeping the previous identity while equal, so a
 		// render-before-subscribe read is stable (useSyncExternalStore).
-		const next = this._buildSegments(parentId);
+		const siblings = this._siblingsOf(parentId);
+		const next = getListSegments(this._editor, siblings);
 		const segments = cached && segmentsEqual(cached, next) ? cached : next;
-		this._segments.set(parentId, segments);
+		this._storeSegments(parentId, segments, siblings);
 		return segments;
 	}
 
@@ -229,12 +257,13 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	destroy(): void {
-		this._entries.clear();
+		this._clearEntries();
 		this._changeSubscribers.clear();
 		this._documentSubscribers.clear();
 		this._surfaceSubscribers.clear();
 		this._segmentSubscribers.clear();
 		this._segments.clear();
+		this._segmentBasis.clear();
 		this._detach();
 	}
 
@@ -288,7 +317,7 @@ class BlockNotifierImpl implements BlockNotifier {
 		this._sharedReadContext = null;
 		this._completion = null;
 		this._completionBlockId = null;
-		this._entries.clear();
+		this._clearEntries();
 	}
 
 	/** Extensions activate asynchronously; resolve the controller until one exists. */
@@ -334,10 +363,10 @@ class BlockNotifierImpl implements BlockNotifier {
 		const liveness = this._trackDeadIds(summary);
 		this._updateDocument(summary.structural.length > 0 || liveness, ids);
 		// AX1: the sibling lists a structural commit touched, walked run by run.
-		const listParents = this._collectListSemantics(summary, previousRootIds, ids, context);
+		const listSpans = this._collectListSemantics(summary, previousRootIds, ids, context);
 		// Sibling lists re-sync before blocks hear the commit, as the document
 		// channel does: a removed block's node is gone before its slice is read.
-		if (listParents.size > 0) this._refreshSegments(listParents, context);
+		if (listSpans.size > 0) this._refreshSegments(listSpans, context);
 		this._deliver("commit", ids, context);
 	}
 
@@ -435,7 +464,7 @@ class BlockNotifierImpl implements BlockNotifier {
 					break;
 				case "block-props-changed":
 					if (change.keys.includes("parentId")) {
-						parents.push(this._cachedParentOf(change.blockId), this._editor.documentState.parentOf(change.blockId));
+						parents.push(...this._cachedParentsOf(change.blockId), this._editor.documentState.parentOf(change.blockId));
 					}
 					break;
 				default:
@@ -444,17 +473,15 @@ class BlockNotifierImpl implements BlockNotifier {
 			// The parentId route: a root-order insert or removal can still change
 			// a container's children.
 			for (const id of structuralBlockIds(change)) {
-				parents.push(this._editor.documentState.parentOf(id), this._cachedParentOf(id));
+				parents.push(this._editor.documentState.parentOf(id), ...this._cachedParentsOf(id));
 			}
 		}
 		return parents.filter((id): id is string => typeof id === "string");
 	}
 
-	private _cachedParentOf(blockId: string): string | null {
-		for (const [id, entry] of this._entries) {
-			if (entry.snapshot.childIds.includes(blockId)) return id;
-		}
-		return null;
+	/** Every cached parent whose snapshot lists `blockId` (two under COL4). */
+	private _cachedParentsOf(blockId: string): Iterable<string> {
+		return this._cachedParents.get(blockId) ?? EMPTY_IDS;
 	}
 
 	/**
@@ -507,10 +534,11 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _liveRootIds(): readonly string[] {
 		this._rootIdsGeneration = this._editor.documentState.generation;
 		const rootIds = getRootBlockIds(this._editor);
-		if (this._deadIds.size === 0) return rootIds;
 		for (const id of this._deadIds) {
 			if (this._editor.documentState.indexOf(id) < 0) this._deadIds.delete(id);
 		}
+		this._coreRootIds = this._deadIds.size === 0 ? rootIds : null;
+		if (this._deadIds.size === 0) return rootIds;
 		return rootIds.filter((id) => !this._deadIds.has(id));
 	}
 
@@ -521,6 +549,24 @@ class BlockNotifierImpl implements BlockNotifier {
 			: this._editor.documentState.childrenOf(parentId);
 	}
 
+	/**
+	 * `blockId`'s position in a sibling list, or -1. The root list asks core's
+	 * top-level index while the root ids are core's current list, so a
+	 * structural commit builds no position map over the whole list (SCALE2).
+	 */
+	private _positionIn(parentId: string | null, siblings: readonly string[], blockId: string): number {
+		const state = this._editor.documentState;
+		if (
+			parentId === null &&
+			this._coreRootIds !== null &&
+			this._coreRootIds === state.rootBlockIds() &&
+			siblings.length === this._coreRootIds.length
+		) {
+			return state.rootBlockIndexOf(blockId);
+		}
+		return indexIn(siblings, blockId);
+	}
+
 	/** A whole sibling list through `getListSegments`. */
 	private _buildSegments(parentId: string | null): readonly BlockListSegment[] {
 		return getListSegments(this._editor, this._siblingsOf(parentId));
@@ -529,20 +575,63 @@ class BlockNotifierImpl implements BlockNotifier {
 	/**
 	 * Re-segments each subscribed parent the commit's list walk touched. A
 	 * cached parent is patched from its previous segments and the runs the walk
-	 * recomputed, so an edit reads only the runs around it (SCALE6).
+	 * recomputed, so an edit reads only the runs around it (SCALE6); with its
+	 * changed span known, only the segments that span and those runs reach
+	 * are rebuilt (SCALE2).
 	 */
-	private _refreshSegments(parents: ReadonlySet<string | null>, context: EventContext): void {
-		for (const parentId of parents) {
+	private _refreshSegments(spans: ReadonlyMap<string | null, ChangedSpan | null>, context: EventContext): void {
+		for (const [parentId, span] of spans) {
 			const subscribers = this._segmentSubscribers.get(parentId);
 			if (!subscribers) continue;
 			const previous = this._segments.get(parentId);
-			const next = previous
-				? patchSegments(previous, this._siblingsOf(parentId), context)
-				: this._buildSegments(parentId);
-			if (previous && segmentsEqual(previous, next)) continue;
-			this._segments.set(parentId, next);
+			const siblings = this._siblingsOf(parentId);
+			let next: readonly BlockListSegment[];
+			if (!previous) {
+				next = this._buildSegments(parentId);
+			} else {
+				// The span patch needs the segments to cover the list it
+				// changed; any other cached list is re-read whole.
+				const patched =
+					span && this._segmentBasis.get(parentId) === span.previous
+						? this._patchSpan(previous, parentId, siblings, span, context)
+						: null;
+				next = patched ?? patchSegments(previous, siblings, context);
+				if (next === previous || (!patched && segmentsEqual(previous, next))) {
+					this._segmentBasis.set(parentId, siblings);
+					continue;
+				}
+			}
+			this._storeSegments(parentId, next, siblings);
 			this._notifyAll(subscribers);
 		}
+	}
+
+	private _storeSegments(
+		parentId: string | null,
+		segments: readonly BlockListSegment[],
+		basis: readonly string[],
+	): void {
+		this._segments.set(parentId, segments);
+		this._segmentBasis.set(parentId, basis);
+	}
+
+	/** Widens a changed span to every position this event's run walk read, then patches it. */
+	private _patchSpan(
+		previous: readonly BlockListSegment[],
+		parentId: string | null,
+		siblings: readonly string[],
+		span: ChangedSpan,
+		context: EventContext,
+	): readonly BlockListSegment[] | null {
+		let from = span.from;
+		let to = span.to;
+		for (const blockId of context.listItems.keys()) {
+			const at = this._positionIn(parentId, siblings, blockId);
+			if (at < 0) continue;
+			from = Math.min(from, at);
+			to = Math.max(to, at);
+		}
+		return patchSegmentRange(previous, span.previous, siblings, from, to, span.shift, context);
 	}
 
 	// ── List semantics (AX1) ─────────────────────────────────
@@ -593,7 +682,7 @@ class BlockNotifierImpl implements BlockNotifier {
 		if (cached) return cached;
 		const parentId = this._editor.documentState.parentOf(blockId);
 		const siblings = parentId === null ? rootIds : this._siblingsOf(parentId);
-		const index = indexIn(siblings, blockId);
+		const index = this._positionIn(parentId, siblings, blockId);
 		if (index >= 0) this._walkRun(siblings, index, context);
 		return context.semantics.get(blockId) ?? { level: 1, posinset: 1, setsize: 1, groupKey: blockId };
 	}
@@ -603,15 +692,16 @@ class BlockNotifierImpl implements BlockNotifier {
 	 * changed position of each touched sibling list, and around each block whose
 	 * list type, indent or parent changed — and names every item in them, so an
 	 * item outside `affectedBlockIds` whose position or set size moved is
-	 * notified. Returns the touched parents. A commit with no structural change
-	 * reads nothing (W6.R4).
+	 * notified. Returns each touched parent's changed span. A commit with no
+	 * structural change reads nothing (W6.R4).
 	 */
 	private _collectListSemantics(
 		summary: ChangeSummary,
 		previousRootIds: readonly string[] | null,
 		ids: Set<string>,
 		context: EventContext,
-	): ReadonlySet<string | null> {
+	): ReadonlyMap<string | null, ChangedSpan | null> {
+		const spans = new Map<string | null, ChangedSpan | null>();
 		const touched = this._listTouchedParents(summary);
 		for (const [parentId, blockIds] of touched) {
 			const siblings = this._siblingsOf(parentId);
@@ -624,16 +714,18 @@ class BlockNotifierImpl implements BlockNotifier {
 			};
 			if (previous === null) {
 				for (let index = 0; index < siblings.length; index += 1) around(index);
+				spans.set(parentId, null);
 				continue;
 			}
 			const [from, to] = changedRange(previous, siblings);
+			spans.set(parentId, { from, to, shift: siblings.length - previous.length, previous });
 			for (let index = from; index <= Math.max(from, to); index += 1) around(index);
 			for (const blockId of blockIds) {
-				const index = indexIn(siblings, blockId);
+				const index = this._positionIn(parentId, siblings, blockId);
 				if (index >= 0) around(index);
 			}
 		}
-		return new Set(touched.keys());
+		return spans;
 	}
 
 	/** Each sibling list a list-relevant structural change touched, with the blocks it names there. */
@@ -650,6 +742,12 @@ class BlockNotifierImpl implements BlockNotifier {
 			if (blockId !== undefined) blockIds.add(blockId);
 		};
 		const addCurrent = (blockId: string) => add(state.parentOf(blockId), blockId);
+		// No cached parent: the block rendered in the root list.
+		const addCached = (blockId: string) => {
+			const parents = this._cachedParents.get(blockId);
+			if (!parents) add(null);
+			else for (const parentId of parents) add(parentId);
+		};
 		for (const change of summary.structural) {
 			switch (change.type) {
 				case "block-inserted":
@@ -659,7 +757,7 @@ class BlockNotifierImpl implements BlockNotifier {
 				// container that rendered it still lists it (AX1).
 				case "block-removed":
 					add(change.parentId);
-					add(this._cachedParentOf(change.blockId));
+					addCached(change.blockId);
 					break;
 				// The array a move wrote into is touched even when the index
 				// resolves the block elsewhere: concurrent moves can list it in
@@ -670,7 +768,7 @@ class BlockNotifierImpl implements BlockNotifier {
 				case "block-moved":
 					add(change.fromParentId);
 					add(change.toParentId);
-					add(this._cachedParentOf(change.blockId));
+					addCached(change.blockId);
 					addCurrent(change.blockId);
 					break;
 				case "block-split":
@@ -682,12 +780,12 @@ class BlockNotifierImpl implements BlockNotifier {
 				case "blocks-merged":
 					addCurrent(change.targetBlockId);
 					addCurrent(change.sourceBlockId);
-					add(this._cachedParentOf(change.sourceBlockId));
+					addCached(change.sourceBlockId);
 					break;
 				case "block-props-changed":
 					if (!change.keys.some((key) => LIST_SEMANTIC_PROPS.has(key))) break;
 					addCurrent(change.blockId);
-					if (change.keys.includes("parentId")) add(this._cachedParentOf(change.blockId));
+					if (change.keys.includes("parentId")) addCached(change.blockId);
 					break;
 				case "table-changed":
 				case "apps-changed":
@@ -724,8 +822,9 @@ class BlockNotifierImpl implements BlockNotifier {
 				domSyncVersion: 0,
 				lastCommit: undefined,
 			};
-			entry.snapshot = this._buildSnapshot(blockId, entry, this._readContext());
+			this._setSnapshot(blockId, entry, this._buildSnapshot(blockId, entry, this._readContext()));
 			this._entries.set(blockId, entry);
+			this._unsubscribed.add(blockId);
 		}
 		return entry;
 	}
@@ -804,7 +903,7 @@ class BlockNotifierImpl implements BlockNotifier {
 			if (!entry) continue;
 			const next = this._buildSnapshot(id, entry, context);
 			if (next === entry.snapshot) continue;
-			entry.snapshot = next;
+			this._setSnapshot(id, entry, next);
 			changed.push(id);
 		}
 		this._fanout[kind] = changed.length;
@@ -822,9 +921,48 @@ class BlockNotifierImpl implements BlockNotifier {
 
 	/** Snapshots read without a subscriber live until the next event (SCALE4). */
 	private _dropUnsubscribed(): void {
-		for (const [id, entry] of this._entries) {
-			if (entry.subscribers.size === 0) this._entries.delete(id);
+		for (const id of this._unsubscribed) {
+			const entry = this._entries.get(id);
+			if (entry && entry.subscribers.size === 0) this._forget(id, entry);
 		}
+		this._unsubscribed.clear();
+	}
+
+	/** Stores a snapshot, moving its children in the cached parent map when they changed. */
+	private _setSnapshot(blockId: string, entry: Entry, next: BlockSnapshot): void {
+		const previous = entry.snapshot as BlockSnapshot | undefined;
+		entry.snapshot = next;
+		if (previous?.childIds === next.childIds) return;
+		if (previous) this._unlinkChildren(blockId, previous.childIds);
+		for (const childId of next.childIds) {
+			let parents = this._cachedParents.get(childId);
+			if (!parents) {
+				parents = new Set();
+				this._cachedParents.set(childId, parents);
+			}
+			parents.add(blockId);
+		}
+	}
+
+	private _unlinkChildren(blockId: string, childIds: readonly string[]): void {
+		for (const childId of childIds) {
+			const parents = this._cachedParents.get(childId);
+			if (!parents) continue;
+			parents.delete(blockId);
+			if (parents.size === 0) this._cachedParents.delete(childId);
+		}
+	}
+
+	private _forget(blockId: string, entry: Entry): void {
+		this._entries.delete(blockId);
+		this._unsubscribed.delete(blockId);
+		this._unlinkChildren(blockId, entry.snapshot.childIds);
+	}
+
+	private _clearEntries(): void {
+		this._entries.clear();
+		this._cachedParents.clear();
+		this._unsubscribed.clear();
 	}
 
 	private _notifyAll(subscribers: ReadonlySet<() => void>): void {
@@ -981,13 +1119,25 @@ function patchSegments(
 	siblings: readonly string[],
 	context: EventContext,
 ): readonly BlockListSegment[] {
+	return segmentRun(siblings, previous, context);
+}
+
+/**
+ * Segments of `blockIds`: each takes its walked group, none when the walk read
+ * it as a non-list block, or else its group in `previous`.
+ */
+function segmentRun(
+	blockIds: readonly string[],
+	previous: readonly BlockListSegment[],
+	context: EventContext,
+): BlockListSegment[] {
 	const previousGroup = new Map<string, string>();
 	for (const segment of previous) {
 		if (segment.kind === "list") for (const blockId of segment.blockIds) previousGroup.set(blockId, segment.key);
 	}
 	const segments: BlockListSegment[] = [];
 	let current = null as { key: string; blockIds: string[] } | null;
-	for (const blockId of siblings) {
+	for (const blockId of blockIds) {
 		const walked = context.semantics.get(blockId);
 		const groupKey = walked
 			? walked.groupKey
@@ -1006,4 +1156,107 @@ function patchSegments(
 		current.blockIds.push(blockId);
 	}
 	return segments;
+}
+
+function segmentLength(segment: BlockListSegment): number {
+	return segment.kind === "block" ? 1 : segment.blockIds.length;
+}
+
+/** Joins adjacent list segments that share a key: `getListSegments` never splits one group. */
+function coalesce(segments: readonly BlockListSegment[]): BlockListSegment[] {
+	const out: BlockListSegment[] = [];
+	for (const segment of segments) {
+		const last = out[out.length - 1];
+		if (last?.kind === "list" && segment.kind === "list" && last.key === segment.key) {
+			out[out.length - 1] = { kind: "list", key: last.key, blockIds: [...last.blockIds, ...segment.blockIds] };
+			continue;
+		}
+		out.push(segment);
+	}
+	return out;
+}
+
+/** Each segment list's block-to-segment map, built on first patch and handed on to the list a patch returns. */
+const segmentIndexes = new WeakMap<readonly BlockListSegment[], Map<string, BlockListSegment>>();
+
+function segmentIds(segment: BlockListSegment): readonly string[] {
+	return segment.kind === "block" ? [segment.blockId] : segment.blockIds;
+}
+
+function segmentIndexOf(segments: readonly BlockListSegment[]): Map<string, BlockListSegment> {
+	let index = segmentIndexes.get(segments);
+	if (!index) {
+		index = new Map();
+		for (const segment of segments) for (const blockId of segmentIds(segment)) index.set(blockId, segment);
+		segmentIndexes.set(segments, index);
+	}
+	return index;
+}
+
+/** Where `blockId` sits in its segment. O(the segment). */
+function offsetIn(segment: BlockListSegment, blockId: string): number {
+	return segment.kind === "block" ? 0 : segment.blockIds.indexOf(blockId);
+}
+
+/**
+ * `patchSegments` over only the segments new positions `[from, to]` reach,
+ * where `[from, to]` covers the changed span and every block the run walk
+ * read: positions before `from` are `previousIds`', and positions after `to`
+ * are `previousIds`' shifted by `shift`. The window's edges are found through
+ * the block-to-segment map and the segments outside it are kept by identity,
+ * so the cost is the window, not the list (SCALE2). Returns `previous` when
+ * the window's segments are unchanged, or null when `previous` does not cover
+ * `previousIds` one block per position.
+ */
+function patchSegmentRange(
+	previous: readonly BlockListSegment[],
+	previousIds: readonly string[],
+	siblings: readonly string[],
+	from: number,
+	to: number,
+	shift: number,
+	context: EventContext,
+): readonly BlockListSegment[] | null {
+	const index = segmentIndexOf(previous);
+	if (index.size !== previousIds.length) return null;
+	const previousTo = to - shift;
+	let first = previous.length;
+	let firstStart = previousIds.length;
+	if (from < previousIds.length) {
+		const blockId = previousIds[from] as string;
+		const segment = index.get(blockId);
+		if (!segment) return null;
+		first = previous.indexOf(segment);
+		firstStart = from - offsetIn(segment, blockId);
+	}
+	let last = first - 1;
+	let lastEnd = firstStart;
+	if (previousTo >= firstStart) {
+		const blockId = previousIds[previousTo] as string;
+		const segment = index.get(blockId);
+		if (!segment) return null;
+		last = previous.indexOf(segment, Math.max(first, 0));
+		lastEnd = previousTo + segmentLength(segment) - offsetIn(segment, blockId);
+	}
+	if (first < 0 || last < first - 1) return null;
+	// One neighbour each side joins the window, so a group the edit rejoined
+	// across its seam merges as `getListSegments` would.
+	const windowStart = first > 0 ? first - 1 : first;
+	const windowEnd = last + 1 < previous.length ? last + 2 : last + 1;
+	const replaced = previous.slice(windowStart, windowEnd);
+	const next = coalesce([
+		...previous.slice(windowStart, first),
+		...segmentRun(siblings.slice(firstStart, lastEnd + shift), previous.slice(first, last + 1), context),
+		...previous.slice(last + 1, windowEnd),
+	]);
+	if (segmentsEqual(replaced, next)) return previous;
+	const patched = previous.slice(0, windowStart).concat(next, previous.slice(windowEnd));
+	// The map moves to the patched list: the window's blocks are re-pointed.
+	for (const segment of replaced) {
+		for (const blockId of segmentIds(segment)) if (index.get(blockId) === segment) index.delete(blockId);
+	}
+	for (const segment of next) for (const blockId of segmentIds(segment)) index.set(blockId, segment);
+	segmentIndexes.delete(previous);
+	segmentIndexes.set(patched, index);
+	return patched;
 }

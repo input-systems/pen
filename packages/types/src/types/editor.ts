@@ -86,6 +86,15 @@ export interface DocumentState {
 	preorderIndexOf(blockId: string): number;
 	/** The same nested order, identity-stable until the next structural change. */
 	preorderBlockIds(): readonly string[];
+	/**
+	 * The top-level sibling list: `blockOrder` without the blocks a parent
+	 * claims (`parentOf` non-null), the list a renderer draws at the root.
+	 * Identity-stable until the next structural change, and kept by the edits
+	 * a commit makes rather than re-filtered from `blockOrder`.
+	 */
+	rootBlockIds(): readonly string[];
+	/** Position in {@link rootBlockIds}, or -1 when absent. */
+	rootBlockIndexOf(blockId: string): number;
 }
 
 // ── Undo Manager ────────────────────────────────────────────

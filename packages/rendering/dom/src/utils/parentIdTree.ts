@@ -4,10 +4,9 @@ import {
 } from "@input/pen-core";
 import type { DocumentOp, Editor } from "@input/pen-types";
 
+/** The top-level sibling list, kept by core's document index (`rootBlockIds`). */
 export function getRootBlockIds(editor: Editor): readonly string[] {
-	return editor.documentState.blockOrder.filter(
-		(blockId) => editor.documentState.parentOf(blockId) == null,
-	);
+	return editor.documentState.rootBlockIds();
 }
 
 /**

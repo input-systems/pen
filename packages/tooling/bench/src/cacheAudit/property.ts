@@ -266,6 +266,8 @@ interface DocumentStateLike {
 	childrenOf(blockId: string): readonly string[];
 	preorderBlockIds(): readonly string[];
 	preorderIndexOf(blockId: string): number;
+	rootBlockIds(): readonly string[];
+	rootBlockIndexOf(blockId: string): number;
 }
 
 type DocumentStateConstructor = new (
@@ -289,12 +291,37 @@ type DecorationCollectorConstructor = new (
 	emit: (event: unknown) => void,
 ) => DecorationCollectorLike;
 
-interface PassIndexEngine {
-	readonly passIndex: unknown;
-	buildPassIndex(): unknown;
+interface PassIndexLike {
+	readonly rootIds: readonly string[];
+	readonly rootCount: ReadonlyMap<string, number>;
+	readonly childrenByParent: ReadonlyMap<string, readonly string[]>;
+	readonly parentsByChild: ReadonlyMap<string, readonly string[]>;
+	readonly liveIds: ReadonlySet<string>;
+	readonly unstoredListed: ReadonlySet<string>;
+	rootIndicesOf(blockId: string): number[];
 }
 
-/** A: preorder, child, parent and position indexes against a document state built fresh from storage. */
+interface PassIndexEngine {
+	readonly passIndex: PassIndexLike | null;
+	buildPassIndex(): PassIndexLike;
+}
+
+/** The pass index's structure and every root's positions, as the pass reads them. */
+function passIndexView(index: PassIndexLike): unknown {
+	return {
+		rootIds: index.rootIds,
+		rootCount: index.rootCount,
+		childrenByParent: index.childrenByParent,
+		parentsByChild: index.parentsByChild,
+		liveIds: index.liveIds,
+		unstoredListed: index.unstoredListed,
+		rootIndices: [...new Set(index.rootIds)]
+			.sort()
+			.map((id) => [id, index.rootIndicesOf(id)]),
+	};
+}
+
+/** A: preorder, top-level, child, parent and position indexes against a document state built fresh from storage. */
 function checkDocumentIndex(editor: Editor): string[] {
 	const state = editor.documentState as unknown as DocumentStateLike;
 	const Fresh = state.constructor as DocumentStateConstructor;
@@ -312,6 +339,7 @@ function checkDocumentIndex(editor: Editor): string[] {
 	const read = (source: DocumentStateLike) => ({
 		blockOrder: [...source.blockOrder],
 		preorder: [...source.preorderBlockIds()],
+		rootBlockIds: [...source.rootBlockIds()],
 		perBlock: [...ids]
 			.sort()
 			.map((id) => [
@@ -320,6 +348,7 @@ function checkDocumentIndex(editor: Editor): string[] {
 				source.parentOf(id),
 				[...source.childrenOf(id)],
 				source.preorderIndexOf(id),
+				source.rootBlockIndexOf(id),
 			]),
 	});
 	const difference = firstDifference(
@@ -562,8 +591,8 @@ function checkPassIndex(editor: Editor): string[] {
 	if (engine.passIndex === null) return [];
 	const difference = firstDifference(
 		"G normalization pass index",
-		engine.passIndex,
-		engine.buildPassIndex(),
+		passIndexView(engine.passIndex),
+		passIndexView(engine.buildPassIndex()),
 	);
 	return difference ? [difference] : [];
 }

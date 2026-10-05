@@ -804,7 +804,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 	// ── Block Order Helpers ─────────────────────────────────
 
 	private removeFromBlockOrder(blockId: string): void {
-		const index = this.getPassIndex().rootIds.lastIndexOf(blockId);
+		const index = this.getPassIndex().rootLastIndexOf(blockId);
 		if (index < 0) return;
 		this.blockOrder.delete(index, 1);
 		this.noteRootDeleted(index, 1);
@@ -816,7 +816,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 	}
 
 	private getBlockOrderIndex(blockId: string): number {
-		return this.getPassIndex().rootIds.indexOf(blockId);
+		return this.getPassIndex().rootIndexOf(blockId);
 	}
 
 	// ── Read Helpers ────────────────────────────────────────

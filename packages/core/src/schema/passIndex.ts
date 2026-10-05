@@ -6,6 +6,7 @@ import {
 	isCRDTMap,
 	type CRDTUnknownArray,
 } from "../editor/crdtShapes";
+import { PositionedList } from "../editor/positionedList";
 
 /** An array entry naming a block; `parentId` is `null` for `blockOrder`. */
 export type StructuralEntry = {
@@ -52,6 +53,14 @@ export class NormalizePassIndex {
 	readonly liveIds: Set<string>;
 	/** Listed ids with no `doc.blocks` entry: deleted (dangling) or not yet arrived (COL4). */
 	readonly unstoredListed: Set<string>;
+	/** Ids `blockOrder` lists more than once (COL4). */
+	private repeatedRoots = 0;
+	/**
+	 * Each root's position, while no id is listed twice: built on first
+	 * lookup over `rootIds` itself, which it then splices, so resolving a
+	 * position reads no scan of the order (SCALE2).
+	 */
+	private positions: PositionedList | null = null;
 
 	private constructor(rootIds: string[]) {
 		this.rootIds = rootIds;
@@ -66,7 +75,9 @@ export class NormalizePassIndex {
 		const order = doc.blockOrder as unknown as CRDTUnknownArray<string>;
 		const index = new NormalizePassIndex(readIds(order));
 		for (const id of index.rootIds) {
-			index.rootCount.set(id, (index.rootCount.get(id) ?? 0) + 1);
+			const count = (index.rootCount.get(id) ?? 0) + 1;
+			index.rootCount.set(id, count);
+			if (count === 2) index.repeatedRoots += 1;
 		}
 		for (const [id, rawBlockMap] of doc.blocks.entries()) {
 			index.liveIds.add(id);
@@ -86,9 +97,25 @@ export class NormalizePassIndex {
 		return this.rootCount.has(blockId);
 	}
 
+	/** The first `blockOrder` index holding the id, or -1. */
+	rootIndexOf(blockId: string): number {
+		const positions = this.rootPositions();
+		return positions ? positions.indexOf(blockId) : this.rootIds.indexOf(blockId);
+	}
+
+	/** The last `blockOrder` index holding the id, or -1. */
+	rootLastIndexOf(blockId: string): number {
+		const positions = this.rootPositions();
+		return positions ? positions.indexOf(blockId) : this.rootIds.lastIndexOf(blockId);
+	}
+
 	/** Every `blockOrder` index holding the id, ascending. */
 	rootIndicesOf(blockId: string): number[] {
 		const count = this.rootCount.get(blockId) ?? 0;
+		if (count === 1) {
+			const at = this.rootIndexOf(blockId);
+			if (at >= 0) return [at];
+		}
 		const indices: number[] = [];
 		for (let at = 0; indices.length < count; at += 1) {
 			at = this.rootIds.indexOf(blockId, at);
@@ -127,20 +154,42 @@ export class NormalizePassIndex {
 	}
 
 	rootInserted(index: number, blockIds: readonly string[]): void {
-		this.rootIds.splice(index, 0, ...blockIds);
+		// A refused splice (an id now listed twice) changed nothing.
+		if (!this.positions?.splice(index, 0, blockIds)) {
+			this.positions = null;
+			this.rootIds.splice(index, 0, ...blockIds);
+		}
 		for (const blockId of blockIds) {
-			this.rootCount.set(blockId, (this.rootCount.get(blockId) ?? 0) + 1);
+			const count = (this.rootCount.get(blockId) ?? 0) + 1;
+			this.rootCount.set(blockId, count);
+			if (count === 2) this.repeatedRoots += 1;
 			this.settle(blockId);
 		}
 	}
 
 	rootDeleted(index: number, count: number): void {
-		for (const blockId of this.rootIds.splice(index, count)) {
+		let removed = this.positions?.splice(index, count) ?? null;
+		if (!removed) {
+			this.positions = null;
+			removed = this.rootIds.splice(index, count);
+		}
+		for (const blockId of removed) {
 			const remaining = (this.rootCount.get(blockId) ?? 1) - 1;
 			if (remaining > 0) this.rootCount.set(blockId, remaining);
 			else this.rootCount.delete(blockId);
+			if (remaining === 1) this.repeatedRoots -= 1;
 			this.settle(blockId);
 		}
+	}
+
+	/** The held positions, rebuilt once no id is listed twice; null while one is. */
+	private rootPositions(): PositionedList | null {
+		if (this.repeatedRoots > 0) {
+			this.positions = null;
+			return null;
+		}
+		this.positions ??= PositionedList.of(this.rootIds);
+		return this.positions;
 	}
 
 	/**

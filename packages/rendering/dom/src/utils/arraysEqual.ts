@@ -3,6 +3,7 @@ export function arraysEqual<T>(
 	left: readonly T[],
 	right: readonly T[],
 ): boolean {
+	if (left === right) return true;
 	if (left.length !== right.length) {
 		return false;
 	}

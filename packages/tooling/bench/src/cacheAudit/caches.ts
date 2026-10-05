@@ -159,7 +159,7 @@ function notifierSwitch(audit: AuditEditor): CacheSwitch {
 			clock.time(() => original(event)),
 		),
 		patchMethod<() => void>(notifier, "_onSelection", (original) => () => clock.time(original)),
-		patchMethod<(summary: ChangeSummary, previous: unknown, ids: Set<string>, context: unknown) => ReadonlySet<string | null>>(
+		patchMethod<(summary: ChangeSummary, previous: unknown, ids: Set<string>, context: unknown) => ReadonlyMap<string | null, unknown>>(
 			notifier,
 			"_collectListSemantics",
 			(original) => (summary, previous, ids, context) => {
@@ -171,10 +171,10 @@ function notifierSwitch(audit: AuditEditor): CacheSwitch {
 						for (const runId of notifier._walkRun(siblings, index, context)) ids.add(runId);
 					}
 				}
-				return new Set(touched.keys());
+				return new Map([...touched.keys()].map((parentId) => [parentId, null]));
 			},
 		),
-		patchMethod<(parents: ReadonlySet<string | null>, context: unknown) => void>(
+		patchMethod<(parents: ReadonlyMap<string | null, unknown>, context: unknown) => void>(
 			notifier,
 			"_refreshSegments",
 			(original) => (parents, context) => {
@@ -182,7 +182,7 @@ function notifierSwitch(audit: AuditEditor): CacheSwitch {
 					original(parents, context);
 					return;
 				}
-				for (const parentId of parents) {
+				for (const parentId of parents.keys()) {
 					const subscribers = notifier._segmentSubscribers.get(parentId);
 					if (!subscribers) continue;
 					notifier._segments.set(parentId, notifier._buildSegments(parentId));

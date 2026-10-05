@@ -63,10 +63,16 @@ export class DocumentStateImpl implements DocumentState {
 	private _parentIndex: Map<string, string>;
 	private _childIndex: Map<string, string[]>;
 	private _generation = 0;
-	/** Nested preorder, built on first read and dropped on any structural change. */
 	/** Nested preorder, built on first read; root edits patch it, `children` edits drop it. */
 	private _preorder: Preorder | null = null;
 	private _preorderSnapshot: readonly string[] | null = null;
+	/**
+	 * The top-level list (`blockOrder` without parent-claimed blocks), built
+	 * on first read; root edits and `parentId` placements patch it, a rebuild
+	 * drops it.
+	 */
+	private _topLevel: RootOrder | null = null;
+	private _topLevelSnapshot: readonly string[] | null = null;
 	private _documentProfile: DocumentProfile;
 	private _doc: PenDocument;
 	private _crdtDoc: CRDTDocument;
@@ -162,6 +168,66 @@ export class DocumentStateImpl implements DocumentState {
 	preorderBlockIds(): readonly string[] {
 		this._preorderSnapshot ??= this._preorderCache().list.ids.slice();
 		return this._preorderSnapshot;
+	}
+
+	rootBlockIds(): readonly string[] {
+		const top = this._topLevelCache();
+		if (top.kind === "repeated") return top.ids;
+		this._topLevelSnapshot ??= top.list.ids.slice();
+		return this._topLevelSnapshot;
+	}
+
+	rootBlockIndexOf(blockId: string): number {
+		const top = this._topLevelCache();
+		return top.kind === "unique"
+			? top.list.indexOf(blockId)
+			: (top.index.get(blockId) ?? -1);
+	}
+
+	private _topLevelCache(): RootOrder {
+		this._topLevel ??= rootOrderOf(
+			this._rootIds().filter((id) => !this._parentIndex.has(id)),
+		);
+		return this._topLevel;
+	}
+
+	private _dropTopLevel(): void {
+		this._topLevel = null;
+		this._topLevelSnapshot = null;
+	}
+
+	/** The held top-level list when it can be patched; a repeated one is dropped. */
+	private _patchableTopLevel(): PositionedList | null {
+		if (this._topLevel?.kind === "repeated") this._dropTopLevel();
+		return this._topLevel?.kind === "unique" ? this._topLevel.list : null;
+	}
+
+	/** Takes `blockId` out of the held top-level list, if it lists it. */
+	private _leaveTopLevel(blockId: string): void {
+		const top = this._patchableTopLevel();
+		if (!top?.has(blockId)) return;
+		this._topLevelSnapshot = null;
+		if (!top.splice(top.indexOf(blockId), 1)) this._dropTopLevel();
+	}
+
+	/**
+	 * Puts a root the order gained at `index` into the held top-level list,
+	 * after the nearest top-level root before it. O(the claimed blocks
+	 * between them).
+	 */
+	private _joinTopLevel(roots: PositionedList, blockId: string, index: number): void {
+		const top = this._patchableTopLevel();
+		if (!top || this._parentIndex.has(blockId)) return;
+		let at = 0;
+		for (let k = index - 1; k >= 0; k -= 1) {
+			const previous = roots.ids[k]!;
+			if (top.has(previous)) {
+				at = top.indexOf(previous) + 1;
+				break;
+			}
+		}
+		this._topLevelSnapshot = null;
+		if (!top.splice(at, 0, [blockId])) this._dropTopLevel();
 	}
 
 	private _dropPreorder(): void {
@@ -279,6 +345,7 @@ export class DocumentStateImpl implements DocumentState {
 
 	rebuild(): void {
 		this._dropPreorder();
+		this._dropTopLevel();
 		this._blockOrderSnapshot = null;
 		this._rootEdits = emptyRootEdits();
 		const order = this._doc.blockOrder;
@@ -338,6 +405,7 @@ export class DocumentStateImpl implements DocumentState {
 
 	clear(): void {
 		this._dropPreorder();
+		this._dropTopLevel();
 		this._roots = rootOrderOf([]);
 		this._blockOrderSnapshot = null;
 		this._rootEdits = emptyRootEdits();
@@ -419,7 +487,10 @@ export class DocumentStateImpl implements DocumentState {
 			}
 			const removed = list.splice(at, count);
 			if (!removed) return false;
-			for (const id of removed) this._rootEdits.removed.add(id);
+			for (const id of removed) {
+				this._rootEdits.removed.add(id);
+				this._leaveTopLevel(id);
+			}
 		}
 		const placed: [string, number][] = [];
 		for (const [at, ids] of inserts) {
@@ -435,6 +506,8 @@ export class DocumentStateImpl implements DocumentState {
 		for (const [id, index] of placed) {
 			if (order.get(index) !== id) return false;
 		}
+		// Ascending, so each gained root finds the ones before it placed.
+		for (const [id, index] of placed) this._joinTopLevel(list, id, index);
 		for (const [id, index] of placed) {
 			const preorder = this._preorder?.list;
 			if (!preorder) break;
@@ -547,6 +620,7 @@ export class DocumentStateImpl implements DocumentState {
 		}
 		this._parentIndex.set(blockId, parentId);
 		this._placeParentIdChild(parentId, blockId);
+		this._leaveTopLevel(blockId);
 		return "placed";
 	}
 
