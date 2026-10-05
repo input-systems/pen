@@ -163,7 +163,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 202,
+				"scan.blocksMapReads": 200,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 24,
@@ -184,7 +184,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 710,
+				"scan.blocksMapReads": 708,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 25,
@@ -326,7 +326,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 202,
+				"scan.blocksMapReads": 200,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 24,
@@ -347,7 +347,7 @@
 				"render.contentRenders": 1,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 710,
+				"scan.blocksMapReads": 708,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 25,
@@ -1281,6 +1281,22 @@
 				"vue/scale-5k/shiftDown/scan.blocksMapReads: 107 !== 109",
 				"vue/scale-5k/enterParagraph/scan.blocksMapReads: 202 !== 206",
 				"vue/scale-5k/enterNumbered/scan.blocksMapReads: 710 !== 714"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"moved": [
+				"vue/scale-1k/enterParagraph/scan.blocksMapReads: 200 !== 202",
+				"vue/scale-1k/enterNumbered/scan.blocksMapReads: 708 !== 710"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"moved": [
+				"vue/scale-5k/enterParagraph/scan.blocksMapReads: 200 !== 202",
+				"vue/scale-5k/enterNumbered/scan.blocksMapReads: 708 !== 710"
 			]
 		}
 	]

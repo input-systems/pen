@@ -169,7 +169,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 211,
+				"scan.blocksMapReads": 209,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 22,
@@ -191,7 +191,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 600,
+				"scan.blocksMapReads": 598,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 23,
@@ -340,7 +340,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 211,
+				"scan.blocksMapReads": 209,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 22,
@@ -362,7 +362,7 @@
 				"render.reactCommits": 3,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 600,
+				"scan.blocksMapReads": 598,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 23,
@@ -1465,6 +1465,22 @@
 				"react/scale-5k/shiftDown/scan.blocksMapReads: 117 !== 119",
 				"react/scale-5k/enterParagraph/scan.blocksMapReads: 211 !== 215",
 				"react/scale-5k/enterNumbered/scan.blocksMapReads: 600 !== 604"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"moved": [
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 209 !== 211",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 598 !== 600"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"moved": [
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 209 !== 211",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 598 !== 600"
 			]
 		}
 	]

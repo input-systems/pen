@@ -161,6 +161,8 @@ export function getEditorInternals(editor: EditorImplRuntime): EditorInternals {
 			return getCellTextFromRow(rowMap, col);
 		},
 		selectionAnchors: () => self._selection.heldAnchors,
+		selectionAnchorRepair: (anchor, commitId) =>
+			self._selection.heldAnchorRepair(anchor, commitId),
 	};
 }
 

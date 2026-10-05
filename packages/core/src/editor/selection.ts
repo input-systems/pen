@@ -63,6 +63,16 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 	private _editor: Editor | null = null;
 	private _fromAnchor: Anchor | null = null;
 	private _toAnchor: Anchor | null = null;
+	/**
+	 * What the last move-carrying commit repaired each held anchor into (AN14).
+	 * The authority repairs from the anchor's pre-commit target and then
+	 * resolves it, which overwrites that target; a consumer sharing the anchor
+	 * reads the repair here rather than repairing from the after-commit one.
+	 */
+	private _commitRepairs: {
+		readonly commitId: number;
+		readonly byAnchor: ReadonlyMap<Anchor, Anchor>;
+	} | null = null;
 
 	constructor(
 		doc: PenDocument,
@@ -94,6 +104,18 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 	/** AS1: the anchors held for the current selection's endpoints. */
 	get heldAnchors(): { readonly from: Anchor | null; readonly to: Anchor | null } {
 		return { from: this._fromAnchor, to: this._toAnchor };
+	}
+
+	/**
+	 * AN14: the anchor `anchor` was repaired into by commit `commitId`, when the
+	 * authority held it going into that commit; `undefined` otherwise.
+	 */
+	heldAnchorRepair(anchor: Anchor, commitId: number): Anchor | undefined {
+		const repairs = this._commitRepairs;
+		if (!repairs || repairs.commitId !== commitId) {
+			return undefined;
+		}
+		return repairs.byAnchor.get(anchor);
 	}
 
 	getSelection(): SelectionState {
@@ -288,8 +310,17 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 		if (moves.length === 0) {
 			return;
 		}
-		this._fromAnchor = repairAnchor(this._editor, this._fromAnchor, moves);
-		this._toAnchor = repairAnchor(this._editor, this._toAnchor, moves);
+		const from = this._fromAnchor;
+		const to = this._toAnchor;
+		this._fromAnchor = repairAnchor(this._editor, from, moves);
+		this._toAnchor = repairAnchor(this._editor, to, moves);
+		this._commitRepairs = {
+			commitId: summary.commitId,
+			byAnchor: new Map([
+				[from, this._fromAnchor],
+				[to, this._toAnchor],
+			]),
+		};
 	}
 
 	/** The bound editor's cached preorder, or the document before binding. */

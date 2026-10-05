@@ -149,7 +149,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 266,
+				"scan.blocksMapReads": 264,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 26,
@@ -167,7 +167,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 826,
+				"scan.blocksMapReads": 824,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 27,
@@ -290,7 +290,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 266,
+				"scan.blocksMapReads": 264,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 26,
@@ -308,7 +308,7 @@
 				"listeners.invoked.store": 7,
 				"scan.blockOrderReads": 3,
 				"scan.blocksMapIterations": 0,
-				"scan.blocksMapReads": 826,
+				"scan.blocksMapReads": 824,
 				"scan.documentWalks": 0,
 				"scan.orderArrayReads": 0,
 				"scan.textFullReads": 27,
@@ -1247,6 +1247,22 @@
 				"vanilla/scale-5k/shiftDown/scan.blocksMapReads: 131 !== 133",
 				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 266 !== 270",
 				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 826 !== 830"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"moved": [
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 264 !== 266",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 824 !== 826"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Undo takes the selection authority's AN14 repair for shared drift anchors instead of re-minting on split/merge",
+			"moved": [
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 264 !== 266",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 824 !== 826"
 			]
 		}
 	]

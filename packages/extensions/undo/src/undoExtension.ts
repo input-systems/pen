@@ -367,10 +367,11 @@ export function undoExtension(options?: UndoExtensionOptions): Extension {
 				if (moves.length === 0) {
 					return;
 				}
+				const { commitId } = event.summary;
 				for (const [id, drift] of driftById) {
 					driftById.set(id, {
-						before: repairDrift(ctx.editor, drift.before, moves),
-						after: repairDrift(ctx.editor, drift.after, moves),
+						before: repairDrift(ctx.editor, drift.before, moves, commitId),
+						after: repairDrift(ctx.editor, drift.after, moves, commitId),
 					});
 				}
 			});
@@ -507,14 +508,34 @@ function repairDrift(
 	editor: Editor,
 	pair: DriftPair | null,
 	moves: ReturnType<typeof deriveContentMoves>,
+	commitId: number,
 ): DriftPair | null {
 	if (!pair || moves.length === 0) {
 		return pair;
 	}
 	return {
-		anchor: repairAnchor(editor, pair.anchor, moves),
-		focus: repairAnchor(editor, pair.focus, moves),
+		anchor: repairDriftAnchor(editor, pair.anchor, moves, commitId),
+		focus: repairDriftAnchor(editor, pair.focus, moves, commitId),
 	};
+}
+
+/**
+ * AN14 for one drift anchor. An anchor the authority held going into the
+ * commit was already repaired by it from the pre-commit target and then
+ * resolved, which overwrote that target; repairing it again here would read
+ * the after-commit position against the move's pre-commit range, so undo
+ * takes the authority's result. Any other anchor still carries its own target.
+ */
+function repairDriftAnchor(
+	editor: Editor,
+	anchor: Anchor,
+	moves: ReturnType<typeof deriveContentMoves>,
+	commitId: number,
+): Anchor {
+	return (
+		editor.internals.selectionAnchorRepair(anchor, commitId) ??
+		repairAnchor(editor, anchor, moves)
+	);
 }
 
 function captureCursor(editor: Editor): CursorSnapshot {

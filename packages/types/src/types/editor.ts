@@ -499,4 +499,12 @@ export interface EditorInternals {
 		readonly from: Anchor | null;
 		readonly to: Anchor | null;
 	};
+	/**
+	 * What commit `commitId` repaired `anchor` into, when the selection
+	 * authority held it going into that commit (AN14); `undefined` otherwise.
+	 * The authority resolves its anchors before the `commit` event, which
+	 * overwrites the pre-commit target a repair reads, so a consumer sharing
+	 * them takes this result instead of repairing its copy itself.
+	 */
+	selectionAnchorRepair(anchor: Anchor, commitId: number): Anchor | undefined;
 }
