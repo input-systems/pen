@@ -1,5 +1,5 @@
 /** Stale lookups after an edit before the positions after it are re-indexed. */
-const STALE_READS_BEFORE_REINDEX = 8;
+const STALE_READS_BEFORE_REINDEX = 32;
 
 /**
  * A list of unique ids with their positions, kept proportional to edits

@@ -22,7 +22,9 @@ export interface ChangeSummaryHost {
 	_lastChangeSummary: ChangeSummary | null;
 	_blockIndex: BlockIndex;
 	_storedBlocks: StoredBlockReader | null;
-	_documentState: { applyRootDelta(delta: YArrayDelta): void };
+	_documentState: {
+		applyRootDelta(delta: YArrayDelta, readBlock: StoredBlockReader): void;
+	};
 	_unsubSummary: (() => void) | null;
 	_deferredCRDTEvent: CRDTEvent | null;
 	_engine: {
@@ -65,7 +67,7 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 				);
 				// The document index follows the root order transaction by
 				// transaction; its commit dispatch indexes the rest.
-				host._documentState.applyRootDelta(delta.blockOrderDelta);
+				host._documentState.applyRootDelta(delta.blockOrderDelta, readBlock);
 				const summary = buildChangeSummary(
 					delta,
 					host._blockIndex.snapshot(),

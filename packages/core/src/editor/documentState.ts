@@ -33,6 +33,13 @@ type RootOrder =
 			readonly index: ReadonlyMap<string, number>;
 	  };
 
+/**
+ * The nested preorder. `repeats` records that the walk met a block twice
+ * (an id listed by two arrays, COL4): a root edit cannot then tell which
+ * entry renders it, so it drops the preorder instead of patching it.
+ */
+type Preorder = { readonly list: PositionedList; readonly repeats: boolean };
+
 /** Ids the root order gained or lost since the last `incrementalUpdate`. */
 type RootEdits = { readonly inserted: Set<string>; readonly removed: Set<string> };
 
@@ -57,7 +64,9 @@ export class DocumentStateImpl implements DocumentState {
 	private _childIndex: Map<string, string[]>;
 	private _generation = 0;
 	/** Nested preorder, built on first read and dropped on any structural change. */
-	private _preorder: { ids: readonly string[]; index: Map<string, number> } | null = null;
+	/** Nested preorder, built on first read; root edits patch it, `children` edits drop it. */
+	private _preorder: Preorder | null = null;
+	private _preorderSnapshot: readonly string[] | null = null;
 	private _documentProfile: DocumentProfile;
 	private _doc: PenDocument;
 	private _crdtDoc: CRDTDocument;
@@ -146,33 +155,113 @@ export class DocumentStateImpl implements DocumentState {
 	}
 
 	preorderIndexOf(blockId: string): number {
-		return this._preorderCache().index.get(blockId) ?? -1;
+		return this._preorderCache().list.indexOf(blockId);
 	}
 
+	/** A fresh array after every change, so a held one never changes. */
 	preorderBlockIds(): readonly string[] {
-		return this._preorderCache().ids;
+		this._preorderSnapshot ??= this._preorderCache().list.ids.slice();
+		return this._preorderSnapshot;
 	}
 
-	private _preorderCache(): { ids: readonly string[]; index: Map<string, number> } {
+	private _dropPreorder(): void {
+		this._preorder = null;
+		this._preorderSnapshot = null;
+	}
+
+	private _preorderCache(): Preorder {
 		if (this._preorder) return this._preorder;
 		const ids: string[] = [];
-		const index = new Map<string, number>();
+		const seen = new Set<string>();
+		let repeats = false;
 		const blocks = this._doc.blocks as CRDTBlockMap;
 		const visit = (id: string): void => {
-			if (index.has(id)) return;
+			if (seen.has(id)) {
+				repeats = true;
+				return;
+			}
 			// A dangling entry (COL4) names no block: skip it until the
 			// structural pass removes it, as renderers do.
 			const blockMap = blocks.get(id);
 			if (!blockMap) return;
-			index.set(id, ids.length);
+			seen.add(id);
 			ids.push(id);
 			const children = blockMap.get("children") as CRDTArray<string> | undefined;
 			if (!children) return;
 			for (let i = 0; i < children.length; i++) visit(children.get(i));
 		};
 		for (const id of this._rootIds()) visit(id);
-		this._preorder = { ids, index };
+		this._preorder = { list: PositionedList.of(ids)!, repeats };
+		this._preorderSnapshot = null;
 		return this._preorder;
+	}
+
+	/**
+	 * Removes the preorder span of the roots at `[at, at + count)`: from the
+	 * first of them the preorder holds to the next root after them it holds.
+	 * Without repeats each held root starts its own contiguous subtree, so
+	 * the span is exactly their subtrees. O(span) plus array moves.
+	 */
+	private _removeRootSpans(
+		preorder: PositionedList,
+		roots: PositionedList,
+		at: number,
+		count: number,
+	): boolean {
+		let start = -1;
+		for (let k = at; k < at + count && start < 0; k += 1) {
+			start = preorder.indexOf(roots.ids[k]!);
+		}
+		if (start < 0) return true;
+		const end = this._nextRootSpan(preorder, roots, at + count);
+		if (end < start) return false;
+		return preorder.splice(start, end - start) !== null;
+	}
+
+	/** Where the first root at `from` or after it that the preorder holds starts, or the end. */
+	private _nextRootSpan(
+		preorder: PositionedList,
+		roots: PositionedList,
+		from: number,
+	): number {
+		for (let k = from; k < roots.length; k += 1) {
+			const position = preorder.indexOf(roots.ids[k]!);
+			if (position >= 0) return position;
+		}
+		return preorder.length;
+	}
+
+	/**
+	 * Walks a root the order gained, through `children` arrays as the full
+	 * build does. Null when it meets a block the preorder already holds or
+	 * meets one twice: the first entry would then win somewhere else.
+	 */
+	private _rootSubtree(
+		preorder: PositionedList,
+		rootId: string,
+		readBlock: StoredBlockReader,
+	): string[] | null {
+		const ids: string[] = [];
+		const seen = new Set<string>();
+		let repeated = false;
+		const visit = (id: string, isRoot: boolean): void => {
+			if (repeated) return;
+			if (seen.has(id) || preorder.has(id)) {
+				repeated = true;
+				return;
+			}
+			const blockMap = (isRoot ? readBlock(id) : (this._doc.blocks as CRDTBlockMap).get(id)) as
+				| CRDTMap<unknown>
+				| undefined;
+			if (!blockMap) return;
+			seen.add(id);
+			ids.push(id);
+			const children = blockMap.get("children") as CRDTArray<string> | undefined;
+			if (!children) return;
+			for (let i = 0; i < children.length; i++) visit(children.get(i), false);
+		};
+		visit(rootId, true);
+		return repeated ? null : ids;
 	}
 
 	/**
@@ -189,7 +278,7 @@ export class DocumentStateImpl implements DocumentState {
 	}
 
 	rebuild(): void {
-		this._preorder = null;
+		this._dropPreorder();
 		this._blockOrderSnapshot = null;
 		this._rootEdits = emptyRootEdits();
 		const order = this._doc.blockOrder;
@@ -248,7 +337,7 @@ export class DocumentStateImpl implements DocumentState {
 	}
 
 	clear(): void {
-		this._preorder = null;
+		this._dropPreorder();
 		this._roots = rootOrderOf([]);
 		this._blockOrderSnapshot = null;
 		this._rootEdits = emptyRootEdits();
@@ -263,19 +352,37 @@ export class DocumentStateImpl implements DocumentState {
 	 * every transaction before its commit is dispatched. A delta that does not
 	 * fit the held order, or an order that lists an id twice (COL4), rebuilds.
 	 */
-	applyRootDelta(delta: YArrayDelta): void {
+	applyRootDelta(
+		delta: YArrayDelta,
+		readBlock: StoredBlockReader = (blockId) =>
+			(this._doc.blocks as CRDTBlockMap).get(blockId),
+	): void {
 		if (delta.length === 0) return;
 		const roots = this._roots;
-		if (roots.kind !== "unique" || !this._advanceRoots(roots.list, delta)) {
+		if (
+			roots.kind !== "unique" ||
+			!this._advanceRoots(roots.list, delta, readBlock)
+		) {
 			this.rebuild();
 			return;
 		}
 		this._blockOrderSnapshot = null;
-		this._preorder = null;
+		this._preorderSnapshot = null;
 		this._generation++;
 	}
 
-	private _advanceRoots(list: PositionedList, delta: YArrayDelta): boolean {
+	/**
+	 * Applies the delta to the root order and, when held, to the preorder:
+	 * each removed root's subtree span leaves it and each gained root's
+	 * subtree enters it ahead of the next root's span. A preorder it cannot
+	 * patch exactly is dropped and rebuilt on next read.
+	 */
+	private _advanceRoots(
+		list: PositionedList,
+		delta: YArrayDelta,
+		readBlock: StoredBlockReader,
+	): boolean {
+		if (this._preorder?.repeats) this._dropPreorder();
 		const order = this._doc.blockOrder as CRDTArray<string>;
 		// Deletes in pre-commit indexes, inserts in post-commit ones. Every
 		// delete goes first, so a move within the order (an insert ahead of
@@ -302,6 +409,14 @@ export class DocumentStateImpl implements DocumentState {
 		}
 		for (let k = deletes.length - 1; k >= 0; k -= 1) {
 			const [at, count] = deletes[k]!;
+			const preorder = this._preorder?.list;
+			if (
+				preorder &&
+				at + count <= list.length &&
+				!this._removeRootSpans(preorder, list, at, count)
+			) {
+				this._dropPreorder();
+			}
 			const removed = list.splice(at, count);
 			if (!removed) return false;
 			for (const id of removed) this._rootEdits.removed.add(id);
@@ -319,6 +434,13 @@ export class DocumentStateImpl implements DocumentState {
 		// elsewhere; reading back where they landed catches that in O(inserts).
 		for (const [id, index] of placed) {
 			if (order.get(index) !== id) return false;
+		}
+		for (const [id, index] of placed) {
+			const preorder = this._preorder?.list;
+			if (!preorder) break;
+			const subtree = this._rootSubtree(preorder, id, readBlock);
+			const at = this._nextRootSpan(preorder, list, index + 1);
+			if (!subtree || !preorder.splice(at, 0, subtree)) this._dropPreorder();
 		}
 		return true;
 	}
@@ -354,6 +476,9 @@ export class DocumentStateImpl implements DocumentState {
 				return;
 			}
 			if (placed === "forgotten") {
+				// A removed root's span already left the preorder; a nested
+				// block's parent array changed under it.
+				if (this._preorder?.list.has(blockId)) this._dropPreorder();
 				structural = true;
 				continue;
 			}
@@ -381,10 +506,8 @@ export class DocumentStateImpl implements DocumentState {
 				reordered = true;
 			}
 		}
-		if (reordered || structural) {
-			this._preorder = null;
-			this._generation++;
-		}
+		if (reordered) this._dropPreorder();
+		if (reordered || structural) this._generation++;
 	}
 
 	/**
@@ -518,7 +641,7 @@ export class DocumentStateImpl implements DocumentState {
 			(this._childIndex.has(blockId) ||
 				blockMap?.get("children") !== undefined)
 		) {
-			this._preorder = null;
+			this._dropPreorder();
 		}
 	}
 
@@ -633,7 +756,7 @@ export class DocumentStateImpl implements DocumentState {
 	 */
 	private _livenessMoved(blockId: string, stored: boolean): boolean {
 		if (!this._preorder || !this._inRootOrder(blockId)) return false;
-		return this._preorder.index.has(blockId) !== stored;
+		return this._preorder.list.has(blockId) !== stored;
 	}
 
 	private _isIndexedNestedChild(
