@@ -16,7 +16,9 @@ async function lintSeededViolation(
 	return result?.messages ?? [];
 }
 
-describe("CH2 lint gate", () => {
+// The first lintText pays for loading the typed root config, which runs past
+// Vitest's 5 s default on the Release runner.
+describe("CH2 lint gate", { timeout: 60_000 }, () => {
 	it("reports seeded markup injection as an error through the root config", async () => {
 		const messages = await lintSeededViolation(
 			'const element: HTMLElement = document.body;\nelement.innerHTML = "<b>x</b>";\n',
