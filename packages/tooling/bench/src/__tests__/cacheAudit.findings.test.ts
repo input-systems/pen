@@ -310,6 +310,37 @@ describe("cache property findings", () => {
 		expect(b.documentState.rootBlockIds()).toContain("scale-block-1");
 	});
 
+	it("a second entry for a deleted block reports it removed, not moved", () => {
+		const peers = fork(3);
+		const [deleter, left, right] = peers as [TestEditor, TestEditor, TestEditor];
+		deleter.apply([{ type: "delete-block", blockId: "scale-block-5" }]);
+		left.apply([
+			{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-9" } },
+		]);
+		right.apply([
+			{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-20" } },
+		]);
+		// Each move re-inserts an entry the delete removed (COL4).
+		const reported = (from: number) => {
+			const summaries: ChangeSummary[] = [];
+			const off = deleter.on("commit", (event: CommitEvent) => {
+				summaries.push(event.summary);
+			});
+			harness!.deliver(from, 0);
+			off();
+			return summaries.flatMap((summary) =>
+				summary.structural.flatMap((change) =>
+					"blockId" in change && change.blockId === "scale-block-5" ? [change.type] : [],
+				),
+			);
+		};
+		expect(reported(1)).toEqual(["block-removed"]);
+		expect(reported(2)).toEqual(["block-removed"]);
+		expect(deleter.documentState.blockOrder.filter((id) => id === "scale-block-5")).toHaveLength(2);
+		expect(deleter.documentState.preorderBlockIds()).not.toContain("scale-block-5");
+		expect(cacheProblems(deleter)).toEqual([]);
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },
