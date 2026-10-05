@@ -215,6 +215,36 @@ describe("block notifier (AX1 list semantics on every child route)", () => {
 		editor.destroy();
 	});
 
+	it("AX1: merging a parentId numbered item into a block outside the root order renumbers the run it left", () => {
+		const editor = createEditor({ schema: defaultSchema });
+		editor.apply(
+			[
+				{ type: "insert-block", blockId: "tg", blockType: "toggle", props: { open: true }, position: "last" },
+				{ type: "insert-block", blockId: "tg-a", blockType: "paragraph", props: {}, position: { parent: "tg", index: 0 } },
+				{ type: "insert-block", blockId: "bq", blockType: "blockquote", props: {}, position: "last" },
+				{ type: "insert-block", blockId: "n1", blockType: "numberedListItem", props: { parentId: "bq" }, position: "last" },
+				{ type: "insert-block", blockId: "n2", blockType: "numberedListItem", props: {}, position: "last" },
+				{ type: "insert-block", blockId: "n3", blockType: "numberedListItem", props: {}, position: "last" },
+				{ type: "insert-block", blockId: "tail", blockType: "paragraph", props: {}, position: "last" },
+			],
+			{ origin: "system" },
+		);
+		const notifier = createBlockNotifier(editor);
+		const surface = attach(editor, notifier);
+		expect(notifier.getBlockSnapshot("n2").list?.ordinal).toBe(2);
+
+		// Ordinals follow root-order runs. The target is a `children`-array
+		// child and the source sat in no root sibling list, so only the
+		// root slot the source vacated reaches n2 and n3.
+		applyMergeBlocks(editor, { targetBlockId: "tg-a", sourceBlockId: "n1", applyOptions: { origin: "user" } });
+
+		expect(editor.getBlock("n1")).toBeNull();
+		expect(notifier.getBlockSnapshot("n2").list?.ordinal).toBe(1);
+		expect(notifier.getBlockSnapshot("n3").list?.ordinal).toBe(2);
+		surface.detach();
+		editor.destroy();
+	});
+
 	it("AX1: segments and semantics equal a full recompute over random edits on the parentId route", () => {
 		for (let seed = 1; seed <= 150; seed += 1) {
 			const editor = createRoutedEditor();

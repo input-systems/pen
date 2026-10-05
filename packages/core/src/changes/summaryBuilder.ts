@@ -217,12 +217,18 @@ function buildStructuralChanges(
 		});
 	}
 	if (structuralOrigin?.kind === "merge") {
+		// The source's array entry leaves with no `block-removed` (OB1); its
+		// pre-commit position travels on the recipe instead.
+		const vacated = removedById.get(structuralOrigin.sourceBlockId);
 		structural.push({
 			type: "blocks-merged",
 			targetBlockId: structuralOrigin.targetBlockId,
 			sourceBlockId: structuralOrigin.sourceBlockId,
 			joinOffset:
 				index.lengthById.get(structuralOrigin.targetBlockId) ?? 0,
+			...(vacated
+				? { sourceParentId: vacated.parentId, sourceIndex: vacated.index }
+				: {}),
 		});
 	}
 

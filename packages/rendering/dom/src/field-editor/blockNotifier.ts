@@ -902,6 +902,8 @@ function listPositions(editor: Editor, summary: ChangeSummary): Set<number> {
 function vacatedRootIndex(change: ChangeSummary["structural"][number]): number | null {
 	if (change.type === "block-removed" && change.parentId === null) return change.index;
 	if (change.type === "block-moved" && change.fromParentId === null) return change.fromIndex;
+	// A merge source leaves with no `block-removed`; the recipe carries its slot.
+	if (change.type === "blocks-merged" && change.sourceParentId === null) return change.sourceIndex ?? null;
 	return null;
 }
 

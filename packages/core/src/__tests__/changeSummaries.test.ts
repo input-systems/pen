@@ -174,6 +174,8 @@ describe("change summaries — structural variants", () => {
 			targetBlockId: "b1",
 			sourceBlockId: "b2",
 			joinOffset: 6,
+			sourceParentId: null,
+			sourceIndex: 1,
 		});
 		expect(
 			merged.structural.some((change) => change.type === "block-removed"),
