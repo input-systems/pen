@@ -59,6 +59,8 @@ async function measure(values: { sizes?: string; caches?: string; runs?: string 
 }
 
 const { values } = parseArgs({
+	// `pnpm run bench:caches -- --caches H` forwards the `--` separator.
+	args: process.argv.slice(2).filter((arg) => arg !== "--"),
 	options: {
 		sizes: { type: "string" },
 		caches: { type: "string" },
