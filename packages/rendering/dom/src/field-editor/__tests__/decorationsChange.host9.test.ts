@@ -284,25 +284,3 @@ describe.each(backends)(
 		});
 	},
 );
-
-describe.each(backends)("HOST9: attaching the $name backend", ({ create }) => {
-	function attach(focusOptions?: { passive: boolean }) {
-		const { editor, blockId } = seedEditor();
-		const element = inlineElement(blockId);
-		const { controller } = stubController(editor, blockId, false);
-		const backend = create(editor, controller);
-		fixtures.push({ editor, backend });
-		const setBaseAndExtent = vi.spyOn(Selection.prototype, "setBaseAndExtent");
-		const addRange = vi.spyOn(Selection.prototype, "addRange");
-		backend.activate(element, getYText(editor, blockId), focusOptions);
-		return setBaseAndExtent.mock.calls.length + addRange.mock.calls.length;
-	}
-
-	it("passively writes no native range, which would take focus from the control holding it", () => {
-		expect(attach({ passive: true })).toBe(0);
-	});
-
-	it("writes the record's native range when the attach may take focus", () => {
-		expect(attach()).toBeGreaterThan(0);
-	});
-});

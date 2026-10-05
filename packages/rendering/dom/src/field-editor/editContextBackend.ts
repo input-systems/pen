@@ -167,13 +167,7 @@ export class EditContextBackend extends FieldInputBackendBase {
 		this.observeField(this.ytext);
 		this.rebuildField();
 		this.trustedTypingCaret = null;
-		// HOST9: a passive attach fills the EditContext buffer but writes no
-		// native range, which would move focus into the unfocused field.
-		if (focusOptions?.passive) {
-			this.writeSelectionState();
-		} else {
-			this.updateSelection();
-		}
+		this.updateSelection();
 		this.fieldEditor.requestDomFocus(
 			element,
 			"backend-activate",
