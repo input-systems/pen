@@ -1,13 +1,9 @@
 import type { BlockHandle, Editor } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
-import {
-	createEditor as createCoreEditor,
-	defineBlock,
-	mergeSchemas,
-	SchemaRegistryImpl,
-} from "../index";
+import { defineBlock } from "../index";
 import { getListItemSemantics, getListSegments } from "../editor/listRuns";
+import { createEditor } from "./editorCore.testHelpers";
 import { createDefaultSchema } from "./fixtures/testSchema";
 
 type Spec = readonly [id: string, type: string, indent?: number];
@@ -115,11 +111,7 @@ describe("listRuns", () => {
 
 	it("AX1: segments are computed per sibling list, not over blockOrder", () => {
 		const container = defineBlock("listHost", { content: "inline", isContainer: true });
-		const schema = mergeSchemas(
-			createDefaultSchema(),
-			new SchemaRegistryImpl({ blocks: [container], inlines: [] }),
-		);
-		const editor = createCoreEditor({ schema, preset: { resolve: () => ({ extensions: [] }) } });
+		const editor = createEditor({ schema: createDefaultSchema().extend([container]) });
 		editor.apply(
 			[
 				{ type: "insert-block", blockId: "top", blockType: "bulletListItem", props: {}, position: "last" },

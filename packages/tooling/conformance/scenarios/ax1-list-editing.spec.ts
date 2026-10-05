@@ -34,6 +34,11 @@ async function groups(page: Page): Promise<Item[][]> {
 	});
 }
 
+/** Each top-level group's block ids, in order. */
+async function groupIds(page: Page): Promise<string[][]> {
+	return (await groups(page)).map((group) => group.map((item) => item.id));
+}
+
 function positions(group: Item[]): string[] {
 	return group.map((item) => `${item.level}:${item.pos}/${item.size}`);
 }
@@ -56,8 +61,13 @@ async function fieldFocused(page: Page): Promise<void> {
 	await expect(page.locator("[data-pen-field-editor-active-surface]")).toBeFocused();
 }
 
-/** Types "!" at the caret and waits for `blockId` to read `expected`. */
-async function typesInto(s: ScenarioApi, page: Page, blockId: string, expected: string): Promise<void> {
+/**
+ * The caret and focus stay in `blockId`: "!" typed at the caret makes it
+ * read `expected`.
+ */
+async function keepsCaret(s: ScenarioApi, page: Page, blockId: string, expected: string): Promise<void> {
+	expect(await caretBlockId(page)).toBe(blockId);
+	await fieldFocused(page);
 	await s.keyboard.type("!");
 	await expect
 		.poll(() => page.evaluate((id) => window.__penConformance.blockText(id), blockId))
@@ -69,6 +79,8 @@ async function typesInto(s: ScenarioApi, page: Page, blockId: string, expected: 
  * block element between wrappers. React and Vue remount it; the vanilla tree
  * moves it. Either way focus and the caret stay in the block (P4).
  */
+const MERGED_IDS = ["sem-b1", "sem-b1a", "sem-b2", SEMANTICS_IDS.between, "sem-b3"];
+
 const SURFACES = [
 	{ suffix: "", url: undefined },
 	{ suffix: " (vue)", url: "/?surface=vue" },
@@ -91,7 +103,7 @@ for (const { suffix, url } of SURFACES) {
 			await s.keyboard.press("Enter");
 			const added = await caretBlockId(page);
 			expect(added).not.toBe("sem-b2");
-			expect((await groups(page))[0]?.map((item) => item.id)).toEqual(["sem-b1", "sem-b1a", "sem-b2", added]);
+			expect((await groupIds(page))[0]).toEqual(["sem-b1", "sem-b1a", "sem-b2", added]);
 			expect(positions((await groups(page))[0]!)).toEqual(["1:1/3", "2:1/1", "1:2/3", "1:3/3"]);
 			await fieldFocused(page);
 
@@ -109,9 +121,9 @@ for (const { suffix, url } of SURFACES) {
 				if (left) break;
 				await s.keyboard.press("Backspace");
 			}
-			const after = await groups(page);
-			expect(after[0]?.map((item) => item.id)).toEqual(["sem-b1", "sem-b1a", "sem-b2"]);
-			expect(positions(after[0]!)).toEqual(["1:1/2", "2:1/1", "1:2/2"]);
+			const after = (await groups(page))[0]!;
+			expect(after.map((item) => item.id)).toEqual(["sem-b1", "sem-b1a", "sem-b2"]);
+			expect(positions(after)).toEqual(["1:1/2", "2:1/1", "1:2/2"]);
 			expect(await caretBlockId(page)).toBe(added);
 			await fieldFocused(page);
 		},
@@ -131,19 +143,10 @@ for (const { suffix, url } of SURFACES) {
 			]);
 			const merged = await groups(page);
 			expect(merged).toHaveLength(3);
-			expect(merged[0]?.map((item) => item.id)).toEqual([
-				"sem-b1",
-				"sem-b1a",
-				"sem-b2",
-				SEMANTICS_IDS.between,
-				"sem-b3",
-			]);
+			expect(merged[0]?.map((item) => item.id)).toEqual(MERGED_IDS);
 			expect(positions(merged[0]!)).toEqual(["1:1/4", "2:1/1", "1:2/4", "1:3/4", "1:4/4"]);
-			expect(await caretBlockId(page)).toBe(SEMANTICS_IDS.between);
-
 			// The caret still types into the converted block.
-			await fieldFocused(page);
-			await typesInto(s, page, SEMANTICS_IDS.between, "Between the lists!");
+			await keepsCaret(s, page, SEMANTICS_IDS.between, "Between the lists!");
 		},
 		{ url },
 	);
@@ -158,16 +161,8 @@ for (const { suffix, url } of SURFACES) {
 			await s.remote.apply([
 				{ type: "set-props", blockId: SEMANTICS_IDS.between, props: { type: "bulletListItem" } },
 			]);
-			expect((await groups(page))[0]?.map((item) => item.id)).toEqual([
-				"sem-b1",
-				"sem-b1a",
-				"sem-b2",
-				SEMANTICS_IDS.between,
-				"sem-b3",
-			]);
-			expect(await caretBlockId(page)).toBe("sem-b3");
-			await fieldFocused(page);
-			await typesInto(s, page, "sem-b3", "Second list bullet!");
+			expect((await groupIds(page))[0]).toEqual(MERGED_IDS);
+			await keepsCaret(s, page, "sem-b3", "Second list bullet!");
 		},
 		{ url },
 	);
@@ -180,19 +175,15 @@ for (const { suffix, url } of SURFACES) {
 			await fieldFocused(page);
 
 			await s.apply([{ type: "set-props", blockId: "sem-b1", props: { type: "paragraph" } }]);
-			expect((await groups(page))[0]?.map((item) => item.id)).toEqual(["sem-b1a", "sem-b2"]);
-			expect(await caretBlockId(page)).toBe("sem-b1");
-			await fieldFocused(page);
-			await typesInto(s, page, "sem-b1", "First bullet!");
+			expect((await groupIds(page))[0]).toEqual(["sem-b1a", "sem-b2"]);
+			await keepsCaret(s, page, "sem-b1", "First bullet!");
 
 			// The run is re-keyed again; the caret in its last item stays.
 			await caretAtEnd(page, "sem-b2");
 			await fieldFocused(page);
 			await s.remote.apply([{ type: "set-props", blockId: "sem-b1a", props: { type: "paragraph" } }]);
-			expect((await groups(page))[0]?.map((item) => item.id)).toEqual(["sem-b2"]);
-			expect(await caretBlockId(page)).toBe("sem-b2");
-			await fieldFocused(page);
-			await typesInto(s, page, "sem-b2", "Second bullet!");
+			expect((await groupIds(page))[0]).toEqual(["sem-b2"]);
+			await keepsCaret(s, page, "sem-b2", "Second bullet!");
 		},
 		{ url },
 	);
@@ -205,12 +196,10 @@ for (const { suffix, url } of SURFACES) {
 			await fieldFocused(page);
 
 			await s.remote.apply([{ type: "set-props", blockId: "sem-b1a", props: { type: "paragraph", indent: 0 } }]);
-			const split = await groups(page);
-			expect(split[0]?.map((item) => item.id)).toEqual(["sem-b1"]);
-			expect(split[1]?.map((item) => item.id)).toEqual(["sem-b2"]);
-			expect(await caretBlockId(page)).toBe("sem-b2");
-			await fieldFocused(page);
-			await typesInto(s, page, "sem-b2", "Second bullet!");
+			const split = await groupIds(page);
+			expect(split[0]).toEqual(["sem-b1"]);
+			expect(split[1]).toEqual(["sem-b2"]);
+			await keepsCaret(s, page, "sem-b2", "Second bullet!");
 		},
 		{ url },
 	);

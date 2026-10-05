@@ -1,29 +1,15 @@
 import type { Decoration, Editor, InlineDecoration } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
-import {
-	createEditor as createCoreEditor,
-	decorationsFacet,
-	defineExtension,
-	scopedDecorationSource,
-	type DecorationSource,
-} from "../index";
-import { createDefaultSchema } from "./fixtures/testSchema";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
+import { decorationsFacet, defineExtension, scopedDecorationSource, type DecorationSource } from "../index";
+import { createEditor } from "./editorCore.testHelpers";
 
 function mark(blockId: string, value: string): InlineDecoration {
 	return { type: "inline", blockId, from: 0, to: 1, attributes: { mark: value } };
 }
 
 function editorWith(...sources: DecorationSource[]): Editor {
-	const editor = createCoreEditor({
-		schema: createDefaultSchema(),
-		preset: noDefaultExtensionsPreset,
+	const editor = createEditor({
 		extensions: [
 			defineExtension({
 				name: "decorations-under-test",

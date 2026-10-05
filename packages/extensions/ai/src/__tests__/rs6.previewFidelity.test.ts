@@ -23,6 +23,7 @@ import {
 	applyCorpusPrefix,
 	corpusOperationCount,
 	createRs6Editor,
+	idleModel,
 	runRs6Turn,
 	type Rs6Posture,
 	type Rs6Frame,
@@ -319,14 +320,7 @@ describe("RS6: the composition guard", () => {
 	let seed: EditChannelCorpusSeed;
 
 	beforeAll(async () => {
-		editor = createRs6Editor(
-			{
-				async *stream() {
-					yield { type: "done" };
-				},
-			},
-			"direct",
-		);
+		editor = createRs6Editor(idleModel(), "direct");
 		await editor.whenReady();
 		seed = seedEditChannelCorpus(editor);
 	});

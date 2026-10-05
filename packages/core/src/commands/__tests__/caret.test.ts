@@ -245,13 +245,16 @@ describe("caret commands", () => {
 		editor.destroy();
 	});
 
-	it("N1: between two adjacent atoms caretRight selects the second atom", () => {
-		const editor = createCommandEditor([
-			{ id: "a", type: "paragraph", text: "abc" },
-		]);
+	/** "abc" followed by two adjacent mention atoms at offsets 3 and 4. */
+	function createTwoAtomEditor() {
+		const editor = createCommandEditor([{ id: "a", type: "paragraph", text: "abc" }]);
 		insertMention(editor, "a", 3);
 		insertMention(editor, "a", 4);
-		const registry = createCommandHarness(editor);
+		return { editor, registry: createCommandHarness(editor) };
+	}
+
+	it("N1: between two adjacent atoms caretRight selects the second atom", () => {
+		const { editor, registry } = createTwoAtomEditor();
 		editor.selectText("a", 4, 4);
 
 		expect(registry.dispatch(caretRight, { extend: false })).toBe(true);
@@ -272,12 +275,7 @@ describe("caret commands", () => {
 	});
 
 	it("N1: caretRight on a selected second adjacent atom collapses past it", () => {
-		const editor = createCommandEditor([
-			{ id: "a", type: "paragraph", text: "abc" },
-		]);
-		insertMention(editor, "a", 3);
-		insertMention(editor, "a", 4);
-		const registry = createCommandHarness(editor);
+		const { editor, registry } = createTwoAtomEditor();
 		editor.selectText("a", 4, 5);
 
 		expect(registry.dispatch(caretRight, { extend: false })).toBe(true);
@@ -575,16 +573,7 @@ describe("caret commands", () => {
 	it("T6: caretRight in an edited cell moves CellSelection.text and stays in the cell", () => {
 		const editor = createCommandEditor([{ id: "t", type: "table" }]);
 		const registry = createCommandHarness(editor);
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: "t",
-				cell: { row: 0, col: 0 },
-				from: 0,
-				to: 0,
-				insert: "ab",
-			},
-		]);
+		editor.apply([{ type: "splice-text", blockId: "t", cell: { row: 0, col: 0 }, from: 0, to: 0, insert: "ab" }]);
 		editor.setSelection({
 			type: "cell",
 			blockId: "t",

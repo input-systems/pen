@@ -4,45 +4,22 @@ import { runC2Case } from "./c2RebaseHarness";
 
 /** C2 (D3) fixed cases. Each oracle is two converged `Y.Doc`s, remote first. */
 describe("C2 rebaseTextDiffOps", () => {
-	it("C2: a remote insert strictly inside the replaced range survives", () => {
-		const outcome = runC2Case(
-			"abcd",
-			{ at: 1, deleteLength: 2, insert: "X", startOffset: 1 },
-			[{ at: 2, deleteLength: 0, insert: "Z" }],
-		);
-		expect(outcome.rebased).toBe("aZXd");
-		expect(outcome.rebased).toBe(outcome.oracle);
-		expect(outcome.validationErrors).toEqual([]);
-	});
-
-	it("C2: a remote insert at the replaced range's end stays outside the delete", () => {
+	it.each([
+		["a remote insert strictly inside the replaced range survives", "abcd", 1, 2, 2, "aZXd"],
 		// The end-bias case: base `abc`, the IME replaces `b` with `X`, a peer
 		// inserts `Z` after `b`. The old mapping swallowed `Z` (`aXc`).
+		["a remote insert at the replaced range's end stays outside the delete", "abc", 1, 1, 2, "aZXc"],
+		["a remote insert at exactly the composition start lands before fresh composed text", "abc", 1, 0, 1, "aZXbc"],
+		["a remote insert at exactly the composition start lands before replacing composed text", "abc", 1, 1, 1, "aZXc"],
+	])("C2: %s", (_name, base, at, deleteLength, remoteAt, expected) => {
 		const outcome = runC2Case(
-			"abc",
-			{ at: 1, deleteLength: 1, insert: "X", startOffset: 1 },
-			[{ at: 2, deleteLength: 0, insert: "Z" }],
+			base,
+			{ at, deleteLength, insert: "X", startOffset: at },
+			[{ at: remoteAt, deleteLength: 0, insert: "Z" }],
 		);
-		expect(outcome.rebased).toContain("Z");
-		expect(outcome.rebased).toBe("aZXc");
+		expect(outcome.rebased).toBe(expected);
 		expect(outcome.rebased).toBe(outcome.oracle);
-	});
-
-	it("C2: a remote insert at exactly the composition start lands before the composed text", () => {
-		const fresh = runC2Case(
-			"abc",
-			{ at: 1, deleteLength: 0, insert: "X", startOffset: 1 },
-			[{ at: 1, deleteLength: 0, insert: "Q" }],
-		);
-		expect(fresh.rebased).toBe("aQXbc");
-		expect(fresh.rebased).toBe(fresh.oracle);
-		const replacing = runC2Case(
-			"abc",
-			{ at: 1, deleteLength: 1, insert: "X", startOffset: 1 },
-			[{ at: 1, deleteLength: 0, insert: "Q" }],
-		);
-		expect(replacing.rebased).toBe("aQXc");
-		expect(replacing.rebased).toBe(replacing.oracle);
+		expect(outcome.validationErrors).toEqual([]);
 	});
 
 	it("C2: an ambiguous diff anchors at the composition start offset", () => {

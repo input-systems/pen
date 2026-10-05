@@ -1,8 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
-import { formatCheckReport } from "../../src/checkReport";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
-import { itemsOfKind, readSettledLayer } from "../../src/overlayLayer";
+import {
+	expectCheck,
+	insertMention,
+	itemsOfKind,
+	readSettledLayer,
+} from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
+import { attachJson } from "../specHelpers";
 
 const HELLO_ID = "hello-p1";
 
@@ -21,32 +26,18 @@ scenario(
 	async (s, page) => {
 		await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
 		await s.load("hello-world");
-		await s.apply([
-			{
-				type: "splice-text",
-				blockId: HELLO_ID,
-				from: 5,
-				to: 5,
-				insert: { nodeType: "mention", props: { id: "user-ada", label: "Ada" } },
-			},
-		]);
+		await s.apply([insertMention(HELLO_ID, 5)]);
 		await expect(page.locator("[data-pen-inline-atom]")).toBeVisible();
 		const point = await getInlineOffsetPoint(page, { blockId: HELLO_ID, offset: 5 });
 		await page.mouse.click(point.x, point.y);
 
 		const layer = await readSettledLayer(page);
 		const native = await nativeSelection(page);
-		await test.info().attach("o5-click", {
-			body: JSON.stringify({ layer, native }, null, 2),
-			contentType: "application/json",
-		});
-		expect(
-			itemsOfKind(layer, "caret"),
-			formatCheckReport(
-				"O5: no overlay caret of any role in a read-only editor",
-				itemsOfKind(layer, "caret").length === 0 ? "passed" : "failed",
-			),
-		).toEqual([]);
+		await attachJson("o5-click", { layer, native });
+		expectCheck(
+			"O5: no overlay caret of any role in a read-only editor",
+			itemsOfKind(layer, "caret").length === 0,
+		);
 		expect(layer.caretColor, "O5: nothing hides the native caret").not.toBe("transparent");
 		expect(native.rangeCount, "O5: a native selection exists").toBeGreaterThan(0);
 

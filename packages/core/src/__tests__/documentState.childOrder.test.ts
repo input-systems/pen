@@ -2,12 +2,15 @@ import type { CRDTMap, DocumentOp, Editor } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
 import { replaceRangeOps } from "../commands/rangeReplace";
+import { documentPreorderBlockIdsFromDoc } from "../editor/documentPreorder";
+import { DocumentStateImpl } from "../editor/documentState";
 import { createEditor as createCoreEditor } from "../index";
 import { defineBlock } from "../schema/defineBlock";
 import { prop } from "../schema/prop";
 import { mergeSchemas } from "../schema/registry";
-import { mulberry32 } from "./fixtures/structuralEdits";
+import { createNestedEditor, mulberry32, randomOp } from "./fixtures/structuralEdits";
 import { createDefaultSchema } from "./fixtures/testSchema";
+import { noDefaultExtensionsPreset } from "./editorCore.testHelpers";
 
 /** A children-array container (the `toggle` shape with nested children). */
 const section = defineBlock("section", {
@@ -21,12 +24,6 @@ const quote = defineBlock("quote", {
 	isContainer: true,
 	props: { parentId: prop.string().optional() },
 });
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
 
 const ARRAY_PARENTS = ["tg", "tg2"] as const;
 const PARENT_ID_PARENTS = ["bq", "bq2"] as const;
@@ -88,8 +85,14 @@ function snapshot(editor: Editor): unknown[] {
 	return [[...state.preorderBlockIds()], ...perBlock];
 }
 
-/** The incrementally kept indexes equal a full rebuild. */
+/** The incrementally kept indexes equal a full rebuild; the preorder equals the stored walk. */
 function expectIndexMatchesRebuild(editor: Editor, step: string): void {
+	const state = editor.documentState;
+	const preorder = [...state.preorderBlockIds()];
+	expect(preorder, `${step} preorder`).toEqual([...state.allBlocks()].map((block) => block.id));
+	expect(preorder, `${step} preorder`).toEqual(documentPreorderBlockIdsFromDoc(editor.internals.doc));
+	expect(preorder.map((id) => state.preorderIndexOf(id)), step).toEqual(preorder.map((_, index) => index));
+	expect(state.preorderIndexOf("missing")).toBe(-1);
 	const incremental = snapshot(editor);
 	const order = [...editor.documentState.blockOrder];
 	(editor.documentState as unknown as { rebuild(): void }).rebuild();
@@ -258,17 +261,73 @@ describe("DocumentState child order", () => {
 		editor.destroy();
 	});
 
-	it("SCALE2: the incremental index equals a full rebuild over random edits on every route", () => {
+	it("SCALE2: the incremental index equals a full rebuild and the preorder the stored walk over random edits on every route", () => {
 		for (let seed = 1; seed <= 300; seed += 1) {
 			const editor = createRoutedEditor();
 			expectIndexMatchesRebuild(editor, `seed ${seed} setup`);
 			const random = mulberry32(seed);
 			for (let step = 0; step < 30; step += 1) {
 				const op = randomRoutedOp(editor, random, step);
+				const before = editor.documentState.preorderBlockIds();
 				editor.apply([op]);
+				if (op.type === "splice-text") {
+					// Identity-stable across a text edit, a container's own
+					// included: only a `children` array edit moves it.
+					expect(editor.documentState.preorderBlockIds()).toBe(before);
+				}
 				expectIndexMatchesRebuild(editor, `seed ${seed} step ${step} ${JSON.stringify(op)}`);
 			}
 			editor.destroy();
 		}
 	}, 60_000);
+});
+
+describe("DocumentState children-array edits", () => {
+	it("SCALE2: a children-array edit advances the indexes and patches the preorder without a rebuild", () => {
+		const read = (source: DocumentStateImpl) => {
+			const order = [...source.preorderBlockIds()];
+			return {
+				order,
+				positions: order.map((id) => source.preorderIndexOf(id)),
+				roots: [...source.rootBlockIds()],
+				perBlock: order.map((id) => [id, source.parentOf(id), [...source.childrenOf(id)]]),
+			};
+		};
+		for (let seed = 1; seed <= 8; seed += 1) {
+			const editor = createNestedEditor();
+			const state = editor.documentState as unknown as DocumentStateImpl;
+			let rebuilds = 0;
+			const rebuild = state.rebuild.bind(state);
+			state.rebuild = () => {
+				rebuilds += 1;
+				rebuild();
+			};
+			const random = mulberry32(seed);
+			for (let step = 0; step < 80; step += 1) {
+				const parent = random() < 0.5 ? "cols" : "cols2";
+				const index = Math.floor(random() * 3);
+				// Half the steps edit inside an array: an insert, or a move of a
+				// child between or within the two arrays.
+				const nested = state.preorderBlockIds().filter((id) => {
+					const owner = state.parentOf(id);
+					return owner === "cols" || owner === "cols2";
+				});
+				const op: DocumentOp =
+					random() < 0.5
+						? randomOp(editor, random, step)
+						: nested.length > 0 && random() < 0.5
+							? { type: "move-block", blockId: nested[Math.floor(random() * nested.length)]!, position: { parent, index } }
+							: { type: "insert-block", blockId: `n${step}`, blockType: "paragraph", props: {}, position: { parent, index } };
+				const before = rebuilds;
+				editor.apply([op]);
+				if (op.type === "insert-block" && typeof op.position === "object" && "parent" in op.position) {
+					expect(rebuilds, `seed ${seed} step ${step} array insert rebuilt`).toBe(before);
+				}
+				const { doc, crdtDoc } = editor.internals;
+				const fresh = new DocumentStateImpl(doc, crdtDoc, editor.schema, state.documentProfile);
+				expect(read(state), `seed ${seed} step ${step} ${JSON.stringify(op)}`).toEqual(read(fresh));
+			}
+			editor.destroy();
+		}
+	});
 });

@@ -236,31 +236,23 @@ describe("@input/pen-react table column menu AX3", () => {
 		});
 		expect(document.activeElement).toBe(items[0]);
 
-		await act(async () => {
-			dispatchKey(items[0]!, "ArrowDown");
-		});
-		expect(document.activeElement).toBe(items[1]);
-		expect(items[0]?.tabIndex).toBe(-1);
-		expect(items[1]?.tabIndex).toBe(0);
-
-		await act(async () => {
-			dispatchKey(items[1]!, "ArrowUp");
-		});
-		expect(document.activeElement).toBe(items[0]);
-		expect(items[0]?.tabIndex).toBe(0);
-		expect(items[1]?.tabIndex).toBe(-1);
-
-		await act(async () => {
-			dispatchKey(items[0]!, "End");
-		});
-		expect(document.activeElement).toBe(items[items.length - 1]);
-		expect(items[items.length - 1]?.tabIndex).toBe(0);
-
-		await act(async () => {
-			dispatchKey(items[items.length - 1]!, "Home");
-		});
-		expect(document.activeElement).toBe(items[0]);
-		expect(items[0]?.tabIndex).toBe(0);
+		const last = items.length - 1;
+		// Each key from the focused item moves focus and the roving tabindex.
+		for (const [from, key, to] of [
+			[0, "ArrowDown", 1],
+			[1, "ArrowUp", 0],
+			[0, "End", last],
+			[last, "Home", 0],
+		] as const) {
+			await act(async () => {
+				dispatchKey(items[from]!, key);
+			});
+			expect(document.activeElement, key).toBe(items[to]);
+			expect(
+				Array.from(items, (item) => item.tabIndex),
+				key,
+			).toEqual(Array.from(items, (_, index) => (index === to ? 0 : -1)));
+		}
 
 		await cleanup(root, container, anchorEl, editor);
 	});
@@ -296,38 +288,19 @@ describe("@input/pen-react table column menu AX3", () => {
 			) => void;
 			expected: "anchor" | "surface";
 		}> = [
-			{
-				label: "type",
-				activate: (view) => view.menuItem("Number")?.click(),
-				expected: "anchor",
-			},
-			{
-				label: "insert left",
-				activate: (view) => view.menuItem("Insert left")?.click(),
-				expected: "anchor",
-			},
-			{
-				label: "insert right",
-				activate: (view) => view.menuItem("Insert right")?.click(),
-				expected: "anchor",
-			},
+			{ label: "type", activate: (view) => view.menuItem("Number")?.click(), expected: "anchor" },
+			{ label: "insert left", activate: (view) => view.menuItem("Insert left")?.click(), expected: "anchor" },
+			{ label: "insert right", activate: (view) => view.menuItem("Insert right")?.click(), expected: "anchor" },
 			{
 				label: "rename",
 				activate: (view) => {
-					const input =
-						view.container.querySelector<HTMLInputElement>(
-							"input[data-pen-column-menu-item]",
-						)!;
+					const input = view.container.querySelector<HTMLInputElement>("input[data-pen-column-menu-item]")!;
 					input.focus();
 					dispatchKey(input, "Enter");
 				},
 				expected: "anchor",
 			},
-			{
-				label: "delete",
-				activate: (view) => view.menuItem("Delete")?.click(),
-				expected: "surface",
-			},
+			{ label: "delete", activate: (view) => view.menuItem("Delete")?.click(), expected: "surface" },
 		];
 
 		for (const action of actions) {

@@ -1,9 +1,6 @@
 import { mixedFixtureIdentity } from "@input/pen-test";
 import { expect, test } from "@playwright/test";
-import {
-	SCALE_FIXTURE_ROOT_COUNTS,
-	type ScaleFixtureName,
-} from "../fixtures/catalog";
+import { SCALE_FIXTURE_ROOT_COUNTS, type ScaleFixtureName } from "../fixtures/catalog";
 import { scenario } from "../src/scenario";
 
 /**
@@ -31,14 +28,9 @@ for (const name of FIXTURES) {
 			await page.evaluate((fixtureName) => {
 				window.__penConformance.load(fixtureName);
 			}, name);
-			await expect(page.locator(`[data-fixture="${name}"]`)).toBeVisible({
-				timeout: 180_000,
-			});
-
+			await expect(page.locator(`[data-fixture="${name}"]`)).toBeVisible({ timeout: 180_000 });
 			await expect
-				.poll(() => page.locator("[data-pen-editor-block]").count(), {
-					timeout: 120_000,
-				})
+				.poll(() => page.locator("[data-pen-editor-block]").count(), { timeout: 120_000 })
 				.toBe(identity.totalBlocks);
 			const bridge = await page.evaluate(() => ({
 				blockOrder: window.__penConformance.blockIds.length,

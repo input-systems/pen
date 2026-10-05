@@ -1,7 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { formatCheckReport } from "../../src/checkReport";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
-import { localCarets, readLayer, readSettledLayer } from "../../src/overlayLayer";
+import {
+	expectCheck,
+	expectLocalCarets,
+	insertMention,
+	localCarets,
+	readLayer,
+} from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
 import type { ScenarioApi } from "../../src/types";
 
@@ -10,19 +15,11 @@ const HELLO_ID = "hello-p1";
 /** hello-world with a mention at offset 5 and the caret on its leading edge. */
 async function caretBesideMention(s: ScenarioApi, page: Page): Promise<void> {
 	await s.load("hello-world");
-	await s.apply([
-		{
-			type: "splice-text",
-			blockId: HELLO_ID,
-			from: 5,
-			to: 5,
-			insert: { nodeType: "mention", props: { id: "user-ada", label: "Ada" } },
-		},
-	]);
+	await s.apply([insertMention(HELLO_ID, 5)]);
 	await expect(page.locator("[data-pen-inline-atom]")).toBeVisible();
 	const point = await getInlineOffsetPoint(page, { blockId: HELLO_ID, offset: 5 });
 	await page.mouse.click(point.x, point.y);
-	await expect.poll(async () => localCarets(await readSettledLayer(page)).length).toBe(1);
+	await expectLocalCarets(page, 1);
 }
 
 async function startComposition(page: Page): Promise<string> {
@@ -67,17 +64,14 @@ scenario(
 		const mode = await startComposition(page);
 		await expect.poll(async () => localCarets(await readLayer(page)).length).toBe(0);
 		const composing = await readLayer(page);
-		expect(
-			composing.caretColor,
-			formatCheckReport(
-				"AX6: the native caret is back for IME in the flush composition starts",
-				composing.caretColor !== "transparent" ? "passed" : "failed",
-				`caretColor=${composing.caretColor}`,
-			),
-		).not.toBe("transparent");
+		expectCheck(
+			"AX6: the native caret is back for IME in the flush composition starts",
+			composing.caretColor !== "transparent",
+			`caretColor=${composing.caretColor}`,
+		);
 
 		await endComposition(page, mode);
-		await expect.poll(async () => localCarets(await readSettledLayer(page)).length).toBe(1);
+		await expectLocalCarets(page, 1);
 		expect((await readLayer(page)).caretColor).toBe("transparent");
 		// N1: the composition diff compares logical text on both sides, so the
 		// atom is never committed back as a literal U+FFFC character.
@@ -102,7 +96,7 @@ scenario(
 
 		const point = await getInlineOffsetPoint(page, { blockId: HELLO_ID, offset: 5 });
 		await page.mouse.click(point.x, point.y);
-		await expect.poll(async () => localCarets(await readSettledLayer(page)).length).toBe(1);
+		await expectLocalCarets(page, 1);
 		await page.evaluate(() => document.querySelector("[data-o-outside-input]")?.remove());
 	},
 );

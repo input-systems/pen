@@ -3,6 +3,7 @@ import type { Editor } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
 import { undoExtension } from "../undoExtension";
+import { splice } from "./undoEditorFixture";
 
 const AI = { type: "ai" as const, groupId: "g1" };
 
@@ -10,20 +11,14 @@ function text(editor: Editor, blockId: string): string {
 	return editor.getBlock(blockId)?.textContent() ?? "";
 }
 
-function typeAtEnd(editor: Editor, blockId: string, insert: string) {
+function writeAtEnd(
+	editor: Editor,
+	blockId: string,
+	insert: string,
+	origin: "user" | typeof AI = "user",
+) {
 	const at = text(editor, blockId).length;
-	editor.apply(
-		[{ type: "splice-text", blockId, from: at, to: at, insert }],
-		{ origin: "user" },
-	);
-}
-
-function aiAtEnd(editor: Editor, blockId: string, insert: string) {
-	const at = text(editor, blockId).length;
-	editor.apply(
-		[{ type: "splice-text", blockId, from: at, to: at, insert }],
-		{ origin: AI },
-	);
+	editor.apply([splice(blockId, at, at, insert)], { origin });
 }
 
 function setup() {
@@ -34,125 +29,109 @@ function setup() {
 		],
 		extensions: [undoExtension({ groupTimeout: 10_000 })],
 	});
-	return { harness, editor: harness.peerA.editor };
+	const editor = harness.peerA.editor;
+	const texts = () => [text(editor, "b1"), text(editor, "b2")];
+	/** Undoes until the stack is empty, returning [b1, b2] after each step. */
+	const undoTrail = (): string[][] => {
+		const seen: string[][] = [];
+		while (editor.undoManager.undo()) seen.push(texts());
+		return seen;
+	};
+	return { harness, editor, texts, undoTrail };
 }
 
 describe("@input/pen-undo AIB4 interleaving", () => {
 	it("AIB4: an AI stream interleaved with user typing in another block undoes as one step and keeps the typing", () => {
-		const { editor } = setup();
+		const { editor, texts, undoTrail } = setup();
 		const stream = editor.openTextStream({ blockId: "b1" }, { origin: AI });
 		stream.append("Hello");
 		stream.flush();
-		typeAtEnd(editor, "b2", "x");
+		writeAtEnd(editor, "b2", "x");
 		stream.append(" world");
 		stream.flush();
-		typeAtEnd(editor, "b2", "y");
+		writeAtEnd(editor, "b2", "y");
 		// The stream writes last, so its step is on top (last written wins).
 		stream.append("!");
 		stream.close();
-		expect(text(editor, "b1")).toBe("Hello world!");
-		expect(text(editor, "b2")).toBe("xy");
-
-		expect(editor.undoManager.undo()).toBe(true);
-		expect(text(editor, "b1")).toBe("");
-		expect(text(editor, "b2")).toBe("xy");
+		expect(texts()).toEqual(["Hello world!", "xy"]);
 
 		// Typing on either side of an AI write stays in time order: two steps.
-		expect(editor.undoManager.undo()).toBe(true);
-		expect(text(editor, "b2")).toBe("x");
-		expect(editor.undoManager.undo()).toBe(true);
-		expect(text(editor, "b2")).toBe("");
-		expect(editor.undoManager.canUndo()).toBe(false);
+		expect(undoTrail()).toEqual([
+			["", "xy"],
+			["", "x"],
+			["", ""],
+		]);
 	});
 
 	it("AIB4: a collaborator or system apply between two writes of a group neither closes nor joins it", () => {
-		const { harness, editor } = setup();
-		aiAtEnd(editor, "b1", "a");
-		harness.peerB.editor.apply(
-			[{ type: "splice-text", blockId: "b2", from: 0, to: 0, insert: "B" }],
-			{ origin: "user" },
-		);
+		const { harness, editor, texts, undoTrail } = setup();
+		writeAtEnd(editor, "b1", "a", AI);
+		writeAtEnd(harness.peerB.editor, "b2", "B");
 		harness.exchange("b-then-a");
-		editor.apply(
-			[{ type: "splice-text", blockId: "b2", from: 1, to: 1, insert: "s" }],
-			{ origin: "system" },
-		);
-		aiAtEnd(editor, "b1", "b");
-		expect(text(editor, "b1")).toBe("ab");
+		editor.apply([splice("b2", 1, 1, "s")], { origin: "system" });
+		writeAtEnd(editor, "b1", "b", AI);
+		expect(texts()).toEqual(["ab", "Bs"]);
 
-		expect(editor.undoManager.undo()).toBe(true);
-		expect(text(editor, "b1")).toBe("");
-		expect(text(editor, "b2")).toBe("Bs");
-		expect(editor.undoManager.canUndo()).toBe(false);
+		expect(undoTrail()).toEqual([["", "Bs"]]);
 	});
 
 	it("AIB4: paste-style stopCapturing during an AI group does not split the group", () => {
-		const { editor } = setup();
-		aiAtEnd(editor, "b1", "a");
+		const { editor, undoTrail } = setup();
+		writeAtEnd(editor, "b1", "a", AI);
 		editor.undoManager.stopCapturing();
-		typeAtEnd(editor, "b2", "x");
-		aiAtEnd(editor, "b1", "b");
+		writeAtEnd(editor, "b2", "x");
+		writeAtEnd(editor, "b1", "b", AI);
 
-		expect(editor.undoManager.undo()).toBe(true);
-		expect(text(editor, "b1")).toBe("");
-		expect(text(editor, "b2")).toBe("x");
+		expect(undoTrail()[0]).toEqual(["", "x"]);
 	});
 
 	it("AIB4: reusing a group id while its step is on the stack joins that step", () => {
-		const { editor } = setup();
-		aiAtEnd(editor, "b1", "a");
-		typeAtEnd(editor, "b2", "x");
-		aiAtEnd(editor, "b1", "b");
+		const { editor, undoTrail } = setup();
+		writeAtEnd(editor, "b1", "a", AI);
+		writeAtEnd(editor, "b2", "x");
+		writeAtEnd(editor, "b1", "b", AI);
 
-		expect(editor.undoManager.undo()).toBe(true);
-		expect(text(editor, "b1")).toBe("");
-		expect(editor.undoManager.undo()).toBe(true);
-		expect(text(editor, "b2")).toBe("");
-		expect(editor.undoManager.canUndo()).toBe(false);
+		expect(undoTrail()).toEqual([
+			["", "x"],
+			["", ""],
+		]);
 	});
 
 	it("AIB4: a user deleting AI text between two writes of its group never lets undo bring that text back", () => {
-		const { editor } = setup();
-		typeAtEnd(editor, "b1", "Base");
+		const { editor, undoTrail } = setup();
+		writeAtEnd(editor, "b1", "Base");
 		editor.undoManager.stopCapturing();
-		aiAtEnd(editor, "b1", " AI");
-		editor.apply(
-			[{ type: "splice-text", blockId: "b1", from: 4, to: 7, insert: "" }],
-			{ origin: "user" },
-		);
-		aiAtEnd(editor, "b1", " more");
+		writeAtEnd(editor, "b1", " AI", AI);
+		editor.apply([splice("b1", 4, 7, "")], { origin: "user" });
+		writeAtEnd(editor, "b1", " more", AI);
 		expect(text(editor, "b1")).toBe("Base more");
 
-		const seen: string[] = [];
-		while (editor.undoManager.undo()) {
-			seen.push(text(editor, "b1"));
-		}
-		expect(seen).toEqual(["Base", "Base AI", "Base", ""]);
+		expect(undoTrail().map(([b1]) => b1)).toEqual([
+			"Base",
+			"Base AI",
+			"Base",
+			"",
+		]);
 	});
 
 	it("AIB4: an AI apply issued from a commit listener inside a user apply captures under its own group", () => {
-		const { editor } = setup();
-		typeAtEnd(editor, "b1", "u");
+		const { editor, texts, undoTrail } = setup();
+		writeAtEnd(editor, "b1", "u");
 		let fire = true;
 		const off = editor.internals.onApplyBoundary((event) => {
-			if (!fire || event.phase !== "after" || event.origin !== "user") return;
+			if (!fire || event.phase !== "after" || event.origin !== "user")
+				return;
 			fire = false;
-			editor.apply(
-				[{ type: "splice-text", blockId: "b2", from: 0, to: 0, insert: "A" }],
-				{ origin: AI },
-			);
+			editor.apply([splice("b2", 0, 0, "A")], { origin: AI });
 		});
-		typeAtEnd(editor, "b1", "v");
+		writeAtEnd(editor, "b1", "v");
 		off();
-		aiAtEnd(editor, "b2", "B");
-		expect(text(editor, "b1")).toBe("uv");
-		expect(text(editor, "b2")).toBe("AB");
+		writeAtEnd(editor, "b2", "B", AI);
+		expect(texts()).toEqual(["uv", "AB"]);
 
-		expect(editor.undoManager.undo()).toBe(true);
-		expect(text(editor, "b2")).toBe("");
-		expect(text(editor, "b1")).toBe("uv");
-		expect(editor.undoManager.undo()).toBe(true);
-		expect(text(editor, "b1")).toBe("");
-		expect(editor.undoManager.canUndo()).toBe(false);
+		expect(undoTrail()).toEqual([
+			["uv", ""],
+			["", ""],
+		]);
 	});
 });

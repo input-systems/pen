@@ -87,6 +87,32 @@ async function postToolCall(
 	};
 }
 
+function errors(parts: PenStreamPart[]) {
+	return parts
+		.filter((part) => part.type === "tool-error")
+		.map((part) => ("error" in part ? part.error : null));
+}
+
+function deleteRuntime() {
+	return vi.fn(async (_name, _input, ctx) => {
+		ctx.editor.apply([insertTextOp("b1", HOSTILE_TEXT)], { origin: "ai" });
+		return { deleted: true };
+	});
+}
+
+/** A refuse policy from the transport option or the editor's facet (AIB3). */
+const REFUSE_SOURCES = [
+	{ source: "the transport option", option: "refuse", facet: null },
+	{ source: "the editor's configured policy", option: undefined, facet: { unconfirmedDestructive: "refuse" } },
+] as const;
+
+function policyEditor(policy: AIToolConfirmPolicy | null) {
+	const recording = createRecordingEditor();
+	(recording.editor as unknown as { facet: (facet: unknown) => unknown }).facet = (facet) =>
+		facet === aiToolConfirmPolicyFacet ? policy : null;
+	return recording;
+}
+
 describe("AIB3 SSE tool authority", () => {
 	it("AIB3: an un-allowlisted mutating toolCall does not execute and does not write", async () => {
 		const { editor, applied } = createRecordingEditor();
@@ -189,11 +215,7 @@ describe("AIB3 SSE tool authority", () => {
 		expect(executeTool.mock.calls[0]?.[0]).toBe("insert_block");
 		expect(applied).toEqual([insertTextOp("b1", "granted")]);
 		expect(JSON.stringify(applied)).not.toContain(HOSTILE_TEXT);
-		expect(
-			parts
-				.filter((part) => part.type === "tool-error")
-				.map((part) => ("error" in part ? part.error : null)),
-		).toEqual(["tool-not-allowed"]);
+		expect(errors(parts)).toEqual(["tool-not-allowed"]);
 	});
 
 	it("AIB3: a read-only catalog name that calls apply does not change the document", async () => {
@@ -217,11 +239,7 @@ describe("AIB3 SSE tool authority", () => {
 		expect(executeTool).toHaveBeenCalledTimes(1);
 		expect(applied).toEqual([]);
 		expect(JSON.stringify(applied)).not.toContain(HOSTILE_TEXT);
-		expect(
-			parts
-				.filter((part) => part.type === "tool-error")
-				.map((part) => ("error" in part ? part.error : null)),
-		).toEqual(["tool-not-allowed"]);
+		expect(errors(parts)).toEqual(["tool-not-allowed"]);
 	});
 
 	it("AIB3: request.tools listing a mutating name is not a grant", async () => {
@@ -262,11 +280,7 @@ describe("AIB3 SSE tool authority", () => {
 		expect(response.status).toBe(200);
 		expect(executeTool).not.toHaveBeenCalled();
 		expect(applied).toEqual([]);
-		expect(
-			parts
-				.filter((part) => part.type === "tool-error")
-				.map((part) => ("error" in part ? part.error : null)),
-		).toEqual(["tool-not-allowed"]);
+		expect(errors(parts)).toEqual(["tool-not-allowed"]);
 	});
 
 	it("AIB3: a read-only tool cannot write through context.insertBlock", async () => {
@@ -287,11 +301,7 @@ describe("AIB3 SSE tool authority", () => {
 
 		expect(executeTool).toHaveBeenCalledTimes(1);
 		expect(applied).toEqual([]);
-		expect(
-			parts
-				.filter((part) => part.type === "tool-error")
-				.map((part) => ("error" in part ? part.error : null)),
-		).toEqual(["tool-not-allowed"]);
+		expect(errors(parts)).toEqual(["tool-not-allowed"]);
 	});
 
 	it("AIB3: cancelling the SSE body mid-tool restores editor.apply", async () => {
@@ -334,58 +344,24 @@ describe("AIB3 SSE tool authority", () => {
 		expect(applied).toEqual([insertTextOp("b1", "after-cancel")]);
 	});
 
-	function policyEditor(policy: AIToolConfirmPolicy) {
-		const recording = createRecordingEditor();
-		(recording.editor as unknown as { facet: (facet: unknown) => unknown }).facet = (facet) =>
-			facet === aiToolConfirmPolicyFacet ? policy : null;
-		return recording;
-	}
-
-	function deleteRuntime() {
-		return vi.fn(async (_name, _input, ctx) => {
-			ctx.editor.apply([insertTextOp("b1", HOSTILE_TEXT)], { origin: "ai" });
-			return { deleted: true };
-		});
-	}
-
-	function errors(parts: PenStreamPart[]) {
-		return parts
-			.filter((part) => part.type === "tool-error")
-			.map((part) => ("error" in part ? part.error : null));
-	}
-
-	it("AIB3: unconfirmedDestructive refuse on the SSE handler refuses an unconfirmed delete_block", async () => {
-		const { editor, applied } = createRecordingEditor();
-		const executeTool = deleteRuntime();
-		const { parts } = await postToolCall(
-			createSSEHandler({
-				editor,
-				allowedMutatingTools: ["delete_block"],
-				unconfirmedDestructive: "refuse",
-				toolRuntime: createRuntime(executeTool),
-				pingInterval: 60_000,
-			}),
-			"delete_block",
-		);
-		expect(executeTool).not.toHaveBeenCalled();
-		expect(applied).toEqual([]);
-		expect(errors(parts)).toEqual(["tool-refused"]);
-	});
-
-	it("AIB3: the editor's configured unconfirmedDestructive policy applies to the SSE handler", async () => {
-		const { editor, applied } = policyEditor({ unconfirmedDestructive: "refuse" });
-		const executeTool = deleteRuntime();
-		const { parts } = await postToolCall(
-			createSSEHandler({
-				editor,
-				allowedMutatingTools: ["delete_block"],
-				toolRuntime: createRuntime(executeTool),
-				pingInterval: 60_000,
-			}),
-			"delete_block",
-		);
-		expect(executeTool).not.toHaveBeenCalled();
-		expect(applied).toEqual([]);
-		expect(errors(parts)).toEqual(["tool-refused"]);
-	});
+	it.each(REFUSE_SOURCES)(
+		"AIB3: unconfirmedDestructive refuse from $source refuses an unconfirmed delete_block on the SSE handler",
+		async ({ option, facet }) => {
+			const { editor, applied } = policyEditor(facet);
+			const executeTool = deleteRuntime();
+			const { parts } = await postToolCall(
+				createSSEHandler({
+					editor,
+					allowedMutatingTools: ["delete_block"],
+					unconfirmedDestructive: option,
+					toolRuntime: createRuntime(executeTool),
+					pingInterval: 60_000,
+				}),
+				"delete_block",
+			);
+			expect(executeTool).not.toHaveBeenCalled();
+			expect(applied).toEqual([]);
+			expect(errors(parts)).toEqual(["tool-refused"]);
+		},
+	);
 });

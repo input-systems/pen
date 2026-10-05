@@ -1,55 +1,49 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it } from "vitest";
-import { createEditor, getCommandRegistry } from "@input/pen-core";
-import { defaultSchema } from "@input/pen-schema";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getCommandRegistry } from "@input/pen-core";
+import type { Editor } from "@input/pen-types";
 import type { FieldEditorInputController } from "../controller";
 import { ExpandedContentEditableBackend } from "../expandedContentEditableBackend";
 import { stubFieldEditorParts } from "./fieldEditorParts.testHelpers";
+import {
+	recordingController,
+	seedParagraphs,
+	spyDispatch,
+	withPlatform,
+} from "./fieldEditorFixtures.testHelpers";
 
-type Activation = {
-	blockId: string;
-	anchorOffset: number;
-	focusOffset: number;
-};
+const cleanups: Array<() => void> = [];
 
-function createFieldEditor(blockId: string) {
-	const activations: Activation[] = [];
-	let deactivated = 0;
-	const controller = {
-		focusBlockId: blockId,
-		inputMode: "richtext" as const,
-		activeCellCoord: null,
-		activateCell: () => {},
-		activateTextSelection: (
-			targetBlockId: string,
-			anchorOffset: number,
-			focusOffset: number,
-		) => {
-			activations.push({
-				blockId: targetBlockId,
-				anchorOffset,
-				focusOffset,
-			});
-		},
-		deactivate: () => {
-			deactivated += 1;
-		},
-		requestDomFocus: () => false,
-		applyDomTextSelection: () => {},
-		selectAllBehavior: "block-first" as const,
-		...stubFieldEditorParts(),
-	};
-	return { controller, activations, deactivated: () => deactivated };
+afterEach(() => {
+	for (const cleanup of cleanups.splice(0)) cleanup();
+	vi.unstubAllGlobals();
+});
+
+/** Paragraphs holding `texts`, with the expanded backend attached to a host. */
+function mountExpanded(
+	texts: readonly string[],
+	select: (editor: Editor, blockIds: string[]) => void,
+	wrap: (controller: FieldEditorInputController) => FieldEditorInputController = (
+		controller,
+	) => controller,
+) {
+	const { editor, blockIds } = seedParagraphs(texts);
+	select(editor, blockIds);
+	const recording = recordingController(blockIds[0]!, { commit: false });
+	const backend = new ExpandedContentEditableBackend(editor, wrap(recording.controller));
+	const host = document.createElement("div");
+	backend.activate(host);
+	cleanups.push(() => {
+		backend.deactivate();
+		editor.destroy();
+	});
+	return { editor, blockIds, backend, host, recording };
 }
 
 function dispatchBeforeInput(host: HTMLElement, inputType: string): void {
 	host.dispatchEvent(
-		new InputEvent("beforeinput", {
-			bubbles: true,
-			cancelable: true,
-			inputType,
-		}),
+		new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType }),
 	);
 }
 
@@ -68,474 +62,178 @@ function dispatchKeyDown(
 	return event;
 }
 
+/** "Hello" / "World" selected from offset 1 of the first to 2 of the second. */
+function selectAcross(editor: Editor, [first, second]: string[]): void {
+	editor.selectTextRange({ blockId: first!, offset: 1 }, { blockId: second!, offset: 2 });
+}
+
+function caretAt(offset: number) {
+	return (editor: Editor, [blockId]: string[]) => editor.selectText(blockId!, offset, offset);
+}
+
+/** Records frames instead of running them, to prove the activation is in-turn. */
+function stubFrames(): FrameRequestCallback[] {
+	const frames: FrameRequestCallback[] = [];
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+		frames.push(callback);
+		return 1;
+	});
+	return frames;
+}
+
 describe("ExpandedContentEditableBackend handleBeforeInput enter", () => {
 	it("activates the collapsed caret in-turn after a multi-block insertParagraph", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const firstBlockId = editor.firstBlock()!.id;
-		const secondBlockId = crypto.randomUUID();
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: firstBlockId,
-				from: 0,
-				to: 0,
-				insert: "Hello",
-			},
-			{
-				type: "insert-block",
-				blockId: secondBlockId,
-				blockType: "paragraph",
-				props: {},
-				position: { after: firstBlockId },
-			},
-			{
-				type: "splice-text",
-				blockId: secondBlockId,
-				from: 0,
-				to: 0,
-				insert: "World",
-			},
-		]);
-		editor.selectTextRange(
-			{ blockId: firstBlockId, offset: 1 },
-			{ blockId: secondBlockId, offset: 2 },
-		);
+		const { editor, blockIds, host, recording } = mountExpanded(["Hello", "World"], selectAcross);
+		const [firstBlockId, secondBlockId] = blockIds;
+		const dispatched = spyDispatch(editor);
+		const frames = stubFrames();
+
+		dispatchBeforeInput(host, "insertParagraph");
+
+		expect(dispatched).toEqual([]);
+		expect(recording.deactivated()).toBe(1);
+		expect(editor.getBlock(secondBlockId!)).toBeNull();
+		expect(editor.getBlock(firstBlockId!)?.textContent()).toBe("H\nrld");
 		expect(editor.selection).toMatchObject({
 			type: "text",
+			anchor: { blockId: firstBlockId, offset: 2 },
+			focus: { blockId: firstBlockId, offset: 2 },
 		});
-
-		const fieldEditor = createFieldEditor(firstBlockId);
-		const registry = getCommandRegistry(editor);
-		if (!registry) {
-			throw new Error("expected command registry");
-		}
-		const dispatched: string[] = [];
-		const originalDispatch = registry.dispatch.bind(registry);
-		registry.dispatch = ((command, param, context) => {
-			dispatched.push(command.name);
-			return originalDispatch(command, param, context);
-		}) as typeof registry.dispatch;
-
-		const backend = new ExpandedContentEditableBackend(
-			editor,
-			fieldEditor.controller as unknown as FieldEditorInputController,
-		);
-		const host = document.createElement("div");
-		backend.activate(host);
-
-		const rafCallbacks: FrameRequestCallback[] = [];
-		const originalRaf = globalThis.requestAnimationFrame;
-		globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
-			rafCallbacks.push(cb);
-			return 1;
-		}) as typeof requestAnimationFrame;
-
-		try {
-			dispatchBeforeInput(host, "insertParagraph");
-
-			expect(dispatched).toEqual([]);
-			expect(fieldEditor.deactivated()).toBe(1);
-			expect(editor.getBlock(secondBlockId)).toBeNull();
-			expect(editor.getBlock(firstBlockId)?.textContent()).toBe("H\nrld");
-			expect(editor.selection).toMatchObject({
-				type: "text",
-				anchor: { blockId: firstBlockId, offset: 2 },
-				focus: { blockId: firstBlockId, offset: 2 },
-			});
-			expect(fieldEditor.activations).toEqual([
-				{
-					blockId: firstBlockId,
-					anchorOffset: 2,
-					focusOffset: 2,
-				},
-			]);
-			expect(rafCallbacks).toHaveLength(0);
-		} finally {
-			globalThis.requestAnimationFrame = originalRaf;
-			backend.deactivate();
-			editor.destroy();
-		}
+		expect(recording.activations).toEqual([
+			{ blockId: firstBlockId, anchorOffset: 2, focusOffset: 2, kind: "activate" },
+		]);
+		expect(frames).toHaveLength(0);
 	});
 
-	it("activates the split caret in-turn when applyEnterBehavior is the fallback", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const blockId = editor.firstBlock()!.id;
-		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hello" },
-		]);
-		editor.selectText(blockId, 2, 2);
-
-		const registry = getCommandRegistry(editor);
-		if (!registry) {
-			throw new Error("expected command registry");
-		}
+	it.each([
+		["applyEnterBehavior is the fallback", true],
+		["a dispatched splitBlock", false],
+	])("activates the split caret in-turn after %s", (_name, declineDispatch) => {
+		const { editor, blockIds, host, recording } = mountExpanded(["Hello"], caretAt(2));
 		const dispatched: string[] = [];
-		registry.dispatch = ((command) => {
-			dispatched.push(command.name);
-			return false;
-		}) as typeof registry.dispatch;
-
-		const fieldEditor = createFieldEditor(blockId);
-		const backend = new ExpandedContentEditableBackend(
-			editor,
-			fieldEditor.controller as unknown as FieldEditorInputController,
-		);
-		const host = document.createElement("div");
-		backend.activate(host);
-
-		const rafCallbacks: FrameRequestCallback[] = [];
-		const originalRaf = globalThis.requestAnimationFrame;
-		globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
-			rafCallbacks.push(cb);
-			return 1;
-		}) as typeof requestAnimationFrame;
-
-		try {
-			dispatchBeforeInput(host, "insertParagraph");
-
-			expect(dispatched).toEqual(["pen.splitBlock"]);
-			expect(fieldEditor.deactivated()).toBe(1);
-			const blockIds = editor.documentState.blockOrder;
-			expect(blockIds).toHaveLength(2);
-			expect(editor.getBlock(blockId)?.textContent()).toBe("He");
-			const newBlockId = blockIds[1];
-			expect(newBlockId).toEqual(expect.any(String));
-			expect(editor.getBlock(newBlockId!)?.textContent()).toBe("llo");
-			expect(fieldEditor.activations).toEqual([
-				{
-					blockId: newBlockId,
-					anchorOffset: 0,
-					focusOffset: 0,
-				},
-			]);
-			expect(rafCallbacks).toHaveLength(0);
-		} finally {
-			globalThis.requestAnimationFrame = originalRaf;
-			backend.deactivate();
-			editor.destroy();
+		if (declineDispatch) {
+			const registry = getCommandRegistry(editor)!;
+			registry.dispatch = ((command) => {
+				dispatched.push(command.name);
+				return false;
+			}) as typeof registry.dispatch;
 		}
-	});
+		const frames = stubFrames();
 
-	it("activates the split caret in-turn after a dispatched splitBlock", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const blockId = editor.firstBlock()!.id;
-		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hello" },
+		dispatchBeforeInput(host, "insertParagraph");
+
+		const order = editor.documentState.blockOrder;
+		expect(order).toHaveLength(2);
+		expect(editor.getBlock(blockIds[0]!)?.textContent()).toBe("He");
+		expect(editor.getBlock(order[1]!)?.textContent()).toBe("llo");
+		expect(recording.deactivated()).toBe(1);
+		expect(recording.activations).toEqual([
+			{ blockId: order[1], anchorOffset: 0, focusOffset: 0, kind: "activate" },
 		]);
-		editor.selectText(blockId, 2, 2);
-
-		const fieldEditor = createFieldEditor(blockId);
-		const backend = new ExpandedContentEditableBackend(
-			editor,
-			fieldEditor.controller as unknown as FieldEditorInputController,
-		);
-		const host = document.createElement("div");
-		backend.activate(host);
-
-		try {
-			dispatchBeforeInput(host, "insertParagraph");
-
-			const blockIds = editor.documentState.blockOrder;
-			expect(blockIds).toHaveLength(2);
-			const newBlockId = blockIds[1];
-			expect(fieldEditor.activations).toEqual([
-				{
-					blockId: newBlockId,
-					anchorOffset: 0,
-					focusOffset: 0,
-				},
-			]);
-		} finally {
-			backend.deactivate();
-			editor.destroy();
-		}
+		expect(dispatched).toEqual(declineDispatch ? ["pen.splitBlock"] : []);
+		expect(frames).toHaveLength(0);
 	});
 });
 
 describe("ExpandedContentEditableBackend keymap", () => {
 	it("leaves multi-block Enter to beforeinput", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const firstBlockId = editor.firstBlock()!.id;
-		const secondBlockId = crypto.randomUUID();
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: firstBlockId,
-				from: 0,
-				to: 0,
-				insert: "Hello",
-			},
-			{
-				type: "insert-block",
-				blockId: secondBlockId,
-				blockType: "paragraph",
-				props: {},
-				position: { after: firstBlockId },
-			},
-			{
-				type: "splice-text",
-				blockId: secondBlockId,
-				from: 0,
-				to: 0,
-				insert: "World",
-			},
-		]);
-		editor.selectTextRange(
-			{ blockId: firstBlockId, offset: 1 },
-			{ blockId: secondBlockId, offset: 2 },
-		);
+		const { editor, blockIds, host } = mountExpanded(["Hello", "World"], selectAcross);
+		const [firstBlockId, secondBlockId] = blockIds;
+		const dispatched = spyDispatch(editor);
 
-		const registry = getCommandRegistry(editor);
-		if (!registry) {
-			throw new Error("expected command registry");
-		}
-		const dispatched: string[] = [];
-		const originalDispatch = registry.dispatch.bind(registry);
-		registry.dispatch = ((command, param, context) => {
-			dispatched.push(command.name);
-			return originalDispatch(command, param, context);
-		}) as typeof registry.dispatch;
+		const event = dispatchKeyDown(host, "Enter");
 
-		const fieldEditor = createFieldEditor(firstBlockId);
-		const backend = new ExpandedContentEditableBackend(
-			editor,
-			fieldEditor.controller as unknown as FieldEditorInputController,
-		);
-		const host = document.createElement("div");
-		backend.activate(host);
-
-		try {
-			const event = dispatchKeyDown(host, "Enter");
-
-			expect(event.defaultPrevented).toBe(false);
-			expect(dispatched).toEqual([]);
-			expect(editor.getBlock(firstBlockId)?.textContent()).toBe("Hello");
-			expect(editor.getBlock(secondBlockId)?.textContent()).toBe("World");
-			expect(editor.selection).toMatchObject({
-				type: "text",
-				anchor: { blockId: firstBlockId, offset: 1 },
-				focus: { blockId: secondBlockId, offset: 2 },
-			});
-		} finally {
-			backend.deactivate();
-			editor.destroy();
-		}
+		expect(event.defaultPrevented).toBe(false);
+		expect(dispatched).toEqual([]);
+		expect(editor.getBlock(firstBlockId!)?.textContent()).toBe("Hello");
+		expect(editor.getBlock(secondBlockId!)?.textContent()).toBe("World");
+		expect(editor.selection).toMatchObject({
+			type: "text",
+			anchor: { blockId: firstBlockId, offset: 1 },
+			focus: { blockId: secondBlockId, offset: 2 },
+		});
 	});
 
 	it("installs the visual line-edge measure before dispatching Home", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const blockId = editor.firstBlock()!.id;
-		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hello" },
-		]);
-		editor.selectText(blockId, 3, 3);
-
-		const registry = getCommandRegistry(editor);
-		if (!registry) {
-			throw new Error("expected command registry");
-		}
+		const { editor, blockIds, host } = mountExpanded(["Hello"], caretAt(3));
+		const registry = getCommandRegistry(editor)!;
 		const lineEdgeSeam = Symbol.for("pen.lineEdgeSeam");
 		const originalDispatch = registry.dispatch.bind(registry);
 		registry.dispatch = ((command, param, context) => {
 			if (command.name === "pen.caretLineStart") {
-				expect(
-					(editor as unknown as Record<symbol, unknown>)[
-						lineEdgeSeam
-					],
-				).toEqual(expect.any(Function));
+				expect((editor as unknown as Record<symbol, unknown>)[lineEdgeSeam]).toEqual(
+					expect.any(Function),
+				);
 			}
 			return originalDispatch(command, param, context);
 		}) as typeof registry.dispatch;
 
-		const fieldEditor = createFieldEditor(blockId);
-		const backend = new ExpandedContentEditableBackend(
-			editor,
-			fieldEditor.controller as unknown as FieldEditorInputController,
-		);
-		const host = document.createElement("div");
-		backend.activate(host);
+		const event = dispatchKeyDown(host, "Home");
 
-		try {
-			const event = dispatchKeyDown(host, "Home");
-
-			expect(event.defaultPrevented).toBe(true);
-			expect(editor.selection).toMatchObject({
-				type: "text",
-				focus: { blockId, offset: 0 },
-			});
-		} finally {
-			backend.deactivate();
-			editor.destroy();
-		}
+		expect(event.defaultPrevented).toBe(true);
+		expect(editor.selection).toMatchObject({
+			type: "text",
+			focus: { blockId: blockIds[0], offset: 0 },
+		});
 	});
 
 	it("extends a backward word selection across another block", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const firstBlockId = editor.firstBlock()!.id;
-		const secondBlockId = crypto.randomUUID();
-		const thirdBlockId = crypto.randomUUID();
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: firstBlockId,
-				from: 0,
-				to: 0,
-				insert: "one",
-			},
-			{
-				type: "insert-block",
-				blockId: secondBlockId,
-				blockType: "paragraph",
-				props: {},
-				position: { after: firstBlockId },
-			},
-			{
-				type: "splice-text",
-				blockId: secondBlockId,
-				from: 0,
-				to: 0,
-				insert: "two",
-			},
-			{
-				type: "insert-block",
-				blockId: thirdBlockId,
-				blockType: "paragraph",
-				props: {},
-				position: { after: secondBlockId },
-			},
-			{
-				type: "splice-text",
-				blockId: thirdBlockId,
-				from: 0,
-				to: 0,
-				insert: "three",
-			},
-		]);
-		editor.selectTextRange(
-			{ blockId: thirdBlockId, offset: 0 },
-			{ blockId: secondBlockId, offset: 0 },
+		const { editor, blockIds, host } = mountExpanded(
+			["one", "two", "three"],
+			(editor, [, second, third]) =>
+				editor.selectTextRange({ blockId: third!, offset: 0 }, { blockId: second!, offset: 0 }),
 		);
 
-		const fieldEditor = createFieldEditor(secondBlockId);
-		const backend = new ExpandedContentEditableBackend(
-			editor,
-			fieldEditor.controller as unknown as FieldEditorInputController,
+		const event = withPlatform("MacIntel", () =>
+			dispatchKeyDown(host, "ArrowLeft", { altKey: true, shiftKey: true }),
 		);
-		const host = document.createElement("div");
-		backend.activate(host);
 
-		const previousPlatform = navigator.platform;
-		Object.defineProperty(navigator, "platform", {
-			configurable: true,
-			value: "MacIntel",
+		expect(event.defaultPrevented).toBe(true);
+		expect(editor.selection).toMatchObject({
+			type: "text",
+			anchor: { blockId: blockIds[2], offset: 0 },
+			focus: { blockId: blockIds[0], offset: 3 },
 		});
-		try {
-			const event = dispatchKeyDown(host, "ArrowLeft", {
-				altKey: true,
-				shiftKey: true,
-			});
-
-			expect(event.defaultPrevented).toBe(true);
-			expect(editor.selection).toMatchObject({
-				type: "text",
-				anchor: { blockId: thirdBlockId, offset: 0 },
-				focus: { blockId: firstBlockId, offset: 3 },
-			});
-		} finally {
-			Object.defineProperty(navigator, "platform", {
-				configurable: true,
-				value: previousPlatform,
-			});
-			backend.deactivate();
-			editor.destroy();
-		}
 	});
 });
 
 describe("ExpandedContentEditableBackend composition window", () => {
-	function twoBlockRange() {
-		const editor = createEditor({ schema: defaultSchema });
-		const firstBlockId = editor.firstBlock()!.id;
-		const secondBlockId = crypto.randomUUID();
-		editor.apply([
-			{ type: "splice-text", blockId: firstBlockId, from: 0, to: 0, insert: "Hello" },
-			{
-				type: "insert-block",
-				blockId: secondBlockId,
-				blockType: "paragraph",
-				props: {},
-				position: { after: firstBlockId },
-			},
-			{ type: "splice-text", blockId: secondBlockId, from: 0, to: 0, insert: "World" },
-		]);
-		editor.selectTextRange(
-			{ blockId: firstBlockId, offset: 1 },
-			{ blockId: secondBlockId, offset: 2 },
-		);
-		return { editor, firstBlockId };
-	}
-
-	function composingController(blockId: string) {
-		const fieldEditor = createFieldEditor(blockId);
+	function mountComposing() {
 		const composing: boolean[] = [];
 		const gestures: string[] = [];
-		const controller = {
-			...fieldEditor.controller,
+		const fixture = mountExpanded(["Hello", "World"], selectAcross, (controller) => ({
+			...controller,
 			setComposing: (value: boolean) => composing.push(value),
-			...stubFieldEditorParts({
-				onGesture: (kind) => gestures.push(kind),
-			}),
-		};
-		return { controller, composing, gestures };
+			...stubFieldEditorParts({ onGesture: (kind) => gestures.push(kind) }),
+		}) as unknown as FieldEditorInputController);
+		return { ...fixture, composing, gestures };
 	}
 
+	const compose = (host: HTMLElement, type: "compositionstart" | "compositionend") =>
+		host.dispatchEvent(new CompositionEvent(type, { bubbles: true, data: "x" }));
+
 	it("C1: a composition in the host opens and closes the ime window", () => {
-		const { editor, firstBlockId } = twoBlockRange();
-		const { controller, composing, gestures } = composingController(firstBlockId);
-		const backend = new ExpandedContentEditableBackend(
-			editor,
-			controller as unknown as FieldEditorInputController,
-		);
-		const host = document.createElement("div");
-		backend.activate(host);
-		try {
-			host.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
-			expect(composing).toEqual([true]);
-			expect(gestures).toEqual(["compositionstart"]);
-			host.dispatchEvent(
-				new CompositionEvent("compositionend", { bubbles: true, data: "x" }),
-			);
-			expect(composing).toEqual([true, false]);
-			expect(gestures).toEqual(["compositionstart", "compositionend-completed"]);
-			expect(editor.getBlock(firstBlockId)?.textContent()).toBe("Hxrld");
-		} finally {
-			backend.deactivate();
-			editor.destroy();
-		}
+		const { editor, blockIds, host, composing, gestures } = mountComposing();
+
+		compose(host, "compositionstart");
+		expect(composing).toEqual([true]);
+		expect(gestures).toEqual(["compositionstart"]);
+		compose(host, "compositionend");
+		expect(composing).toEqual([true, false]);
+		expect(gestures).toEqual(["compositionstart", "compositionend-completed"]);
+		expect(editor.getBlock(blockIds[0]!)?.textContent()).toBe("Hxrld");
 	});
 
 	it("FE2: a composition does not survive a re-attach of the same instance", () => {
-		const { editor, firstBlockId } = twoBlockRange();
-		const { controller, composing } = composingController(firstBlockId);
-		const backend = new ExpandedContentEditableBackend(
-			editor,
-			controller as unknown as FieldEditorInputController,
-		);
-		const host = document.createElement("div");
+		const { editor, blockIds, backend, host, composing } = mountComposing();
+
+		compose(host, "compositionstart");
+		backend.deactivate();
+		expect(composing).toEqual([true, false]);
 		backend.activate(host);
-		try {
-			host.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
-			backend.deactivate();
-			expect(composing).toEqual([true, false]);
-			backend.activate(host);
-			host.dispatchEvent(
-				new CompositionEvent("compositionend", { bubbles: true, data: "x" }),
-			);
-			expect(editor.getBlock(firstBlockId)?.textContent()).toBe("Hello");
-			expect(composing).toEqual([true, false]);
-		} finally {
-			backend.deactivate();
-			editor.destroy();
-		}
+		compose(host, "compositionend");
+
+		expect(editor.getBlock(blockIds[0]!)?.textContent()).toBe("Hello");
+		expect(composing).toEqual([true, false]);
 	});
 });

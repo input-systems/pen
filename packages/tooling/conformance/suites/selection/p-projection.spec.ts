@@ -2,6 +2,7 @@ import type { DocumentOp } from "@input/pen-types";
 import { expect, type Page } from "@playwright/test";
 import { scenario } from "../../src/scenario";
 import type { ScenarioApi } from "../../src/types";
+import { readBlockIds, readFocus } from "../specHelpers";
 
 scenario(
 	"P1: an engine-rejected write is reported, not retried",
@@ -37,37 +38,37 @@ scenario(
 const SCROLL_BLOCK_COUNT = 60;
 
 function scrollFixtureOps(): DocumentOp[] {
-	const ops: DocumentOp[] = [];
-	for (let index = 1; index <= SCROLL_BLOCK_COUNT; index += 1) {
-		ops.push(
-			{
-				type: "insert-block",
-				blockId: `scroll-${index}`,
-				blockType: "paragraph",
-				props: {},
-				position: "last",
-			},
-			{
-				type: "splice-text",
-				blockId: `scroll-${index}`,
-				from: 0,
-				to: 0,
-				insert: `Scroll line ${index}`,
-			},
-		);
-	}
-	return ops;
+	return Array.from({ length: SCROLL_BLOCK_COUNT }, (_, index): DocumentOp[] => {
+		const blockId = `scroll-${index + 1}`;
+		return [
+			{ type: "insert-block", blockId, blockType: "paragraph", props: {}, position: "last" },
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: `Scroll line ${index + 1}` },
+		];
+	}).flat();
 }
 
-async function caretInViewport(page: Page): Promise<{ top: number; bottom: number; inView: boolean }> {
-	return page.evaluate(() => {
-		const rect = document.getSelection()!.getRangeAt(0).getBoundingClientRect();
-		return {
-			top: rect.top,
-			bottom: rect.bottom,
-			inView: rect.height > 0 && rect.top >= 0 && rect.bottom <= window.innerHeight,
-		};
-	});
+async function expectCaretInView(page: Page): Promise<void> {
+	await expect
+		.poll(() =>
+			page.evaluate(() => {
+				const rect = document.getSelection()!.getRangeAt(0).getBoundingClientRect();
+				return rect.height > 0 && rect.top >= 0 && rect.bottom <= window.innerHeight;
+			}),
+		)
+		.toBe(true);
+}
+
+async function pressArrowDown(page: Page, times: number): Promise<void> {
+	for (let press = 0; press < times; press += 1) {
+		await page.keyboard.press("ArrowDown");
+	}
+}
+
+/** Scrolls back to the top once the scheduler is idle, so no scheduled measure scrolls back. */
+async function resetScrollWhenIdle(page: Page): Promise<void> {
+	await page.evaluate(() => window.__penConformance.whenIdle());
+	await page.evaluate(() => window.scrollTo(0, 0));
+	expect(await scrollY(page)).toBe(0);
 }
 
 async function scrollY(page: Page): Promise<number> {
@@ -84,12 +85,10 @@ async function loadScrollDocument(s: ScenarioApi, page: Page): Promise<void> {
 
 scenario("P: ArrowDown past the fold scrolls the caret into view", async (s, page) => {
 	await loadScrollDocument(s, page);
-	for (let press = 0; press < 40; press += 1) {
-		await page.keyboard.press("ArrowDown");
-	}
+	await pressArrowDown(page, 40);
 	await s.assert.domMatchesAuthority();
 	expect(await scrollY(page), "keyboard records scroll (auto)").toBeGreaterThan(0);
-	await expect.poll(async () => (await caretInViewport(page)).inView).toBe(true);
+	await expectCaretInView(page);
 });
 
 scenario("P: typing on the last visible line keeps the caret in view", async (s, page) => {
@@ -106,37 +105,24 @@ scenario("P: typing on the last visible line keeps the caret in view", async (s,
 		await s.keyboard.type("typed");
 	}
 	expect(await scrollY(page)).toBeGreaterThan(0);
-	await expect.poll(async () => (await caretInViewport(page)).inView).toBe(true);
+	await expectCaretInView(page);
 });
 
 scenario("P: a remote edit that maps the caret does not scroll", async (s, page) => {
 	await loadScrollDocument(s, page);
-	for (let press = 0; press < 50; press += 1) {
-		await page.keyboard.press("ArrowDown");
-	}
+	await pressArrowDown(page, 50);
 	// Let the keyboard scroll land before resetting the viewport. The engine's
 	// own caret scroll can put the caret in view before the last keyboard
 	// record's scheduled measure runs; reset only once the scheduler is idle,
 	// or that measure sees the reset viewport and scrolls back.
-	await expect.poll(async () => (await caretInViewport(page)).inView).toBe(true);
-	await page.evaluate(() => window.__penConformance.whenIdle());
-	await page.evaluate(() => window.scrollTo(0, 0));
-	expect(await scrollY(page)).toBe(0);
-	const caretBlock = await page.evaluate(() => {
-		const selection = window.__penConformance.selection;
-		return selection?.type === "text"
-			? window.__penConformance.blockIds.indexOf(selection.focus.blockId)
-			: -1;
-	});
+	await expectCaretInView(page);
+	await resetScrollWhenIdle(page);
+	const focus = await readFocus(page);
+	const caretBlock = focus ? (await readBlockIds(page)).indexOf(focus.blockId) : -1;
 	expect(caretBlock).toBeGreaterThan(0);
 	await s.remote.splice({ block: caretBlock, from: 0, to: 0, insert: "remote " });
 	await expect
-		.poll(() =>
-			page.evaluate(() => {
-				const selection = window.__penConformance.selection;
-				return selection?.type === "text" ? selection.focus.offset : -1;
-			}),
-		)
+		.poll(async () => (await readFocus(page))?.offset ?? -1)
 		.toBeGreaterThanOrEqual("remote ".length);
 	// A scroll the mapped projection scheduled lands in the next flush.
 	await page.evaluate(() => window.__penConformance.whenIdle());
@@ -160,17 +146,13 @@ scenario("P: scrollIntoView with align center centres the block", async (s, page
 
 scenario("P: undo restoring a selection below the fold scrolls it into view", async (s, page) => {
 	await loadScrollDocument(s, page);
-	for (let press = 0; press < 50; press += 1) {
-		await page.keyboard.press("ArrowDown");
-	}
+	await pressArrowDown(page, 50);
 	await s.keyboard.type("x");
 	await page.evaluate(() => window.__penConformance.stopCapturing());
-	await expect.poll(async () => (await caretInViewport(page)).inView).toBe(true);
+	await expectCaretInView(page);
 	// A late typing scroll landing after the reset would pass for a restore one.
-	await page.evaluate(() => window.__penConformance.whenIdle());
-	await page.evaluate(() => window.scrollTo(0, 0));
-	expect(await scrollY(page)).toBe(0);
+	await resetScrollWhenIdle(page);
 	await s.keyboard.press("ControlOrMeta+z");
 	await expect.poll(() => scrollY(page), "restore records scroll (D17)").toBeGreaterThan(0);
-	await expect.poll(async () => (await caretInViewport(page)).inView).toBe(true);
+	await expectCaretInView(page);
 });

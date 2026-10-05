@@ -215,27 +215,17 @@ function createLocalDocument(name: string): {
 	const ydoc = new Y.Doc({ gc: false });
 	if (isScaleFixtureName(name)) {
 		populateYDoc(ydoc, generateMixedBlockSpecs(SCALE_FIXTURE_ROOT_COUNTS[name]));
-		return { adapter, ydoc, document: wrapYjsDocument(adapter, ydoc) };
-	}
-	if (isFuzzFixtureName(name)) {
+	} else if (isFuzzFixtureName(name)) {
 		populateYDoc(ydoc, [...FUZZ_FIXTURES[name].blocks]);
-		return { adapter, ydoc, document: wrapYjsDocument(adapter, ydoc) };
-	}
-	if (!isLocalFixtureName(name)) {
+	} else if (isLocalFixtureName(name)) {
+		populateYDoc(ydoc, [...LOCAL_FIXTURES[name]]);
+	} else {
 		throw new Error(`Unknown conformance fixture: ${name}`);
 	}
-	populateYDoc(ydoc, [...LOCAL_FIXTURES[name]]);
-	return {
-		adapter,
-		ydoc,
-		document: wrapYjsDocument(adapter, ydoc),
-	};
+	return { adapter, ydoc, document: wrapYjsDocument(adapter, ydoc) };
 }
 
-function readQueryFlag(name: string): boolean {
-	if (typeof window === "undefined") {
-		return false;
-	}
+export function readQueryFlag(name: string): boolean {
 	return new URLSearchParams(window.location.search).get(name) === "1";
 }
 
@@ -377,14 +367,7 @@ function recordRelayOutbox(ydoc: Y.Doc, outbox: Uint8Array[]): () => void {
 
 /** `?relay=1`: fork this page from another page's encoded state with its own client id. */
 function loadSeeded(fixture: string, seedBase64: string, clientId: number): void {
-	disposeGeometry();
-	if (session) {
-		destroySession(session);
-	}
-	windowStart = 0;
-	session = createSession(fixture, { update: fromBase64(seedBase64), clientId });
-	installBridge();
-	notify();
+	loadFixture(fixture, { update: fromBase64(seedBase64), clientId });
 }
 
 function relayBridge(): NonNullable<PenConformanceBridge["relay"]> {
@@ -397,14 +380,12 @@ function relayBridge(): NonNullable<PenConformanceBridge["relay"]> {
 	};
 	return {
 		drainOutbox() {
-			const active = current();
-			const drained = active.relayOutbox!.splice(0).map(toBase64);
-			return drained;
+			return current().relayOutbox!.splice(0).map(toBase64);
 		},
 		deliver(updates) {
-			const active = current();
+			const { localY } = current();
 			for (const update of updates) {
-				Y.applyUpdate(active.localY, fromBase64(update), RELAY_ORIGIN);
+				Y.applyUpdate(localY, fromBase64(update), RELAY_ORIGIN);
 			}
 		},
 		stateVector() {
@@ -507,13 +488,13 @@ function reducedMotion(): boolean {
 	return reducedMotionSignal.reduced;
 }
 
-function loadFixture(name: string): void {
+function loadFixture(name: string, seed?: SessionSeed): void {
 	disposeGeometry();
 	if (session) {
 		destroySession(session);
 	}
 	windowStart = 0;
-	session = createSession(name);
+	session = createSession(name, seed);
 	installBridge();
 	notify();
 }
@@ -611,21 +592,15 @@ function observeSubstitutePaint(root: HTMLElement): SubstitutePaint {
 			"[data-pen-overlay-layer] [data-pen-overlay-item]",
 		),
 	];
-	const endpoints = items
-		.filter(
-			(item) => item.getAttribute("data-pen-overlay-item") === "caret",
-		)
-		.map((item) => item.getAttribute("data-endpoint"))
-		.filter((endpoint): endpoint is string => endpoint !== null)
-		.sort();
-	const kindCount = (kind: string) =>
-		items.filter(
-			(item) => item.getAttribute("data-pen-overlay-item") === kind,
-		).length;
+	const ofKind = (kind: string) =>
+		items.filter((item) => item.getAttribute("data-pen-overlay-item") === kind);
 	return {
-		endpoints,
-		ranges: kindCount("range"),
-		blockSpans: kindCount("block-span"),
+		endpoints: ofKind("caret")
+			.map((item) => item.getAttribute("data-endpoint"))
+			.filter((endpoint): endpoint is string => endpoint !== null)
+			.sort(),
+		ranges: ofKind("range").length,
+		blockSpans: ofKind("block-span").length,
 	};
 }
 
@@ -644,11 +619,7 @@ type ConfiningWriteFault = {
  * (the projector's one fallback write), and any write after that task.
  */
 function installConfiningWriteFault(): void {
-	const counters: ConfiningWriteFault = {
-		confined: 0,
-		clears: 0,
-		laterWrites: 0,
-	};
+	const counters: ConfiningWriteFault = { confined: 0, clears: 0, laterWrites: 0 };
 	(
 		window as unknown as { __penConfiningWriteFault: ConfiningWriteFault }
 	).__penConfiningWriteFault = counters;
@@ -756,15 +727,8 @@ function installConfiningWriteFault(): void {
 
 function confiningWriteFaultCounters(): ConfiningWriteFault {
 	return (
-		(
-			window as unknown as {
-				__penConfiningWriteFault?: ConfiningWriteFault;
-			}
-		).__penConfiningWriteFault ?? {
-			confined: 0,
-			clears: 0,
-			laterWrites: 0,
-		}
+		(window as unknown as { __penConfiningWriteFault?: ConfiningWriteFault })
+			.__penConfiningWriteFault ?? { confined: 0, clears: 0, laterWrites: 0 }
 	);
 }
 

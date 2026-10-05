@@ -1,7 +1,7 @@
 import type { DocumentOp, Editor } from "@input/pen-types";
 
-import { createEditor as createCoreEditor } from "../../index";
 import { defineBlock } from "../../schema/defineBlock";
+import { createEditor } from "../editorCore.testHelpers";
 import { createDefaultSchema } from "./testSchema";
 
 /** Seeded random structural and text edits over root and children-array blocks. */
@@ -10,12 +10,6 @@ const columns = defineBlock("columns", {
 	isContainer: true,
 	layout: { modes: ["flex"], defaultMode: "flex", minChildren: 2 },
 });
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
 
 /** Small deterministic PRNG so a failure names its seed. */
 export function mulberry32(seed: number): () => number {
@@ -30,10 +24,7 @@ export function mulberry32(seed: number): () => number {
 
 /** An editor with two columns blocks, each holding two children-array paragraphs. */
 export function createNestedEditor(): Editor {
-	const editor = createCoreEditor({
-		schema: createDefaultSchema().extend([columns]),
-		preset: noDefaultExtensionsPreset,
-	});
+	const editor = createEditor({ schema: createDefaultSchema().extend([columns]) });
 	const setup: DocumentOp[] = ["cols", "cols2"].flatMap((parent) => [
 		{ type: "insert-block", blockId: parent, blockType: "columns", props: {}, position: "last" },
 		{ type: "insert-block", blockId: `${parent}-a`, blockType: "paragraph", props: {}, position: { parent, index: 0 } },

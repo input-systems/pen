@@ -168,7 +168,10 @@ describe("@input/pen-react block handle AX3", () => {
 		editor.destroy();
 	});
 
-	it("AX3: Enter opens the drag-handle menu with role=menu", async () => {
+	it.each([
+		["Enter", "Enter"],
+		["Space", " "],
+	])("AX3: %s opens the drag-handle menu with role=menu", async (_name, key) => {
 		const editor = createHandleEditor();
 		const blockId = editor.firstBlock()!.id;
 		const view = await renderHandle({ editor, blockId });
@@ -176,47 +179,20 @@ describe("@input/pen-react block handle AX3", () => {
 		const handle = getHandle(view.container);
 		await act(async () => {
 			handle.focus();
-			dispatchKey(handle, "Enter");
+			dispatchKey(handle, key);
 		});
 
 		const menu = view.container.querySelector(
 			"[data-pen-block-handle-menu]",
 		);
-		expect(menu).not.toBeNull();
 		expect(menu?.getAttribute("role")).toBe("menu");
 		expect(handle.getAttribute("aria-expanded")).toBe("true");
 		expect(handle.getAttribute("aria-controls")).toBe(menu?.id);
-		expect(
-			menu
-				?.querySelector(`[data-pen-command="${PEN_MOVE_BLOCK_UP}"]`)
-				?.getAttribute("role"),
-		).toBe("menuitem");
-		expect(
-			menu
-				?.querySelector(`[data-pen-command="${PEN_MOVE_BLOCK_DOWN}"]`)
-				?.getAttribute("role"),
-		).toBe("menuitem");
-
-		await view.unmount();
-		editor.destroy();
-	});
-
-	it("AX3: Space opens the drag-handle menu", async () => {
-		const editor = createHandleEditor();
-		const blockId = editor.firstBlock()!.id;
-		const view = await renderHandle({ editor, blockId });
-
-		const handle = getHandle(view.container);
-		await act(async () => {
-			handle.focus();
-			dispatchKey(handle, " ");
-		});
-
-		expect(
-			view.container
-				.querySelector("[data-pen-block-handle-menu]")
-				?.getAttribute("role"),
-		).toBe("menu");
+		for (const command of [PEN_MOVE_BLOCK_UP, PEN_MOVE_BLOCK_DOWN]) {
+			expect(
+				menu?.querySelector(`[data-pen-command="${command}"]`)?.getAttribute("role"),
+			).toBe("menuitem");
+		}
 
 		await view.unmount();
 		editor.destroy();

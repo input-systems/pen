@@ -34,6 +34,13 @@ function flushed(root: HTMLElement): Promise<void> {
 	return getRootGeometry(root).scheduler.write(() => {});
 }
 
+/** Binds the announcer to a fresh connected root, released after the test. */
+function bind(editor: ReturnType<typeof createHeadlessEditor>): HTMLElement {
+	const root = document.body.appendChild(document.createElement("div"));
+	fixtures.push({ editor, root, stop: bindEditorAnnouncer(editor, root) });
+	return root;
+}
+
 function liveRegion(root: ParentNode): HTMLElement | null {
 	return root.querySelector('[role="status"]');
 }
@@ -41,10 +48,7 @@ function liveRegion(root: ParentNode): HTMLElement | null {
 describe("bindEditorAnnouncer (AX2)", () => {
 	it("AX2: convert-block writes live-region text from the catalog", async () => {
 		const editor = createHeadlessEditor({ schema: defaultSchema });
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		const stop = bindEditorAnnouncer(editor, root);
-		fixtures.push({ editor, root, stop });
+		const root = bind(editor);
 
 		const blockId = editor.firstBlock()!.id;
 		editor.apply([
@@ -66,10 +70,7 @@ describe("bindEditorAnnouncer (AX2)", () => {
 				"pen.a11y.blockConverted": "TEST-converted {blockType}",
 			},
 		});
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		const stop = bindEditorAnnouncer(editor, root);
-		fixtures.push({ editor, root, stop });
+		const root = bind(editor);
 
 		const blockId = editor.firstBlock()!.id;
 		editor.apply([
@@ -86,10 +87,7 @@ describe("bindEditorAnnouncer (AX2)", () => {
 
 	it("AX2: block selection enter and change announce counts", async () => {
 		const editor = createHeadlessEditor({ schema: defaultSchema });
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		const stop = bindEditorAnnouncer(editor, root);
-		fixtures.push({ editor, root, stop });
+		const root = bind(editor);
 
 		const firstId = editor.firstBlock()!.id;
 		editor.apply([
@@ -115,10 +113,7 @@ describe("bindEditorAnnouncer (AX2)", () => {
 			schema: defaultSchema,
 			extensions: [undoExtension()],
 		});
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		const stop = bindEditorAnnouncer(editor, root);
-		fixtures.push({ editor, root, stop });
+		const root = bind(editor);
 
 		const blockId = editor.firstBlock()!.id;
 		editor.apply([
@@ -135,10 +130,7 @@ describe("bindEditorAnnouncer (AX2)", () => {
 
 	it("AX2: empty-document text caret does not write the live region", async () => {
 		const editor = createHeadlessEditor({ schema: defaultSchema });
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		const stop = bindEditorAnnouncer(editor, root);
-		fixtures.push({ editor, root, stop });
+		const root = bind(editor);
 
 		const first = editor.firstBlock();
 		expect(first).not.toBeNull();
@@ -153,10 +145,7 @@ describe("bindEditorAnnouncer (AX2)", () => {
 
 	it("AX2: bindEditorAnnouncer writes the live region inside the root scheduler's write phase", async () => {
 		const editor = createHeadlessEditor({ schema: defaultSchema });
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		const stop = bindEditorAnnouncer(editor, root);
-		fixtures.push({ editor, root, stop });
+		const root = bind(editor);
 		const region = liveRegion(root)!;
 		const phases: string[] = [];
 		const scheduler = getRootGeometry(root).scheduler;

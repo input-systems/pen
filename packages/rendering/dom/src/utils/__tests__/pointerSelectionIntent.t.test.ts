@@ -12,35 +12,22 @@ import { resolvePointerSelectionIntent } from "../pointerSelection";
 const fixtures: Array<ReturnType<typeof createEditor>> = [];
 
 afterEach(() => {
-	while (fixtures.length > 0) {
-		fixtures.pop()?.destroy();
-	}
+	for (const editor of fixtures.splice(0)) editor.destroy();
 });
 
+/** "Alpha", a divider `d1`, then paragraphs `p1`… holding "Bravo" until `paragraphs` text blocks exist. */
 function createDocument(paragraphs: number) {
 	const editor = createEditor({ schema: defaultSchema });
 	fixtures.push(editor);
 	const first = editor.firstBlock()!.id;
 	const ops: DocumentOp[] = [
 		{ type: "splice-text", blockId: first, from: 0, to: 0, insert: "Alpha" },
-		{
-			type: "insert-block",
-			blockId: "d1",
-			blockType: "divider",
-			props: {},
-			position: "last",
-		},
+		{ type: "insert-block", blockId: "d1", blockType: "divider", props: {}, position: "last" },
 	];
 	for (let index = 1; index < paragraphs; index += 1) {
 		const blockId = `p${index}`;
 		ops.push(
-			{
-				type: "insert-block",
-				blockId,
-				blockType: "paragraph",
-				props: {},
-				position: "last",
-			},
+			{ type: "insert-block", blockId, blockType: "paragraph", props: {}, position: "last" },
 			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Bravo" },
 		);
 	}
@@ -55,11 +42,7 @@ describe("resolvePointerSelectionIntent", () => {
 		const anchor = { blockId: first, offset: 2 };
 		const focus = { blockId: "p1", offset: 3 };
 
-		const resolved = resolvePointerSelectionIntent(
-			snapshot,
-			{ anchor },
-			{ kind: "drag", focus },
-		);
+		const resolved = resolvePointerSelectionIntent(snapshot, { anchor }, { kind: "drag", focus });
 
 		expect(resolved).toEqual(
 			convertPointerDrag(
@@ -73,9 +56,7 @@ describe("resolvePointerSelectionIntent", () => {
 
 	it("T2: a drag across a divider stays a text selection", () => {
 		const { editor, first } = createDocument(2);
-		const snapshot = buildTransitionSnapshot(editor, {
-			blockIds: [first, "d1"],
-		});
+		const snapshot = buildTransitionSnapshot(editor, { blockIds: [first, "d1"] });
 
 		const resolved = resolvePointerSelectionIntent(
 			snapshot,

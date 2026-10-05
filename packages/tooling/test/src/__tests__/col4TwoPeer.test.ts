@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-	createTwoPeerHarness,
 	resetTestIdCounter,
 	runBothInterleavings,
 	TWO_PEER_INTERLEAVINGS,
@@ -12,7 +11,8 @@ beforeEach(() => {
 });
 
 // The COL4 rows live in col4NPeer.test.ts at two, three, and five peers.
-// This file keeps createTwoPeerHarness's own contract.
+// This file keeps createTwoPeerHarness's own contract; divergence detection
+// is covered in peerHarness.test.ts ("createTwoPeerHarness keeps its contract").
 describe("COL4 two-peer harness contract", () => {
 	it("COL4: harness uses two adapters and incremental encodeUpdate/applyUpdate", () => {
 		runBothInterleavings(
@@ -22,24 +22,8 @@ describe("COL4 two-peer harness contract", () => {
 				expect(harness.peer("a")).toBe(harness.peerA);
 				expect(harness.peer("b")).toBe(harness.peerB);
 
-				harness.peerA.editor.apply([
-					{
-						type: "splice-text",
-						blockId: "p1",
-						from: 5,
-				to: 5,
-				insert: " A",
-					},
-				]);
-				harness.peerB.editor.apply([
-					{
-						type: "splice-text",
-						blockId: "p1",
-						from: 5,
-				to: 5,
-				insert: " B",
-					},
-				]);
+				harness.peerA.editor.apply([{ type: "splice-text", blockId: "p1", from: 5, to: 5, insert: " A" }]);
+				harness.peerB.editor.apply([{ type: "splice-text", blockId: "p1", from: 5, to: 5, insert: " B" }]);
 
 				const { fromA, fromB } = harness.captureUpdates();
 				const fullA = harness.peerA.adapter.encodeState(harness.peerA.crdtDoc);
@@ -72,22 +56,4 @@ describe("COL4 two-peer harness contract", () => {
 		expect(seen).toEqual([...TWO_PEER_INTERLEAVINGS]);
 	});
 
-	it("assertConverged throws when peers diverge and nobody syncs", () => {
-		const harness = createTwoPeerHarness({
-			blocks: [{ id: "p1", type: "paragraph", content: "Hello" }],
-		});
-		try {
-			harness.peerA.editor.apply(
-				[{ type: "splice-text", blockId: "p1", from: 5,
-				to: 5,
-				insert: " A" }],
-				{ origin: "user" },
-			);
-			expect(() => harness.assertConverged()).toThrow(
-				/Two-peer documents did not converge/,
-			);
-		} finally {
-			harness.destroy();
-		}
-	});
 });

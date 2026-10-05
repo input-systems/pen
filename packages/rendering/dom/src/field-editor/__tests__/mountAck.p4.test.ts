@@ -62,11 +62,7 @@ const fixtures: Array<{
 }> = [];
 
 afterEach(() => {
-	while (fixtures.length > 0) {
-		const fixture = fixtures.pop();
-		if (!fixture) {
-			break;
-		}
+	for (const fixture of fixtures.splice(0)) {
 		fixture.fieldEditor.destroy();
 		fixture.root.remove();
 		fixture.editor.destroy();
@@ -74,70 +70,64 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
+/** A focused root with no mounted blocks; the first block reads `text`. */
+function seed(text = "Hi") {
+	const editor = createEditor({ schema: defaultSchema });
+	const fieldEditor = new ProbeFieldEditor(editor);
+	const root = document.createElement("div");
+	document.body.appendChild(root);
+	fixtures.push({ editor, fieldEditor, root });
+	fieldEditor.setRootElement(root);
+	focusEditorRoot(root);
+	const blockId = editor.firstBlock()!.id;
+	if (text) {
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: text },
+		]);
+	}
+	const unmounted: DiagnosticEvent[] = [];
+	editor.on("diagnostic", (event) => {
+		if (event.code === "selection-target-unmounted") unmounted.push(event);
+	});
+	const version = () => getEditorSelectionRecord(editor)!.version;
+	return { editor, fieldEditor, root, blockId, unmounted, version };
+}
+
 describe("mount ack and parked projections", () => {
 	beforeEach(() => {
 		installMockRaf();
 	});
 
-	it("P4: selection-target-unmounted fires once when the flush after the park ends unacked", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const fieldEditor = new ProbeFieldEditor(editor);
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		fixtures.push({ editor, fieldEditor, root });
-		fieldEditor.setRootElement(root);
-		focusEditorRoot(root);
-
-		const diagnostics: DiagnosticEvent[] = [];
-		editor.on("diagnostic", (event) => {
-			if (event.code === "selection-target-unmounted")
-				diagnostics.push(event);
-		});
-
-		const blockId = editor.firstBlock()!.id;
-		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hi" },
-		]);
+	it("P4: selection-target-unmounted fires once when the flush after the park ends unacked; a later ack still projects", () => {
+		const { editor, fieldEditor, root, blockId, unmounted, version } =
+			seed();
 		fieldEditor.activate(blockId);
 		editor.selectText(blockId, 2, 2);
-		const version = getEditorSelectionRecord(editor)!.version;
-		expect(fieldEditor.parkedProjectionVersion).toBe(version);
-		expect(diagnostics).toHaveLength(0);
+		expect(fieldEditor.parkedProjectionVersion).toBe(version());
+		expect(unmounted).toHaveLength(0);
 
 		flushFrame();
-		expect(diagnostics).toEqual([
+		expect(unmounted).toEqual([
 			expect.objectContaining({
 				code: "selection-target-unmounted",
-				version,
+				version: version(),
 				blockId,
 				mountRequested: false,
 			}),
 		]);
 
 		flushFrame();
-		expect(diagnostics).toHaveLength(1);
+		expect(unmounted).toHaveLength(1);
 
 		// The park stays: a later ack still projects.
-		const block = mountBlock(root, blockId, "Hi");
-		fieldEditor.ackBlockMounted(blockId, block);
+		fieldEditor.ackBlockMounted(blockId, mountBlock(root, blockId, "Hi"));
 		expect(fieldEditor.parkedProjectionVersion).toBeNull();
-		expect(fieldEditor.lastProjectedVersion).toBe(version);
+		expect(fieldEditor.lastProjectedVersion).toBe(version());
 	});
 
 	it("P4: a mount requester is asked before the unmounted check and an in-task ack silences it", async () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const fieldEditor = new ProbeFieldEditor(editor);
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		fixtures.push({ editor, fieldEditor, root });
-		fieldEditor.setRootElement(root);
-		focusEditorRoot(root);
-
-		const diagnostics: DiagnosticEvent[] = [];
-		editor.on("diagnostic", (event) => {
-			if (event.code === "selection-target-unmounted")
-				diagnostics.push(event);
-		});
+		const { editor, fieldEditor, root, blockId, unmounted, version } =
+			seed();
 		const requests: Array<{ blockId: string; version: number }> = [];
 		fieldEditor.setMountRequester({
 			requestMount: (blockId, request) => {
@@ -150,36 +140,19 @@ describe("mount ack and parked projections", () => {
 				});
 			},
 		});
-
-		const blockId = editor.firstBlock()!.id;
-		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hi" },
-		]);
 		fieldEditor.activate(blockId);
 		editor.selectText(blockId, 2, 2);
-		const version = getEditorSelectionRecord(editor)!.version;
-		expect(requests).toContainEqual({ blockId, version });
+		expect(requests).toContainEqual({ blockId, version: version() });
 
 		await Promise.resolve();
 		flushFrame();
 		expect(fieldEditor.parkedProjectionVersion).toBeNull();
-		expect(fieldEditor.lastProjectedVersion).toBe(version);
-		expect(diagnostics).toHaveLength(0);
+		expect(fieldEditor.lastProjectedVersion).toBe(version());
+		expect(unmounted).toHaveLength(0);
 	});
 
 	it("discards a parked projection when a newer version parks", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const fieldEditor = new ProbeFieldEditor(editor);
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		fixtures.push({ editor, fieldEditor, root });
-		fieldEditor.setRootElement(root);
-		focusEditorRoot(root);
-
-		const blockId = editor.firstBlock()!.id;
-		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hi" },
-		]);
+		const { editor, fieldEditor, blockId, version } = seed();
 		fieldEditor.activate(blockId);
 		editor.selectText(blockId, 0, 0);
 		flushFrame();
@@ -188,76 +161,25 @@ describe("mount ack and parked projections", () => {
 
 		editor.selectText(blockId, 2, 2);
 		flushFrame();
-		const secondParked = fieldEditor.parkedProjectionVersion;
-		expect(secondParked).toBe(getEditorSelectionRecord(editor)!.version);
-		expect(secondParked).toBeGreaterThan(firstParked!);
-	});
-
-	it("projects a parked version on ack without a scheduler flush", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const fieldEditor = new ProbeFieldEditor(editor);
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		fixtures.push({ editor, fieldEditor, root });
-		fieldEditor.setRootElement(root);
-		focusEditorRoot(root);
-
-		const blockId = editor.firstBlock()!.id;
-		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hi" },
-		]);
-		fieldEditor.activate(blockId);
-		editor.selectText(blockId, 2, 2);
-		flushFrame();
-		expect(fieldEditor.parkedProjectionVersion).not.toBeNull();
-
-		const block = mountBlock(root, blockId, "Hi");
-		fieldEditor.ackBlockMounted(blockId, block);
-
-		expect(fieldEditor.parkedProjectionVersion).toBeNull();
-		expect(fieldEditor.lastProjectedVersion).toBe(
-			getEditorSelectionRecord(editor)!.version,
-		);
+		expect(fieldEditor.parkedProjectionVersion).toBe(version());
+		expect(version()).toBeGreaterThan(firstParked!);
 	});
 
 	it("P4: an ack for the parked block projects in the ack's turn", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const fieldEditor = new ProbeFieldEditor(editor);
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		fixtures.push({ editor, fieldEditor, root });
-		fieldEditor.setRootElement(root);
-		focusEditorRoot(root);
-
-		const blockId = editor.firstBlock()!.id;
-		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hi" },
-		]);
+		const { editor, fieldEditor, root, blockId, version } = seed();
 		fieldEditor.activate(blockId);
 		editor.selectText(blockId, 1, 1);
 		expect(fieldEditor.parkedProjectionVersion).not.toBeNull();
 
 		// No flush: the ack itself projects.
-		const block = mountBlock(root, blockId, "Hi");
-		fieldEditor.ackBlockMounted(blockId, block);
+		fieldEditor.ackBlockMounted(blockId, mountBlock(root, blockId, "Hi"));
 		expect(fieldEditor.parkedProjectionVersion).toBeNull();
-		expect(fieldEditor.lastProjectedVersion).toBe(
-			getEditorSelectionRecord(editor)!.version,
-		);
+		expect(fieldEditor.lastProjectedVersion).toBe(version());
 	});
 
 	it("P4: an ack for any other block is a no-op", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const fieldEditor = new ProbeFieldEditor(editor);
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		fixtures.push({ editor, fieldEditor, root });
-		fieldEditor.setRootElement(root);
-		focusEditorRoot(root);
-
-		const blockId = editor.firstBlock()!.id;
+		const { editor, fieldEditor, root, blockId } = seed();
 		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hi" },
 			{
 				type: "insert-block",
 				blockId: "other",
@@ -274,30 +196,14 @@ describe("mount ack and parked projections", () => {
 		// The parked block's element exists but has not acked; an ack for a
 		// different block must not resolve the park through it.
 		mountBlock(root, blockId, "Hi");
-		const other = mountBlock(root, "other", "");
-		fieldEditor.ackBlockMounted("other", other);
+		fieldEditor.ackBlockMounted("other", mountBlock(root, "other", ""));
 		expect(fieldEditor.parkedProjectionVersion).toBe(parked);
 		expect(fieldEditor.lastProjectedVersion).toBe(0);
 	});
 
 	it("does not write the previous field into a remounted parked target", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const fieldEditor = new ProbeFieldEditor(editor);
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		fixtures.push({ editor, fieldEditor, root });
-		fieldEditor.setRootElement(root);
-		focusEditorRoot(root);
-
-		const liveId = editor.firstBlock()!.id;
+		const { editor, fieldEditor, root, blockId: liveId } = seed("Alive");
 		editor.apply([
-			{
-				type: "splice-text",
-				blockId: liveId,
-				from: 0,
-				to: 0,
-				insert: "Alive",
-			},
 			{
 				type: "insert-block",
 				blockId: "parked",
@@ -323,36 +229,22 @@ describe("mount ack and parked projections", () => {
 		const remounted = mountBlock(root, "parked", "Parked");
 		fieldEditor.ackBlockMounted("parked", remounted);
 
-		expect(
-			remounted.querySelector(`[${DATA_ATTRS.inlineContent}]`)
-				?.textContent,
-		).toBe("Parked");
-		expect(
-			live.querySelector(`[${DATA_ATTRS.inlineContent}]`)?.textContent,
-		).toBe("Alive");
+		const inlineText = (block: HTMLElement) =>
+			block.querySelector(`[${DATA_ATTRS.inlineContent}]`)?.textContent;
+		expect(inlineText(remounted)).toBe("Parked");
+		expect(inlineText(live)).toBe("Alive");
 		expect(fieldEditor.focusBlockId).toBe("parked");
 	});
 
 	it("resolves waitForAttachment same-turn when the ack never comes", async () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const fieldEditor = new ProbeFieldEditor(editor);
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		fixtures.push({ editor, fieldEditor, root });
-		fieldEditor.setRootElement(root);
-		focusEditorRoot(root);
-
-		const blockId = editor.firstBlock()!.id;
+		const { editor, fieldEditor, root, blockId, version } = seed("");
 		fieldEditor.activate(blockId);
 		editor.selectText(blockId, 0, 0);
 		flushFrame();
 		expect(fieldEditor.parkedProjectionVersion).not.toBeNull();
 
-		const attached = await fieldEditor.waitForAttachment(blockId);
-		expect(attached).toBe(false);
-		expect(fieldEditor.parkedProjectionVersion).toBe(
-			getEditorSelectionRecord(editor)!.version,
-		);
+		expect(await fieldEditor.waitForAttachment(blockId)).toBe(false);
+		expect(fieldEditor.parkedProjectionVersion).toBe(version());
 		expect(getRootGeometry(root).scheduler.phase).toBe("idle");
 	});
 });

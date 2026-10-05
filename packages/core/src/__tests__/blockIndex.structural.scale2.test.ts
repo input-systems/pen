@@ -5,10 +5,8 @@ import * as Y from "yjs";
 
 import type { BlockIndex } from "../changes/blockIndex";
 import { createBlockIndexSnapshotFromDocument } from "../changes/fromDocument";
-import { createEditor as createCoreEditor } from "../index";
+import { createEditor } from "./editorCore.testHelpers";
 import { createNestedEditor, mulberry32, randomOp } from "./fixtures/structuralEdits";
-import { createDefaultSchema } from "./fixtures/testSchema";
-import { noDefaultExtensionsPreset } from "./ops.testHelpers";
 
 function heldIndex(editor: Editor): ReturnType<BlockIndex["snapshot"]> {
 	return (editor as unknown as { _blockIndex: BlockIndex })._blockIndex.snapshot();
@@ -56,12 +54,7 @@ describe("change-summary block index on structural commits", () => {
 			const adapter = yjsAdapter({ gc: false });
 			const document = adapter.loadDocument(seed);
 			(adapter.raw<Y.Doc>(document) as unknown as { clientID: number }).clientID = clientID;
-			return createCoreEditor({
-				schema: createDefaultSchema(),
-				crdt: adapter,
-				document,
-				preset: noDefaultExtensionsPreset,
-			});
+			return createEditor({ crdt: adapter, document });
 		});
 		const [local, remote] = peers as [Editor, Editor];
 		const rawDoc = (editor: Editor) => editor.internals.adapter.raw<Y.Doc>(editor.internals.crdtDoc);

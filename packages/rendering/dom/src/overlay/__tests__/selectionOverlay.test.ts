@@ -310,67 +310,35 @@ describe("local-selection contributor (§3.5)", () => {
 			isEditing: false,
 		} as const;
 
-		it("S2: a remote append to the first block extends range:first", () => {
-			editor = createDocument();
-			const read = reader(text(["b2", 3], ["b55", 2]), surface);
-			expect(read()).toContainEqual(
-				expect.objectContaining({
-					key: "range:first",
-					focus: { blockId: "b2", offset: 6 },
-				}),
-			);
-			editor.apply([splice("b2", 6, "!!")], { origin: "collaborator" });
-			expect(read()).toContainEqual(
-				expect.objectContaining({
-					key: "range:first",
-					focus: { blockId: "b2", offset: 8 },
-				}),
-			);
-		});
-
-		it("S2: a remote delete of the first covered block moves range:covered", () => {
-			editor = createDocument();
-			const read = reader(text(["b2", 3], ["b55", 2]), surface);
-			expect(read()).toContainEqual(
-				expect.objectContaining({
-					key: "range:covered",
-					fromBlockId: "b3",
-				}),
-			);
-			editor.apply([{ type: "delete-block", blockId: "b3" }], {
-				origin: "collaborator",
-			});
-			expect(read()).toContainEqual(
-				expect.objectContaining({
-					key: "range:covered",
-					fromBlockId: "b4",
-					toBlockId: "b54",
-				}),
-			);
-		});
-
-		it("S2: a remote insert after the first block joins range:covered", () => {
+		const insertAfterB2: DocumentOp = {
+			type: "insert-block",
+			blockId: "x",
+			blockType: "paragraph",
+			props: {},
+			position: { after: "b2" },
+		};
+		it.each<[string, DocumentOp, Record<string, unknown>]>([
+			[
+				"a remote append to the first block extends range:first",
+				splice("b2", 6, "!!"),
+				{ key: "range:first", focus: { blockId: "b2", offset: 8 } },
+			],
+			[
+				"a remote delete of the first covered block moves range:covered",
+				{ type: "delete-block", blockId: "b3" },
+				{ key: "range:covered", fromBlockId: "b4", toBlockId: "b54" },
+			],
+			[
+				"a remote insert after the first block joins range:covered",
+				insertAfterB2,
+				{ key: "range:covered", fromBlockId: "x" },
+			],
+		])("S2: %s", (_name, op, expected) => {
 			editor = createDocument();
 			const read = reader(text(["b2", 3], ["b55", 2]), surface);
 			read();
-			editor.apply(
-				[
-					{
-						type: "insert-block",
-						blockId: "x",
-						blockType: "paragraph",
-						props: {},
-						position: { after: "b2" },
-					},
-				],
-				{ origin: "collaborator" },
-			);
-			expect(read()).toContainEqual(
-				expect.objectContaining({
-					key: "range:covered",
-					fromBlockId: "x",
-				}),
-			);
+			editor.apply([op], { origin: "collaborator" });
+			expect(read()).toContainEqual(expect.objectContaining(expected));
 		});
 
 		it("O3: a remote insert inside a selected run splits the span", () => {

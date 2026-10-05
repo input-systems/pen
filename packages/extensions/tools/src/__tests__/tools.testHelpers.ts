@@ -2,6 +2,8 @@ import type { ApplyOptions, DocumentOp, Editor } from "@input/pen-types";
 import { defaultSchema } from "./fixtures/testSchema";
 import { vi } from "vitest";
 
+type TextDelta = { insert: string; attributes?: Record<string, unknown> };
+
 export function createFakeEditor(
 	documentProfile: Editor["documentProfile"],
 ): Editor {
@@ -16,55 +18,36 @@ export function createFakeEditor(
 	} as unknown as Editor;
 }
 
+/** A block handle whose text is `text` unless `textContent`/`textDeltas` say otherwise. */
 export function createMockBlockHandle(input: {
 	id: string;
 	type: string;
+	text?: string;
 	props?: Record<string, unknown>;
-	children?: unknown[];
-	textContent: (options?: { resolved?: boolean }) => string;
-	textDeltas: () => Array<{
-		insert: string;
-		attributes?: Record<string, unknown>;
-	}>;
-	prev?: unknown;
-	next?: unknown;
-}): {
-	id: string;
-	type: string;
-	props: Record<string, unknown>;
-	children: unknown[];
-	textContent: (options?: { resolved?: boolean }) => string;
-	textDeltas: () => Array<{
-		insert: string;
-		attributes?: Record<string, unknown>;
-	}>;
-	tableRowCount: () => number;
-	tableColumnCount: () => number;
-	tableCell: () => null;
-	tableRow: () => null;
-	tableColumns: () => never[];
-	prev?: unknown;
-	next?: unknown;
-	as: (capability: string) => unknown;
-} {
-	const handle = {
+	textContent?: (options?: { resolved?: boolean }) => string;
+	textDeltas?: () => TextDelta[];
+	tableRowCount?: () => number;
+	tableColumnCount?: () => number;
+	tableColumns?: () => Array<{ id: string; title: string; type: "text" }>;
+}) {
+	const { text = "", ...rest } = input;
+	return {
 		props: {},
-		children: [],
-		prev: null,
-		next: null,
-		...input,
+		children: [] as unknown[],
+		textContent: () => text,
+		textDeltas: (): TextDelta[] => (text ? [{ insert: text }] : []),
 		tableRowCount: () => 0,
 		tableColumnCount: () => 0,
 		tableCell: () => null,
 		tableRow: () => null,
 		tableColumns: () => [],
+		...rest,
 		as(capability: string) {
-			return capability === "table" && handle.type === "table"
-				? handle
+			return capability === "table" && this.type === "table"
+				? this
 				: null;
 		},
 	};
-	return handle;
 }
 
 export function createReadDocumentEditor(): Editor {
@@ -72,18 +55,12 @@ export function createReadDocumentEditor(): Editor {
 		createMockBlockHandle({
 			id: "block-1",
 			type: "paragraph",
-			props: {},
-			children: [],
-			textContent: (options?: { resolved?: boolean }) =>
-				options?.resolved ? "First accepted" : "First accepted",
-			textDeltas: () => [{ insert: "First accepted" }],
+			text: "First accepted",
 		}),
 		createMockBlockHandle({
 			id: "block-2",
 			type: "paragraph",
-			props: {},
-			children: [],
-			textContent: (options?: { resolved?: boolean }) =>
+			textContent: (options) =>
 				options?.resolved ? "Second" : "Second draft",
 			textDeltas: () => [
 				{ insert: "Second" },
@@ -96,17 +73,9 @@ export function createReadDocumentEditor(): Editor {
 		createMockBlockHandle({
 			id: "block-3",
 			type: "heading",
-			props: {},
-			children: [],
-			textContent: (options?: { resolved?: boolean }) =>
-				options?.resolved ? "Third" : "Third",
-			textDeltas: () => [{ insert: "Third" }],
+			text: "Third",
 		}),
-	] as const;
-	for (const block of blocks) {
-		delete (block as { prev?: unknown }).prev;
-		delete (block as { next?: unknown }).next;
-	}
+	];
 
 	return {
 		documentProfile: "structured",
@@ -116,6 +85,15 @@ export function createReadDocumentEditor(): Editor {
 		blocks: () => blocks,
 		getBlock: (blockId: string) =>
 			blocks.find((block) => block.id === blockId) ?? null,
+		internals: {
+			doc: {
+				blockOrder: {
+					length: 3,
+					get: (index: number) => blocks[index]?.id,
+				},
+				blocks: { get: () => undefined },
+			},
+		},
 		getSelection: () => ({
 			type: "text",
 			anchor: { blockId: "block-2", offset: 0 },
@@ -130,57 +108,23 @@ export function createStructuredTargetEditor(
 	documentProfile: Editor["documentProfile"] = "structured",
 ): Editor {
 	const blocks = [
-		{
+		createMockBlockHandle({
 			id: "paragraph-1",
 			type: "paragraph",
-			props: {},
-			children: [],
-			textContent: () => "Paragraph",
-			textDeltas: () => [{ insert: "Paragraph" }],
-			tableRowCount: () => 0,
-			tableColumnCount: () => 0,
-			tableColumns: () => [],
-			as(capability: string) {
-				return capability === "table" && this.type === "table"
-					? this
-					: null;
-			},
-		},
-		{
+			text: "Paragraph",
+		}),
+		createMockBlockHandle({
 			id: "table-1",
 			type: "table",
 			props: { hasHeaderRow: true },
-			children: [],
-			textContent: () => "",
-			textDeltas: () => [],
 			tableRowCount: () => 3,
 			tableColumnCount: () => 2,
 			tableColumns: () => [
-				{ id: "col-1", title: "Name", type: "text" as const },
-				{ id: "col-2", title: "Status", type: "text" as const },
+				{ id: "col-1", title: "Name", type: "text" },
+				{ id: "col-2", title: "Status", type: "text" },
 			],
-			as(capability: string) {
-				return capability === "table" && this.type === "table"
-					? this
-					: null;
-			},
-		},
-		{
-			id: "subdocument-1",
-			type: "subdocument",
-			props: {},
-			children: [],
-			textContent: () => "",
-			textDeltas: () => [],
-			tableRowCount: () => 0,
-			tableColumnCount: () => 0,
-			tableColumns: () => [],
-			as(capability: string) {
-				return capability === "table" && this.type === "table"
-					? this
-					: null;
-			},
-		},
+		}),
+		createMockBlockHandle({ id: "subdocument-1", type: "subdocument" }),
 	];
 
 	return {
@@ -205,31 +149,16 @@ export function createNestedDocumentEditor(): Editor {
 			id: "heading-1",
 			type: "heading",
 			props: { level: 1 },
-			children: [],
-			textContent: () => "Architecture",
-			textDeltas: () => [{ insert: "Architecture" }],
+			text: "Architecture",
 		}),
-		createMockBlockHandle({
-			id: "layout-1",
-			type: "columns",
-			props: {},
-			children: [],
-			textContent: () => "",
-			textDeltas: () => [],
-		}),
+		createMockBlockHandle({ id: "layout-1", type: "columns" }),
 	];
 	const nestedBlocks = [
-		topLevelBlocks[0],
-		topLevelBlocks[1],
+		...topLevelBlocks,
 		createMockBlockHandle({
 			id: "paragraph-1",
 			type: "paragraph",
-			props: {},
-			children: [],
-			textContent: () => "Fast apply preserves stable block identity.",
-			textDeltas: () => [
-				{ insert: "Fast apply preserves stable block identity." },
-			],
+			text: "Fast apply preserves stable block identity.",
 		}),
 	];
 

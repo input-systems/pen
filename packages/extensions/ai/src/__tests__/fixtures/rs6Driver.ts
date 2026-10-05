@@ -50,7 +50,8 @@ export interface Rs6Turn {
 	readonly generation: GenerationState;
 }
 
-function idleModel(): ModelAdapter {
+/** A model that ends every turn at once. */
+export function idleModel(): ModelAdapter {
 	return {
 		async *stream() {
 			yield { type: "done" } as ModelStreamEvent;

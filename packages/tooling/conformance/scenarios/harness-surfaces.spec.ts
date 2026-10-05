@@ -15,7 +15,6 @@ for (const surface of ["react", "vue", "vanilla"] as const) {
 			await page.evaluate(() => window.__penConformance.focusText(0));
 			await page.keyboard.press("End");
 			await page.keyboard.type(" again");
-
 			await expect
 				.poll(() => page.evaluate(() => window.__penConformance.documentText))
 				.toBe("Hello world again");

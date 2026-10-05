@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../src/checkReport";
 import { scenario } from "../src/scenario";
+import type { ScenarioApi } from "../src/types";
 import { snapshotBytes } from "../suites/specHelpers";
 
 /**
@@ -31,9 +32,12 @@ import { snapshotBytes } from "../suites/specHelpers";
 const TABLE_ID = "fe6-parity-table";
 const CELL_CAPABILITY_UNSUPPORTED = "cell-capability-unsupported";
 
-async function seedTable(
-	s: Parameters<Parameters<typeof scenario>[1]>[0],
-): Promise<void> {
+/** A check-report message whose outcome is `ok`. */
+function check(label: string, ok: boolean, detail: string): string {
+	return formatCheckReport(label, ok ? "passed" : "failed", detail);
+}
+
+async function seedTable(s: ScenarioApi): Promise<void> {
 	await s.load("hello-world");
 	await s.apply([
 		{
@@ -144,29 +148,24 @@ scenario(
 
 		expect(
 			afterCaretMove,
-			formatCheckReport(
+			check(
 				"FE6: ArrowLeft moved the cell caret, so the insert landed before the last character",
-				afterCaretMove === "alphaYX" ? "passed" : "failed",
+				afterCaretMove === "alphaYX",
 				`cell text=${afterCaretMove}`,
 			),
 		).toBe("alphaYX");
-
 		expect(
 			activeAfterTab,
-			formatCheckReport(
+			check(
 				"FE6: Tab moved the field editor to the next cell",
-				activeAfterTab?.col === "1" ? "passed" : "failed",
+				activeAfterTab?.col === "1",
 				`active cell=${JSON.stringify(activeAfterTab)}`,
 			),
 		).toEqual({ row: "0", col: "1" });
-
+		const undone = afterUndo !== beforeUndo;
 		expect(
-			afterUndo !== beforeUndo,
-			formatCheckReport(
-				"FE6: undo reverted a cell edit",
-				afterUndo !== beforeUndo ? "passed" : "failed",
-				`${beforeUndo} → ${afterUndo}`,
-			),
+			undone,
+			check("FE6: undo reverted a cell edit", undone, `${beforeUndo} → ${afterUndo}`),
 		).toBe(true);
 	},
 );
@@ -239,13 +238,9 @@ scenario(
 
 		expect(
 			[activated.text, moved.text, typed.text],
-			formatCheckReport(
+			check(
 				"FE6: activation, arrows and typing move CellSelection.text",
-				activated.text?.focus === 5 &&
-					moved.text?.focus === 3 &&
-					typed.text?.focus === 4
-					? "passed"
-					: "failed",
+				activated.text?.focus === 5 && moved.text?.focus === 3 && typed.text?.focus === 4,
 				JSON.stringify(steps),
 			),
 		).toEqual([
@@ -256,28 +251,26 @@ scenario(
 		for (const [name, step] of Object.entries(steps)) {
 			expect(
 				step.native,
-				formatCheckReport(
+				check(
 					`S2: the native caret shows CellSelection.text after ${name}`,
-					step.native !== null && step.native === step.text?.focus
-						? "passed"
-						: "failed",
+					step.native !== null && step.native === step.text?.focus,
 					JSON.stringify(step),
 				),
 			).toBe(step.text?.focus);
 		}
 		expect(
 			clicked.text?.focus,
-			formatCheckReport(
+			check(
 				"FE6: a click inside the edited cell writes CellSelection.text",
-				clicked.text?.focus === 0 ? "passed" : "failed",
+				clicked.text?.focus === 0,
 				JSON.stringify(clicked),
 			),
 		).toBe(0);
 		expect(
 			clicked.mismatches,
-			formatCheckReport(
+			check(
 				"FE6: editing a cell projects without a selection-projection-mismatch",
-				clicked.mismatches === 0 ? "passed" : "failed",
+				clicked.mismatches === 0,
 				`mismatches=${clicked.mismatches}`,
 			),
 		).toBe(0);
@@ -327,26 +320,16 @@ scenario(
 			);
 		});
 
-		const before = snapshotBytes(
-			await page.evaluate(() =>
-				window.__penConformance.documentSnapshot(),
-			),
-		);
+		const readBytes = async () =>
+			snapshotBytes(await page.evaluate(() => window.__penConformance.documentSnapshot()));
+		const before = await readBytes();
 		await page.keyboard.press("ControlOrMeta+b");
-		const after = snapshotBytes(
-			await page.evaluate(() =>
-				window.__penConformance.documentSnapshot(),
-			),
-		);
+		const after = await readBytes();
 
 		const inputTypes = await page.evaluate(
-			() =>
-				(window as unknown as { __fe6InputTypes: string[] })
-					.__fe6InputTypes,
+			() => (window as unknown as { __fe6InputTypes: string[] }).__fe6InputTypes,
 		);
-		const diagnostics = await page.evaluate(
-			() => window.__penConformance.diagnostics,
-		);
+		const diagnostics = await page.evaluate(() => window.__penConformance.diagnostics);
 		const declines = diagnostics.filter(
 			(event) => event.code === CELL_CAPABILITY_UNSUPPORTED,
 		);
@@ -368,42 +351,40 @@ scenario(
 
 		expect(
 			after,
-			formatCheckReport(
+			check(
 				"FE6: a mark toggle leaves a cell's document bytes untouched",
-				before === after ? "passed" : "failed",
+				before === after,
 				before === after ? "unchanged" : "document changed",
 			),
 		).toBe(before);
 
 		expect(
 			inputTypes,
-			formatCheckReport(
+			check(
 				"FE6: the declined accelerator is not followed by a native formatBold",
-				inputTypes.length === 0 ? "passed" : "failed",
+				inputTypes.length === 0,
 				`${browserName} inputTypes=${JSON.stringify(inputTypes)}`,
 			),
 		).toEqual([]);
 
 		expect(
 			declines.length,
-			formatCheckReport(
+			check(
 				"FE6: the decline is observable, once, on every engine",
-				declines.length === 1 ? "passed" : "failed",
+				declines.length === 1,
 				`${browserName} diagnostics=${JSON.stringify(diagnostics)}`,
 			),
 		).toBe(1);
 
+		const message = declined?.message ?? "";
+		const expectedMessage = "marks are not supported inside a table cell";
 		expect(
-			declined?.message ?? "",
-			formatCheckReport(
+			message,
+			check(
 				"FE6: the diagnostic names the capability and the surface",
-				/marks are not supported inside a table cell/.test(
-					declined?.message ?? "",
-				)
-					? "passed"
-					: "failed",
+				message.includes(expectedMessage),
 				`message=${declined?.message}`,
 			),
-		).toContain("marks are not supported inside a table cell");
+		).toContain(expectedMessage);
 	},
 );

@@ -1,22 +1,17 @@
-import { expect, test, type Page } from "@playwright/test";
-import { formatCheckReport } from "../../src/checkReport";
+import { expect, type Page } from "@playwright/test";
 import {
+	expectCheck,
 	itemsOfKind,
 	localCarets,
+	readCaretOverlay,
 	readSettledLayer,
 } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
-import { logLoad, readSelection } from "../specHelpers";
-
+import { attachJson, attachLoadavg, readSelection } from "../specHelpers";
 
 type NativeSnapshot = {
 	collapsed: boolean | null;
 	rangeCount: number;
-};
-
-type OverlaySnapshot = {
-	kind: "present" | "absent" | "unchecked";
-	reason: string;
 };
 
 async function readNative(page: Page): Promise<NativeSnapshot> {
@@ -29,34 +24,9 @@ async function readNative(page: Page): Promise<NativeSnapshot> {
 	});
 }
 
-async function readOverlay(page: Page): Promise<OverlaySnapshot> {
-	return page.evaluate(() => {
-		const overlay = document.querySelector("[data-pen-overlay-layer]");
-		if (!(overlay instanceof HTMLElement)) {
-			return {
-				kind: "unchecked" as const,
-				reason: "the overlay layer is not mounted",
-			};
-		}
-		const caret = document.querySelector("[data-pen-editor-caret]");
-		const visible = overlay.hasAttribute("data-caret-visible");
-		if (!(caret instanceof HTMLElement) || !visible) {
-			return {
-				kind: "absent" as const,
-				reason: "overlay caret is not drawn",
-			};
-		}
-		return {
-			kind: "present" as const,
-			reason: "overlay caret is drawn over a multi-block text range",
-		};
-	});
-}
-
 scenario(
 	"O4: a multi-block text drag keeps the native selection visible",
 	async (s, page) => {
-		const loads = logLoad("O4");
 		await s.load("two-paragraph");
 		await s.mouse.dragText({
 			from: { blockId: "two-p1", offset: 2 },
@@ -65,53 +35,28 @@ scenario(
 
 		const selection = await readSelection(page);
 		const native = await readNative(page);
-		const overlay = await readOverlay(page);
+		const overlay = await readCaretOverlay(page);
 		const multiBlock =
 			selection?.type === "text" &&
 			selection.anchor.blockId !== selection.focus.blockId;
-		await test.info().attach("o4-multiblock", {
-			body: JSON.stringify(
-				{ loadavg: loads, selection, native, overlay, multiBlock },
-				null,
-				2,
-			),
-			contentType: "application/json",
-		});
+		await attachLoadavg("o4-multiblock", { selection, native, overlay, multiBlock });
 
-		expect(
+		expectCheck(
+			"O4: drag stayed a multi-block text selection",
 			multiBlock,
-			formatCheckReport(
-				"O4: drag stayed a multi-block text selection",
-				multiBlock ? "passed" : "failed",
-				`selection=${JSON.stringify(selection)}`,
-			),
-		).toBe(true);
-		expect(
+			`selection=${JSON.stringify(selection)}`,
+		);
+		expectCheck(
+			"O4: native selection stays visible across blocks",
 			native.collapsed === false && native.rangeCount > 0,
-			formatCheckReport(
-				"O4: native selection stays visible across blocks",
-				native.collapsed === false && native.rangeCount > 0
-					? "passed"
-					: "failed",
-				`native=${JSON.stringify(native)}`,
-			),
-		).toBe(true);
-		expect(
-			overlay.kind === "unchecked" ? "unchecked" : "checked",
-			formatCheckReport(
-				"O4: overlay host was checkable",
-				overlay.kind === "unchecked" ? "skipped" : "passed",
-				overlay.reason,
-			),
-		).toBe("checked");
-		expect(
-			overlay.kind,
-			formatCheckReport(
-				"O4: no overlay caret unless an endpoint is O1/O2",
-				overlay.kind === "absent" ? "passed" : "failed",
-				overlay.reason,
-			),
-		).toBe("absent");
+			`native=${JSON.stringify(native)}`,
+		);
+		expectCheck("O4: overlay host was checkable", overlay.layerMounted);
+		expectCheck(
+			"O4: no overlay caret unless an endpoint is O1/O2",
+			!(overlay.caret && overlay.caretVisible),
+			overlay,
+		);
 	},
 );
 
@@ -138,24 +83,18 @@ scenario(
 		const endpoints = itemsOfKind(layer, "caret").filter(
 			(item) => item.endpoint !== null,
 		);
-		await test.info().attach("o4-endpoint", {
-			body: JSON.stringify({ selection, native, layer }, null, 2),
-			contentType: "application/json",
-		});
+		await attachJson("o4-endpoint", { selection, native, layer });
 
 		expect(selection).toMatchObject({
 			type: "text",
 			anchor: { blockId: "two-p1", offset: 2 },
 			focus: { blockId: "o4-empty", offset: 0 },
 		});
-		expect(
+		expectCheck(
+			"O4: the native range stays visible",
 			native.collapsed === false && native.rangeCount > 0,
-			formatCheckReport(
-				"O4: the native range stays visible",
-				native.collapsed === false ? "passed" : "failed",
-				`native=${JSON.stringify(native)}`,
-			),
-		).toBe(true);
+			`native=${JSON.stringify(native)}`,
+		);
 		expect(endpoints.map((item) => [item.endpoint, item.blockId])).toEqual([
 			["focus", "o4-empty"],
 		]);

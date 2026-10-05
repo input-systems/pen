@@ -33,6 +33,23 @@ function type(editor: Editor, blockId: string, insert = "x"): void {
 	editor.apply([{ type: "splice-text", blockId, from: 0, to: 0, insert }], { origin: "user" });
 }
 
+/** A toggle `t` holding a child `c` that matches "alpha". */
+function insertToggleWithMatchingChild(editor: Editor): void {
+	editor.apply(
+		[
+			{ type: "insert-block", blockId: "t", blockType: "toggle", props: {}, position: "last" },
+			{ type: "insert-block", blockId: "c", blockType: "paragraph", props: {}, position: { parent: "t", index: 0 } },
+			{ type: "splice-text", blockId: "c", from: 0, to: 0, insert: "alpha child" },
+		],
+		{ origin: "system" },
+	);
+}
+
+function expectFullScanMatches(editor: Editor): void {
+	const { matches, query, options } = getSearchController(editor)!.getState();
+	expect(matches).toEqual(findDocumentMatches(editor, query, options));
+}
+
 function mulberry32(seed: number): () => number {
 	let state = seed;
 	return () => {
@@ -66,11 +83,8 @@ describe("SCALE2 scoped search", () => {
 	it("SCALE2: matches stay in document order after a block moves", () => {
 		const editor = createSearchEditor(20, "alpha");
 		editor.apply([{ type: "move-block", blockId: "b16", position: "first" } as DocumentOp]);
-		const controller = getSearchController(editor)!;
-		expect(controller.getState().matches).toEqual(
-			findDocumentMatches(editor, "alpha", controller.getState().options),
-		);
-		expect(controller.getState().matches[0]?.blockId).toBe("b16");
+		expectFullScanMatches(editor);
+		expect(getSearchController(editor)!.getState().matches[0]?.blockId).toBe("b16");
 		editor.destroy();
 	});
 
@@ -130,60 +144,20 @@ describe("SCALE2 scoped search", () => {
 
 	it("SCALE2: deleting a parent block drops the matches inside its children", () => {
 		const editor = createSearchEditor(2, "alpha");
-		editor.apply(
-			[
-				{ type: "insert-block", blockId: "t", blockType: "toggle", props: {}, position: "last" },
-				{
-					type: "insert-block",
-					blockId: "c",
-					blockType: "paragraph",
-					props: {},
-					position: { parent: "t", index: 0 },
-				},
-				{ type: "splice-text", blockId: "c", from: 0, to: 0, insert: "alpha child" },
-			],
-			{ origin: "system" },
-		);
+		insertToggleWithMatchingChild(editor);
 		const controller = getSearchController(editor)!;
 		expect(controller.getState().matches.map((match) => match.blockId)).toContain("c");
 
 		editor.apply([{ type: "delete-block", blockId: "t" }], { origin: "user" });
 
-		expect(controller.getState().matches).toEqual(
-			findDocumentMatches(editor, "alpha", controller.getState().options),
-		);
+		expectFullScanMatches(editor);
 		expect(controller.getState().matches.map((match) => match.blockId)).not.toContain("c");
 		editor.destroy();
 	});
 
 	it("SCALE2: a commit naming a stored block no array reaches does not bring its matches back", () => {
 		const editor = createSearchEditor(2, "alpha");
-		editor.apply(
-			[
-				{
-					type: "insert-block",
-					blockId: "t",
-					blockType: "toggle",
-					props: {},
-					position: "last",
-				},
-				{
-					type: "insert-block",
-					blockId: "c",
-					blockType: "paragraph",
-					props: {},
-					position: { parent: "t", index: 0 },
-				},
-				{
-					type: "splice-text",
-					blockId: "c",
-					from: 0,
-					to: 0,
-					insert: "alpha child",
-				},
-			],
-			{ origin: "system" },
-		);
+		insertToggleWithMatchingChild(editor);
 		// A peer's delete of `t` lands without `c`'s: `c` stays stored, and
 		// no array reaches it (COL4) until a local pass re-homes it.
 		const { adapter, crdtDoc, doc } = editor.internals;
@@ -213,12 +187,8 @@ describe("SCALE2 scoped search", () => {
 			affectedBlockIds: ["c"],
 		});
 
-		expect(controller.getState().matches).toEqual(
-			findDocumentMatches(editor, "alpha", controller.getState().options),
-		);
-		expect(
-			controller.getState().matches.map((match) => match.blockId),
-		).not.toContain("c");
+		expectFullScanMatches(editor);
+		expect(controller.getState().matches.map((match) => match.blockId)).not.toContain("c");
 		editor.destroy();
 	});
 });

@@ -2,8 +2,8 @@ import { PenEditor } from "@input/pen-vue";
 import { createApp } from "vue";
 import { PROBE_ENABLED } from "./probes/counters";
 import { installVueComponentProbe } from "./probes/vueComponents";
-import { getHarnessSession } from "./session";
-import { createSurfaceFrame, mountOnEachSession, readQueryFlag } from "./surfaceFrame";
+import { getHarnessSession, readQueryFlag } from "./session";
+import { createSurfaceFrame, mountOnEachSession } from "./surfaceFrame";
 
 /** `?surface=vue`: the Vue binding's `PenEditor`, which renders `PenContent`. */
 export function mountVueHost(root: HTMLElement): void {

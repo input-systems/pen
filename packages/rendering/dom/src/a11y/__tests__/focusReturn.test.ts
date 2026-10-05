@@ -128,28 +128,24 @@ describe("focusReturn (AX3)", () => {
 		expect(document.activeElement).toBe(field);
 	});
 
-	it("AX3: a native text-entry target outside the root is not a return target", () => {
-		const { root, field } = makeRoot();
-		const hostInput = mount(document.createElement("input"));
-		const token = captureFocusReturn(root, hostInput);
-		const button = mount(document.createElement("button"), root);
-		button.focus();
-
-		expect(
-			restoreFocusReturn(token, makeFieldEditor(field), "target"),
-		).toBe("surface");
-		expect(document.activeElement).toBe(field);
-	});
-
-	it('AX3: "surface" ignores the recorded target', () => {
+	it.each([
+		[
+			"a native text-entry target outside the root is not a return target",
+			"target",
+			true,
+		],
+		['"surface" ignores the recorded target', "surface", false],
+	] as const)("AX3: %s", (_name, mode, explicitHostInput) => {
 		const { root, field } = makeRoot();
 		const button = mount(document.createElement("button"), root);
 		button.focus();
-		const token = captureFocusReturn(root);
+		const token = explicitHostInput
+			? captureFocusReturn(root, mount(document.createElement("input")))
+			: captureFocusReturn(root);
 
-		expect(
-			restoreFocusReturn(token, makeFieldEditor(field), "surface"),
-		).toBe("surface");
+		expect(restoreFocusReturn(token, makeFieldEditor(field), mode)).toBe(
+			"surface",
+		);
 		expect(document.activeElement).toBe(field);
 	});
 });

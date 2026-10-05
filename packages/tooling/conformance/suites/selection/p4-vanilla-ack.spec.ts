@@ -11,20 +11,8 @@ for (const surface of ["vanilla", "react", "vue"] as const) {
 			await page.evaluate(() => {
 				const harness = window.__penConformance;
 				harness.apply([
-					{
-						type: "insert-block",
-						blockId: "p4-added",
-						blockType: "paragraph",
-						props: {},
-						position: "last",
-					},
-					{
-						type: "splice-text",
-						blockId: "p4-added",
-						from: 0,
-						to: 0,
-						insert: "added",
-					},
+					{ type: "insert-block", blockId: "p4-added", blockType: "paragraph", props: {}, position: "last" },
+					{ type: "splice-text", blockId: "p4-added", from: 0, to: 0, insert: "added" },
 				]);
 				harness.selectTextById("p4-added", 3, 3);
 			});

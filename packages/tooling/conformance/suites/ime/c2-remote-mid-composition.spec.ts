@@ -3,12 +3,8 @@ import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import { originHolds, recordPresence } from "../../src/selectionRecordCheck";
 import { scenario } from "../../src/scenario";
-import {
-	readBackend,
-	readDocumentText,
-	readSurfaceText,
-	replayCompositionStart,
-} from "./compose";
+import { readBackend, readDocumentText } from "../input/keys";
+import { readSurfaceText, replayCompositionStart } from "./compose";
 
 scenario(
 	"C2: contenteditable remote commit mid-composition does not rewrite the field DOM",

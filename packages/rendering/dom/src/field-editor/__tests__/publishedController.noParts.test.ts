@@ -10,19 +10,23 @@ import { defaultSchema } from "@input/pen-schema";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Editor } from "@input/pen-types";
 import { ContentEditableBackend } from "../contenteditableBackend";
-import { DIRECT_HANDLERS } from "../contenteditableDirectHandlers";
 import type {
 	FieldEditorInputController,
 	FieldEditorSession,
 } from "../controller";
-import type { FieldEditorTextLike } from "../crdt";
 import { EditContextBackend } from "../editContextBackend";
-import type { EditContext } from "../editContextTypes";
 import { attachContentGestures } from "../contentGestures";
 import { applyInlineTextDiffInput } from "../textInputPipeline";
 import type { InputBackend } from "../../internal/inputBackend";
-import { DATA_ATTRS } from "../../utils/dataAttributes";
 import { RegionSelectionStore } from "../../utils/regionSelection";
+import {
+	contextOf,
+	getYText,
+	installFakeEditContext,
+	mountBlockDom,
+	removeEditContext,
+	runDirectHandler,
+} from "./fieldEditorFixtures.testHelpers";
 
 /**
  * The published `FieldEditorInputController` and `FieldEditorSession` strip
@@ -36,49 +40,6 @@ import { RegionSelectionStore } from "../../utils/regionSelection";
 
 const TEXT = "Hello world";
 const DECORATION_ATTRIBUTE = "data-test-decorated";
-
-class RecordingEditContext implements EditContext {
-	text = "";
-	selectionStart = 0;
-	selectionEnd = 0;
-	private readonly listeners = new Map<string, Set<(event: Event) => void>>();
-	updateText(start: number, end: number, text: string): void {
-		this.text = `${this.text.slice(0, start)}${text}${this.text.slice(end)}`;
-	}
-	updateSelection(start: number, end: number): void {
-		this.selectionStart = start;
-		this.selectionEnd = end;
-	}
-	updateCharacterBounds(): void {}
-	addEventListener(type: string, handler: (event: Event) => void): void {
-		const handlers = this.listeners.get(type) ?? new Set();
-		handlers.add(handler);
-		this.listeners.set(type, handlers);
-	}
-	removeEventListener(type: string, handler: (event: Event) => void): void {
-		this.listeners.get(type)?.delete(handler);
-	}
-	emit(type: string, init: Record<string, unknown> = {}): void {
-		const event = Object.assign(new Event(type), init);
-		for (const handler of this.listeners.get(type) ?? []) {
-			handler(event);
-		}
-	}
-}
-
-function getYText(editor: Editor, blockId: string): FieldEditorTextLike {
-	const ydoc = editor.internals.adapter.raw<{
-		getMap(name: string): {
-			get(key: string): { get(field: string): unknown } | undefined;
-		};
-	}>(editor.internals.crdtDoc);
-	const ytext = ydoc.getMap("blocks").get(blockId)?.get("content") as
-		FieldEditorTextLike | null | undefined;
-	if (!ytext) {
-		throw new Error(`Missing test Y.Text for block ${blockId}`);
-	}
-	return ytext;
-}
 
 function seedEditor() {
 	let decorated = false;
@@ -129,24 +90,6 @@ function seedEditor() {
 	};
 }
 
-function mountRoot(blockId: string): {
-	root: HTMLElement;
-	inline: HTMLElement;
-} {
-	const root = document.createElement("div");
-	root.setAttribute(DATA_ATTRS.editorRoot, "");
-	const block = document.createElement("div");
-	block.setAttribute(DATA_ATTRS.editorBlock, "");
-	block.setAttribute(DATA_ATTRS.blockId, blockId);
-	const inline = document.createElement("div");
-	inline.setAttribute(DATA_ATTRS.inlineContent, "");
-	inline.textContent = TEXT;
-	block.append(inline);
-	root.append(block);
-	document.body.append(root);
-	return { root, inline };
-}
-
 /** Only the members the published controller type keeps; no pen-dom parts. */
 function partlessController(
 	editor: Editor,
@@ -187,13 +130,13 @@ afterEach(() => {
 		fixture.editor.destroy();
 	}
 	document.body.replaceChildren();
-	delete (globalThis as { EditContext?: unknown }).EditContext;
+	removeEditContext();
 });
 
 describe("FieldEditorParts: a host-built controller without pen-dom's parts", () => {
 	it("drives the contenteditable backend through composition, gestures and a decoration change", () => {
 		const { editor, blockId, decorate } = seedEditor();
-		const { inline } = mountRoot(blockId);
+		const { inline } = mountBlockDom(blockId, TEXT);
 		const backend = new ContentEditableBackend(
 			editor,
 			partlessController(editor, blockId),
@@ -218,21 +161,13 @@ describe("FieldEditorParts: a host-built controller without pen-dom's parts", ()
 		const controller = partlessController(editor, blockId);
 		fixtures.push({ editor });
 
-		DIRECT_HANDLERS.insertText(
-			{ inputType: "insertText", data: "!" } as InputEvent,
+		runDirectHandler("insertText", {
 			editor,
-			getYText(editor, blockId),
+			blockId,
 			controller,
-			{} as HTMLElement,
-			{
-				resolveCurrentInputRange: () => ({
-					start: TEXT.length,
-					end: TEXT.length,
-				}),
-				applyListInputRule: () => false,
-				applyInlineTextEdit: () => {},
-			},
-		);
+			range: { start: TEXT.length, end: TEXT.length },
+			data: "!",
+		});
 		applyInlineTextDiffInput({
 			editor,
 			fieldEditor: controller,
@@ -249,19 +184,16 @@ describe("FieldEditorParts: a host-built controller without pen-dom's parts", ()
 	});
 
 	it("drives the EditContext backend through composition, typing and a decoration change", () => {
-		(globalThis as { EditContext?: unknown }).EditContext =
-			RecordingEditContext;
+		installFakeEditContext();
 		const { editor, blockId, decorate } = seedEditor();
-		const { inline } = mountRoot(blockId);
+		const { inline } = mountBlockDom(blockId, TEXT);
 		const backend = new EditContextBackend(
 			editor,
 			partlessController(editor, blockId),
 		);
 		fixtures.push({ editor, backend });
 		backend.activate(inline, getYText(editor, blockId));
-		const editContext = (
-			inline as HTMLElement & { editContext?: RecordingEditContext }
-		).editContext!;
+		const editContext = contextOf(inline);
 
 		expect(() => {
 			inline.dispatchEvent(new Event("pointerdown", { bubbles: true }));
@@ -282,7 +214,7 @@ describe("FieldEditorParts: a host-built controller without pen-dom's parts", ()
 
 	it("attaches content gestures and runs a click without the reader", () => {
 		const { editor, blockId } = seedEditor();
-		const { root, inline } = mountRoot(blockId);
+		const { root, inline } = mountBlockDom(blockId, TEXT);
 		const content = inline.parentElement!.parentElement!;
 		const session = partlessController(
 			editor,

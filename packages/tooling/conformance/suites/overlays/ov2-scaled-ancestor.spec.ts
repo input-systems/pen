@@ -1,17 +1,19 @@
-import { expect, test, type Page } from "@playwright/test";
-import { formatCheckReport } from "../../src/checkReport";
+import { expect, type Page } from "@playwright/test";
 import {
 	blockBox,
 	charBox,
+	expectCheck,
+	expectLocalCarets,
 	itemsOfKind,
 	localCarets,
+	near,
 	readSettledLayer,
 	remoteCarets,
 	remoteLabelBox,
 	type Box,
 } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
-import { clickOffset } from "../specHelpers";
+import { attachJson, clickOffset } from "../specHelpers";
 
 const FIRST_ID = "two-p1";
 const SECOND_ID = "two-p2";
@@ -37,10 +39,6 @@ const ANCESTORS: readonly Ancestor[] = [
 	{ name: "zoom: 1.5", style: { zoom: "1.5" }, factor: 1.5 },
 ];
 
-function near(actual: number, expected: number, tolerance = 1): boolean {
-	return Math.abs(actual - expected) <= tolerance;
-}
-
 async function styleAncestor(page: Page, style: Ancestor["style"]): Promise<void> {
 	await page.evaluate((entries) => {
 		const container = document.getElementById("root");
@@ -53,8 +51,16 @@ async function styleAncestor(page: Page, style: Ancestor["style"]): Promise<void
 	}, style);
 }
 
-function report(label: string, ok: boolean, detail: unknown): string {
-	return formatCheckReport(label, ok ? "passed" : "failed", JSON.stringify(detail));
+/** Caret on its character; its height tracks the line, never a doubly scaled one. */
+function onChar(caret: Box, char: Box): boolean {
+	const middle = char.top + char.height / 2;
+	return (
+		near(caret.left, char.left) &&
+		caret.top <= middle &&
+		caret.bottom >= middle &&
+		caret.height >= char.height * 0.75 &&
+		caret.height <= char.height * 1.75
+	);
 }
 
 for (const ancestor of ANCESTORS) {
@@ -66,9 +72,7 @@ for (const ancestor of ANCESTORS) {
 
 			// A local caret (customCaret mode), a remote caret with its label.
 			await clickOffset(page, FIRST_ID, LOCAL_OFFSET);
-			await expect
-				.poll(async () => localCarets(await readSettledLayer(page)).length)
-				.toBe(1);
+			await expectLocalCarets(page, 1);
 			await s.geometry.flushEightRemoteCarets([
 				{ blockId: FIRST_ID, offset: REMOTE_OFFSET },
 			]);
@@ -91,60 +95,33 @@ for (const ancestor of ANCESTORS) {
 				.toBe(1);
 			const outline = itemsOfKind(await readSettledLayer(page), "block-outline")[0]!;
 			const block = await blockBox(page, SECOND_ID);
-
-			await test.info().attach("ov2-scaled-ancestor", {
-				body: JSON.stringify(
-					{ ancestor, local, remote, label, localChar, remoteChar, outline, block },
-					null,
-					2,
-				),
-				contentType: "application/json",
+			await attachJson("ov2-scaled-ancestor", {
+				ancestor, local, remote, label, localChar, remoteChar, outline, block,
 			});
 
-			const onChar = (caret: Box, char: Box): boolean =>
-				near(caret.left, char.left) &&
-				caret.top <= char.top + char.height / 2 &&
-				caret.bottom >= char.top + char.height / 2 &&
-				// Caret height tracks the line, never a doubly scaled one.
-				caret.height >= char.height * 0.75 &&
-				caret.height <= char.height * 1.75;
-			expect(
-				onChar(local.box, localChar),
-				report("OV2: the local caret sits on its character", onChar(local.box, localChar), {
-					caret: local.box,
-					char: localChar,
-				}),
-			).toBe(true);
-			expect(
-				onChar(remote.box, remoteChar),
-				report("OV2: the remote caret sits on its character", onChar(remote.box, remoteChar), {
-					caret: remote.box,
-					char: remoteChar,
-				}),
-			).toBe(true);
-			const labelPlaced =
+			expectCheck("OV2: the local caret sits on its character", onChar(local.box, localChar), {
+				caret: local.box,
+				char: localChar,
+			});
+			expectCheck("OV2: the remote caret sits on its character", onChar(remote.box, remoteChar), {
+				caret: remote.box,
+				char: remoteChar,
+			});
+			expectCheck(
+				"OV2: the remote caret's label sits above it",
 				label !== null &&
-				near(label.left, remote.box.left) &&
-				near(label.bottom, remote.box.top - LABEL_GAP * ancestor.factor, 1.5);
-			expect(
-				labelPlaced,
-				report("OV2: the remote caret's label sits above it", labelPlaced, {
-					label,
-					caret: remote.box,
-				}),
-			).toBe(true);
-			const outlineFits =
+					near(label.left, remote.box.left) &&
+					near(label.bottom, remote.box.top - LABEL_GAP * ancestor.factor, 1.5),
+				{ label, caret: remote.box },
+			);
+			expectCheck(
+				"OV2: the block outline covers its block",
 				near(outline.box.left, block.left) &&
-				near(outline.box.top, block.top) &&
-				near(outline.box.width, block.width) &&
-				near(outline.box.height, block.height);
-			expect(
-				outlineFits,
-				report("OV2: the block outline covers its block", outlineFits, {
-					outline: outline.box,
-					block,
-				}),
-			).toBe(true);
+					near(outline.box.top, block.top) &&
+					near(outline.box.width, block.width) &&
+					near(outline.box.height, block.height),
+				{ outline: outline.box, block },
+			);
 		},
 		{ url: "/?customCaret=1" },
 	);

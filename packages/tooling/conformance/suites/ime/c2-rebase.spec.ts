@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { scenario } from "../../src/scenario";
-import { disableEditContext, readDocumentText, readFocusOffset, readSurfaceText } from "./compose";
+import { readDocumentText, readFocusOffset } from "../input/keys";
+import { disableEditContext, readSurfaceText } from "./compose";
 
 /**
  * C2 (D3) rebase on the contenteditable backend with a real Chromium CDP

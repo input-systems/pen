@@ -41,12 +41,18 @@ describe("isLogicallyEquivalent", () => {
 				image: { kind: "structural", text: "" },
 			},
 		};
-		const range = textSelection({ blockId: "p1", offset: 3 }, { blockId: "image", offset: 1 });
+		const range = textSelection(
+			{ blockId: "p1", offset: 3 },
+			{ blockId: "image", offset: 1 },
+		);
 		expect(isLogicallyEquivalent(range, range, snapshot)).toBe(true);
 		expect(
 			isLogicallyEquivalent(
 				range,
-				textSelection({ blockId: "p1", offset: 3 }, { blockId: "image", offset: 0 }),
+				textSelection(
+					{ blockId: "p1", offset: 3 },
+					{ blockId: "image", offset: 0 },
+				),
 				snapshot,
 			),
 		).toBe(false);
@@ -381,61 +387,27 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 		).toBe("diverge");
 	});
 
-	it("step 5: an open pointer window accepts the proposal", () => {
-		expect(
-			classifyDomSelectionRead({
-				proposal: moved,
-				authorityState: caret,
-				snapshot,
-				gestureWindows: nextGestureWindowState(
-					"pointerdown",
-					CLOSED_GESTURE_WINDOWS,
-				),
-			}),
-		).toBe("accept");
-	});
-
-	it("step 5: an open ime window accepts the proposal", () => {
-		expect(
-			classifyDomSelectionRead({
-				proposal: moved,
-				authorityState: caret,
-				snapshot,
-				gestureWindows: nextGestureWindowState(
-					"compositionstart",
-					CLOSED_GESTURE_WINDOWS,
-				),
-			}),
-		).toBe("accept");
-	});
-
-	it("step 5: an open context-menu window accepts the proposal", () => {
-		expect(
-			classifyDomSelectionRead({
-				proposal: moved,
-				authorityState: caret,
-				snapshot,
-				gestureWindows: nextGestureWindowState(
-					"contextmenu",
-					CLOSED_GESTURE_WINDOWS,
-				),
-			}),
-		).toBe("accept");
-	});
-
-	it("step 5: an open drag window accepts the proposal", () => {
-		expect(
-			classifyDomSelectionRead({
-				proposal: moved,
-				authorityState: caret,
-				snapshot,
-				gestureWindows: nextGestureWindowState(
-					"dragstart",
-					CLOSED_GESTURE_WINDOWS,
-				),
-			}),
-		).toBe("accept");
-	});
+	it.each([
+		["pointer", "pointerdown"],
+		["ime", "compositionstart"],
+		["context-menu", "contextmenu"],
+		["drag", "dragstart"],
+	] as const)(
+		"step 5: an open %s window accepts the proposal",
+		(_window, event) => {
+			expect(
+				classifyDomSelectionRead({
+					proposal: moved,
+					authorityState: caret,
+					snapshot,
+					gestureWindows: nextGestureWindowState(
+						event,
+						CLOSED_GESTURE_WINDOWS,
+					),
+				}),
+			).toBe("accept");
+		},
+	);
 
 	it("step 4: keyboard events do not make a later selectionchange admissible", () => {
 		const afterKeys = nextGestureWindowState(
@@ -553,7 +525,8 @@ describe("normalizeDomSelectionProposal", () => {
 });
 
 describe("decideDomSelectionRead §4.2 steps 4–5", () => {
-	it("step 4: a closed window does not normalize or accept", () => {
+	/** An editor whose first block reads "hello", caret at 0. */
+	function helloEditor() {
 		const editor = createEditor({ schema: defaultSchema });
 		const id = editor.firstBlock()!.id;
 		editor.apply([
@@ -566,6 +539,11 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 			},
 		]);
 		editor.selectText(id, 0, 0);
+		return { editor, id };
+	}
+
+	it("step 4: a closed window does not normalize or accept", () => {
+		const { editor, id } = helloEditor();
 		const decided = decideDomSelectionRead({
 			editor,
 			proposal: textSelection({ blockId: id, offset: 2 }),
@@ -577,18 +555,7 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 	});
 
 	it("step 5: an open pointer window normalizes and accepts with origin pointer", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: id,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		]);
-		editor.selectText(id, 0, 0);
+		const { editor, id } = helloEditor();
 		const decided = decideDomSelectionRead({
 			editor,
 			proposal: textSelection({ blockId: id, offset: 2 }),
@@ -606,18 +573,7 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 	});
 
 	it("step 5: overlapping ime+pointer accepts with origin ime", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: id,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		]);
-		editor.selectText(id, 0, 0);
+		const { editor, id } = helloEditor();
 		const overlapping = nextGestureWindowState(
 			"pointerdown",
 			nextGestureWindowState("compositionstart", CLOSED_GESTURE_WINDOWS),
@@ -659,92 +615,6 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 		});
 		expect(decided.decision).toBe("accept");
 		expect(decided.normalized).toEqual(
-			blockSelection([first, "second"], first),
-		);
-		void editor.destroy();
-	});
-});
-
-describe("decideDomSelectionRead §4.2 steps 4–5", () => {
-	it("step 5: an open pointer window returns a normalized accept with pointer origin", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: id,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		]);
-		editor.selectText(id, 0, 0);
-		const result = decideDomSelectionRead({
-			editor,
-			proposal: textSelection({ blockId: id, offset: 2 }),
-			gestureWindows: nextGestureWindowState(
-				"pointerdown",
-				CLOSED_GESTURE_WINDOWS,
-			),
-		});
-		expect(result.decision).toBe("accept");
-		expect(result.origin).toBe("pointer");
-		expect(result.normalized).toEqual(
-			textSelection({ blockId: id, offset: 2 }),
-		);
-		void editor.destroy();
-	});
-
-	it("step 4: a closed window returns diverge and does not normalize", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: id,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		]);
-		editor.selectText(id, 0, 0);
-		const result = decideDomSelectionRead({
-			editor,
-			proposal: textSelection({ blockId: id, offset: 2 }),
-			gestureWindows: CLOSED_GESTURE_WINDOWS,
-		});
-		expect(result.decision).toBe("diverge");
-		expect(result.normalized).toBeNull();
-		void editor.destroy();
-	});
-
-	it("step 5: a same-ids block proposal without head keeps the authority head", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const first = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "insert-block",
-				blockId: "second",
-				blockType: "paragraph",
-				props: {},
-				position: "last",
-			},
-		]);
-		editor.setSelection({
-			type: "block",
-			blockIds: [first, "second"],
-			head: first,
-		});
-		const result = decideDomSelectionRead({
-			editor,
-			proposal: blockSelection([first, "second"]),
-			gestureWindows: nextGestureWindowState(
-				"pointerdown",
-				CLOSED_GESTURE_WINDOWS,
-			),
-		});
-		expect(result.decision).toBe("accept");
-		expect(result.normalized).toEqual(
 			blockSelection([first, "second"], first),
 		);
 		void editor.destroy();

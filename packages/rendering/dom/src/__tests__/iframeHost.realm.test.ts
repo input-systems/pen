@@ -4,10 +4,7 @@ import { createEditor } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import type { DiagnosticEvent, InlineInsert } from "@input/pen-types";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type {
-	FieldEditorFocusRequest,
-	FieldEditorTableNavigationController,
-} from "../field-editor/controller";
+import type { FieldEditorFocusRequest, FieldEditorTableNavigationController } from "../field-editor/controller";
 import { attachContentGestures } from "../field-editor/contentGestures";
 import { FieldEditorImpl } from "../field-editor/fieldEditorImpl";
 import { isInlineAtomChipNode } from "../field-editor/inlineAtomDom";
@@ -25,26 +22,26 @@ afterEach(() => {
 });
 
 /**
- * An editor mounted into an iframe's document. Its nodes belong to the
- * iframe's realm, so the host window's `Node`/`Element` constructors do not
- * recognise them.
+ * An iframe's document. Nodes created in it belong to the iframe's realm, so
+ * the host window's `Node`/`Element` constructors do not recognise them.
  */
 function createFrame() {
 	const iframe = document.createElement("iframe");
 	document.body.append(iframe);
-	return {
-		frameDocument: iframe.contentDocument!,
-		frameWindow: iframe.contentWindow as Window & typeof globalThis,
-	};
+	return { frameDocument: iframe.contentDocument!, frameWindow: iframe.contentWindow as Window & typeof globalThis };
+}
+
+function createFrameEditor() {
+	const editor = createEditor({ schema: defaultSchema });
+	cleanups.push(() => editor.destroy());
+	return editor;
 }
 
 function mountInIframe(content: InlineInsert[] = ["Hello world"]) {
 	const { frameDocument, frameWindow } = createFrame();
-	const editor = createEditor({ schema: defaultSchema });
+	const editor = createFrameEditor();
 	const blockId = editor.firstBlock()!.id;
-	editor.apply([
-		{ type: "splice-text", blockId, from: 0, to: 0, insert: content },
-	]);
+	editor.apply([{ type: "splice-text", blockId, from: 0, to: 0, insert: content }]);
 	const root = frameDocument.createElement("div");
 	const input = frameDocument.createElement("input");
 	frameDocument.body.append(root, input);
@@ -59,33 +56,21 @@ function mountInIframe(content: InlineInsert[] = ["Hello world"]) {
 			},
 		},
 	});
-	cleanups.push(() => {
-		mounted.destroy();
-		editor.destroy();
-	});
-	return {
-		editor,
-		blockId,
-		root,
-		input,
-		mounted,
-		frameDocument,
-		frameWindow,
-		focusRequests,
-		diagnostics,
-	};
+	cleanups.unshift(() => mounted.destroy());
+	const inline = root.querySelector<HTMLElement>(`[${DATA_ATTRS.inlineContent}]`)!;
+	return { editor, blockId, root, inline, input, mounted, frameDocument, frameWindow, focusRequests, diagnostics };
+}
+
+function keydown(frameWindow: Window & typeof globalThis, key: string): KeyboardEvent {
+	return new frameWindow.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
 }
 
 describe("an editor mounted in an iframe document", () => {
-	it("the fixture's nodes are not instances of the host window's constructors", () => {
-		const { root, frameWindow } = mountInIframe();
+	it("HOST9: a native input in the iframe keeps focus against an authority write", () => {
+		const { editor, blockId, root, input, mounted, frameDocument, frameWindow, focusRequests } = mountInIframe();
+		// The fixture's premise: its nodes are not the host window's.
 		expect(root instanceof HTMLElement).toBe(false);
 		expect(root instanceof frameWindow.HTMLElement).toBe(true);
-	});
-
-	it("HOST9: a native input in the iframe keeps focus against an authority write", () => {
-		const { editor, blockId, input, mounted, frameDocument, focusRequests } =
-			mountInIframe();
 		mounted.fieldEditor.activateTextSelection(blockId, 0, 5);
 		input.focus();
 		expect(frameDocument.activeElement).toBe(input);
@@ -102,9 +87,7 @@ describe("an editor mounted in an iframe document", () => {
 		mounted.fieldEditor.activateTextSelection(blockId, 0, 5);
 		input.focus();
 
-		expect(
-			mounted.fieldEditor.projector.shouldProjectSelectionAfterReconcile(),
-		).toBe(false);
+		expect(mounted.fieldEditor.projector.shouldProjectSelectionAfterReconcile()).toBe(false);
 	});
 
 	it("P: a projection with focus on its target reads back as focused, so no mismatch is reported", () => {
@@ -113,21 +96,13 @@ describe("an editor mounted in an iframe document", () => {
 
 		editor.selectText(blockId, 2, 4, { origin: "keyboard" });
 
-		expect(
-			diagnostics.filter(
-				(event) => event.code === "selection-projection-mismatch",
-			),
-		).toEqual([]);
+		expect(diagnostics.filter((event) => event.code === "selection-projection-mismatch")).toEqual([]);
 	});
 
 	it("R1: a pointerdown on the field inside the iframe opens the pointer window", () => {
-		const { root, mounted, frameWindow } = mountInIframe();
-		const inline = root.querySelector(`[${DATA_ATTRS.inlineContent}]`);
-		expect(inline).not.toBeNull();
+		const { inline, mounted, frameWindow } = mountInIframe();
 
-		inline!.dispatchEvent(
-			new frameWindow.Event("pointerdown", { bubbles: true }),
-		);
+		inline.dispatchEvent(new frameWindow.Event("pointerdown", { bubbles: true }));
 
 		expect(mounted.fieldEditor.reader.windows.pointer).toBe(true);
 	});
@@ -141,32 +116,15 @@ describe("an editor mounted in an iframe document", () => {
 		const chip = root.querySelector(`[${DATA_ATTRS.inlineAtom}]`);
 		expect(isInlineAtomChipNode(chip)).toBe(true);
 
-		chip!.dispatchEvent(
-			new frameWindow.MouseEvent("mousedown", {
-				bubbles: true,
-				cancelable: true,
-				button: 0,
-			}),
-		);
+		chip!.dispatchEvent(new frameWindow.MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 }));
 
-		const snapshot = mounted.fieldEditor.getSnapshot();
-		expect(snapshot.isEditing).toBe(true);
-		expect(snapshot.focusBlockId).toBe(blockId);
+		expect(mounted.fieldEditor.getSnapshot()).toMatchObject({ isEditing: true, focusBlockId: blockId });
 	});
 
 	it("T: arrow keys in a native input inside the active table cell in the iframe stay the input's", () => {
 		const { frameDocument, frameWindow } = createFrame();
-		const editor = createEditor({ schema: defaultSchema });
-		cleanups.push(() => editor.destroy());
-		editor.apply([
-			{
-				type: "insert-block",
-				blockId: "t1",
-				blockType: "table",
-				props: {},
-				position: "last",
-			},
-		]);
+		const editor = createFrameEditor();
+		editor.apply([{ type: "insert-block", blockId: "t1", blockType: "table", props: {}, position: "last" }]);
 		editor.selectCell("t1", 0, 0);
 		const table = frameDocument.createElement("div");
 		table.setAttribute(DATA_ATTRS.blockId, "t1");
@@ -177,34 +135,17 @@ describe("an editor mounted in an iframe document", () => {
 		cell.append(input);
 		table.append(cell);
 		frameDocument.body.append(table);
-		const fieldEditor = {
-			isEditing: false,
-			deactivate: vi.fn(),
-		} as unknown as FieldEditorTableNavigationController;
+		const fieldEditor = { isEditing: false, deactivate: vi.fn() } as unknown as FieldEditorTableNavigationController;
 		let handled: boolean | null = null;
 		input.addEventListener("keydown", (event) => {
-			handled = handleTableCellSelectionKeyDown({
-				event,
-				editor,
-				fieldEditor,
-				root: table,
-			});
+			handled = handleTableCellSelectionKeyDown({ event, editor, fieldEditor, root: table });
 		});
 
-		input.dispatchEvent(
-			new frameWindow.KeyboardEvent("keydown", {
-				key: "ArrowRight",
-				bubbles: true,
-				cancelable: true,
-			}),
-		);
+		input.dispatchEvent(keydown(frameWindow, "ArrowRight"));
 
 		expect(handled).toBe(false);
 		const selection = editor.selection;
-		expect(selection?.type === "cell" ? selection.head : null).toEqual({
-			row: 0,
-			col: 0,
-		});
+		expect(selection?.type === "cell" ? selection.head : null).toEqual({ row: 0, col: 0 });
 	});
 });
 
@@ -215,36 +156,30 @@ describe("an editor mounted in an iframe document", () => {
  */
 function mountGesturesInIframe() {
 	const { frameDocument, frameWindow } = createFrame();
-	const editor = createEditor({ schema: defaultSchema });
+	const editor = createFrameEditor();
 	const first = editor.firstBlock()!.id;
 	const second = "second";
-	editor.apply([
-		{ type: "splice-text", blockId: first, from: 0, to: 0, insert: "Hello world" },
-		{
-			type: "insert-block",
-			blockId: second,
-			blockType: "paragraph",
-			props: {},
-			position: { after: first },
-		},
-		{ type: "splice-text", blockId: second, from: 0, to: 0, insert: "Second line" },
-	]);
-	const root = frameDocument.createElement("div");
-	root.setAttribute(DATA_ATTRS.editorRoot, "");
-	const content = frameDocument.createElement("div");
-	content.setAttribute(DATA_ATTRS.editorContent, "");
-	const blocksHost = frameDocument.createElement("div");
-	blocksHost.setAttribute(DATA_ATTRS.editorBlocksHost, "");
-	const inlines = new Map<string, HTMLElement>();
-	for (const [blockId, text] of [
+	const texts = [
 		[first, "Hello world"],
 		[second, "Second line"],
-	] as const) {
-		const block = frameDocument.createElement("div");
-		block.setAttribute(DATA_ATTRS.editorBlock, "");
+	] as const;
+	editor.apply([
+		{ type: "insert-block", blockId: second, blockType: "paragraph", props: {}, position: { after: first } },
+		...texts.map(([blockId, insert]) => ({ type: "splice-text" as const, blockId, from: 0, to: 0, insert })),
+	]);
+	const element = (attribute: string, value = "") => {
+		const node = frameDocument.createElement("div");
+		node.setAttribute(attribute, value);
+		return node;
+	};
+	const root = element(DATA_ATTRS.editorRoot);
+	const content = element(DATA_ATTRS.editorContent);
+	const blocksHost = element(DATA_ATTRS.editorBlocksHost);
+	const inlines = new Map<string, HTMLElement>();
+	for (const [blockId, text] of texts) {
+		const block = element(DATA_ATTRS.editorBlock);
 		block.setAttribute(DATA_ATTRS.blockId, blockId);
-		const inline = frameDocument.createElement("div");
-		inline.setAttribute(DATA_ATTRS.inlineContent, "");
+		const inline = element(DATA_ATTRS.inlineContent);
 		inline.textContent = text;
 		block.append(inline);
 		blocksHost.append(block);
@@ -273,24 +208,13 @@ function mountGesturesInIframe() {
 		state,
 		blockSelectionEnabled: true,
 	});
-	cleanups.push(() => {
+	cleanups.unshift(() => {
 		detach();
 		fieldEditor.destroy();
-		editor.destroy();
 	});
-	const mouse = (
-		type: "mousedown" | "mouseup" | "click",
-		target: EventTarget,
-		shiftKey = false,
-	) =>
+	const mouse = (type: "mousedown" | "mouseup" | "click", target: EventTarget, shiftKey = false) =>
 		target.dispatchEvent(
-			new frameWindow.MouseEvent(type, {
-				bubbles: true,
-				cancelable: true,
-				button: 0,
-				detail: 1,
-				shiftKey,
-			}),
+			new frameWindow.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, detail: 1, shiftKey }),
 		);
 	return { editor, fieldEditor, first, second, inlines, state, mouse };
 }
@@ -305,8 +229,7 @@ describe("React content gestures over an editor in an iframe document", () => {
 	});
 
 	it("T5: a shift-click on another block in the iframe extends the caret into it", () => {
-		const { editor, fieldEditor, first, second, inlines, mouse } =
-			mountGesturesInIframe();
+		const { editor, fieldEditor, first, second, inlines, mouse } = mountGesturesInIframe();
 		fieldEditor.activateTextSelection(first, 2, 2, { origin: "pointer" });
 		const target = inlines.get(second)!;
 
@@ -322,41 +245,27 @@ describe("React content gestures over an editor in an iframe document", () => {
 	});
 });
 
+type LineEdgeMeasure = (
+	editor: unknown,
+	current: { blockId: string; offset: number },
+	edge: "start" | "end",
+) => unknown;
+
 describe("field input in an iframe document", () => {
 	it("M3: the line-edge measure a key installs looks the block up in the iframe's document", () => {
-		const { editor, blockId, root, mounted, frameDocument, frameWindow } =
-			mountInIframe();
+		const { editor, blockId, inline, mounted, frameDocument, frameWindow } = mountInIframe();
 		mounted.fieldEditor.activateTextSelection(blockId, 5, 5);
-		const inline = root.querySelector<HTMLElement>(
-			`[${DATA_ATTRS.inlineContent}]`,
-		)!;
-		inline.dispatchEvent(
-			new frameWindow.KeyboardEvent("keydown", {
-				key: "ArrowLeft",
-				bubbles: true,
-				cancelable: true,
-			}),
-		);
-		const measure = (
-			editor as unknown as Record<
-				symbol,
-				| ((
-						editor: unknown,
-						current: { blockId: string; offset: number },
-						edge: "start" | "end",
-				  ) => unknown)
-				| undefined
-			>
-		)[Symbol.for("pen.lineEdgeSeam")];
+		inline.dispatchEvent(keydown(frameWindow, "ArrowLeft"));
+		const measure = (editor as unknown as Record<symbol, LineEdgeMeasure | undefined>)[
+			Symbol.for("pen.lineEdgeSeam")
+		];
 		expect(measure, "a field key installs the measure").toBeTypeOf("function");
 		const query = vi.spyOn(frameDocument, "querySelector");
 
 		measure!(editor, { blockId, offset: 5 }, "start");
 
 		expect(
-			query.mock.calls.some(([selector]) =>
-				selector.includes(`${DATA_ATTRS.blockId}="${blockId}"`),
-			),
+			query.mock.calls.some(([selector]) => selector.includes(`${DATA_ATTRS.blockId}="${blockId}"`)),
 		).toBe(true);
 	});
 
@@ -391,11 +300,8 @@ describe("field input in an iframe document", () => {
 		cleanups.push(() => {
 			delete (globalThis as { EditContext?: unknown }).EditContext;
 		});
-		const { editor, blockId, root, mounted, frameWindow } = mountInIframe();
+		const { editor, blockId, inline, mounted, frameWindow } = mountInIframe();
 		mounted.fieldEditor.activateTextSelection(blockId, 11, 11);
-		const inline = root.querySelector<HTMLElement>(
-			`[${DATA_ATTRS.inlineContent}]`,
-		)!;
 
 		emit("textupdate", {
 			text: "nihao",
@@ -405,12 +311,7 @@ describe("field input in an iframe document", () => {
 			selectionEnd: 16,
 		});
 		emit("textformatupdate", { getTextFormats: () => [] });
-		inline.dispatchEvent(
-			new frameWindow.CompositionEvent("compositionend", {
-				bubbles: true,
-				data: "nihao",
-			}),
-		);
+		inline.dispatchEvent(new frameWindow.CompositionEvent("compositionend", { bubbles: true, data: "nihao" }));
 
 		expect(editor.getBlock(blockId)?.textContent()).toBe("Hello worldnihao");
 	});

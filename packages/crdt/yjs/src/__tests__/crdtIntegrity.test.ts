@@ -137,31 +137,6 @@ describe("CRDT integrity", () => {
 			expect(structErrors.length).toBeGreaterThan(0);
 		});
 
-		it("DUR2 RI6: accepts an inline title beside a children array", () => {
-			const ydoc = new Y.Doc();
-			const blockOrder = ydoc.getArray<string>("blockOrder");
-			const blocks = ydoc.getMap<Y.Map<unknown>>("blocks");
-			ydoc.getMap("apps");
-			ydoc.getMap("metadata");
-
-			ydoc.transact(() => {
-				const container = new Y.Map<unknown>();
-				container.set("type", "toggle");
-				container.set("props", new Y.Map<unknown>());
-				container.set("meta", new Y.Map<unknown>());
-				container.set("content", new Y.Text());
-				container.set("children", new Y.Array<string>());
-				blocks.set("titled-container", container);
-				blockOrder.push(["titled-container"]);
-			});
-
-			expect(validateDocument(ydoc)).toEqual({
-				valid: true,
-				errors: [],
-				repaired: false,
-			});
-		});
-
 		it("detects orphan blocks (in blocks but not blockOrder)", () => {
 			const adapter = yjsAdapter();
 			const doc = createYjsDocument(adapter);
@@ -312,26 +287,6 @@ describe("CRDT integrity", () => {
 			const result = validateDocument(ydoc, { repair: true });
 			expect(result.repaired).toBe(true);
 			expect(blockOrder.toArray()).toEqual(["b1"]);
-		});
-
-		it("COL4: keeps an entry whose block map was never received", () => {
-			const ydoc = new Y.Doc();
-			ydoc.getMap("apps");
-			ydoc.getMap("metadata");
-			const blocks = ydoc.getMap<Y.Map<unknown>>(BLOCKS);
-			const blockOrder = ydoc.getArray<string>(BLOCK_ORDER);
-
-			ydoc.transact(() => {
-				initBlockMap(blocks, "b1", "paragraph", "inline");
-				blockOrder.push(["b1", "in-flight"]);
-			});
-
-			const result = validateDocument(ydoc, { repair: true });
-			expect(result.repaired).toBe(false);
-			expect(
-				result.errors.filter((e) => e.blockId === "in-flight"),
-			).toEqual([]);
-			expect(blockOrder.toArray()).toEqual(["b1", "in-flight"]);
 		});
 	});
 

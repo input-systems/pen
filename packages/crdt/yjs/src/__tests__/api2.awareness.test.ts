@@ -18,7 +18,7 @@ describe("API2 awareness and duplicate copies", () => {
 		awareness?.destroy();
 	});
 
-	it("API2: a provider applying updates with a second yjs copy is reported once per document", async () => {
+	it("API2: a provider applying updates with a second yjs copy is reported once per document, the adapter's own copy never", async () => {
 		const { module: DuplicateY } = await loadDuplicateYjs();
 		expect(DuplicateY.Doc).not.toBe(Y.Doc);
 
@@ -28,6 +28,15 @@ describe("API2 awareness and duplicate copies", () => {
 		});
 		const doc = adapter.createDocument();
 		const unobserve = adapter.observe(doc, () => {});
+		const mismatches = () =>
+			diagnostics.filter(
+				(diagnostic) => diagnostic.code === YJS_SINGLETON_MISMATCH_CODE,
+			);
+
+		const ownPeer = new Y.Doc();
+		ownPeer.getMap("metadata").set("own", "v");
+		adapter.applyUpdate(doc, Y.encodeStateAsUpdate(ownPeer));
+		expect(mismatches()).toHaveLength(0);
 
 		const peer = new DuplicateY.Doc();
 		peer.getMap("metadata").set("k", "v");
@@ -36,28 +45,8 @@ describe("API2 awareness and duplicate copies", () => {
 		DuplicateY.applyUpdate(ydoc as never, update);
 		DuplicateY.applyUpdate(ydoc as never, update);
 
-		const mismatches = diagnostics.filter(
-			(diagnostic) => diagnostic.code === YJS_SINGLETON_MISMATCH_CODE,
-		);
-		expect(mismatches).toHaveLength(1);
-		expect(mismatches[0]?.severity).toBe("error");
-		unobserve();
-	});
-
-	it("API2: transactions from the adapter's own yjs copy are not reported", () => {
-		const diagnostics: CRDTDiagnostic[] = [];
-		const adapter = yjsAdapter({
-			onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
-		});
-		const doc = adapter.createDocument();
-		const unobserve = adapter.observe(doc, () => {});
-		const peer = new Y.Doc();
-		peer.getMap("metadata").set("k", "v");
-		adapter.applyUpdate(doc, Y.encodeStateAsUpdate(peer));
-
-		expect(
-			diagnostics.filter((d) => d.code === YJS_SINGLETON_MISMATCH_CODE),
-		).toHaveLength(0);
+		expect(mismatches()).toHaveLength(1);
+		expect(mismatches()[0]?.severity).toBe("error");
 		unobserve();
 	});
 });

@@ -61,27 +61,9 @@ const SURFACES: Array<{
 		attribute: "href",
 		selector: '[data-block-id="linked"] a',
 		ops: (url) => [
-			{
-				type: "insert-block",
-				blockId: "linked",
-				blockType: "paragraph",
-				props: {},
-				position: "last",
-			},
-			{
-				type: "splice-text",
-				blockId: "linked",
-				from: 0,
-				to: 0,
-				insert: "click",
-			},
-			{
-				type: "format-text",
-				blockId: "linked",
-				from: 0,
-				to: 5,
-				marks: { link: { href: url } },
-			},
+			{ type: "insert-block", blockId: "linked", blockType: "paragraph", props: {}, position: "last" },
+			{ type: "splice-text", blockId: "linked", from: 0, to: 0, insert: "click" },
+			{ type: "format-text", blockId: "linked", from: 0, to: 5, marks: { link: { href: url } } },
 		],
 	},
 	{
@@ -90,29 +72,9 @@ const SURFACES: Array<{
 		selector:
 			'[data-pen-table-cell][data-cell-row="0"][data-cell-col="0"] a',
 		ops: (url) => [
-			{
-				type: "insert-block",
-				blockId: "t1",
-				blockType: "table",
-				props: {},
-				position: "last",
-			},
-			{
-				type: "splice-text",
-				blockId: "t1",
-				cell: CELL,
-				from: 0,
-				to: 0,
-				insert: "click",
-			},
-			{
-				type: "format-text",
-				blockId: "t1",
-				cell: CELL,
-				from: 0,
-				to: 5,
-				marks: { link: { href: url } },
-			},
+			{ type: "insert-block", blockId: "t1", blockType: "table", props: {}, position: "last" },
+			{ type: "splice-text", blockId: "t1", cell: CELL, from: 0, to: 0, insert: "click" },
+			{ type: "format-text", blockId: "t1", cell: CELL, from: 0, to: 5, marks: { link: { href: url } } },
 		],
 	},
 ];

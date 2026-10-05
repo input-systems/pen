@@ -89,16 +89,9 @@ function dispatchPress(target: HTMLElement): {
 	pointerdown: MouseEvent;
 	mousedown: MouseEvent;
 } {
-	const pointerdown = new MouseEvent("pointerdown", {
-		bubbles: true,
-		cancelable: true,
-		button: 0,
-	});
-	const mousedown = new MouseEvent("mousedown", {
-		bubbles: true,
-		cancelable: true,
-		button: 0,
-	});
+	const init = { bubbles: true, cancelable: true, button: 0 };
+	const pointerdown = new MouseEvent("pointerdown", init);
+	const mousedown = new MouseEvent("mousedown", init);
 	target.dispatchEvent(pointerdown);
 	target.dispatchEvent(mousedown);
 	return { pointerdown, mousedown };
@@ -171,35 +164,23 @@ describe("@input/pen-react toolbar AX3", () => {
 		});
 		expect(document.activeElement).toBe(enabled[0]);
 
-		await act(async () => {
-			dispatchKey(enabled[0]!, "ArrowRight");
-		});
-		expect(document.activeElement).toBe(enabled[1]);
-		expect(enabled[0]?.tabIndex).toBe(-1);
-		expect(enabled[1]?.tabIndex).toBe(0);
-
-		await act(async () => {
-			dispatchKey(enabled[1]!, "ArrowRight");
-		});
-		expect(document.activeElement).toBe(enabled[2]);
-		expect(enabled[2]?.tabIndex).toBe(0);
-
-		await act(async () => {
-			dispatchKey(enabled[2]!, "ArrowLeft");
-		});
-		expect(document.activeElement).toBe(enabled[1]);
-
-		await act(async () => {
-			dispatchKey(enabled[1]!, "End");
-		});
-		expect(document.activeElement).toBe(enabled[2]);
-		expect(enabled[2]?.tabIndex).toBe(0);
-
-		await act(async () => {
-			dispatchKey(enabled[2]!, "Home");
-		});
-		expect(document.activeElement).toBe(enabled[0]);
-		expect(enabled[0]?.tabIndex).toBe(0);
+		// Each key from the focused item moves focus and the roving tabindex.
+		for (const [from, key, to] of [
+			[0, "ArrowRight", 1],
+			[1, "ArrowRight", 2],
+			[2, "ArrowLeft", 1],
+			[1, "End", 2],
+			[2, "Home", 0],
+		] as const) {
+			await act(async () => {
+				dispatchKey(enabled[from]!, key);
+			});
+			expect(document.activeElement, key).toBe(enabled[to]);
+			expect(
+				enabled.map((item) => item.tabIndex),
+				key,
+			).toEqual(enabled.map((_, index) => (index === to ? 0 : -1)));
+		}
 	});
 
 	it("AX3: a pointer click on a toolbar button leaves focus in the field", async () => {

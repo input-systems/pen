@@ -34,174 +34,106 @@ function existingModulePaths() {
 	);
 }
 
-describe("no-selection-timers (S4)", () => {
-	it("treats the protected set as in scope and named non-selection files as out", () => {
-		expect(isSelectionModule(authorityPath)).toBe(true);
-		expect(
-			isSelectionModule(
-				"packages/rendering/dom/src/field-editor/selectionBridge.ts",
-			),
-		).toBe(true);
-		expect(isSelectionModule("packages/core/src/editor/selection.ts")).toBe(
-			true,
-		);
-		expect(isSelectionModule("packages/docs/src/pages/Selection.tsx")).toBe(
-			true,
-		);
-		expect(
-			isSelectionModule(
-				"packages/rendering/dom/src/field-editor/contenteditableBackend.ts",
-			),
-		).toBe(true);
-		expect(
-			isSelectionModule(
-				"packages/rendering/react/src/hooks/useSelectionToolbar.ts",
-			),
-		).toBe(true);
-		expect(
-			isSelectionModule(
-				"packages/rendering/react/src/primitives/editor/inlineAtomSelectionInteraction.ts",
-			),
-		).toBe(true);
-		expect(
-			isSelectionModule(
-				"packages/core/src/editor/editorSelectionMutations.ts",
-			),
-		).toBe(true);
-		expect(
-			isSelectionModule(
-				"packages/rendering/dom/src/field-editor/fieldEditor.ts",
-			),
-		).toBe(false);
-		expect(
-			isSelectionModule(
-				"packages/rendering/dom/src/__tests__/selectionBridge.test.ts",
-			),
-		).toBe(false);
+/** One invalid case: `code` in `filename` reports a single `kind` timer in `symbol`. */
+function timerCase(code, filename, kind, symbol = "(module)") {
+	return {
+		code,
+		filename,
+		errors: [{ messageId: "timer", data: { kind, symbol, file: filename } }],
+	};
+}
 
+const seededTimer = (symbol) =>
+	`function ${symbol}() {\n\tsetTimeout(() => { void 0; }, 0);\n}\n`;
+
+describe("no-selection-timers (S4)", () => {
+	it.each([
+		[authorityPath, true],
+		["packages/rendering/dom/src/field-editor/selectionBridge.ts", true],
+		["packages/core/src/editor/selection.ts", true],
+		["packages/docs/src/pages/Selection.tsx", true],
+		["packages/rendering/react/src/hooks/useSelectionToolbar.ts", true],
+		[
+			"packages/rendering/react/src/primitives/editor/inlineAtomSelectionInteraction.ts",
+			true,
+		],
+		["packages/core/src/editor/editorSelectionMutations.ts", true],
+		["packages/core/src/selection/transitions.ts", true],
+		["packages/rendering/dom/src/field-editor/selectionReader.ts", true],
+		// A module only the explicit list brings in scope.
+		["packages/core/src/selection/normalPosition.ts", true],
+		// S4: overlay modules are selection modules.
+		["packages/rendering/dom/src/overlay/overlayController.ts", true],
+		["packages/rendering/dom/src/overlay/overlayLayer.ts", true],
+		["packages/rendering/dom/src/overlay/selectionOverlay.ts", true],
+		["packages/rendering/dom/src/field-editor/fieldEditor.ts", false],
+		["packages/rendering/dom/src/__tests__/selectionBridge.test.ts", false],
+		["packages/core/src/editor/caretPositions.ts", false],
+	])("S4: isSelectionModule(%s) is %s", (file, expected) => {
+		expect(isSelectionModule(file)).toBe(expected);
+	});
+
+	it("S4: every listed module is in scope and every out-of-scope file is out", () => {
 		for (const file of existingModulePaths()) {
 			expect(isSelectionModule(file)).toBe(true);
 		}
-		expect(
-			isSelectionModule("packages/core/src/selection/transitions.ts"),
-		).toBe(true);
-		expect(
-			isSelectionModule("packages/core/src/editor/caretPositions.ts"),
-		).toBe(false);
-		expect(
-			isSelectionModule(
-				"packages/rendering/dom/src/field-editor/selectionReader.ts",
-			),
-		).toBe(true);
-
 		for (const file of OUT_OF_SCOPE) {
 			expect(isSelectionModule(file)).toBe(false);
 		}
 	});
 
-	it("bans timers in selection modules", () => {
+	it("bans timers in selection modules, by file and symbol", () => {
+		const moduleTimer = "setTimeout(() => {}, 0);\n";
+		const moduleRaf = "requestAnimationFrame(() => {});\n";
 		ruleTester.run("no-selection-timers", noSelectionTimers, {
 			valid: [
 				{
-					code: "setTimeout(() => {}, 0);\n",
-					filename:
-						"packages/rendering/dom/src/field-editor/fieldEditor.ts",
+					code: moduleTimer,
+					filename: "packages/rendering/dom/src/field-editor/fieldEditor.ts",
 				},
 				{
-					code: "setTimeout(() => {}, 0);\n",
+					code: moduleTimer,
 					filename:
 						"packages/rendering/dom/src/__tests__/selectionBridge.test.ts",
 				},
 			],
 			invalid: [
-				{
-					code: "setTimeout(() => {}, 0);\n",
-					filename:
-						"packages/rendering/dom/src/field-editor/selectionBridge.ts",
-					errors: [
-						{
-							messageId: "timer",
-							data: {
-								kind: "setTimeout",
-								symbol: "(module)",
-								file: "packages/rendering/dom/src/field-editor/selectionBridge.ts",
-							},
-						},
-					],
-				},
-				{
-					code: "requestAnimationFrame(() => {});\n",
-					filename: "packages/core/src/editor/selection.ts",
-					errors: [
-						{
-							messageId: "timer",
-							data: {
-								kind: "requestAnimationFrame",
-								symbol: "(module)",
-								file: "packages/core/src/editor/selection.ts",
-							},
-						},
-					],
-				},
-				{
-					code: "window.setImmediate(() => {});\n",
-					filename:
-						"packages/rendering/dom/src/field-editor/selectionProjector.ts",
-					errors: [
-						{
-							messageId: "timer",
-							data: {
-								kind: "setImmediate",
-								symbol: "(module)",
-								file: "packages/rendering/dom/src/field-editor/selectionProjector.ts",
-							},
-						},
-					],
-				},
-				{
-					code: "setTimeout(() => {}, 0);\n",
-					filename:
-						"packages/rendering/dom/src/field-editor/selectionReader.ts",
-					errors: [
-						{
-							messageId: "timer",
-							data: {
-								kind: "setTimeout",
-								symbol: "(module)",
-								file: "packages/rendering/dom/src/field-editor/selectionReader.ts",
-							},
-						},
-					],
-				},
-				{
-					code: "requestAnimationFrame(() => {});\n",
-					filename:
-						"packages/rendering/dom/src/field-editor/sessionReconciler.ts",
-					errors: [
-						{
-							messageId: "timer",
-							data: {
-								kind: "requestAnimationFrame",
-								symbol: "(module)",
-								file: "packages/rendering/dom/src/field-editor/sessionReconciler.ts",
-							},
-						},
-					],
-				},
-				{
-					code: seededRaf,
-					filename: authorityPath,
-					errors: [
-						{
-							messageId: "timer",
-							data: {
-								kind: "requestAnimationFrame",
-								symbol: "scheduleActiveDOMMatchCheck",
-								file: authorityPath,
-							},
-						},
-					],
-				},
+				timerCase(
+					moduleTimer,
+					"packages/rendering/dom/src/field-editor/selectionBridge.ts",
+					"setTimeout",
+				),
+				timerCase(moduleRaf, "packages/core/src/editor/selection.ts", "requestAnimationFrame"),
+				timerCase(
+					"window.setImmediate(() => {});\n",
+					"packages/rendering/dom/src/field-editor/selectionProjector.ts",
+					"setImmediate",
+				),
+				timerCase(
+					moduleTimer,
+					"packages/rendering/dom/src/field-editor/selectionReader.ts",
+					"setTimeout",
+				),
+				timerCase(
+					moduleRaf,
+					"packages/rendering/dom/src/field-editor/sessionReconciler.ts",
+					"requestAnimationFrame",
+				),
+				timerCase(seededRaf, authorityPath, "requestAnimationFrame", "scheduleActiveDOMMatchCheck"),
+				// A module only the explicit list brings in scope.
+				timerCase(
+					seededTimer("seededS4Timer"),
+					"packages/core/src/selection/normalPosition.ts",
+					"setTimeout",
+					"seededS4Timer",
+				),
+				...[
+					"packages/rendering/dom/src/overlay/overlayController.ts",
+					"packages/rendering/dom/src/overlay/overlayLayer.ts",
+					"packages/rendering/dom/src/overlay/selectionOverlay.ts",
+				].map((file) =>
+					timerCase(seededTimer("seededOverlayTimer"), file, "setTimeout", "seededOverlayTimer"),
+				),
 			],
 		});
 	});
@@ -212,69 +144,6 @@ describe("no-selection-timers (S4)", () => {
 			ruleTester.run("no-selection-timers-modules", noSelectionTimers, {
 				valid: [{ code: source, filename: file }],
 				invalid: [],
-			});
-		}
-	});
-
-	it("errors by file and symbol when a newly-in-scope module gains a timer", () => {
-		// A module only the explicit list brings in scope: its basename does
-		// not contain `selection`.
-		const file = "packages/core/src/selection/normalPosition.ts";
-		expect(isSelectionModule(file)).toBe(true);
-		const mutated =
-			"function seededS4Timer() {\n\tsetTimeout(() => { void 0; }, 0);\n}\n";
-		ruleTester.run(
-			"no-selection-timers-new-scope-mutation",
-			noSelectionTimers,
-			{
-				valid: [],
-				invalid: [
-					{
-						code: mutated,
-						filename: file,
-						errors: [
-							{
-								messageId: "timer",
-								data: {
-									kind: "setTimeout",
-									symbol: "seededS4Timer",
-									file,
-								},
-							},
-						],
-					},
-				],
-			},
-		);
-	});
-	it("S4: overlay modules are selection modules", () => {
-		const overlayModules = [
-			"packages/rendering/dom/src/overlay/overlayController.ts",
-			"packages/rendering/dom/src/overlay/overlayLayer.ts",
-			"packages/rendering/dom/src/overlay/selectionOverlay.ts",
-		];
-		for (const file of overlayModules) {
-			expect(isSelectionModule(file)).toBe(true);
-		}
-		for (const file of overlayModules) {
-			ruleTester.run("no-selection-timers-overlay", noSelectionTimers, {
-				valid: [],
-				invalid: [
-					{
-						code: "function seededOverlayTimer() {\n\tsetTimeout(() => { void 0; }, 0);\n}\n",
-						filename: file,
-						errors: [
-							{
-								messageId: "timer",
-								data: {
-									kind: "setTimeout",
-									symbol: "seededOverlayTimer",
-									file,
-								},
-							},
-						],
-					},
-				],
 			});
 		}
 	});
@@ -362,21 +231,13 @@ describe("no-selection-timers (S4)", () => {
 					filename: file,
 					errors: [error("timer", { kind: "queueMicrotask", symbol: "notifyGesture" })],
 				},
-				{
-					// An R1-shaped microtask that also writes selection is not R1.
-					code: 'function notifyGesture() {\n\tqueueMicrotask(() => {\n\t\twindows = nextGestureWindowState("pointer-settled", windows);\n\t\teditor.setSelection(null);\n\t});\n}\n',
-					filename: "packages/rendering/dom/src/field-editor/selectionReader.ts",
-					errors: [
-						{
-							messageId: "timer",
-							data: {
-								kind: "queueMicrotask",
-								symbol: "notifyGesture",
-								file: "packages/rendering/dom/src/field-editor/selectionReader.ts",
-							},
-						},
-					],
-				},
+				// An R1-shaped microtask that also writes selection is not R1.
+				timerCase(
+					'function notifyGesture() {\n\tqueueMicrotask(() => {\n\t\twindows = nextGestureWindowState("pointer-settled", windows);\n\t\teditor.setSelection(null);\n\t});\n}\n',
+					"packages/rendering/dom/src/field-editor/selectionReader.ts",
+					"queueMicrotask",
+					"notifyGesture",
+				),
 			],
 		});
 	});

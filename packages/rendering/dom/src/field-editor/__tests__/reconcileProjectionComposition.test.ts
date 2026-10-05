@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
-import { createEditor } from "@input/pen-core";
-import { defaultSchema } from "@input/pen-schema";
+import type { Editor } from "@input/pen-types";
 import { afterEach, describe, expect, it } from "vitest";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
 import { FieldEditorImpl } from "../fieldEditorImpl";
-
-type Editor = ReturnType<typeof createEditor>;
+import {
+	removeEditContext,
+	seedParagraphs,
+} from "./fieldEditorFixtures.testHelpers";
 
 const fixtures: Array<{
 	editor: Editor;
@@ -39,44 +40,24 @@ function appendBlock(
 }
 
 /** Two paragraphs under a blocks host, on the contenteditable backend. */
+/** Two paragraphs under a blocks host, on the contenteditable backend. */
 function mount() {
-	delete (globalThis as { EditContext?: unknown }).EditContext;
-	const editor = createEditor({ schema: defaultSchema });
-	const first = editor.firstBlock()!.id;
-	editor.apply([
-		{
-			type: "splice-text",
-			blockId: first,
-			from: 0,
-			to: 0,
-			insert: "alpha",
-		},
-		{
-			type: "insert-block",
-			blockId: "second",
-			blockType: "paragraph",
-			props: {},
-			position: "last",
-		},
-		{
-			type: "splice-text",
-			blockId: "second",
-			from: 0,
-			to: 0,
-			insert: "bravo",
-		},
-	]);
+	removeEditContext();
+	const {
+		editor,
+		blockIds: [first, second],
+	} = seedParagraphs(["alpha", "bravo"]);
 	const fieldEditor = new FieldEditorImpl(editor);
 	const root = document.createElement("div");
 	root.setAttribute(DATA_ATTRS.editorRoot, "");
 	const host = document.createElement("div");
 	host.setAttribute(DATA_ATTRS.editorBlocksHost, "");
 	root.appendChild(host);
-	const inline = appendBlock(host, first, "alpha");
-	appendBlock(host, "second", "bravo");
+	const inline = appendBlock(host, first!, "alpha");
+	appendBlock(host, second!, "bravo");
 	document.body.appendChild(root);
 	fieldEditor.setRootElement(root);
-	fieldEditor.activate(first);
+	fieldEditor.activate(first!);
 	const projected: string[] = [];
 	fieldEditor.onFocusLifecycle((event) => {
 		if (event.type === "selection-projected") {
@@ -84,7 +65,14 @@ function mount() {
 		}
 	});
 	fixtures.push({ editor, fieldEditor, root });
-	return { editor, fieldEditor, first, inline, projected };
+	return {
+		editor,
+		fieldEditor,
+		first: first!,
+		second: second!,
+		inline,
+		projected,
+	};
 }
 
 async function flushFrames(count = 2): Promise<void> {
@@ -97,12 +85,12 @@ async function flushFrames(count = 2): Promise<void> {
 
 describe("session reconciler projection while composing (P3, C1)", () => {
 	it("P3: an expanded rebuild after a remote commit on an active block is withheld while the ime window is open and projects once on compositionend-completed", async () => {
-		const { editor, fieldEditor, first, projected } = mount();
+		const { editor, fieldEditor, first, second, projected } = mount();
 		editor.setSelection(
 			{
 				type: "text",
 				anchor: { blockId: first, offset: 2 },
-				focus: { blockId: "second", offset: 3 },
+				focus: { blockId: second, offset: 3 },
 			},
 			{ origin: "keyboard" },
 		);
@@ -114,7 +102,7 @@ describe("session reconciler projection while composing (P3, C1)", () => {
 			[
 				{
 					type: "splice-text",
-					blockId: "second",
+					blockId: second,
 					from: 4,
 					to: 4,
 					insert: "X",

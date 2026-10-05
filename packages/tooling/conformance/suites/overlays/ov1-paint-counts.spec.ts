@@ -1,8 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
-import { localCarets, readSettledLayer } from "../../src/overlayLayer";
+import { expectLocalCarets, insertMention, readSettledLayer } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
+import { attachJson } from "../specHelpers";
 import type { OverlayProbeCounts } from "../../src/types";
 
 const HELLO_ID = "hello-p1";
@@ -43,10 +44,7 @@ scenario(
 			await idleFrames(page);
 		});
 		const scrolled = await page.evaluate(() => window.scrollY);
-		await test.info().attach("ov1-empty-scroll", {
-			body: JSON.stringify({ scroll, scrolled }, null, 2),
-			contentType: "application/json",
-		});
+		await attachJson("ov1-empty-scroll", { scroll, scrolled });
 
 		expect(scrolled, "precondition: the page scrolled the root").toBeGreaterThan(0);
 		expect(
@@ -70,18 +68,10 @@ scenario(
 	"OV1: a caret move next to an atom costs at most two flushes, at most two caretRect reads per flush and at most two layer mutations, and an idle frame costs none",
 	async (s, page) => {
 		await s.load("hello-world");
-		await s.apply([
-			{
-				type: "splice-text",
-				blockId: HELLO_ID,
-				from: 5,
-				to: 5,
-				insert: { nodeType: "mention", props: { id: "user-ada", label: "Ada" } },
-			},
-		]);
+		await s.apply([insertMention(HELLO_ID, 5)]);
 		const point = await getInlineOffsetPoint(page, { blockId: HELLO_ID, offset: 5 });
 		await page.mouse.click(point.x, point.y);
-		await expect.poll(async () => localCarets(await readSettledLayer(page)).length).toBe(1);
+		await expectLocalCarets(page, 1);
 
 		const move = await measure(page, async () => {
 			// Both sides of the chip are O1 offsets: the caret stays an overlay
@@ -94,10 +84,7 @@ scenario(
 			expect(check.kind).toBe("held");
 		});
 		const idle = await measure(page, () => idleFrames(page));
-		await test.info().attach("ov1-paint-counts", {
-			body: JSON.stringify({ move, idle }, null, 2),
-			contentType: "application/json",
-		});
+		await attachJson("ov1-paint-counts", { move, idle });
 
 		// One flush paints the move. When a queued write (the projector's
 		// read-back or scroll job) lands in that flush, the stale-after-write

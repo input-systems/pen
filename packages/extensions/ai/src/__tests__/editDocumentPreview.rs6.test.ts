@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createEditor } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
-import type { Editor } from "@input/pen-types";
+import type { Editor, Extension } from "@input/pen-types";
 import { toolsExtension } from "@input/pen-tools";
 import { undoExtension } from "@input/pen-undo";
-import { editDocumentReviewPreviewInput } from "../controller/streamingPreviewInput";
+import {
+	editDocumentReviewPreviewInput,
+	type EditDocumentReviewPreviewSource,
+} from "../controller/streamingPreviewInput";
 import { aiExtension, getAIController } from "../index";
 import { buildStreamingReviewPreviewDecorations } from "../review/reviewPresentation";
 import { deltaStreamExtension } from "../stream";
@@ -16,12 +19,13 @@ import { extractEditDocumentPreview } from "../runtime/editDocumentPreview";
  * result; these pin the mapping it rests on.
  */
 
-const SESSION = { sessionId: "session-1", turnId: "turn-1" } as const;
-
 let editor: Editor | null = null;
 
-function createParagraphs(texts: Record<string, string>): Editor {
-	const created = createEditor({ schema: defaultSchema });
+function createParagraphs(
+	texts: Record<string, string>,
+	extensions: Extension[] = [],
+): Editor {
+	const created = createEditor({ schema: defaultSchema, extensions });
 	created.apply(
 		Object.entries(texts).flatMap(([blockId, text]) => [
 			{
@@ -43,6 +47,70 @@ function createParagraphs(texts: Record<string, string>): Editor {
 	);
 	editor = created;
 	return created;
+}
+
+/** The preview for one complete operation, the first of its turn. */
+function previewInput(
+	live: Editor,
+	source: Pick<EditDocumentReviewPreviewSource, "operation" | "blockIds"> &
+		Partial<EditDocumentReviewPreviewSource>,
+) {
+	return editDocumentReviewPreviewInput(live, {
+		sessionId: "session-1",
+		turnId: "turn-1",
+		operationIndex: 0,
+		placement: null,
+		text: "",
+		complete: true,
+		...source,
+	});
+}
+
+function createNested(): Editor {
+	const created = createParagraphs({ a: "Alpha" });
+	created.apply(
+		[
+			{
+				type: "insert-block",
+				blockId: "t",
+				blockType: "toggle",
+				props: {},
+				position: "last",
+			},
+			{ type: "splice-text", blockId: "t", from: 0, to: 0, insert: "Toggle" },
+			...["c1", "c2", "c3"].flatMap((blockId, index) => [
+				{
+					type: "insert-block" as const,
+					blockId,
+					blockType: "paragraph",
+					props: {},
+					position: { parent: "t", index },
+				},
+				{
+					type: "splice-text" as const,
+					blockId,
+					from: 0,
+					to: 0,
+					insert: `Child ${index + 1}`,
+				},
+			]),
+		],
+		{ origin: "system" },
+	);
+	return created;
+}
+
+function hiddenBlockIds(
+	live: Editor,
+	input: ReturnType<typeof editDocumentReviewPreviewInput>,
+): string[] {
+	return buildStreamingReviewPreviewDecorations({
+		editor: live,
+		preview: { ...input!, previousTextLength: 0 },
+		suggestionPresentation: "final-text",
+	})
+		.filter((decoration) => decoration.type === "block")
+		.map((decoration) => decoration.blockId);
 }
 
 afterEach(() => {
@@ -70,14 +138,10 @@ describe("RS6: edit_document preview mapping", () => {
 		).toEqual(["a", "b"]);
 
 		const live = createParagraphs({ a: "Alpha", b: "Beta", c: "Gamma" });
-		const replace = editDocumentReviewPreviewInput(live, {
-			...SESSION,
-			operationIndex: 0,
+		const replace = previewInput(live, {
 			blockIds: ["c", "a", "b"],
-			placement: null,
 			operation: "replace_blocks",
 			text: "One\nTwo\n",
-			complete: true,
 		});
 		expect(replace?.target).toEqual({
 			kind: "block-range",
@@ -88,14 +152,10 @@ describe("RS6: edit_document preview mapping", () => {
 		// A trailing line break ends the markdown, not a block.
 		expect(replace?.text).toBe("One\nTwo");
 
-		const remove = editDocumentReviewPreviewInput(live, {
-			...SESSION,
+		const remove = previewInput(live, {
 			operationIndex: 1,
 			blockIds: ["a", "b"],
-			placement: null,
 			operation: "delete_blocks",
-			text: "",
-			complete: true,
 		});
 		expect(remove).toMatchObject({
 			deletesBlocks: true,
@@ -113,29 +173,18 @@ describe("RS6: edit_document preview mapping", () => {
 		).toMatchObject({ placement: "before", complete: true });
 
 		const live = createParagraphs({ a: "Alpha", b: "Beta" });
-		const base = {
-			...SESSION,
-			operationIndex: 0,
-			blockIds: ["b"],
-			operation: "insert_blocks",
-			text: "Outlook\n",
-			complete: true,
-		};
-		expect(
-			editDocumentReviewPreviewInput(live, {
-				...base,
-				placement: "before",
-			}),
-		).toMatchObject({
+		const insert = (placement: "before" | "after") =>
+			previewInput(live, {
+				blockIds: ["b"],
+				operation: "insert_blocks",
+				text: "Outlook\n",
+				placement,
+			});
+		expect(insert("before")).toMatchObject({
 			target: { kind: "insertion-point", blockId: "b", offset: 0 },
 			text: "Outlook\n",
 		});
-		expect(
-			editDocumentReviewPreviewInput(live, {
-				...base,
-				placement: "after",
-			}),
-		).toMatchObject({
+		expect(insert("after")).toMatchObject({
 			target: { kind: "insertion-point", blockId: "b", offset: 4 },
 			text: "\nOutlook",
 		});
@@ -150,14 +199,10 @@ describe("RS6: edit_document preview mapping", () => {
 			null,
 		]) {
 			expect(
-				editDocumentReviewPreviewInput(live, {
-					...SESSION,
-					operationIndex: 0,
+				previewInput(live, {
 					blockIds: ["a"],
 					placement: "before",
 					operation,
-					text: "",
-					complete: true,
 				}),
 			).toBeNull();
 		}
@@ -183,14 +228,10 @@ describe("RS6: edit_document preview mapping", () => {
 		const block = live.getBlock("a")!;
 		expect(block.length()).toBe(4);
 
-		const preview = editDocumentReviewPreviewInput(live, {
-			...SESSION,
-			operationIndex: 0,
+		const preview = previewInput(live, {
 			blockIds: ["a"],
-			placement: null,
 			operation: "replace_block_text",
 			text: "Hello",
-			complete: true,
 		});
 		expect(preview?.target).toEqual({
 			kind: "text-range",
@@ -200,54 +241,11 @@ describe("RS6: edit_document preview mapping", () => {
 		});
 	});
 
-	function createNested(): Editor {
-		const created = createParagraphs({ a: "Alpha" });
-		created.apply(
-			[
-				{ type: "insert-block", blockId: "t", blockType: "toggle", props: {}, position: "last" },
-				{ type: "splice-text", blockId: "t", from: 0, to: 0, insert: "Toggle" },
-				...["c1", "c2", "c3"].flatMap((blockId, index) => [
-					{
-						type: "insert-block" as const,
-						blockId,
-						blockType: "paragraph",
-						props: {},
-						position: { parent: "t", index },
-					},
-					{
-						type: "splice-text" as const,
-						blockId,
-						from: 0,
-						to: 0,
-						insert: `Child ${index + 1}`,
-					},
-				]),
-			],
-			{ origin: "system" },
-		);
-		return created;
-	}
-
-	function hiddenBlockIds(live: Editor, input: ReturnType<typeof editDocumentReviewPreviewInput>): string[] {
-		return buildStreamingReviewPreviewDecorations({
-			editor: live,
-			preview: { ...input!, previousTextLength: 0 },
-			suggestionPresentation: "final-text",
-		})
-			.filter((decoration) => decoration.type === "block")
-			.map((decoration) => decoration.blockId);
-	}
-
 	it("RS6: a delete of nested blocks names and hides every one of them", () => {
 		const live = createNested();
-		const input = editDocumentReviewPreviewInput(live, {
-			...SESSION,
-			operationIndex: 0,
+		const input = previewInput(live, {
 			blockIds: ["c2", "c1"],
-			placement: null,
 			operation: "delete_blocks",
-			text: "",
-			complete: true,
 		});
 		expect(input?.target).toEqual({
 			kind: "block-range",
@@ -260,14 +258,10 @@ describe("RS6: edit_document preview mapping", () => {
 
 	it("RS6: a replace of nested blocks covers every named block", () => {
 		const live = createNested();
-		const input = editDocumentReviewPreviewInput(live, {
-			...SESSION,
-			operationIndex: 0,
+		const input = previewInput(live, {
 			blockIds: ["c1", "c2", "c3"],
-			placement: null,
 			operation: "replace_blocks",
 			text: "New",
-			complete: true,
 		});
 		expect(input?.target).toMatchObject({
 			kind: "block-range",
@@ -280,41 +274,31 @@ describe("RS6: edit_document preview mapping", () => {
 
 	it("RS6: a replace hides an empty block at the edge of the range it removes", () => {
 		const live = createParagraphs({ a: "Alpha", b: "Beta", e: "" });
-		const input = editDocumentReviewPreviewInput(live, {
-			...SESSION,
-			operationIndex: 0,
+		const input = previewInput(live, {
 			blockIds: ["a", "b", "e"],
-			placement: null,
 			operation: "replace_blocks",
 			text: "Replaced",
-			complete: true,
 		});
-		expect(hiddenBlockIds(live, input)).toEqual(expect.arrayContaining(["b", "e"]));
+		expect(hiddenBlockIds(live, input)).toEqual(
+			expect.arrayContaining(["b", "e"]),
+		);
 	});
 
 	it("RS6: replace_block_text with empty text previews clearing the block", () => {
-		const live = createEditor({
-			schema: defaultSchema,
-			extensions: [undoExtension(), toolsExtension(), deltaStreamExtension(), aiExtension()],
-		});
-		live.apply(
-			[
-				{ type: "insert-block", blockId: "a", blockType: "paragraph", props: {}, position: "last" },
-				{ type: "splice-text", blockId: "a", from: 0, to: 0, insert: "Alpha" },
-			],
-			{ origin: "system" },
-		);
-		editor = live;
-		const input = editDocumentReviewPreviewInput(live, {
-			...SESSION,
-			operationIndex: 0,
+		const live = createParagraphs({ a: "Alpha" }, [
+			undoExtension(),
+			toolsExtension(),
+			deltaStreamExtension(),
+			aiExtension(),
+		]);
+		const input = previewInput(live, {
 			blockIds: ["a"],
-			placement: null,
 			operation: "replace_block_text",
-			text: "",
-			complete: true,
 		});
-		expect(input).toMatchObject({ text: "", target: { kind: "text-range", blockId: "a", from: 0, to: 5 } });
+		expect(input).toMatchObject({
+			text: "",
+			target: { kind: "text-range", blockId: "a", from: 0, to: 5 },
+		});
 
 		const controller = getAIController(live)!;
 		controller.setStreamingReviewPreview(input!);

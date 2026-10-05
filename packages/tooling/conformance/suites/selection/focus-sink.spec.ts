@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
-import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
+import { clickOffset, readSelection } from "../specHelpers";
 
 /**
  * P focus targets (W3.R16, D18): the revealed sink for block and cell
@@ -25,35 +25,20 @@ async function activeTarget(page: Page): Promise<string> {
 }
 
 async function clickInText(page: Page, offset: number): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId: BLOCK_ID, offset });
-	await page.mouse.click(point.x, point.y);
+	await clickOffset(page, BLOCK_ID, offset);
 	await expect.poll(() => activeTarget(page)).toBe("block-or-field");
 }
 
 scenario(
-	"HOST9: Escape from a text caret leaves focus on the revealed sink",
+	"HOST9: Escape from a text caret leaves focus on the revealed sink, and from the block selection to null on the editor root",
 	async (s, page) => {
 		await s.load("hello-world");
 		await clickInText(page, 3);
 		await s.keyboard.press("Escape");
-		await expect
-			.poll(() => page.evaluate(() => window.__penConformance.selection?.type))
-			.toBe("block");
-		await expect.poll(() => activeTarget(page)).toBe("sink:group:revealed");
-	},
-);
-
-scenario(
-	"HOST9: Escape from a block selection to null leaves focus on the editor root",
-	async (s, page) => {
-		await s.load("hello-world");
-		await clickInText(page, 3);
-		await s.keyboard.press("Escape");
+		await expect.poll(async () => (await readSelection(page))?.type).toBe("block");
 		await expect.poll(() => activeTarget(page)).toBe("sink:group:revealed");
 		await s.keyboard.press("Escape");
-		await expect
-			.poll(() => page.evaluate(() => window.__penConformance.selection))
-			.toBeNull();
+		await expect.poll(() => readSelection(page)).toBeNull();
 		await expect.poll(() => activeTarget(page)).toBe("root");
 	},
 );
@@ -73,7 +58,7 @@ scenario("P: deactivate with a block selection focuses the sink", async (s, page
 	const divider = page.locator('[data-block-id="focus-divider"]');
 	await divider.click();
 	await expect
-		.poll(() => page.evaluate(() => window.__penConformance.selection))
+		.poll(() => readSelection(page))
 		.toMatchObject({ type: "block", blockIds: ["focus-divider"] });
 	await expect.poll(() => activeTarget(page)).toBe("sink:group:revealed");
 });

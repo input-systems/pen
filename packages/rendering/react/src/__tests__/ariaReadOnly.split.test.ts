@@ -96,27 +96,11 @@ async function pointerActivateInline(container: HTMLElement): Promise<void> {
 	const inline = container.querySelector("[data-pen-inline-content]");
 	expect(inline).toBeInstanceOf(HTMLElement);
 	await act(async () => {
-		inline?.dispatchEvent(
-			new MouseEvent("mousedown", {
-				bubbles: true,
-				cancelable: true,
-				button: 0,
-			}),
-		);
-		inline?.dispatchEvent(
-			new MouseEvent("mouseup", {
-				bubbles: true,
-				cancelable: true,
-				button: 0,
-			}),
-		);
-		inline?.dispatchEvent(
-			new MouseEvent("click", {
-				bubbles: true,
-				cancelable: true,
-				button: 0,
-			}),
-		);
+		for (const type of ["mousedown", "mouseup", "click"]) {
+			inline?.dispatchEvent(
+				new MouseEvent(type, { bubbles: true, cancelable: true, button: 0 }),
+			);
+		}
 	});
 }
 

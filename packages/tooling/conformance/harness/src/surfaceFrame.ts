@@ -27,7 +27,3 @@ export function mountOnEachSession(mount: () => () => void): void {
 		unmount = mount();
 	});
 }
-
-export function readQueryFlag(name: string): boolean {
-	return new URLSearchParams(window.location.search).get(name) === "1";
-}

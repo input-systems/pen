@@ -61,7 +61,10 @@ describe("COL4 per-commit structural repair", () => {
 		expect(diagnostics.map((event) => event.code)).toContain("parent-cycle");
 	});
 
-	it("COL4: peers repairing one cycle concurrently converge with no duplicate entry", () => {
+	it.each([
+		{ name: "one peer removes it", removers: [1] },
+		{ name: "every peer removes it concurrently", removers: [0, 1] },
+	])("COL4: peers repairing one cycle concurrently converge with no duplicate entry ($name)", ({ removers }) => {
 		harness = crossedMoves();
 		// Both peers repair the same state before either repair is exchanged:
 		// each appends its own root entry for the detached block.
@@ -71,29 +74,14 @@ describe("COL4 per-commit structural repair", () => {
 		expect(harness.peer(0).editor.documentState.blockOrder).toEqual(["p", "x2", "x2"]);
 
 		// The duplicate is a remote commit's doing, so the next local commit
-		// on either peer removes it.
-		typeOn(harness, 1);
+		// on any peer removes it.
+		for (const index of removers) typeOn(harness, index);
 		harness.syncAll();
 		harness.assertConverged();
 		for (const peer of harness.peers) {
 			expect(findStructuralViolations(peer.editor)).toEqual([]);
 			expect(peer.editor.documentState.blockOrder).toEqual(["p", "x2"]);
 			expect(peer.editor.documentState.childrenOf("x2")).toEqual(["x1"]);
-		}
-	});
-
-	it("COL4: concurrent duplicate removals on every peer converge", () => {
-		harness = crossedMoves();
-		typeOn(harness, 0);
-		typeOn(harness, 1);
-		harness.syncAll();
-		typeOn(harness, 0);
-		typeOn(harness, 1);
-		harness.syncAll();
-		harness.assertConverged();
-		for (const peer of harness.peers) {
-			expect(findStructuralViolations(peer.editor)).toEqual([]);
-			expect(peer.editor.documentState.blockOrder).toEqual(["p", "x2"]);
 		}
 	});
 

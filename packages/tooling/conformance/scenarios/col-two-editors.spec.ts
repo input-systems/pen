@@ -12,12 +12,16 @@ import { readModelBlockText } from "../suites/specHelpers";
 
 const PEER_A_USER_ID = "conformance-peer-a";
 
+async function expectSelection(peer: EditorPeer, expected: Record<string, unknown>): Promise<void> {
+	await expect
+		.poll(() => peer.page.evaluate(() => window.__penConformance.selection))
+		.toMatchObject(expected);
+}
+
 async function clickAt(peer: EditorPeer, blockId: string, offset: number): Promise<void> {
 	const point = await getInlineOffsetPoint(peer.page, { blockId, offset });
 	await peer.page.mouse.click(point.x, point.y);
-	await expect
-		.poll(() => peer.page.evaluate(() => window.__penConformance.selection))
-		.toMatchObject({ type: "text", focus: { blockId, offset } });
+	await expectSelection(peer, { type: "text", focus: { blockId, offset } });
 }
 
 async function applyOn(peer: EditorPeer, ops: readonly DocumentOp[]): Promise<void> {
@@ -65,12 +69,8 @@ twoEditorScenario(
 		await converge();
 		expect(await readModelBlockText(a.page, "hello-p1")).toBe("Helloabc worldABC");
 		// Each local caret stays after its own typing on both pages.
-		await expect
-			.poll(() => a.page.evaluate(() => window.__penConformance.selection))
-			.toMatchObject({ focus: { blockId: "hello-p1", offset: 8 } });
-		await expect
-			.poll(() => b.page.evaluate(() => window.__penConformance.selection))
-			.toMatchObject({ focus: { blockId: "hello-p1", offset: 17 } });
+		await expectSelection(a, { focus: { blockId: "hello-p1", offset: 8 } });
+		await expectSelection(b, { focus: { blockId: "hello-p1", offset: 17 } });
 	},
 );
 
@@ -117,50 +117,43 @@ async function imeLeg({ a, b, relay, standing, converge }: TwoEditorApi): Promis
 	expect(await readModelBlockText(a.page, "hello-p1")).toBe("XHello world漢");
 }
 
-twoEditorScenario(
-	"C2 S2: a remote insert held across a Chromium IME composition converges after compositionend (EditContext)",
-	imeLeg,
-);
-
-twoEditorScenario(
-	"C2 S2: a remote insert held across a Chromium IME composition converges after compositionend (contenteditable)",
-	imeLeg,
-	{ initScript: disableEditContext },
-);
+for (const backend of ["EditContext", "contenteditable"]) {
+	twoEditorScenario(
+		`C2 S2: a remote insert held across a Chromium IME composition converges after compositionend (${backend})`,
+		imeLeg,
+		backend === "EditContext" ? undefined : { initScript: disableEditContext },
+	);
+}
 
 twoEditorScenario(
 	"A5 AN14 S2: remote split, move, and delete around the local caret keep it anchored",
 	async ({ a, b, relay, standing, converge }) => {
 		await clickAt(a, "two-p2", 6);
-		// Split two-p1 after "Alpha " on b: the tail moves into a new block.
-		await applyOn(b, [
-			{
-				type: "insert-block",
-				blockId: "two-p1-tail",
-				blockType: "paragraph",
-				props: {},
-				position: { after: "two-p1" },
-			},
-			{ type: "splice-text", blockId: "two-p1-tail", from: 0, to: 0, insert: "bravo charlie" },
-			{ type: "splice-text", blockId: "two-p1", from: 6, to: 19, insert: "" },
-		]);
-		await relay.pump();
-		await standing();
-		await applyOn(b, [{ type: "move-block", blockId: "two-p2", position: "first" }]);
-		await relay.pump();
-		await standing();
-		await applyOn(b, [{ type: "delete-block", blockId: "two-p1-tail" }]);
-		await relay.pump();
-		await standing();
+		const steps: DocumentOp[][] = [
+			// Split two-p1 after "Alpha " on b: the tail moves into a new block.
+			[
+				{
+					type: "insert-block",
+					blockId: "two-p1-tail",
+					blockType: "paragraph",
+					props: {},
+					position: { after: "two-p1" },
+				},
+				{ type: "splice-text", blockId: "two-p1-tail", from: 0, to: 0, insert: "bravo charlie" },
+				{ type: "splice-text", blockId: "two-p1", from: 6, to: 19, insert: "" },
+			],
+			[{ type: "move-block", blockId: "two-p2", position: "first" }],
+			[{ type: "delete-block", blockId: "two-p1-tail" }],
+		];
+		for (const ops of steps) {
+			await applyOn(b, ops);
+			await relay.pump();
+			await standing();
+		}
 		await converge();
 		expect(await blockOrder(a.page)).toEqual(["two-p2", "two-p1"]);
-		await expect
-			.poll(() => a.page.evaluate(() => window.__penConformance.selection))
-			.toMatchObject({
-				type: "text",
-				anchor: { blockId: "two-p2", offset: 6 },
-				focus: { blockId: "two-p2", offset: 6 },
-			});
+		const caret = { blockId: "two-p2", offset: 6 };
+		await expectSelection(a, { type: "text", anchor: caret, focus: caret });
 		// The anchored caret still types where it sits.
 		await a.page.keyboard.type("Z");
 		await converge();

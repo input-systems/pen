@@ -58,47 +58,15 @@ describe("pen/no-dom-selection-read", () => {
 			],
 			invalid: [
 				// Only the writer may take the Selection through the handle.
-				{
-					code: "function f(el) { return nativeSelectionForWrite(el); }",
-					filename: FILE,
-					errors: [{ messageId: "read" }],
-				},
-				{
-					code: "function f() { getSelection(); }",
-					filename: FILE,
-					errors: [{ messageId: "read" }],
-				},
-				{
-					code: "function f(el: HTMLElement) { el.ownerDocument?.getSelection(); }",
-					filename: FILE,
-					errors: [{ messageId: "read" }],
-				},
-				{
-					code: "function f(el: HTMLElement) { el.ownerDocument.defaultView!.getSelection(); }",
-					filename: FILE,
-					errors: [{ messageId: "read" }],
-				},
-				{
-					code: "function f() { doc.addEventListener('selectionchange', h); }",
-					filename: FILE,
-					errors: [{ messageId: "read" }],
-				},
-				{
-					code: "function f() { document.onselectionchange = h; }",
-					filename: FILE,
-					errors: [{ messageId: "read" }],
-				},
-				{
-					code: "function f(el: HTMLElement) { return getSelectionOffsets(el); }",
-					filename: FILE,
-					errors: [{ messageId: "read" }],
-				},
-				{
-					code: "function f(root: HTMLElement) { return domSelectionToEditor(root); }",
-					filename: FILE,
-					errors: [{ messageId: "read" }],
-				},
-			],
+				"function f(el) { return nativeSelectionForWrite(el); }",
+				"function f() { getSelection(); }",
+				"function f(el: HTMLElement) { el.ownerDocument?.getSelection(); }",
+				"function f(el: HTMLElement) { el.ownerDocument.defaultView!.getSelection(); }",
+				"function f() { doc.addEventListener('selectionchange', h); }",
+				"function f() { document.onselectionchange = h; }",
+				"function f(el: HTMLElement) { return getSelectionOffsets(el); }",
+				"function f(root: HTMLElement) { return domSelectionToEditor(root); }",
+			].map((code) => ({ code, filename: FILE, errors: [{ messageId: "read" }] })),
 		});
 	});
 });

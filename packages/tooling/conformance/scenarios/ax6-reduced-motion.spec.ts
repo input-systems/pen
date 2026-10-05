@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { scenario } from "../src/scenario";
 import type { ScenarioApi } from "../src/types";
 
@@ -113,11 +113,27 @@ async function collectRunningAnimations(
 	});
 }
 
-async function prepareAx6Caret(s: ScenarioApi): Promise<void> {
+/** Check the media query and the harness agree on `reduced`, then type to paint the caret. */
+async function prepareAx6Caret(
+	s: ScenarioApi,
+	page: Page,
+	reduced: boolean,
+): Promise<Locator> {
+	expect(
+		await page.evaluate(
+			() => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+		),
+	).toBe(reduced);
+	expect(
+		await page.evaluate(() => window.__penConformance.reducedMotion),
+	).toBe(reduced);
 	await s.load("hello-world");
 	await s.keyboard.type("!");
 	await s.assert.textContains("Hello");
 	await s.assert.textContains("!");
+	const caret = page.locator("[data-pen-editor-caret]");
+	await expect(caret).toBeVisible();
+	return caret;
 }
 
 scenario(
@@ -125,18 +141,7 @@ scenario(
 	async (s, page) => {
 		assertPrefersReducedMotionSingleSite();
 
-		const media = await page.evaluate(
-			() => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-		);
-		expect(media).toBe(true);
-		expect(
-			await page.evaluate(() => window.__penConformance.reducedMotion),
-		).toBe(true);
-
-		await prepareAx6Caret(s);
-
-		const caret = page.locator("[data-pen-editor-caret]");
-		await expect(caret).toBeVisible();
+		const caret = await prepareAx6Caret(s, page, true);
 		await expect(
 			caret,
 			"AX6: caret animation-name must be none under reduced motion",
@@ -160,18 +165,7 @@ scenario(
 scenario(
 	"AX6: without reduced-motion the blink token animates the overlay caret",
 	async (s, page) => {
-		const media = await page.evaluate(
-			() => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-		);
-		expect(media).toBe(false);
-		expect(
-			await page.evaluate(() => window.__penConformance.reducedMotion),
-		).toBe(false);
-
-		await prepareAx6Caret(s);
-
-		const caret = page.locator("[data-pen-editor-caret]");
-		await expect(caret).toBeVisible();
+		const caret = await prepareAx6Caret(s, page, false);
 		await expect(
 			caret,
 			"AX6: caret must blink when reduced motion is off",

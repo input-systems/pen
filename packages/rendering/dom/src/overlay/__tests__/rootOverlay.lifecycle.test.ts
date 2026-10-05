@@ -31,9 +31,6 @@ class FakeResizeObserver {
 }
 
 /** Document scroll-capture listeners currently installed. */
-function scrollCaptureListeners(): Set<unknown> {
-	return scrollListeners;
-}
 const scrollListeners = new Set<unknown>();
 
 function createTestEditor(): Editor {
@@ -41,6 +38,12 @@ function createTestEditor(): Editor {
 		schema: defaultSchema,
 		preset: noDefaultExtensionsPreset,
 	});
+}
+
+function connectedRoot(): HTMLElement {
+	const root = document.createElement("div");
+	document.body.append(root);
+	return root;
 }
 
 function forceCollection(): () => void {
@@ -81,18 +84,17 @@ afterEach(() => {
 describe("root overlay and geometry lifecycle", () => {
 	it("destroy releases the root's ResizeObserver and document scroll listener", () => {
 		const editor = createTestEditor();
-		const root = document.createElement("div");
-		document.body.append(root);
+		const root = connectedRoot();
 		const mounted = mountEditor(editor, root);
 		const geometry = getRootGeometry(root);
 		expect(liveObservers.size).toBe(1);
-		expect(scrollCaptureListeners().size).toBe(1);
+		expect(scrollListeners.size).toBe(1);
 
 		mounted.destroy();
 		editor.destroy();
 
 		expect(liveObservers.size).toBe(0);
-		expect(scrollCaptureListeners().size).toBe(0);
+		expect(scrollListeners.size).toBe(0);
 		expect(getRootOverlay(root)).toBeNull();
 		// The root's geometry was released: a later read starts a fresh host.
 		expect(getRootGeometry(root)).not.toBe(geometry);
@@ -100,21 +102,20 @@ describe("root overlay and geometry lifecycle", () => {
 
 	it("a re-attach after detach (Strict Mode) recreates geometry and keeps the overlay", () => {
 		const editor = createTestEditor();
-		const root = document.createElement("div");
-		document.body.append(root);
+		const root = connectedRoot();
 		const mounted = mountEditor(editor, root);
 		const overlay = getRootOverlay(root);
 		const geometry = getRootGeometry(root);
 
 		mounted.fieldEditor.setRootElement(null);
 		expect(liveObservers.size).toBe(0);
-		expect(scrollCaptureListeners().size).toBe(0);
+		expect(scrollListeners.size).toBe(0);
 
 		mounted.fieldEditor.setRootElement(root);
 		expect(getRootOverlay(root)).toBe(overlay);
 		expect(getRootGeometry(root)).not.toBe(geometry);
 		expect(liveObservers.size).toBe(1);
-		expect(scrollCaptureListeners().size).toBe(1);
+		expect(scrollListeners.size).toBe(1);
 
 		mounted.destroy();
 		editor.destroy();
@@ -122,8 +123,7 @@ describe("root overlay and geometry lifecycle", () => {
 
 	it("a destroyed editor is not kept alive by a root that outlives it", async () => {
 		const collect = forceCollection();
-		const root = document.createElement("div");
-		document.body.append(root);
+		const root = connectedRoot();
 		const editorRef = (() => {
 			const editor = createTestEditor();
 			const mounted = mountEditor(editor, root);

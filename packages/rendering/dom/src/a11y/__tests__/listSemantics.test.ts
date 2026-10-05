@@ -5,7 +5,7 @@ import {
 } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import type { DocumentOp, Editor } from "@input/pen-types";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { createBlockNotifier } from "../../field-editor/blockNotifier";
 import type { BlockNotifier } from "../../field-editor/blockNotifierTypes";
@@ -70,27 +70,41 @@ function expectMatchesCore(editor: Editor, notifier: BlockNotifier): void {
 	}
 }
 
+const cleanups: Array<() => void> = [];
+
+afterEach(() => {
+	for (const cleanup of cleanups.splice(0)) {
+		cleanup();
+	}
+});
+
+/** A document, its notifier and list store, and a probe on every root block; released after the test. */
+function setup(specs: readonly Spec[]) {
+	const editor = createDocument(specs);
+	const notifier = createBlockNotifier(editor);
+	const store = createListSemanticsStore(notifier);
+	const probe = observe(editor, notifier);
+	cleanups.push(() => {
+	});
+	return { editor, notifier, store, probe };
+}
+
 const BULLET = "bulletListItem";
 const NUMBERED = "numberedListItem";
 
 describe("list semantics store (AX1)", () => {
 	it("AX1: typing in a list item produces zero list-semantics notifications", () => {
-		const editor = createDocument([["paragraph"], [BULLET], [BULLET], [BULLET], ["paragraph"]]);
-		const notifier = createBlockNotifier(editor);
-		const store = createListSemanticsStore(notifier);
-		const probe = observe(editor, notifier);
+		const { editor, store, probe } = setup([["paragraph"], [BULLET], [BULLET], [BULLET], ["paragraph"]]);
 		const before = store.getItem("b2");
 		editor.apply([{ type: "splice-text", blockId: "b2", from: 0, to: 0, insert: "x" }], { origin: "user" });
 		// The typed block hears its own text change; its list slice keeps identity.
 		expect(probe.blocks).toEqual(["b2"]);
 		expect(probe.segments).toBe(0);
 		expect(store.getItem("b2")).toBe(before);
-		probe.dispose();
-		editor.destroy();
 	});
 
 	it("AX1: inserting a list item notifies only items whose position or set size changed and the parent's segments", () => {
-		const editor = createDocument([
+		const { editor, store, probe } = setup([
 			["paragraph"],
 			[BULLET],
 			[BULLET],
@@ -99,9 +113,6 @@ describe("list semantics store (AX1)", () => {
 			[BULLET],
 			[BULLET],
 		]);
-		const notifier = createBlockNotifier(editor);
-		const store = createListSemanticsStore(notifier);
-		const probe = observe(editor, notifier);
 		editor.apply(
 			[{ type: "insert-block", blockId: "n", blockType: BULLET, props: {}, position: { after: "b1" } }],
 			{ origin: "user" },
@@ -118,14 +129,10 @@ describe("list semantics store (AX1)", () => {
 			{ kind: "block", blockId: "b4" },
 			{ kind: "list", key: "b5", blockIds: ["b5", "b6"] },
 		]);
-		probe.dispose();
-		editor.destroy();
 	});
 
 	it("AX1: converting the paragraph between two runs merges their groups", () => {
-		const editor = createDocument([[BULLET], [BULLET], ["paragraph"], [BULLET]]);
-		const notifier = createBlockNotifier(editor);
-		const probe = observe(editor, notifier);
+		const { editor, notifier, probe } = setup([[BULLET], [BULLET], ["paragraph"], [BULLET]]);
 		editor.apply([{ type: "set-props", blockId: "b2", props: { type: BULLET } }], { origin: "user" });
 		const first = editor.firstBlock()!.id;
 		expect(notifier.getListSegments(null)).toEqual([
@@ -133,8 +140,6 @@ describe("list semantics store (AX1)", () => {
 		]);
 		expect(probe.blocks).toEqual([first, "b1", "b2", "b3"].sort());
 		expectMatchesCore(editor, notifier);
-		probe.dispose();
-		editor.destroy();
 	});
 
 	it("AX1: patched segments and slices equal the core helpers across structural edits", () => {
@@ -144,9 +149,7 @@ describe("list semantics store (AX1)", () => {
 			(index * 5) % 3,
 		]);
 		for (const initialSeed of [7, 11, 23, 101]) {
-			const editor = createDocument(specs);
-			const notifier = createBlockNotifier(editor);
-			const probe = observe(editor, notifier);
+			const { editor, notifier } = setup(specs);
 			let seed = initialSeed;
 			const next = (bound: number) => {
 				seed = (seed * 48271) % 2147483647;
@@ -175,8 +178,6 @@ describe("list semantics store (AX1)", () => {
 				editor.apply(ops, { origin: "user" });
 				expectMatchesCore(editor, notifier);
 			}
-			probe.dispose();
-			editor.destroy();
 		}
 	});
 });

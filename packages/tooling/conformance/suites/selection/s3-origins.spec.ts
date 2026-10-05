@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
+import { clickOffset } from "../specHelpers";
 
 /**
  * S3: every accepted authority write carries the origin of its real source.
@@ -16,25 +17,17 @@ async function recordOrigin(page: Page): Promise<string | null> {
 	);
 }
 
-async function clickOffset(page: Page, offset: number): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId: BLOCK_ID, offset });
-	await page.mouse.click(point.x, point.y);
-}
-
 scenario("S3: a click writes pointer", async (s, page) => {
 	await s.load("hello-world");
 	await s.selectText(0, 0);
-	await clickOffset(page, 3);
+	await clickOffset(page, BLOCK_ID, 3);
 	await expect.poll(() => recordOrigin(page)).toBe("pointer");
 	await s.assert.domMatchesAuthority();
 });
 
 scenario("S3: a drag writes pointer", async (s, page) => {
 	await s.load("hello-world");
-	const from = await getInlineOffsetPoint(page, {
-		blockId: BLOCK_ID,
-		offset: 1,
-	});
+	const from = await getInlineOffsetPoint(page, { blockId: BLOCK_ID, offset: 1 });
 	const to = await getInlineOffsetPoint(page, { blockId: BLOCK_ID, offset: 8 });
 	await page.mouse.move(from.x, from.y);
 	await page.mouse.down();
@@ -73,7 +66,7 @@ scenario(
 			},
 		]);
 		await expect(page.locator("[data-pen-inline-atom]")).toBeVisible();
-		await clickOffset(page, 2);
+		await clickOffset(page, BLOCK_ID, 2);
 		await expect.poll(() => recordOrigin(page)).toBe("pointer");
 		await s.selectText(0, 5);
 		await s.keyboard.press("ArrowRight");
@@ -117,7 +110,7 @@ scenario("S3: Mod-v paste caret writes keyboard", async (s, page) => {
 
 scenario("S3: a host selectText stays programmatic", async (s, page) => {
 	await s.load("hello-world");
-	await clickOffset(page, 3);
+	await clickOffset(page, BLOCK_ID, 3);
 	await expect.poll(() => recordOrigin(page)).toBe("pointer");
 	await s.selectText(0, 7);
 	await expect.poll(() => recordOrigin(page)).toBe("programmatic");

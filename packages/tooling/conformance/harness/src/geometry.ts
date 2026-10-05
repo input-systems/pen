@@ -510,15 +510,17 @@ function compareOverlay(layer: HTMLElement, editor: Editor): OverlayAuthorityChe
 	return { kind: "held", reason: "layer version and local caret match the record", ...base };
 }
 
+type OverlayProbeTallies = {
+	caretRectReads: number;
+	blockRectReads: number;
+	layerMutations: number;
+	layerAttributeWrites: number;
+};
+
 type OverlayProbe = {
 	readonly flushesAtStart: number;
 	readonly paintsAtStart: number;
-	readonly counts: {
-		caretRectReads: number;
-		blockRectReads: number;
-		layerMutations: number;
-		layerAttributeWrites: number;
-	};
+	readonly counts: OverlayProbeTallies;
 	readonly perFlush: Map<number, { caret: number; block: number }>;
 	readonly observer: MutationObserver;
 	readonly layer: HTMLElement;
@@ -527,6 +529,25 @@ type OverlayProbe = {
 };
 
 let overlayProbe: OverlayProbe | null = null;
+
+/**
+ * Item mutations: the layer's own OV4 bookkeeping attributes
+ * (`data-pen-overlay-selection-version`, `data-caret-visible`) are counted
+ * apart, since every selection change writes the version.
+ */
+function tallyLayerRecords(
+	records: readonly MutationRecord[],
+	layer: HTMLElement,
+	counts: OverlayProbeTallies,
+): void {
+	for (const record of records) {
+		if (record.type === "attributes" && record.target === layer) {
+			counts.layerAttributeWrites += 1;
+		} else {
+			counts.layerMutations += 1;
+		}
+	}
+}
 
 /**
  * OV1 counters: the root scheduler's flush and paint counts, calls to the
@@ -538,7 +559,7 @@ export function startOverlayProbe(): void {
 	const root = editorRoot();
 	const overlay = rootOverlay(root);
 	const { reader, scheduler } = getRootGeometry(root);
-	const counts = {
+	const counts: OverlayProbeTallies = {
 		caretRectReads: 0,
 		blockRectReads: 0,
 		layerMutations: 0,
@@ -581,18 +602,9 @@ export function startOverlayProbe(): void {
 		}
 		return blockRect.call(reader, blockId);
 	};
-	// Item mutations: the layer's own OV4 bookkeeping attributes
-	// (`data-pen-overlay-selection-version`, `data-caret-visible`) are
-	// counted apart, since every selection change writes the version.
-	const observer = new MutationObserver((records) => {
-		for (const record of records) {
-			if (record.type === "attributes" && record.target === overlay.layer) {
-				counts.layerAttributeWrites += 1;
-			} else {
-				counts.layerMutations += 1;
-			}
-		}
-	});
+	const observer = new MutationObserver((records) =>
+		tallyLayerRecords(records, overlay.layer, counts),
+	);
 	observer.observe(overlay.layer, {
 		attributes: true,
 		childList: true,
@@ -630,26 +642,15 @@ export function stopOverlayProbe(): OverlayProbeCounts {
 			layerAttributeWrites: 0,
 		};
 	}
-	for (const record of probe.observer.takeRecords()) {
-		if (record.type === "attributes" && record.target === probe.layer) {
-			probe.counts.layerAttributeWrites += 1;
-		} else {
-			probe.counts.layerMutations += 1;
-		}
-	}
+	tallyLayerRecords(probe.observer.takeRecords(), probe.layer, probe.counts);
 	probe.observer.disconnect();
 	probe.restore();
+	const tallies = [...probe.perFlush.values()];
 	return {
 		flushes: probe.scheduler.diagnostics.flushCount - probe.flushesAtStart,
 		paints: probe.scheduler.diagnostics.paintCount - probe.paintsAtStart,
 		...probe.counts,
-		maxCaretRectReadsPerFlush: Math.max(
-			0,
-			...[...probe.perFlush.values()].map((tally) => tally.caret),
-		),
-		maxBlockRectReadsPerFlush: Math.max(
-			0,
-			...[...probe.perFlush.values()].map((tally) => tally.block),
-		),
+		maxCaretRectReadsPerFlush: Math.max(0, ...tallies.map((tally) => tally.caret)),
+		maxBlockRectReadsPerFlush: Math.max(0, ...tallies.map((tally) => tally.block)),
 	};
 }

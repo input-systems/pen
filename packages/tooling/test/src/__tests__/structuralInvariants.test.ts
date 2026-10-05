@@ -36,10 +36,6 @@ function rawDocument(order: readonly string[], blocks: readonly RawBlock[]) {
 	return wrapYjsDocument(yjsAdapter(), ydoc).penDocument;
 }
 
-function kinds(violations: readonly StructuralViolation[]): string[] {
-	return violations.map((violation) => violation.kind);
-}
-
 describe("structural invariants oracle", () => {
 	it("COL4: assertStructuralInvariants names a dangling, duplicate, orphan, cross-array, and cycle violation", () => {
 		const clean = rawDocument(["p1", "c1"], [
@@ -50,48 +46,40 @@ describe("structural invariants oracle", () => {
 		expect(findStructuralViolations(clean)).toEqual([]);
 		expect(() => assertStructuralInvariants(clean)).not.toThrow();
 
-		const dangling = rawDocument(["p1", "ghost"], [{ id: "p1" }]);
-		expect(findStructuralViolations(dangling)).toEqual([
-			{ kind: "dangling-entry", array: "blockOrder", blockId: "ghost" },
-		]);
-
-		const danglingChild = rawDocument(["c1"], [{ id: "c1", children: ["ghost"] }]);
-		expect(findStructuralViolations(danglingChild)).toEqual([
-			{ kind: "dangling-entry", array: { children: "c1" }, blockId: "ghost" },
-		]);
-
-		const duplicate = rawDocument(["p1", "p2", "p1"], [{ id: "p1" }, { id: "p2" }]);
-		expect(findStructuralViolations(duplicate)).toEqual([
-			{ kind: "duplicate-entry", array: "blockOrder", blockId: "p1", count: 2 },
-		]);
-
-		const orphan = rawDocument(["p1"], [{ id: "p1" }, { id: "lost" }]);
-		expect(findStructuralViolations(orphan)).toEqual([{ kind: "orphan", blockId: "lost" }]);
-
-		const crossArray = rawDocument(["c1", "c2", "k1"], [
-			{ id: "c1", children: ["k1"] },
-			{ id: "c2", children: ["k1"] },
-			{ id: "k1" },
-		]);
-		expect(findStructuralViolations(crossArray)).toEqual([
-			{ kind: "cross-array", blockId: "k1", memberships: 3 },
-		]);
-
-		const cycle = rawDocument(["l1", "l2"], [
-			{ id: "l1", parentId: "l2" },
-			{ id: "l2", parentId: "l1" },
-		]);
-		expect(findStructuralViolations(cycle)).toEqual([
-			{ kind: "cycle", blockIds: ["l1", "l2"] },
-		]);
-
-		for (const document of [dangling, danglingChild, duplicate, orphan, crossArray, cycle]) {
+		const cases: Array<[order: string[], blocks: RawBlock[], expected: StructuralViolation[]]> = [
+			[["p1", "ghost"], [{ id: "p1" }], [{ kind: "dangling-entry", array: "blockOrder", blockId: "ghost" }]],
+			[
+				["c1"],
+				[{ id: "c1", children: ["ghost"] }],
+				[{ kind: "dangling-entry", array: { children: "c1" }, blockId: "ghost" }],
+			],
+			[
+				["p1", "p2", "p1"],
+				[{ id: "p1" }, { id: "p2" }],
+				[{ kind: "duplicate-entry", array: "blockOrder", blockId: "p1", count: 2 }],
+			],
+			[["p1"], [{ id: "p1" }, { id: "lost" }], [{ kind: "orphan", blockId: "lost" }]],
+			[
+				["c1", "c2", "k1"],
+				[{ id: "c1", children: ["k1"] }, { id: "c2", children: ["k1"] }, { id: "k1" }],
+				[{ kind: "cross-array", blockId: "k1", memberships: 3 }],
+			],
+			[
+				["l1", "l2"],
+				[{ id: "l1", parentId: "l2" }, { id: "l2", parentId: "l1" }],
+				[{ kind: "cycle", blockIds: ["l1", "l2"] }],
+			],
+		];
+		for (const [order, blocks, expected] of cases) {
+			const document = rawDocument(order, blocks);
+			expect(findStructuralViolations(document)).toEqual(expected);
 			expect(() => assertStructuralInvariants(document, "fixture")).toThrow(
 				/^fixture\nStructural invariants violated/,
 			);
 		}
-		expect(() => assertStructuralInvariants(orphan)).toThrow(/orphan: "lost"/);
-		expect(kinds(findStructuralViolations(crossArray))).toEqual(["cross-array"]);
+		expect(() => assertStructuralInvariants(rawDocument(["p1"], [{ id: "p1" }, { id: "lost" }]))).toThrow(
+			/orphan: "lost"/,
+		);
 	});
 
 	it("COL4: a normalized test editor satisfies the oracle", () => {

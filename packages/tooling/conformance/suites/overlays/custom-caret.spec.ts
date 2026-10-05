@@ -1,7 +1,7 @@
-import { expect, test, type Page } from "@playwright/test";
-import { formatCheckReport } from "../../src/checkReport";
+import { expect, type Page } from "@playwright/test";
+import { expectCheck } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
-import { clickOffsetAndAwaitCaret } from "../specHelpers";
+import { attachJson, clickOffsetAndAwaitCaret } from "../specHelpers";
 
 const CUSTOM_CARET = "/?customCaret=1";
 
@@ -66,36 +66,21 @@ scenario(
 		// record on the next scheduler flush (OV4), so wait for that flush.
 		const caret = await readSettledCaret(page);
 		expect(caret.caretCount).toBe(1);
-		await test.info().attach("custom-caret", {
-			body: JSON.stringify({ caret }, null, 2),
-			contentType: "application/json",
-		});
+		await attachJson("custom-caret", { caret });
 
-		expect(
-			caret.layerMounted,
-			formatCheckReport("O: pen-dom mounted the overlay layer", caret.layerMounted ? "passed" : "failed"),
-		).toBe(true);
-		expect(
-			caret.inLayer,
-			formatCheckReport("O: the caret is painted inside the layer", caret.inLayer ? "passed" : "failed"),
-		).toBe(true);
+		expectCheck("O: pen-dom mounted the overlay layer", caret.layerMounted);
+		expectCheck("O: the caret is painted inside the layer", caret.inLayer);
 		expect(caret.blockId).toBe("hello-p1");
 		expect(caret.offset).toBe("2");
 		// The serialized selection carries no affinity; the record's own is
 		// pinned headlessly (selectionOverlay G3). Here: the caret names one.
 		expect(["upstream", "downstream"]).toContain(caret.affinity);
-		expect(
-			caret.caretVisible,
-			formatCheckReport("O: data-caret-visible on the layer", caret.caretVisible ? "passed" : "failed"),
-		).toBe(true);
-		expect(
-			caret.caretColor,
-			formatCheckReport(
-				"O: native caret-color is transparent",
-				caret.caretColor === "transparent" ? "passed" : "failed",
-				`caretColor=${caret.caretColor}`,
-			),
-		).toBe("transparent");
+		expectCheck("O: data-caret-visible on the layer", caret.caretVisible);
+		expectCheck(
+			"O: native caret-color is transparent",
+			caret.caretColor === "transparent",
+			`caretColor=${caret.caretColor}`,
+		);
 		expect(caret.width).toBeGreaterThan(0);
 		expect(caret.height).toBeGreaterThan(0);
 	},

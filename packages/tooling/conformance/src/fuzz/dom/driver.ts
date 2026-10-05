@@ -63,10 +63,14 @@ async function pointFor(
 	}, point.blockId);
 }
 
-async function clickAt(page: Page, point: FuzzPoint): Promise<void> {
+async function clickAt(
+	page: Page,
+	point: FuzzPoint,
+	options?: { clickCount?: number; button?: "right" },
+): Promise<void> {
 	await scrollBlockIntoView(page, point.blockId);
 	const { x, y } = await pointFor(page, point);
-	await page.mouse.click(x, y);
+	await page.mouse.click(x, y, options);
 }
 
 /** Scrolls so both blocks are on screen when they fit, else centres `from`. */
@@ -146,12 +150,6 @@ async function pressTimes(
 	}
 }
 
-async function multiClickAt(page: Page, point: FuzzPoint, clickCount: number): Promise<void> {
-	await scrollBlockIntoView(page, point.blockId);
-	const { x, y } = await pointFor(page, point);
-	await page.mouse.click(x, y, { clickCount });
-}
-
 /** Click just beside the n-th inline atom (wrapping), then arrow across it. */
 async function atomStep(
 	page: Page,
@@ -173,15 +171,17 @@ async function atomStep(
 	await page.keyboard.press(args.key);
 }
 
+async function remoteApply(page: Page, ops: readonly DocumentOp[]): Promise<void> {
+	await page.evaluate((list) => window.__penConformance.remoteApply(list), ops);
+}
+
 /** Chromium: a real CDP composition with a remote apply between start and commit. */
 async function remoteMidComposition(
 	page: Page,
 	args: { composing: string; commit: string; ops: readonly DocumentOp[] },
 ): Promise<void> {
-	const remote = () =>
-		page.evaluate((ops) => window.__penConformance.remoteApply(ops), args.ops);
 	if (page.context().browser()?.browserType().name() !== "chromium") {
-		await remote();
+		await remoteApply(page, args.ops);
 		return;
 	}
 	const cdp = await page.context().newCDPSession(page);
@@ -191,7 +191,7 @@ async function remoteMidComposition(
 			selectionStart: args.composing.length,
 			selectionEnd: args.composing.length,
 		});
-		await remote();
+		await remoteApply(page, args.ops);
 		await cdp.send("Input.insertText", { text: args.commit });
 	} finally {
 		await cdp.detach();
@@ -199,9 +199,7 @@ async function remoteMidComposition(
 }
 
 async function contextMenuAt(page: Page, point: FuzzPoint): Promise<void> {
-	await scrollBlockIntoView(page, point.blockId);
-	const { x, y } = await pointFor(page, point);
-	await page.mouse.click(x, y, { button: "right" });
+	await clickAt(page, point, { button: "right" });
 	await page.keyboard.press("Escape");
 }
 
@@ -245,13 +243,9 @@ const EXECUTORS: {
 		pressTimes(page, "ControlOrMeta+a", args.presses),
 	undo: (page) => page.keyboard.press("ControlOrMeta+z"),
 	redo: (page) => page.keyboard.press("ControlOrMeta+Shift+z"),
-	remote: (page, args) =>
-		page.evaluate(
-			(ops) => window.__penConformance.remoteApply(ops),
-			args.ops,
-		),
-	"double-click": (page, args) => multiClickAt(page, args, 2),
-	"triple-click": (page, args) => multiClickAt(page, args, 3),
+	remote: (page, args) => remoteApply(page, args.ops),
+	"double-click": (page, args) => clickAt(page, args, { clickCount: 2 }),
+	"triple-click": (page, args) => clickAt(page, args, { clickCount: 3 }),
 	"home-end": (page, args) =>
 		page.keyboard.press(args.shift ? `Shift+${args.key}` : args.key),
 	delete: (page, args) => keyAtPoint(page, args, "Delete"),

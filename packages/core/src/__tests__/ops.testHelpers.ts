@@ -1,16 +1,6 @@
-import {
-	defineBlock,
-	mergeSchemas,
-	SchemaRegistryImpl,
-	createEditor as createCoreEditor,
-} from "../index";
+import { defineBlock, mergeSchemas, SchemaRegistryImpl } from "../index";
+import { createEditor as createBaseEditor } from "./editorCore.testHelpers";
 import { createDefaultSchema } from "./fixtures/testSchema";
-
-export const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
 
 export const flowDisallowedWidget = defineBlock("widget", {
 	content: "none",
@@ -29,16 +19,9 @@ export const flowPolicySchema = mergeSchemas(
 );
 
 export function createEditor() {
-	return createCoreEditor({
-		schema: createDefaultSchema(),
-		preset: noDefaultExtensionsPreset,
-	});
+	return createBaseEditor();
 }
 
 export function createFlowEditor() {
-	return createCoreEditor({
-		schema: flowPolicySchema,
-		documentProfile: "flow",
-		preset: noDefaultExtensionsPreset,
-	});
+	return createBaseEditor({ schema: flowPolicySchema, documentProfile: "flow" });
 }

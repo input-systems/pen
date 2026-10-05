@@ -83,12 +83,8 @@ export function twoEditorScenario(
 			);
 			for (const peer of [a, b]) {
 				await expect(peer.page.locator(`[data-fixture="${fixture}"]`)).toBeVisible();
-			}
-			// The fixture's own writes were in the seed: start both outboxes empty.
-			for (const peer of [a, b]) {
+				// The fixture's own writes were in the seed: start both outboxes empty.
 				await peer.page.evaluate(() => window.__penConformance.relay!.drainOutbox());
-			}
-			for (const peer of [a, b]) {
 				expect(
 					await peer.page.evaluate(() => document.hasFocus()),
 					`page ${peer.id} has emulated focus`,

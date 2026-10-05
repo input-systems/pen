@@ -51,23 +51,17 @@ afterEach(() => {
 });
 
 describe("createReducedMotionSignal (AX6)", () => {
-	it("AX6: reduced is true when the media query matches", () => {
-		const mediaQueryList = createMockMediaQueryList(true);
-		vi.stubGlobal("matchMedia", () => mediaQueryList);
+	it.each([true, false])(
+		"AX6: reduced mirrors a media query match of %s",
+		(matches) => {
+			const mediaQueryList = createMockMediaQueryList(matches);
+			vi.stubGlobal("matchMedia", () => mediaQueryList);
 
-		const signal = createReducedMotionSignal();
-		expect(signal.reduced).toBe(true);
-		signal.dispose();
-	});
-
-	it("AX6: reduced is false when the media query does not match", () => {
-		const mediaQueryList = createMockMediaQueryList(false);
-		vi.stubGlobal("matchMedia", () => mediaQueryList);
-
-		const signal = createReducedMotionSignal();
-		expect(signal.reduced).toBe(false);
-		signal.dispose();
-	});
+			const signal = createReducedMotionSignal();
+			expect(signal.reduced).toBe(matches);
+			signal.dispose();
+		},
+	);
 
 	it("AX6 HOST4: missing matchMedia leaves reduced false", () => {
 		vi.stubGlobal("matchMedia", undefined);
@@ -173,7 +167,7 @@ describe("createReducedMotionSignal (AX6)", () => {
 });
 
 describe("getRootReducedMotion (AX6)", () => {
-	it("AX6: handles on one root share one matchMedia listener and release it with the last handle", () => {
+	it("AX6: handles on one root share one matchMedia listener and release it with the last handle; another root gets its own", () => {
 		const mediaQueryList = createMockMediaQueryList(false);
 		const addListener = vi.spyOn(mediaQueryList, "addEventListener");
 		const removeListener = vi.spyOn(mediaQueryList, "removeEventListener");
@@ -197,17 +191,9 @@ describe("getRootReducedMotion (AX6)", () => {
 
 		first.dispose();
 		expect(removeListener).toHaveBeenCalledTimes(1);
-	});
 
-	it("AX6: separate roots get separate signals", () => {
-		const mediaQueryList = createMockMediaQueryList(false);
-		const addListener = vi.spyOn(mediaQueryList, "addEventListener");
-		vi.stubGlobal("matchMedia", () => mediaQueryList);
-
-		const a = getRootReducedMotion(document.createElement("div"));
-		const b = getRootReducedMotion(document.createElement("div"));
+		const other = getRootReducedMotion(document.createElement("div"));
 		expect(addListener).toHaveBeenCalledTimes(2);
-		a.dispose();
-		b.dispose();
+		other.dispose();
 	});
 });

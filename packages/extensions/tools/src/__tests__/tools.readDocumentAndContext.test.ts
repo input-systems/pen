@@ -1,79 +1,13 @@
-import { defaultSchema } from "./fixtures/testSchema";
 import type { Editor } from "@input/pen-types";
 import { describe, expect, it, vi } from "vitest";
 import { ToolContextImpl } from "../toolContext";
 import { getContextTool } from "../tools/getContext";
 import { getCursorContextTool } from "../tools/getCursorContext";
 import { readDocumentTool } from "../tools/readDocument";
-import { createFakeEditor, createMockBlockHandle } from "./tools.testHelpers";
-
-function createReadDocumentEditor(): Editor {
-	const blocks = [
-		createMockBlockHandle({
-			id: "block-1",
-			type: "paragraph",
-			props: {},
-			children: [],
-			textContent: (options?: { resolved?: boolean }) =>
-				options?.resolved ? "First accepted" : "First accepted",
-			textDeltas: () => [{ insert: "First accepted" }],
-		}),
-		createMockBlockHandle({
-			id: "block-2",
-			type: "paragraph",
-			props: {},
-			children: [],
-			textContent: (options?: { resolved?: boolean }) =>
-				options?.resolved ? "Second" : "Second draft",
-			textDeltas: () => [
-				{ insert: "Second" },
-				{
-					insert: " draft",
-					attributes: { suggestion: { action: "delete" } },
-				},
-			],
-		}),
-		createMockBlockHandle({
-			id: "block-3",
-			type: "heading",
-			props: {},
-			children: [],
-			textContent: (options?: { resolved?: boolean }) =>
-				options?.resolved ? "Third" : "Third",
-			textDeltas: () => [{ insert: "Third" }],
-		}),
-	] as const;
-	for (const block of blocks) {
-		delete (block as { prev?: unknown }).prev;
-		delete (block as { next?: unknown }).next;
-	}
-
-	return {
-		documentProfile: "structured",
-		schema: defaultSchema,
-		facet: () => null,
-		blockCount: () => 3,
-		blocks: () => blocks,
-		getBlock: (blockId: string) =>
-			blocks.find((block) => block.id === blockId) ?? null,
-		internals: {
-			doc: {
-				blockOrder: {
-					length: 3,
-					get: (index: number) =>
-						["block-1", "block-2", "block-3"][index],
-				},
-				blocks: { get: () => undefined },
-			},
-		},
-		getSelection: () => ({
-			type: "text",
-			anchor: { blockId: "block-2", offset: 0 },
-			focus: { blockId: "block-2", offset: 6 },
-		}),
-		getSelectedText: () => "Second",
-	} as unknown as Editor;
-}
+import {
+	createFakeEditor,
+	createReadDocumentEditor,
+} from "./tools.testHelpers";
 
 describe("@input/pen-tools tools: read_document and context", () => {
 	it("guards ToolContext block insertion with the same policy", () => {

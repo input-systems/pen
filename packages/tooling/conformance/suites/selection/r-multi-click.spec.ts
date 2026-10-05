@@ -15,31 +15,12 @@ async function pointInFirstWord(page: Page): Promise<{ x: number; y: number }> {
 	});
 }
 
-async function selectionShape(page: Page): Promise<string> {
-	return page.evaluate(() => {
-		const state = window.__penConformance.selectionRecord?.state ?? null;
-		if (state?.type !== "text") return `not text: ${JSON.stringify(state)}`;
-		if (state.anchor.blockId !== state.focus.blockId) return "multi-block";
-		return state.anchor.offset === state.focus.offset
-			? "collapsed"
-			: "range";
-	});
+async function expectDomMatchesAuthority(page: Page): Promise<void> {
+	const check = await page.evaluate(() =>
+		window.__penConformance.domMatchesAuthority(),
+	);
+	expect(check.ok, check.reason).toBe(true);
 }
-
-scenario(
-	"R1 S2: a double-click word selection reaches the authority through the reader and the DOM matches it",
-	async (s, page) => {
-		await s.load("hello-world");
-		const point = await pointInFirstWord(page);
-		await page.mouse.dblclick(point.x, point.y);
-
-		await expect.poll(() => selectionShape(page)).toBe("range");
-		const check = await page.evaluate(() =>
-			window.__penConformance.domMatchesAuthority(),
-		);
-		expect(check.ok, check.reason).toBe(true);
-	},
-);
 
 scenario(
 	"R1 S2: a triple-click leaves the DOM equivalent to the authority",
@@ -73,7 +54,7 @@ async function recordRange(page: Page): Promise<unknown> {
 }
 
 scenario(
-	"R1: double-click and triple-click expansions are accepted inside the pointer window",
+	"R1 S2: double-click and triple-click expansions are accepted inside the pointer window and the DOM matches each",
 	async (s, page) => {
 		await s.load("hello-world");
 		const diagnosticsBefore = await page.evaluate(
@@ -85,16 +66,14 @@ scenario(
 		await expect
 			.poll(() => recordRange(page))
 			.toEqual({ origin: "pointer", anchor: 0, focus: 5 });
+		await expectDomMatchesAuthority(page);
 
 		await page.mouse.click(point.x, point.y, { clickCount: 3 });
 		await expect
 			.poll(() => recordRange(page))
 			.toEqual({ origin: "pointer", anchor: 0, focus: "Hello world".length });
 
-		const check = await page.evaluate(() =>
-			window.__penConformance.domMatchesAuthority(),
-		);
-		expect(check.ok, check.reason).toBe(true);
+		await expectDomMatchesAuthority(page);
 		const mismatches = await page.evaluate(
 			(from) =>
 				window.__penConformance.diagnostics

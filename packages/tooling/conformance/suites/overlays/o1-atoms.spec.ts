@@ -3,7 +3,12 @@ import {
 	ATOM_CARET_IDS as ID,
 	ATOM_CARET_WRAP_PREFIX,
 } from "../../fixtures/atomCaret";
-import { localCarets, readSettledLayer } from "../../src/overlayLayer";
+import {
+	expectLocalCarets,
+	localCarets,
+	readSettledLayer,
+	type Box,
+} from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
 import type { GeometryLineBox, ScenarioApi } from "../../src/types";
 
@@ -22,7 +27,6 @@ const SURFACES = [
 const WRAP_SEARCH_MAX_WIDTH = 480;
 const WRAP_SEARCH_MIN_WIDTH = 240;
 
-type Box = { left: number; right: number; top: number; bottom: number; width: number; height: number };
 /** `leading`/`trailing` are logical (the side of travel in the block's direction); `left`/`right` are visual. */
 type Edge = "leading" | "trailing" | "left" | "right";
 
@@ -135,12 +139,11 @@ async function clickBesideAtom(
 	await page.mouse.click(x, box.top + box.height / 2);
 }
 
-async function recordFocus(page: Page): Promise<{ offset: number; anchor: number; type: string } | null> {
-	return page.evaluate(() => {
-		const state = window.__penConformance.selectionRecord?.state ?? null;
-		if (state?.type !== "text") return null;
-		return { type: state.type, anchor: state.anchor.offset, focus: state.focus.offset, offset: state.focus.offset };
-	});
+/** Click 2px into one visual half of an atom, vertically centred on it. */
+async function clickChipHalf(page: Page, blockId: string, half: "left" | "right"): Promise<void> {
+	const chip = await atomBox(page, blockId);
+	const centre = chip.left + chip.width / 2;
+	await page.mouse.click(half === "left" ? centre - 2 : centre + 2, chip.top + chip.height / 2);
 }
 
 async function expectSelection(page: Page, blockId: string, anchor: number, focus: number): Promise<void> {
@@ -181,10 +184,7 @@ async function expectAtomCaret(
 	args: { blockId: string; offset: number; edge: Edge; atomIndex?: number },
 ): Promise<void> {
 	await expectSelection(page, args.blockId, args.offset, args.offset);
-	await expect
-		.poll(async () => localCarets(await readSettledLayer(page)).length)
-		.toBe(1);
-	const layer = await readSettledLayer(page);
+	const layer = await expectLocalCarets(page, 1);
 	const caret = localCarets(layer)[0]!;
 	expect(caret.blockId).toBe(args.blockId);
 	expect(caret.offset).toBe(String(args.offset));
@@ -211,21 +211,9 @@ async function expectAtomCaret(
 	await s.assert.domMatchesAuthority();
 }
 
-async function expectNoLocalCaret(page: Page): Promise<void> {
-	await expect
-		.poll(async () => localCarets(await readSettledLayer(page)).length)
-		.toBe(0);
-}
-
 for (const surface of SURFACES) {
 	const on = (title: string) => `${title} (${surface.name})`;
 	const options = { url: surface.url };
-
-	scenario(on("O1: a caret after a mention sits on the mention's trailing edge"), async (s, page) => {
-		await s.load("atom-caret");
-		await clickBesideAtom(page, ID.mid, "right");
-		await expectAtomCaret(s, page, { blockId: ID.mid, offset: 7, edge: "trailing" });
-	}, options);
 
 	scenario(on("O1: a caret before a mention sits on its leading edge"), async (s, page) => {
 		await s.load("atom-caret");
@@ -272,7 +260,7 @@ for (const surface of SURFACES) {
 		await expectAtomCaret(s, page, { blockId: ID.pair, offset: 3, edge: "leading", atomIndex: 1 });
 		await s.keyboard.press("ArrowRight");
 		await expectSelection(page, ID.pair, 3, 4);
-		await expectNoLocalCaret(page);
+		await expectLocalCarets(page, 0);
 	}, options);
 
 	scenario(on("N1: ArrowRight beside a mention selects it, hides the overlay caret, and a second ArrowRight collapses after it"), async (s, page) => {
@@ -281,7 +269,7 @@ for (const surface of SURFACES) {
 		await expectSelection(page, ID.mid, 6, 6);
 		await s.keyboard.press("ArrowRight");
 		await expectSelection(page, ID.mid, 6, 7);
-		await expectNoLocalCaret(page);
+		await expectLocalCarets(page, 0);
 		await s.keyboard.press("ArrowRight");
 		await expectAtomCaret(s, page, { blockId: ID.mid, offset: 7, edge: "trailing" });
 	}, options);
@@ -347,18 +335,14 @@ for (const surface of SURFACES) {
 
 	scenario(on("O1: clicking either half of a chip puts the caret on that side"), async (s, page) => {
 		await s.load("atom-caret");
-		const chip = await atomBox(page, ID.mid);
-		const y = chip.top + chip.height / 2;
-		await page.mouse.click(chip.left + chip.width / 2 - 2, y);
+		await clickChipHalf(page, ID.mid, "left");
 		await expectAtomCaret(s, page, { blockId: ID.mid, offset: 6, edge: "leading" });
-		await page.mouse.click(chip.left + chip.width / 2 + 2, y);
+		await clickChipHalf(page, ID.mid, "right");
 		await expectAtomCaret(s, page, { blockId: ID.mid, offset: 7, edge: "trailing" });
 		// Right to left, the visual right half is the logical start.
-		const rtlChip = await atomBox(page, ID.rtl);
-		const rtlY = rtlChip.top + rtlChip.height / 2;
-		await page.mouse.click(rtlChip.left + rtlChip.width / 2 + 2, rtlY);
+		await clickChipHalf(page, ID.rtl, "right");
 		await expectAtomCaret(s, page, { blockId: ID.rtl, offset: 6, edge: "leading" });
-		await page.mouse.click(rtlChip.left + rtlChip.width / 2 - 2, rtlY);
+		await clickChipHalf(page, ID.rtl, "left");
 		await expectAtomCaret(s, page, { blockId: ID.rtl, offset: 7, edge: "trailing" });
 	}, options);
 
@@ -366,19 +350,15 @@ for (const surface of SURFACES) {
 		await s.load("atom-caret");
 		// "مرحبا abc " @Ada " def عالم": a left-to-right run in a right-to-left
 		// block, so the visual left half is the logical start.
-		const ltrRun = await atomBox(page, ID.rtlBlockLtrRun);
-		const ltrRunY = ltrRun.top + ltrRun.height / 2;
-		await page.mouse.click(ltrRun.left + ltrRun.width / 2 - 2, ltrRunY);
+		await clickChipHalf(page, ID.rtlBlockLtrRun, "left");
 		await expectAtomCaret(s, page, { blockId: ID.rtlBlockLtrRun, offset: 10, edge: "left" });
-		await page.mouse.click(ltrRun.left + ltrRun.width / 2 + 2, ltrRunY);
+		await clickChipHalf(page, ID.rtlBlockLtrRun, "right");
 		await expectAtomCaret(s, page, { blockId: ID.rtlBlockLtrRun, offset: 11, edge: "right" });
 		// "hello שלום " @דנה " עולם world": a right-to-left run in a
 		// left-to-right block, so the visual right half is the logical start.
-		const rtlRun = await atomBox(page, ID.ltrBlockRtlRun);
-		const rtlRunY = rtlRun.top + rtlRun.height / 2;
-		await page.mouse.click(rtlRun.left + rtlRun.width / 2 + 2, rtlRunY);
+		await clickChipHalf(page, ID.ltrBlockRtlRun, "right");
 		await expectAtomCaret(s, page, { blockId: ID.ltrBlockRtlRun, offset: 11, edge: "right" });
-		await page.mouse.click(rtlRun.left + rtlRun.width / 2 - 2, rtlRunY);
+		await clickChipHalf(page, ID.ltrBlockRtlRun, "left");
 		await expectAtomCaret(s, page, { blockId: ID.ltrBlockRtlRun, offset: 12, edge: "left" });
 	}, options);
 
@@ -388,12 +368,13 @@ for (const surface of SURFACES) {
 		await expectAtomCaret(s, page, { blockId: ID.end, offset: 6, edge: "trailing" });
 	}, options);
 
+	// Its first half is the "caret after a mention sits on the mention's trailing edge" case.
 	scenario(on("O1: typing after a mention hands the caret back to the native caret"), async (s, page) => {
 		await s.load("atom-caret");
 		await clickBesideAtom(page, ID.mid, "right");
 		await expectAtomCaret(s, page, { blockId: ID.mid, offset: 7, edge: "trailing" });
 		await s.keyboard.type("x");
-		await expectNoLocalCaret(page);
+		await expectLocalCarets(page, 0);
 		const layer = await readSettledLayer(page);
 		expect(layer.caretColor === "" || layer.caretColor === null).toBe(true);
 	}, options);
@@ -407,10 +388,7 @@ for (const surface of SURFACES) {
 		await expectSelection(page, ID.only, 0, 1);
 		await s.keyboard.press("Backspace");
 		await expectSelection(page, ID.only, 0, 0);
-		await expect
-			.poll(async () => localCarets(await readSettledLayer(page)).length)
-			.toBe(1);
-		const caret = localCarets(await readSettledLayer(page))[0]!;
+		const caret = localCarets(await expectLocalCarets(page, 1))[0]!;
 		expect(caret.box.height).toBeGreaterThanOrEqual(16);
 	}, options);
 
@@ -419,10 +397,7 @@ for (const surface of SURFACES) {
 		const empty = page.locator(`[data-pen-editor-block][data-block-id="${ID.empty}"]`);
 		await empty.click();
 		await expectSelection(page, ID.empty, 0, 0);
-		await expect
-			.poll(async () => localCarets(await readSettledLayer(page)).length)
-			.toBe(1);
-		const caret = localCarets(await readSettledLayer(page))[0]!;
+		const caret = localCarets(await expectLocalCarets(page, 1))[0]!;
 		const placeholder = await page.evaluate((id) => {
 			const br = document.querySelector(
 				`[data-pen-editor-block][data-block-id="${id}"] br[data-pen-empty]`,

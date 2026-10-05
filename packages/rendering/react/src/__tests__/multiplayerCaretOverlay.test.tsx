@@ -117,24 +117,37 @@ function editorRoot(container: HTMLElement): HTMLElement {
 	return root;
 }
 
-describe("@input/pen-react multiplayer caret overlay (W35.R12)", () => {
-	it("OV1 OV3: the remote caret is a contributor item painted into the overlay layer with a transform", async () => {
-		stubGeometry();
-		const { editor, blockId, controller } = createPeerEditor();
-		publishRemoteCursor(
-			controller,
-			editor.clientId,
-			encodeCursorAnchor(editor, blockId, 1),
-			1,
-		);
-		const view = await mount(
-			<Pen.Editor.Root editor={editor}>
-				<Pen.Editor.Content />
-				<Pen.Multiplayer.CaretOverlay />
-			</Pen.Editor.Root>,
-		);
-		await flushFrames();
+/** A peer caret published at offset 1, mounted with `overlay` and painted. */
+async function mountWithRemoteCaret(overlay: React.ReactElement) {
+	stubGeometry();
+	const peer = createPeerEditor();
+	publishRemoteCursor(
+		peer.controller,
+		peer.editor.clientId,
+		encodeCursorAnchor(peer.editor, peer.blockId, 1),
+		1,
+	);
+	const view = await mount(
+		<Pen.Editor.Root editor={peer.editor}>
+			<Pen.Editor.Content />
+			{overlay}
+		</Pen.Editor.Root>,
+	);
+	await flushFrames();
+	return { ...peer, view };
+}
 
+function attributes(element: Element | null | undefined, names: string[]) {
+	return Object.fromEntries(names.map((name) => [name, element?.getAttribute(name)]));
+}
+
+// pen-dom's remoteCarets.test.ts covers the painted caret's styles and that a
+// cursor move repaints the same element (OV1); these cover the binding.
+describe("@input/pen-react multiplayer caret overlay (OV3)", () => {
+	it("OV1 OV3: the remote caret is a contributor item painted into the overlay layer with a transform", async () => {
+		const { editor, blockId, view } = await mountWithRemoteCaret(
+			<Pen.Multiplayer.CaretOverlay />,
+		);
 		const layer = view.container.querySelector<HTMLElement>(
 			"[data-pen-overlay-layer]",
 		);
@@ -144,28 +157,27 @@ describe("@input/pen-react multiplayer caret overlay (W35.R12)", () => {
 		const label = caret?.querySelector<HTMLElement>(
 			"[data-pen-multiplayer-caret-label]",
 		);
-		expect(caret).toBeTruthy();
 		expect(caret?.parentElement).toBe(layer);
-		expect(caret?.getAttribute("data-pen-overlay-item")).toBe("caret");
-		expect(caret?.getAttribute("aria-hidden")).toBe("true");
-		expect(caret?.getAttribute("data-user-name")).toBe("Babbage");
-		expect(caret?.getAttribute("data-user-color")).toBe("#abc123");
-		expect(caret?.getAttribute("data-block-id")).toBe(blockId);
-		expect(caret?.getAttribute("data-affinity")).toBe("downstream");
+		expect(
+			attributes(caret, [
+				"data-pen-overlay-item",
+				"data-user-name",
+				"data-user-color",
+				"data-block-id",
+				"data-affinity",
+			]),
+		).toEqual({
+			"data-pen-overlay-item": "caret",
+			"data-user-name": "Babbage",
+			"data-user-color": "#abc123",
+			"data-block-id": blockId,
+			"data-affinity": "downstream",
+		});
 		// jsdom lays the layer out at (0, 0), so the layer-relative
 		// position is the measured rect.
 		expect(caret?.style.transform).toBe("translate3d(24px, 32px, 0)");
-		expect(caret?.style.position).toBe("absolute");
-		expect(caret?.style.left).toBe("0px");
-		expect(caret?.style.pointerEvents).toBe("none");
 		expect(caret?.style.height).toBe("24px");
-		expect(caret?.style.backgroundColor).toBe("var(--pen-peer-color)");
-		expect(caret?.style.getPropertyValue("--pen-peer-color")).toBe(
-			"#abc123",
-		);
 		expect(label?.textContent).toBe("Babbage");
-		expect(label?.getAttribute("aria-hidden")).toBe("true");
-		expect(label?.style.pointerEvents).toBe("none");
 		expect(label?.style.transform).toBe(
 			"translate3d(0px, -8px, 0) translateY(-100%)",
 		);
@@ -182,56 +194,7 @@ describe("@input/pen-react multiplayer caret overlay (W35.R12)", () => {
 		editor.destroy();
 	});
 
-	it("OV1: an awareness update moves the painted caret without a new element", async () => {
-		stubGeometry();
-		const { editor, blockId, controller } = createPeerEditor();
-		publishRemoteCursor(
-			controller,
-			editor.clientId,
-			encodeCursorAnchor(editor, blockId, 1),
-			1,
-		);
-		const view = await mount(
-			<Pen.Editor.Root editor={editor}>
-				<Pen.Editor.Content />
-				<Pen.Multiplayer.CaretOverlay />
-			</Pen.Editor.Root>,
-		);
-		await flushFrames();
-		const before = view.container.querySelector(
-			"[data-pen-multiplayer-caret]",
-		);
-		expect(before?.getAttribute("data-offset")).toBe("1");
-
-		await act(async () => {
-			publishRemoteCursor(
-				controller,
-				editor.clientId,
-				encodeCursorAnchor(editor, blockId, 2),
-				2,
-			);
-		});
-		await flushFrames();
-
-		const after = view.container.querySelectorAll(
-			"[data-pen-multiplayer-caret]",
-		);
-		expect(after).toHaveLength(1);
-		expect(after[0]).toBe(before);
-		expect(after[0]?.getAttribute("data-offset")).toBe("2");
-		await view.unmount();
-		editor.destroy();
-	});
-
 	it("OV3: renderCaret and renderLabel render the plan's items into the layer", async () => {
-		stubGeometry();
-		const { editor, blockId, controller } = createPeerEditor();
-		publishRemoteCursor(
-			controller,
-			editor.clientId,
-			encodeCursorAnchor(editor, blockId, 1),
-			1,
-		);
 		const seen: MultiplayerCaretRenderProps[] = [];
 		const renderCaret = (props: MultiplayerCaretRenderProps) => {
 			seen.push(props);
@@ -248,16 +211,12 @@ describe("@input/pen-react multiplayer caret overlay (W35.R12)", () => {
 				{props.cursor.user.name}
 			</span>
 		);
-		const view = await mount(
-			<Pen.Editor.Root editor={editor}>
-				<Pen.Editor.Content />
-				<Pen.Multiplayer.CaretOverlay
-					renderCaret={renderCaret}
-					renderLabel={renderLabel}
-				/>
-			</Pen.Editor.Root>,
+		const { editor, view } = await mountWithRemoteCaret(
+			<Pen.Multiplayer.CaretOverlay
+				renderCaret={renderCaret}
+				renderLabel={renderLabel}
+			/>,
 		);
-		await flushFrames();
 
 		const layer = view.container.querySelector("[data-pen-overlay-layer]");
 		const host = layer?.querySelector(
@@ -286,26 +245,14 @@ describe("@input/pen-react multiplayer caret overlay (W35.R12)", () => {
 	});
 
 	it("OV3: a local keystroke that leaves the remote caret in place re-renders no host caret", async () => {
-		stubGeometry();
-		const { editor, blockId, controller } = createPeerEditor();
-		publishRemoteCursor(
-			controller,
-			editor.clientId,
-			encodeCursorAnchor(editor, blockId, 1),
-			1,
-		);
 		let renders = 0;
 		const renderCaret = (props: MultiplayerCaretRenderProps) => {
 			renders += 1;
 			return <span data-host-caret="" style={props.caretStyle} />;
 		};
-		const view = await mount(
-			<Pen.Editor.Root editor={editor}>
-				<Pen.Editor.Content />
-				<Pen.Multiplayer.CaretOverlay renderCaret={renderCaret} />
-			</Pen.Editor.Root>,
+		const { editor, blockId, view } = await mountWithRemoteCaret(
+			<Pen.Multiplayer.CaretOverlay renderCaret={renderCaret} />,
 		);
-		await flushFrames();
 		const settled = renders;
 		expect(settled).toBeGreaterThan(0);
 

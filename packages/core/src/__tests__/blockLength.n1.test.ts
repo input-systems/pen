@@ -1,19 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { createEditor, getEditorSelectionRecord } from "../index";
-import { createDefaultSchema } from "./fixtures/testSchema";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
+import { getEditorSelectionRecord } from "../index";
+import { createEditor } from "./editorCore.testHelpers";
 
 function createAtomOnlyBlock() {
-	const editor = createEditor({
-		schema: createDefaultSchema(),
-		preset: noDefaultExtensionsPreset,
-	});
+	const editor = createEditor();
 	const blockId = editor.firstBlock()!.id;
 	editor.apply([
 		{

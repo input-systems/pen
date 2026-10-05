@@ -80,135 +80,55 @@ describe("AIB3: edit_document classifies destructiveness per call", () => {
 		expect(classify(removesEverything, STAGED)).toBe(false);
 	});
 
-	it("AIB3: direct insert_blocks, move_block, and format_text are not destructive", () => {
-		expect(
-			classify(
-				call(
-					{
-						operation: "insert_blocks",
-						blockId: "full",
-						placement: "after",
-						markdown: "More.",
-					},
-					{
-						operation: "move_block",
-						blockId: "empty",
-						referenceBlockId: "full",
-						placement: "before",
-					},
-					{
-						operation: "format_text",
-						blockId: "full",
-						matchText: "Revenue",
-						marks: { bold: true },
-					},
-				),
-				DIRECT,
-			),
-		).toBe(false);
+	it.each([
+		{ operation: "replace_block_text", blockId: "full", text: "New" },
+		{
+			operation: "replace_blocks",
+			blockIds: ["empty", "full"],
+			markdown: "- a",
+		},
+		{ operation: "delete_blocks", blockIds: ["full"] },
+		// Changes the content kind of a non-empty block.
+		{ operation: "set_block_props", blockId: "full", blockType: "divider" },
+	])("AIB3: direct %j is destructive", (operation) => {
+		expect(classify(call(operation), DIRECT)).toBe(true);
 	});
 
-	it("AIB3: direct replace_block_text over non-empty text is destructive and over an empty block is not", () => {
-		expect(
-			classify(
-				call({
-					operation: "replace_block_text",
-					blockId: "full",
-					text: "New",
-				}),
-				DIRECT,
-			),
-		).toBe(true);
-		expect(
-			classify(
-				call({
-					operation: "replace_block_text",
-					blockId: "empty",
-					text: "New",
-				}),
-				DIRECT,
-			),
-		).toBe(false);
-	});
-
-	it("AIB3: direct replace_blocks is destructive unless every target is an empty text block", () => {
-		expect(
-			classify(
-				call({
-					operation: "replace_blocks",
-					blockIds: ["empty"],
-					markdown: "- a",
-				}),
-				DIRECT,
-			),
-		).toBe(false);
-		expect(
-			classify(
-				call({
-					operation: "replace_blocks",
-					blockIds: ["empty", "full"],
-					markdown: "- a",
-				}),
-				DIRECT,
-			),
-		).toBe(true);
-	});
-
-	it("AIB3: direct delete_blocks over a non-empty block is destructive and over an empty block is not", () => {
-		expect(
-			classify(
-				call({ operation: "delete_blocks", blockIds: ["full"] }),
-				DIRECT,
-			),
-		).toBe(true);
-		expect(
-			classify(
-				call({ operation: "delete_blocks", blockIds: ["empty"] }),
-				DIRECT,
-			),
-		).toBe(false);
+	it.each([
+		{
+			operation: "insert_blocks",
+			blockId: "full",
+			placement: "after",
+			markdown: "More.",
+		},
+		{
+			operation: "move_block",
+			blockId: "empty",
+			referenceBlockId: "full",
+			placement: "before",
+		},
+		{
+			operation: "format_text",
+			blockId: "full",
+			matchText: "Revenue",
+			marks: { bold: true },
+		},
+		{ operation: "replace_block_text", blockId: "empty", text: "New" },
+		// Every target is an empty text block.
+		{ operation: "replace_blocks", blockIds: ["empty"], markdown: "- a" },
+		{ operation: "delete_blocks", blockIds: ["empty"] },
 		// A block that does not exist removes nothing; the compiler refuses it.
-		expect(
-			classify(
-				call({ operation: "delete_blocks", blockIds: ["missing"] }),
-				DIRECT,
-			),
-		).toBe(false);
-	});
-
-	it("AIB3: direct set_block_props changing content kind of a non-empty block is destructive (paragraph to divider)", () => {
-		expect(
-			classify(
-				call({
-					operation: "set_block_props",
-					blockId: "full",
-					blockType: "divider",
-				}),
-				DIRECT,
-			),
-		).toBe(true);
+		{ operation: "delete_blocks", blockIds: ["missing"] },
 		// Same content kind: the text stays on screen.
-		expect(
-			classify(
-				call({
-					operation: "set_block_props",
-					blockId: "full",
-					blockType: "heading",
-				}),
-				DIRECT,
-			),
-		).toBe(false);
+		{ operation: "set_block_props", blockId: "full", blockType: "heading" },
 		// Nothing to lose (D37).
-		expect(
-			classify(
-				call({
-					operation: "set_block_props",
-					blockId: "empty",
-					blockType: "divider",
-				}),
-				DIRECT,
-			),
-		).toBe(false);
+		{
+			operation: "set_block_props",
+			blockId: "empty",
+			blockType: "divider",
+		},
+	])("AIB3: direct %j is not destructive", (operation) => {
+		expect(classify(call(operation), DIRECT)).toBe(false);
 	});
 
 	it("AIB3: a payload with no operations array is not destructive", () => {

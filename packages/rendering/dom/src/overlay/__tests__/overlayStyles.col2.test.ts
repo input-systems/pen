@@ -45,17 +45,11 @@ describe("peer colour sink (COL2)", () => {
 		},
 	);
 
-	it("keeps a plain colour", () => {
+	it("keeps a plain colour and paints it through background-color, not the shorthand", () => {
 		const caret = overlayItemStyle(remoteCaret("#1d4ed8"), OPTIONS);
+		const label = overlayLabelStyle({ x: 0, y: 0, color: "rgb(1 2 3)" });
 		expect(caret["--pen-peer-color"]).toBe("#1d4ed8");
-		expect(
-			overlayLabelStyle({ x: 0, y: 0, color: "rgb(1 2 3)" }),
-		).toMatchObject({ "--pen-peer-color": "rgb(1 2 3)" });
-	});
-
-	it("paints the peer colour through background-color, not the shorthand", () => {
-		const caret = overlayItemStyle(remoteCaret("#1d4ed8"), OPTIONS);
-		const label = overlayLabelStyle({ x: 0, y: 0, color: "#1d4ed8" });
+		expect(label["--pen-peer-color"]).toBe("rgb(1 2 3)");
 		for (const style of [caret, label]) {
 			expect(style.background).toBeUndefined();
 			expect(style["background-color"]).toBe("var(--pen-peer-color)");

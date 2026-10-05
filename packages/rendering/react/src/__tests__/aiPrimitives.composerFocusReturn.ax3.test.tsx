@@ -10,6 +10,7 @@ import { deltaStreamExtension } from "@input/pen-ai/stream";
 import { toolsExtension } from "@input/pen-tools";
 import { defaultSchema } from "@input/pen-schema";
 import { Pen } from "../index";
+import { createKeyDownEvent } from "./utils/aiPrimitivesTestHelpers";
 import { mockSelectionToolbarRect } from "./utils/selectionToolbarRectMock";
 
 (
@@ -30,14 +31,6 @@ async function flushTicks(count: number): Promise<void> {
 	for (let tick = 0; tick < count; tick += 1) {
 		await Promise.resolve();
 	}
-}
-
-function escapeKey(): KeyboardEvent {
-	return new KeyboardEvent("keydown", {
-		key: "Escape",
-		bubbles: true,
-		cancelable: true,
-	});
 }
 
 /**
@@ -68,18 +61,9 @@ async function openPromptFromTrigger() {
 		],
 	});
 	const blockId = editor.firstBlock()!.id;
-	editor.apply(
-		[
-			{
-				type: "splice-text",
-				blockId,
-				from: 0,
-				to: 0,
-				insert: "Hello world",
-			},
-		],
-		{ origin: "system" },
-	);
+	editor.apply([{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hello world" }], {
+		origin: "system",
+	});
 	editor.selectTextRange({ blockId, offset: 6 }, { blockId, offset: 11 });
 	const controller = getAIController(editor)!;
 
@@ -158,39 +142,25 @@ describe("@input/pen-react AI contextual prompt AX3 focus return", () => {
 				view: Awaited<ReturnType<typeof openPromptFromTrigger>>,
 			) => Promise<void>;
 		}> = [
-			{
-				name: "accept",
-				resolve: async (view) => {
+			...(["accept", "reject"] as const).map((name) => ({
+				name,
+				resolve: async (view: Awaited<ReturnType<typeof openPromptFromTrigger>>) => {
 					await runPrompt(view);
-					const accept = view.container.querySelector<HTMLElement>(
-						"[data-pen-ai-inline-session-turn-accept]",
+					const control = view.container.querySelector<HTMLElement>(
+						`[data-pen-ai-inline-session-turn-${name}]`,
 					);
-					expect(accept).not.toBeNull();
+					expect(control).not.toBeNull();
 					await act(async () => {
-						accept!.click();
+						control!.click();
 						await flushTicks(4);
 					});
 				},
-			},
-			{
-				name: "reject",
-				resolve: async (view) => {
-					await runPrompt(view);
-					const reject = view.container.querySelector<HTMLElement>(
-						"[data-pen-ai-inline-session-turn-reject]",
-					);
-					expect(reject).not.toBeNull();
-					await act(async () => {
-						reject!.click();
-						await flushTicks(4);
-					});
-				},
-			},
+			})),
 			{
 				name: "dismiss (Escape in the prompt)",
 				resolve: async (view) => {
 					await act(async () => {
-						view.input.dispatchEvent(escapeKey());
+						view.input.dispatchEvent(createKeyDownEvent("Escape"));
 						await flushTicks(4);
 					});
 				},
@@ -205,7 +175,7 @@ describe("@input/pen-react AI contextual prompt AX3 focus return", () => {
 						other.focus();
 					});
 					await act(async () => {
-						other.dispatchEvent(escapeKey());
+						other.dispatchEvent(createKeyDownEvent("Escape"));
 						await flushTicks(4);
 					});
 				},

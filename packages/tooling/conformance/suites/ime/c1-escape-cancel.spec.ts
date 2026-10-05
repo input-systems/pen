@@ -1,17 +1,20 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
 import {
 	disableEditContext,
 	dispatchComposingKey,
-	readBackend,
-	readDocumentText,
-	readFocusOffset,
 	readSurfaceText,
 	replayCompositionStart,
 } from "./compose";
-import { installKeyProbe, readKeyProbe } from "../input/keys";
+import {
+	installKeyProbe,
+	readBackend,
+	readDocumentText,
+	readFocusOffset,
+	readKeyProbe,
+} from "../input/keys";
 
 scenario(
 	"C1: Escape during composition never preventDefaults",
@@ -134,32 +137,7 @@ scenario(
  * once the IME empties the run, the authority caret is the composition start
  * again, so the next keystroke lands there.
  */
-async function cancelCompositionThenType(
-	page: Page,
-	updates: readonly string[],
-): Promise<{ text: string; caretAfterCancel: number | null }> {
-	await page.evaluate(() =>
-		window.__penConformance.selectTextById("hello-p1", 5, 5),
-	);
-	const cdp = await page.context().newCDPSession(page);
-	for (const update of updates) {
-		await cdp.send("Input.imeSetComposition", {
-			text: update,
-			selectionStart: update.length,
-			selectionEnd: update.length,
-		});
-	}
-	await cdp.send("Input.imeSetComposition", {
-		text: "",
-		selectionStart: 0,
-		selectionEnd: 0,
-	});
-	const caretAfterCancel = await readFocusOffset(page);
-	await page.keyboard.type("Q");
-	return { text: await readDocumentText(page), caretAfterCancel };
-}
-
-const CANCEL_CASES: ReadonlyArray<{ label: string; updates: readonly string[] }> = [
+const CANCEL_CASES = [
 	{ label: "three updates", updates: ["k", "ka", "kan"] },
 	{ label: "one update", updates: ["kan"] },
 ];
@@ -174,12 +152,21 @@ for (const { label, updates } of CANCEL_CASES) {
 			);
 			await s.load("hello-world");
 			expect((await readBackend(page)).hasEditContext).toBe(false);
-			const { text, caretAfterCancel } = await cancelCompositionThenType(
-				page,
-				updates,
+			await page.evaluate(() =>
+				window.__penConformance.selectTextById("hello-p1", 5, 5),
 			);
-			expect(caretAfterCancel, "the caret is back at the composition start").toBe(5);
-			expect(text).toBe("HelloQ world");
+			const cdp = await page.context().newCDPSession(page);
+			// The trailing empty update is the IME cancelling the composition.
+			for (const update of [...updates, ""]) {
+				await cdp.send("Input.imeSetComposition", {
+					text: update,
+					selectionStart: update.length,
+					selectionEnd: update.length,
+				});
+			}
+			expect(await readFocusOffset(page), "the caret is back at the composition start").toBe(5);
+			await page.keyboard.type("Q");
+			expect(await readDocumentText(page)).toBe("HelloQ world");
 			expect(await readFocusOffset(page), "the caret follows the typed Q").toBe(6);
 			await s.assert.domMatchesAuthority();
 		},

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { scenario } from "../../src/scenario";
-import { readDocumentText, readSurfaceText } from "./compose";
+import { readDocumentText } from "../input/keys";
+import { readSurfaceText } from "./compose";
 
 const BLOCK = "hello-p1";
 
@@ -40,23 +41,12 @@ scenario(
 			() =>
 				(window as { __c2CompositionEnds?: number }).__c2CompositionEnds ?? 0,
 		);
-		expect(
-			compositionEnds,
-			"could not produce a real composition commit",
-		).toBe(1);
+		expect(compositionEnds, "could not produce a real composition commit").toBe(1);
 
-		await expect
-			.poll(() => readDocumentText(page))
-			.toBe("XHello worldni");
+		await expect.poll(() => readDocumentText(page)).toBe("XHello worldni");
 		await s.assert.domMatchesAuthority();
-		const selection = await page.evaluate(
-			() => window.__penConformance.selection,
-		);
-		expect(selection).toMatchObject({
-			type: "text",
-			anchor: { blockId: BLOCK, offset: 14 },
-			focus: { blockId: BLOCK, offset: 14 },
-		});
+		const caret = { blockId: BLOCK, offset: 14 };
+		await s.assert.selectionEquals({ anchor: caret, focus: caret });
 	},
 	{
 		initScript: () => {

@@ -1,89 +1,25 @@
-import { defaultSchema } from "./fixtures/testSchema";
 import type { Editor } from "@input/pen-types";
 import { describe, expect, it, vi } from "vitest";
 import { getCursorContextTool } from "../tools/getCursorContext";
 import { inspectTargetTool } from "../tools/inspectTarget";
 import { listValidOperationsTool } from "../tools/listValidOperations";
 import {
-	createMockBlockHandle,
+	createReadDocumentEditor,
 	createStructuredTargetEditor,
 } from "./tools.testHelpers";
 
 describe("@input/pen-tools tools: cursor traversal and table targets", () => {
 	it("uses bounded neighbor traversal for cursor context when block links exist", async () => {
-		const blocks: Array<{
-			id: string;
-			type: string;
-			props: Record<string, unknown>;
-			children: unknown[];
-			textContent: () => string;
-			textDeltas: () => Array<{ insert: string }>;
-			tableRowCount: () => number;
-			tableColumnCount: () => number;
-			tableCell: () => null;
-			tableRow: () => null;
-			tableColumns: () => never[];
+		const base = createReadDocumentEditor();
+		const [first, second, third] = base.blocks() as unknown as Array<{
 			prev?: unknown;
 			next?: unknown;
-		}> = [
-			createMockBlockHandle({
-				id: "block-1",
-				type: "paragraph",
-				props: {},
-				children: [],
-				textContent: () => "First",
-				textDeltas: () => [{ insert: "First" }],
-				prev: null,
-				next: null,
-			}),
-			createMockBlockHandle({
-				id: "block-2",
-				type: "paragraph",
-				props: {},
-				children: [],
-				textContent: () => "Second",
-				textDeltas: () => [{ insert: "Second" }],
-				prev: null,
-				next: null,
-			}),
-			createMockBlockHandle({
-				id: "block-3",
-				type: "paragraph",
-				props: {},
-				children: [],
-				textContent: () => "Third",
-				textDeltas: () => [{ insert: "Third" }],
-				prev: null,
-				next: null,
-			}),
-		];
-		blocks[0].next = blocks[1];
-		blocks[1].prev = blocks[0];
-		blocks[1].next = blocks[2];
-		blocks[2].prev = blocks[1];
-
+		}>;
+		Object.assign(first, { prev: null, next: second });
+		Object.assign(second, { prev: first, next: third });
+		Object.assign(third, { prev: second, next: null });
 		const editor = {
-			documentProfile: "structured",
-			schema: defaultSchema,
-			facet: () => null,
-			internals: {
-				doc: {
-					blockOrder: {
-						length: 3,
-						get: (index: number) =>
-							["block-1", "block-2", "block-3"][index],
-					},
-					blocks: { get: () => undefined },
-				},
-			},
-			getSelection: () => ({
-				type: "text",
-				anchor: { blockId: "block-2", offset: 0 },
-				focus: { blockId: "block-2", offset: 6 },
-			}),
-			getSelectedText: () => "Second",
-			getBlock: (blockId: string) =>
-				blocks.find((block) => block.id === blockId) ?? null,
+			...base,
 			blocks: vi.fn(() => {
 				throw new Error(
 					"Cursor context should not scan the full document.",

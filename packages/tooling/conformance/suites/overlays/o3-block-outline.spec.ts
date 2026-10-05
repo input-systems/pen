@@ -2,24 +2,21 @@ import { expect, test } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import {
 	blockBox,
+	expectCheck,
 	itemsOfKind,
+	near,
 	readSettledLayer,
 } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
-import { logLoad, readSelection } from "../specHelpers";
+import { attachJson, attachLoadavg, readSelection } from "../specHelpers";
 
 const DIVIDER_ID = "o3-d1";
 const AFTER_ID = "two-p1";
 const TABLE_ID = "o3-table";
 
-function within(actual: number, expected: number, tolerance: number): boolean {
-	return Math.abs(actual - expected) <= tolerance;
-}
-
 scenario(
 	"O3: clicking a divider becomes BlockSelection drawn as an overlay outline",
 	async (s, page) => {
-		const loads = logLoad("O3");
 		await s.load("two-paragraph");
 		await s.apply([
 			{
@@ -43,10 +40,7 @@ scenario(
 		const selected = await divider.evaluate((node) =>
 			node.hasAttribute("data-selected"),
 		);
-		await test.info().attach("o3-block", {
-			body: JSON.stringify({ loadavg: loads, selection, layer, box, selected }, null, 2),
-			contentType: "application/json",
-		});
+		await attachLoadavg("o3-block", { selection, layer, box, selected });
 
 		expect(selection).toMatchObject({ type: "block", blockIds: [DIVIDER_ID] });
 		expect(
@@ -54,19 +48,14 @@ scenario(
 			formatCheckReport("O3: one outline names the divider", outlines.length === 1 ? "passed" : "failed"),
 		).toEqual([DIVIDER_ID]);
 		const outline = outlines[0]!;
-		const fits =
-			within(outline.box.left, box.left, 1) &&
-			within(outline.box.top, box.top, 1) &&
-			within(outline.box.width, box.width, 1) &&
-			within(outline.box.height, box.height, 1);
-		expect(
-			fits,
-			formatCheckReport(
-				"O3: the outline sits on the divider's box within 1px",
-				fits ? "passed" : "failed",
-				`outline=${JSON.stringify(outline.box)} block=${JSON.stringify(box)}`,
-			),
-		).toBe(true);
+		expectCheck(
+			"O3: the outline sits on the divider's box within 1px",
+			near(outline.box.left, box.left) &&
+				near(outline.box.top, box.top) &&
+				near(outline.box.width, box.width) &&
+				near(outline.box.height, box.height),
+			`outline=${JSON.stringify(outline.box)} block=${JSON.stringify(box)}`,
+		);
 		expect(itemsOfKind(layer, "caret"), "O3: no caret during block selection").toEqual([]);
 		expect(selected, "O3: data-selected stays as a styling hook").toBe(true);
 	},
@@ -119,29 +108,21 @@ scenario(
 			};
 			return { start: box(0, 0), end: box(1, 1) };
 		}, TABLE_ID);
-		await test.info().attach("o3-cell", {
-			body: JSON.stringify({ layer, corners }, null, 2),
-			contentType: "application/json",
-		});
+		await attachJson("o3-cell", { layer, corners });
 
 		expect(ranges).toHaveLength(1);
 		const range = ranges[0]!;
 		expect(range.blockId).toBe(TABLE_ID);
 		expect(corners.start).not.toBeNull();
 		expect(corners.end).not.toBeNull();
-		const covers =
-			within(range.box.left, corners.start!.left, 1) &&
-			within(range.box.top, corners.start!.top, 1) &&
-			within(range.box.right, corners.end!.right, 1) &&
-			within(range.box.bottom, corners.end!.bottom, 1);
-		expect(
-			covers,
-			formatCheckReport(
-				"O3: the cell outline covers anchor..head",
-				covers ? "passed" : "failed",
-				`range=${JSON.stringify(range.box)} cells=${JSON.stringify(corners)}`,
-			),
-		).toBe(true);
+		expectCheck(
+			"O3: the cell outline covers anchor..head",
+			near(range.box.left, corners.start!.left) &&
+				near(range.box.top, corners.start!.top) &&
+				near(range.box.right, corners.end!.right) &&
+				near(range.box.bottom, corners.end!.bottom),
+			`range=${JSON.stringify(range.box)} cells=${JSON.stringify(corners)}`,
+		);
 		expect(itemsOfKind(layer, "caret")).toEqual([]);
 	},
 );
@@ -162,10 +143,7 @@ scenario(
 		const counts = await page.evaluate(() =>
 			window.__penConformance.stopOverlayProbe(),
 		);
-		await test.info().attach("o3-span", {
-			body: JSON.stringify({ counts, items: layer.items }, null, 2),
-			contentType: "application/json",
-		});
+		await attachJson("o3-span", { counts, items: layer.items });
 
 		const spans = itemsOfKind(layer, "block-span");
 		expect(itemsOfKind(layer, "block-outline")).toEqual([]);

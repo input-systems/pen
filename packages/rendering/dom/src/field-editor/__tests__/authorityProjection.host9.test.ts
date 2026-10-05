@@ -72,18 +72,47 @@ describe("HOST9: authority writes while a native control outside the editor owns
 		expect(document.activeElement).toBe(input);
 	});
 
-	it("a new text selection is recorded but not projected", () => {
-		const { editor, blockId, root, input, focusRequests } = mount();
-		input.focus();
-		document.getSelection()?.removeAllRanges();
+	it.each<[string, (fixture: Fixture) => HTMLElement]>([
+		[
+			"a foreign input",
+			({ input }) => {
+				input.focus();
+				return input;
+			},
+		],
+		[
+			"the body after the input blurred (a bare setSelection)",
+			({ input }) => {
+				input.focus();
+				input.blur();
+				return document.body;
+			},
+		],
+		[
+			"a native textarea nested in the root",
+			({ root }) => {
+				const textarea = document.createElement("textarea");
+				root.append(textarea);
+				textarea.focus();
+				return textarea;
+			},
+		],
+	])(
+		"HOST9: a new text selection while %s holds focus is recorded but not projected",
+		(_holder, takeFocus) => {
+			const fixture = mount();
+			const holder = takeFocus(fixture);
+			document.getSelection()?.removeAllRanges();
+			fixture.focusRequests.length = 0;
 
-		editor.selectText(blockId, 2, 4);
+			fixture.editor.selectText(fixture.blockId, 2, 4);
 
-		expect(editor.selection?.type).toBe("text");
-		expect(focusRequests).toEqual([]);
-		expect(domSelectionIsInside(root)).toBe(false);
-		expect(document.activeElement).toBe(input);
-	});
+			expect(fixture.editor.selection?.type).toBe("text");
+			expect(fixture.focusRequests).toEqual([]);
+			expect(domSelectionIsInside(fixture.root)).toBe(false);
+			expect(document.activeElement).toBe(holder);
+		},
+	);
 
 	it("a divergence report (P2) requests no focus either", () => {
 		const { root, input, mounted, focusRequests } = mount();
@@ -95,20 +124,6 @@ describe("HOST9: authority writes while a native control outside the editor owns
 		expect(focusRequests).toEqual([]);
 		expect(domSelectionIsInside(root)).toBe(false);
 		expect(document.activeElement).toBe(input);
-	});
-
-	it("HOST9: a bare setSelection does not take focus that fell to the body", () => {
-		const { editor, blockId, root, input, focusRequests } = mount();
-		input.focus();
-		input.blur();
-		document.getSelection()?.removeAllRanges();
-
-		editor.selectText(blockId, 2, 4);
-
-		expect(editor.selection?.type).toBe("text");
-		expect(focusRequests).toEqual([]);
-		expect(domSelectionIsInside(root)).toBe(false);
-		expect(document.activeElement).toBe(document.body);
 	});
 
 	it("HOST9: a keyboard-origin write projects once nothing outside the editor owns focus", () => {
@@ -172,21 +187,6 @@ describe("HOST9: authority writes while a native control outside the editor owns
 			"project-selection",
 		);
 		expect(domSelectionIsInside(root)).toBe(true);
-	});
-
-	it("a native textarea nested in the editor root keeps focus", () => {
-		const { editor, blockId, root, focusRequests } = mount();
-		const textarea = document.createElement("textarea");
-		root.append(textarea);
-		textarea.focus();
-		document.getSelection()?.removeAllRanges();
-		focusRequests.length = 0;
-
-		editor.selectText(blockId, 2, 4);
-
-		expect(editor.selection?.type).toBe("text");
-		expect(focusRequests).toEqual([]);
-		expect(document.activeElement).toBe(textarea);
 	});
 
 	it("the field editor itself is not treated as a foreign native control", () => {
@@ -302,7 +302,9 @@ describe("AX3: a divergence report while editor chrome inside the root owns focu
 
 	it("P2 still projects while the field holds focus", () => {
 		const { root, mounted, focusRequests } = mount();
-		root.querySelector<HTMLElement>("[data-pen-field-editor-surface]")?.focus();
+		root.querySelector<HTMLElement>(
+			"[data-pen-field-editor-surface]",
+		)?.focus();
 		document.getSelection()?.removeAllRanges();
 		focusRequests.length = 0;
 

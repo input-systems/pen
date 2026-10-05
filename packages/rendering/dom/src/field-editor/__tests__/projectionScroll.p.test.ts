@@ -8,8 +8,7 @@ import {
 	scrollDelta,
 } from "../projectionScroll";
 import type * as ProjectionScrollModule from "../projectionScroll";
-import { SelectionProjector } from "../selectionProjector";
-import { CLOSED_GESTURE_WINDOWS } from "../selectionReader";
+import { createTestProjector } from "./selectionProjector.testHelpers";
 
 vi.mock("../projectionScroll", async (importOriginal) => ({
 	...(await importOriginal<typeof ProjectionScrollModule>()),
@@ -50,41 +49,31 @@ function rect(top: number, bottom: number) {
 }
 
 describe("projection scroll policy (P)", () => {
-	it("P: auto scroll is on for keyboard, ime, restore and local-user mapped records and off for pointer, programmatic and collaborator-mapped", () => {
-		const nearest = { align: "nearest" };
-		const local = { commitId: 5, originType: "user" };
-		expect(
-			resolveProjectionScroll(record("keyboard"), null, "auto"),
-		).toEqual(nearest);
-		expect(resolveProjectionScroll(record("ime"), null, "auto")).toEqual(
-			nearest,
-		);
-		expect(
-			resolveProjectionScroll(record("restore"), null, "auto"),
-		).toEqual(nearest);
-		expect(
-			resolveProjectionScroll(record("mapped"), local, "auto"),
-		).toEqual(nearest);
-
-		expect(
-			resolveProjectionScroll(record("pointer"), local, "auto"),
-		).toBeNull();
-		expect(
-			resolveProjectionScroll(record("programmatic"), local, "auto"),
-		).toBeNull();
-		expect(resolveProjectionScroll(record("gc"), local, "auto")).toBeNull();
-		expect(
-			resolveProjectionScroll(
-				record("mapped"),
-				{ commitId: 5, originType: "collaborator" },
-				"auto",
-			),
-		).toBeNull();
+	const LOCAL = { commitId: 5, originType: "user" };
+	it.each<[string, SelectionRecord, typeof LOCAL | null, boolean]>([
+		["keyboard", record("keyboard"), null, true],
+		["ime", record("ime"), null, true],
+		["restore", record("restore"), null, true],
+		["local-user mapped", record("mapped"), LOCAL, true],
+		["pointer", record("pointer"), LOCAL, false],
+		["programmatic", record("programmatic"), LOCAL, false],
+		["gc", record("gc"), LOCAL, false],
+		[
+			"collaborator-mapped",
+			record("mapped"),
+			{ commitId: 5, originType: "collaborator" },
+			false,
+		],
 		// A mapped record from an older commit is not this local edit.
-		expect(
-			resolveProjectionScroll(record("mapped", 4), local, "auto"),
-		).toBeNull();
-	});
+		["older-commit mapped", record("mapped", 4), LOCAL, false],
+	])(
+		"P: auto scroll policy for a %s record",
+		(_label, current, commit, scrolls) => {
+			expect(resolveProjectionScroll(current, commit, "auto")).toEqual(
+				scrolls ? { align: "nearest" } : null,
+			);
+		},
+	);
 
 	it("P: an explicit alignment always scrolls and none never does", () => {
 		expect(
@@ -137,26 +126,10 @@ describe("projection scroll policy (P)", () => {
 
 describe("projection scroll jobs (P)", () => {
 	function projectorFor(origin: SelectionRecord["origin"]) {
-		const element = document.createElement("span");
-		document.body.append(element);
 		const jobs: string[] = [];
 		const reads: Array<() => void> = [];
 		const writes: Array<() => void> = [];
-		const projector = new SelectionProjector({
-			getGestureWindows: () => CLOSED_GESTURE_WINDOWS,
-			isEditing: () => true,
-			getMode: () => "single",
-			getFocusBlockId: () => "first",
-			getAttachedElement: () => element,
-			getRootElement: () => document.body,
-			findExpandedHost: () => null,
-			resolveInlineElement: () => element,
-			attachElement: () => true,
-			requestDomFocus: () => true,
-			updateBackendSelection: () => {},
-			setTextSelection: () => {},
-			activate: () => {},
-			emitSelectionProjected: () => {},
+		const { projector } = createTestProjector({
 			getRecord: () => record(origin),
 			getScheduler: () => ({
 				read: async (job: () => void) => {

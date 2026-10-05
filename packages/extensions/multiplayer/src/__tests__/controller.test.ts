@@ -15,16 +15,18 @@ function createDocumentEditor() {
 	return createEditor({ schema: defaultSchema,  document: crdtDoc });
 }
 
+function createController(editor = createEditor({ schema: defaultSchema })) {
+	return new MultiplayerControllerImpl({
+		editor,
+		config: { user: { id: "u1", name: "Ada" } },
+		authorLedger: new AuthorLedger(),
+		identityMap: new ClientIdentityMap(),
+	});
+}
+
 describe("MultiplayerControllerImpl", () => {
 	it("starts disconnected with empty peer state", () => {
-		const controller = new MultiplayerControllerImpl({
-			editor: createEditor({ schema: defaultSchema }),
-			config: {
-				user: { id: "u1", name: "Ada" },
-			},
-			authorLedger: new AuthorLedger(),
-			identityMap: new ClientIdentityMap(),
-		});
+		const controller = createController();
 
 		expect(controller.getState()).toEqual({
 			connectionState: "disconnected",
@@ -38,14 +40,7 @@ describe("MultiplayerControllerImpl", () => {
 	});
 
 	it("notifies subscribers when connection state changes", () => {
-		const controller = new MultiplayerControllerImpl({
-			editor: createEditor({ schema: defaultSchema }),
-			config: {
-				user: { id: "u1", name: "Ada" },
-			},
-			authorLedger: new AuthorLedger(),
-			identityMap: new ClientIdentityMap(),
-		});
+		const controller = createController();
 		const listener = vi.fn();
 		const unsubscribe = controller.subscribe(listener);
 
@@ -58,14 +53,7 @@ describe("MultiplayerControllerImpl", () => {
 	});
 
 	it("returns a snapshot of current state", () => {
-		const controller = new MultiplayerControllerImpl({
-			editor: createEditor({ schema: defaultSchema }),
-			config: {
-				user: { id: "u1", name: "Ada" },
-			},
-			authorLedger: new AuthorLedger(),
-			identityMap: new ClientIdentityMap(),
-		});
+		const controller = createController();
 
 		const snapshot = controller.snapshot();
 
@@ -76,14 +64,7 @@ describe("MultiplayerControllerImpl", () => {
 
 	it("derives remote peers, cursors, and selections from awareness state", () => {
 		const editor = createDocumentEditor();
-		const controller = new MultiplayerControllerImpl({
-			editor,
-			config: {
-				user: { id: "u1", name: "Ada" },
-			},
-			authorLedger: new AuthorLedger(),
-			identityMap: new ClientIdentityMap(),
-		});
+		const controller = createController(editor);
 
 		controller.handleAwarenessChange(
 			new Map<number, MultiplayerAwarenessState>([
@@ -175,14 +156,7 @@ describe("MultiplayerControllerImpl", () => {
 
 	it("retains author identities after peers leave awareness", () => {
 		const editor = createEditor({ schema: defaultSchema });
-		const controller = new MultiplayerControllerImpl({
-			editor,
-			config: {
-				user: { id: "u1", name: "Ada" },
-			},
-			authorLedger: new AuthorLedger(),
-			identityMap: new ClientIdentityMap(),
-		});
+		const controller = createController(editor);
 
 		controller.handleAwarenessChange(
 			new Map<number, MultiplayerAwarenessState>([
@@ -231,14 +205,7 @@ describe("MultiplayerControllerImpl", () => {
 			{ origin: { type: "collaborator" } },
 		);
 
-		const controller = new MultiplayerControllerImpl({
-			editor,
-			config: {
-				user: { id: "u1", name: "Ada" },
-			},
-			authorLedger: new AuthorLedger(),
-			identityMap: new ClientIdentityMap(),
-		});
+		const controller = createController(editor);
 
 		controller.handleAwarenessChange(
 			new Map<number, MultiplayerAwarenessState>([
@@ -292,14 +259,7 @@ describe("MultiplayerControllerImpl", () => {
 
 	it("returns the same snapshot references when mapping is a no-op", () => {
 		const editor = createDocumentEditor();
-		const controller = new MultiplayerControllerImpl({
-			editor,
-			config: {
-				user: { id: "u1", name: "Ada" },
-			},
-			authorLedger: new AuthorLedger(),
-			identityMap: new ClientIdentityMap(),
-		});
+		const controller = createController(editor);
 
 		expect(controller.getState()).toBe(controller.getState());
 		expect(controller.getRemoteCursors()).toBe(controller.getRemoteCursors());
@@ -336,14 +296,7 @@ describe("MultiplayerControllerImpl", () => {
 
 	it("a local keystroke that leaves the peer's presence unchanged notifies no one", () => {
 		const editor = createDocumentEditor();
-		const controller = new MultiplayerControllerImpl({
-			editor,
-			config: {
-				user: { id: "u1", name: "Ada" },
-			},
-			authorLedger: new AuthorLedger(),
-			identityMap: new ClientIdentityMap(),
-		});
+		const controller = createController(editor);
 		controller.handleAwarenessChange(
 			new Map<number, MultiplayerAwarenessState>([
 				[editor.clientId, { user: { id: "u1", name: "Ada" } }],
@@ -364,17 +317,9 @@ describe("MultiplayerControllerImpl", () => {
 		controller.subscribe(listener);
 
 		// Five keystrokes after the peer's caret: its offset never moves.
-		for (let index = 0; index < 5; index += 1) {
+		for (let at = 5; at < 10; at += 1) {
 			editor.apply(
-				[
-					{
-						type: "splice-text",
-						blockId: "b1",
-						from: 5 + index,
-						to: 5 + index,
-						insert: "x",
-					},
-				],
+				[{ type: "splice-text", blockId: "b1", from: at, to: at, insert: "x" }],
 				{ origin: "user" },
 			);
 		}

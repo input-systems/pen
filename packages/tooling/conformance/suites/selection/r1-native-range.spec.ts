@@ -1,5 +1,6 @@
 import { expect, test, type CDPSession, type Page } from "@playwright/test";
 import { scenario } from "../../src/scenario";
+import type { ScenarioApi } from "../../src/types";
 
 // R1 `native-range` (D21, W3.R26, W3.G20): touch selection handles move the
 // native range with `selectionchange` only, so no pointer window is open.
@@ -64,23 +65,10 @@ async function touchPress(
 			? await page.evaluateHandle(
 					(timeout) => ({
 						fired: new Promise<void>((resolve, reject) => {
-							document.addEventListener(
-								"contextmenu",
-								() => resolve(),
-								{
-									once: true,
-									capture: true,
-								},
-							);
-							setTimeout(
-								() =>
-									reject(
-										new Error(
-											`no long-press contextmenu within ${timeout} ms`,
-										),
-									),
-								timeout,
-							);
+							const options = { once: true, capture: true };
+							document.addEventListener("contextmenu", () => resolve(), options);
+							const error = `no long-press contextmenu within ${timeout} ms`;
+							setTimeout(() => reject(new Error(error)), timeout);
 						}),
 					}),
 					LONG_PRESS_TIMEOUT_MS,
@@ -142,6 +130,16 @@ async function settled(page: Page) {
 	});
 }
 
+/** Polls the settled record and native range to `expected`, then checks the DOM against it (S2). */
+async function expectSettled(
+	s: ScenarioApi,
+	page: Page,
+	expected: Awaited<ReturnType<typeof settled>>,
+): Promise<void> {
+	await expect.poll(() => settled(page)).toEqual(expected);
+	await s.assert.domMatchesAuthority();
+}
+
 /** Chromium's touch emulator, so a mouse press is a touch point (see `touchPress`). */
 async function emulateTouch(page: Page): Promise<CDPSession> {
 	const cdp = await page.context().newCDPSession(page);
@@ -160,15 +158,12 @@ scenario(
 
 		// Long-press "bravo".
 		await touchPress(page, cdp, await textCenter(page, 0, 6, 11), "long");
-		await expect
-			.poll(() => settled(page))
-			.toEqual({
-				origin: "pointer",
-				anchor: "two-p1:6",
-				focus: "two-p1:11",
-				native: "bravo",
-			});
-		await s.assert.domMatchesAuthority();
+		await expectSettled(s, page, {
+			origin: "pointer",
+			anchor: "two-p1:6",
+			focus: "two-p1:11",
+			native: "bravo",
+		});
 
 		// The start handle dragged to the block start: no pointer window is
 		// open, and P2 must not revert it.
@@ -201,8 +196,7 @@ scenario(
 		// With the window closed the same move is divergence: refused and
 		// projected back (I4, P2).
 		await handleExtend(page, 11, 0);
-		await expect.poll(() => settled(page)).toEqual(caret);
-		await s.assert.domMatchesAuthority();
+		await expectSettled(s, page, caret);
 	},
 );
 
@@ -227,15 +221,12 @@ scenario(
 		// Long-press "echo" in block B: the accepted read moves the session
 		// to B in the gesture that opened the window, and the window stays.
 		await touchPress(page, cdp, await textCenter(page, 1, 6, 10), "long");
-		await expect
-			.poll(() => settled(page))
-			.toEqual({
-				origin: "pointer",
-				anchor: "two-p2:6",
-				focus: "two-p2:10",
-				native: "echo",
-			});
-		await s.assert.domMatchesAuthority();
+		await expectSettled(s, page, {
+			origin: "pointer",
+			anchor: "two-p2:6",
+			focus: "two-p2:10",
+			native: "echo",
+		});
 
 		// The start handle dragged to B's start is accepted, not snapped back.
 		const extended = {

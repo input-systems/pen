@@ -1,33 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createEditor } from "@input/pen-core";
-import { defaultSchema } from "@input/pen-schema";
 import { applyListTabBehavior } from "../commandsListTab";
-import type { FieldEditorTextLike } from "../crdt";
-
-type BlocksMapLike = {
-	get(key: string): { get(field: string): unknown } | undefined;
-};
-
-type RawDocLike = {
-	getMap(name: string): BlocksMapLike;
-};
-
-function getYText(
-	editor: ReturnType<typeof createEditor>,
-	blockId: string,
-): FieldEditorTextLike {
-	const adapter = editor.internals.adapter;
-	const doc = editor.internals.crdtDoc;
-	const ydoc = adapter.raw<RawDocLike>(doc);
-	const ytext = ydoc
-		.getMap("blocks")
-		.get(blockId)
-		?.get("content") as FieldEditorTextLike | null;
-	if (!ytext) {
-		throw new Error(`Missing test Y.Text for block ${blockId}`);
-	}
-	return ytext;
-}
+import { getYText, seedParagraphs } from "./fieldEditorFixtures.testHelpers";
 
 /**
  * Every case runs on two bullet items, "root" then "child". `target` picks
@@ -84,39 +57,19 @@ describe("applyListTabBehavior", () => {
 	it.each(LIST_TAB_CASES)(
 		"$name",
 		({ target, childIndent, range, shiftKey, handled, expectedIndent }) => {
-			const editor = createEditor({ schema: defaultSchema });
-			const rootId = editor.firstBlock()!.id;
-			const childId = crypto.randomUUID();
-
+			const {
+				editor,
+				blockIds: [rootId, childId],
+			} = seedParagraphs(["root", "child"]);
 			editor.apply([
+				{ type: "set-props", blockId: rootId!, props: { type: "bulletListItem" } },
 				{
 					type: "set-props",
-					blockId: rootId,
-					props: { type: "bulletListItem" },
-				},
-				{
-					type: "splice-text",
-					blockId: rootId,
-					from: 0,
-					to: 0,
-					insert: "root",
-				},
-				{
-					type: "insert-block",
-					blockId: childId,
-					blockType: "bulletListItem",
-					props: { indent: childIndent },
-					position: { after: rootId },
-				},
-				{
-					type: "splice-text",
-					blockId: childId,
-					from: 0,
-					to: 0,
-					insert: "child",
+					blockId: childId!,
+					props: { type: "bulletListItem", indent: childIndent },
 				},
 			]);
-			const blockId = target === "root" ? rootId : childId;
+			const blockId = (target === "root" ? rootId : childId)!;
 
 			const result = applyListTabBehavior(editor, {
 				blockId,

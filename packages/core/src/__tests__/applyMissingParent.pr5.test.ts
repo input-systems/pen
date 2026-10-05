@@ -3,11 +3,17 @@ import { describe, expect, it } from "vitest";
 import { createBlockIndexSnapshotFromDocument } from "../changes/fromDocument";
 import { createNestedEditor } from "./fixtures/structuralEdits";
 
+/** A nested editor that counts PEN_APPLY_003 (missing parent) diagnostics. */
+function createRecordingEditor() {
+	const editor = createNestedEditor();
+	const codes: string[] = [];
+	editor.on("diagnostic", (event) => codes.push(event.code));
+	return { editor, missingParents: () => codes.filter((code) => code === "PEN_APPLY_003").length };
+}
+
 describe("apply into a missing parent", () => {
 	it("PR5: an insert-block or move-block into a non-existent parent is dropped with PEN_APPLY_003", () => {
-		const editor = createNestedEditor();
-		const codes: string[] = [];
-		editor.on("diagnostic", (event) => codes.push(event.code));
+		const { editor, missingParents } = createRecordingEditor();
 		const before = [...editor.documentState.preorderBlockIds()];
 
 		editor.apply([
@@ -15,7 +21,7 @@ describe("apply into a missing parent", () => {
 		]);
 		editor.apply([{ type: "move-block", blockId: "cols-a", position: { parent: "gone", index: 0 } }]);
 
-		expect(codes.filter((code) => code === "PEN_APPLY_003")).toHaveLength(2);
+		expect(missingParents()).toBe(2);
 		expect(editor.getBlock("orphan")).toBeNull();
 		expect(editor.documentState.preorderBlockIds()).toEqual(before);
 		// No block map entry outside the tree.
@@ -36,9 +42,7 @@ describe("apply into a missing parent", () => {
 	});
 
 	it("PR5: a parent deleted earlier in the same batch is not a valid target", () => {
-		const editor = createNestedEditor();
-		const codes: string[] = [];
-		editor.on("diagnostic", (event) => codes.push(event.code));
+		const { editor, missingParents } = createRecordingEditor();
 
 		editor.apply([
 			{ type: "delete-block", blockId: "cols" },
@@ -46,7 +50,7 @@ describe("apply into a missing parent", () => {
 			{ type: "insert-block", blockId: "late", blockType: "paragraph", props: {}, position: { parent: "cols", index: 0 } },
 		]);
 
-		expect(codes.filter((code) => code === "PEN_APPLY_003")).toHaveLength(2);
+		expect(missingParents()).toBe(2);
 		expect(editor.getBlock("cols")).toBeNull();
 		expect(editor.getBlock("late")).toBeNull();
 		// The move is dropped, so the block stays where it was instead of
@@ -72,27 +76,17 @@ describe("apply into a missing parent", () => {
 	});
 
 	it("PR5: a parentId prop naming a non-existent block is dropped with PEN_APPLY_003", () => {
-		const editor = createNestedEditor();
-		const codes: string[] = [];
-		editor.on("diagnostic", (event) => codes.push(event.code));
-		editor.apply([
-			{ type: "insert-block", blockId: "p", blockType: "paragraph", props: {}, position: "last" },
-		]);
+		const { editor, missingParents } = createRecordingEditor();
+		editor.apply([{ type: "insert-block", blockId: "p", blockType: "paragraph", props: {}, position: "last" }]);
 		const roots = [...editor.documentState.rootBlockIds()];
 		expect(roots).toContain("p");
 
 		editor.apply([{ type: "set-props", blockId: "p", props: { parentId: "nope" } }]);
 		editor.apply([
-			{
-				type: "insert-block",
-				blockId: "q",
-				blockType: "paragraph",
-				props: { parentId: "nope" },
-				position: { after: "p" },
-			},
+			{ type: "insert-block", blockId: "q", blockType: "paragraph", props: { parentId: "nope" }, position: { after: "p" } },
 		]);
 
-		expect(codes.filter((code) => code === "PEN_APPLY_003")).toHaveLength(2);
+		expect(missingParents()).toBe(2);
 		expect(editor.getBlock("p")?.props.parentId).toBeUndefined();
 		expect(editor.getBlock("q")).toBeNull();
 		expect(editor.documentState.rootBlockIds()).toEqual(roots);
@@ -100,9 +94,7 @@ describe("apply into a missing parent", () => {
 	});
 
 	it("PR5: a parentId naming a live block, one inserted earlier in the batch, or null is applied", () => {
-		const editor = createNestedEditor();
-		const codes: string[] = [];
-		editor.on("diagnostic", (event) => codes.push(event.code));
+		const { editor, missingParents } = createRecordingEditor();
 		editor.apply([
 			{ type: "insert-block", blockId: "t", blockType: "paragraph", props: {}, position: "last" },
 			{ type: "insert-block", blockId: "c", blockType: "paragraph", props: { parentId: "t" }, position: { after: "t" } },
@@ -113,7 +105,7 @@ describe("apply into a missing parent", () => {
 		expect(editor.getBlock("d")?.props.parentId).toBe("t");
 		editor.apply([{ type: "set-props", blockId: "d", props: { parentId: null } }]);
 		expect(editor.getBlock("d")?.props.parentId).toBeUndefined();
-		expect(codes).not.toContain("PEN_APPLY_003");
+		expect(missingParents()).toBe(0);
 		editor.destroy();
 	});
 });

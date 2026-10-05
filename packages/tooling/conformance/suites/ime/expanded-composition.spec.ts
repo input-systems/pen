@@ -1,39 +1,55 @@
 import { expect, test, type Page } from "@playwright/test";
 import { scenario } from "../../src/scenario";
-import { dispatchUnidentifiedKeyThenInput, readDocumentText } from "./compose";
+import type { ScenarioApi } from "../../src/types";
+import { readDocumentText } from "../input/keys";
+import { collectPageErrors } from "../specHelpers";
+import { dispatchUnidentifiedKeyThenInput } from "./compose";
+
+function whenIdle(page: Page): Promise<void> {
+	return page.evaluate(() => window.__penConformance.whenIdle());
+}
+
+async function selectTwoParagraphRange(
+	s: ScenarioApi,
+	page: Page,
+): Promise<void> {
+	await s.load("two-paragraph");
+	await page.evaluate(() => {
+		window.__penConformance.selectTextRangeById(
+			{ blockId: "two-p1", offset: 6 },
+			{ blockId: "two-p2", offset: 6 },
+		);
+	});
+	await whenIdle(page);
+}
+
+/** The document settles to `text`, caret collapsed at `offset` in two-p1. */
+async function expectSettled(
+	s: ScenarioApi,
+	page: Page,
+	text: string,
+	offset: number,
+): Promise<void> {
+	await expect.poll(() => readDocumentText(page)).toBe(text);
+	const caret = { blockId: "two-p1", offset };
+	await s.assert.selectionEquals({ anchor: caret, focus: caret });
+	await s.assert.domMatchesAuthority();
+}
 
 scenario(
 	"S2 FE2: a composition over a cross-block range deletes the range and composes in the caret's field",
 	async (s, page) => {
-		const pageErrors: string[] = [];
-		page.on("pageerror", (error) => pageErrors.push(error.message));
-
-		await s.load("two-paragraph");
-		await page.evaluate(() => {
-			window.__penConformance.selectTextRangeById(
-				{ blockId: "two-p1", offset: 6 },
-				{ blockId: "two-p2", offset: 6 },
-			);
-		});
-		await page.evaluate(() => window.__penConformance.whenIdle());
+		const pageErrors = collectPageErrors(page);
+		await selectTwoParagraphRange(s, page);
 
 		// Firefox delivers insertText as a composition, which the expanded
 		// host cannot cancel; the other engines send a plain insertText.
 		await page.keyboard.insertText("ñ");
 		await page.keyboard.type("o");
-		await page.evaluate(() => window.__penConformance.whenIdle());
+		await whenIdle(page);
 
 		expect(pageErrors).toEqual([]);
-		await expect.poll(() => readDocumentText(page)).toBe("Alpha ñoecho foxtrot");
-		await s.assert.domMatchesAuthority();
-		const selection = await page.evaluate(
-			() => window.__penConformance.selection,
-		);
-		expect(selection).toMatchObject({
-			type: "text",
-			anchor: { blockId: "two-p1", offset: 8 },
-			focus: { blockId: "two-p1", offset: 8 },
-		});
+		await expectSettled(s, page, "Alpha ñoecho foxtrot", 8);
 		if (test.info().project.name === "firefox") {
 			const compositionStarts = await page.evaluate(
 				() =>
@@ -57,20 +73,6 @@ scenario(
 	},
 );
 
-async function selectTwoParagraphRange(
-	s: Parameters<Parameters<typeof scenario>[1]>[0],
-	page: Page,
-): Promise<void> {
-	await s.load("two-paragraph");
-	await page.evaluate(() => {
-		window.__penConformance.selectTextRangeById(
-			{ blockId: "two-p1", offset: 6 },
-			{ blockId: "two-p2", offset: 6 },
-		);
-	});
-	await page.evaluate(() => window.__penConformance.whenIdle());
-}
-
 scenario(
 	"FE2 D20: a keyCode 229 keydown that turns out to be deleteContentBackward deletes only the range (expanded host)",
 	async (s, page) => {
@@ -79,15 +81,10 @@ scenario(
 			page,
 			"deleteContentBackward",
 		);
-		await page.evaluate(() => window.__penConformance.whenIdle());
+		await whenIdle(page);
 
 		expect(targets.keydownTarget).toBe("host");
-		await expect.poll(() => readDocumentText(page)).toBe("Alpha echo foxtrot");
-		await s.assert.selectionEquals({
-			anchor: { blockId: "two-p1", offset: 6 },
-			focus: { blockId: "two-p1", offset: 6 },
-		});
-		await s.assert.domMatchesAuthority();
+		await expectSettled(s, page, "Alpha echo foxtrot", 6);
 	},
 );
 
@@ -114,7 +111,7 @@ scenario(
 				selectionStart: update.length,
 				selectionEnd: update.length,
 			});
-			await page.evaluate(() => window.__penConformance.whenIdle());
+			await whenIdle(page);
 		}
 		expect(
 			await page.evaluate(() => window.__penConformance.composing),
@@ -133,15 +130,10 @@ scenario(
 			"the expanded host keeps focus",
 		).toBe(true);
 		await cdp.send("Input.insertText", { text: "你" });
-		await page.evaluate(() => window.__penConformance.whenIdle());
+		await whenIdle(page);
 
 		expect(await page.evaluate(() => window.__penConformance.composing)).toBe(false);
-		await expect.poll(() => readDocumentText(page)).toBe("Alpha 你echo foxtrot");
-		await s.assert.selectionEquals({
-			anchor: { blockId: "two-p1", offset: 7 },
-			focus: { blockId: "two-p1", offset: 7 },
-		});
-		await s.assert.domMatchesAuthority();
+		await expectSettled(s, page, "Alpha 你echo foxtrot", 7);
 	},
 );
 
@@ -154,7 +146,7 @@ scenario(
 		);
 		await selectTwoParagraphRange(s, page);
 		await page.keyboard.insertText("ñ");
-		await page.evaluate(() => window.__penConformance.whenIdle());
+		await whenIdle(page);
 
 		const composingDuring = await page.evaluate(
 			() => (window as { __composingDuring?: boolean[] }).__composingDuring ?? [],
@@ -162,12 +154,7 @@ scenario(
 		expect(composingDuring.length, "the composition updated").toBeGreaterThan(0);
 		expect(composingDuring.every(Boolean), "the ime window is open on every update").toBe(true);
 		expect(await page.evaluate(() => window.__penConformance.composing)).toBe(false);
-		await expect.poll(() => readDocumentText(page)).toBe("Alpha ñecho foxtrot");
-		await s.assert.selectionEquals({
-			anchor: { blockId: "two-p1", offset: 7 },
-			focus: { blockId: "two-p1", offset: 7 },
-		});
-		await s.assert.domMatchesAuthority();
+		await expectSettled(s, page, "Alpha ñecho foxtrot", 7);
 	},
 	{
 		initScript: () => {

@@ -19,32 +19,12 @@ describe("no-unscheduled-measure (SCH1)", () => {
 				{
 					code: "function measureNow() { el.getBoundingClientRect(); return el.getBoundingClientRect(); }\n",
 					filename: file,
-					options: [
-						{
-							allowlist: [
-								{
-									file,
-									symbol: "measureNow",
-									reason: "GeometryReader G1",
-								},
-							],
-						},
-					],
+					options: [{ allowlist: [{ file, symbol: "measureNow", reason: "GeometryReader G1" }] }],
 				},
 				{
 					code: "function read() { return range.getClientRects; }\n",
 					filename: file,
-					options: [
-						{
-							allowlist: [
-								{
-									file,
-									symbol: "read",
-									reason: "type mention inside GeometryReader",
-								},
-							],
-						},
-					],
+					options: [{ allowlist: [{ file, symbol: "read", reason: "type mention inside GeometryReader" }] }],
 				},
 			],
 			invalid: [
@@ -53,30 +33,13 @@ describe("no-unscheduled-measure (SCH1)", () => {
 					filename: file,
 					options: [{ allowlist: [] }],
 					errors: [
-						{
-							messageId: "measure",
-							data: {
-								kind: "getBoundingClientRect",
-								symbol: "overlayPaint",
-								file,
-							},
-						},
+						{ messageId: "measure", data: { kind: "getBoundingClientRect", symbol: "overlayPaint", file } },
 					],
 				},
 				{
 					code: "function overlayPaint() { return 1; }\n",
 					filename: file,
-					options: [
-						{
-							allowlist: [
-								{
-									file,
-									symbol: "overlayPaint",
-									reason: "retired",
-								},
-							],
-						},
-					],
+					options: [{ allowlist: [{ file, symbol: "overlayPaint", reason: "retired" }] }],
 					errors: [{ messageId: "unusedAllowlist" }],
 				},
 			],

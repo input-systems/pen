@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { getEditorSelectionRecord } from "@input/pen-core";
-import type { DiagnosticEvent } from "@input/pen-types";
+import type { DiagnosticEvent, OpOrigin, SelectionOrigin } from "@input/pen-types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
 import {
@@ -24,6 +24,25 @@ describe("overlay controller (OV1)", () => {
 		fixture.destroy();
 		vi.unstubAllGlobals();
 	});
+
+	function insert(origin: OpOrigin): void {
+		fixture.editor.apply(
+			[{ type: "splice-text", blockId: fixture.blockId, from: 0, to: 0, insert: "x" }],
+			{ origin },
+		);
+		flushFrame();
+	}
+
+	function select(offset: number, origin: SelectionOrigin): void {
+		fixture.editor.selectText(fixture.blockId, offset, offset, { origin });
+		flushFrame();
+	}
+
+	function paintedEpoch(): string | null | undefined {
+		return fixture.controller.layer
+			.querySelector("[data-pen-editor-caret]")
+			?.getAttribute("data-pen-caret-epoch");
+	}
 
 	it("OV1: contributor requests resolve to layer-relative items in the read phase", () => {
 		const { controller, editor, blockId } = fixture;
@@ -239,5 +258,52 @@ describe("overlay controller (OV1)", () => {
 		expect(root.lastElementChild).toBe(controller.layer);
 		controller.dispose();
 		expect(controller.layer.isConnected).toBe(false);
+	});
+
+	it("O: the blink epoch advances once per user commit (bare or structured) and once per pointer, keyboard or ime caret move", () => {
+		const { controller } = fixture;
+		controller.registerContributor(focusCaretContributor());
+		select(2, "programmatic");
+		const start = controller.blinkEpoch;
+		expect(paintedEpoch()).toBe(String(start));
+
+		insert("user");
+		expect(controller.blinkEpoch).toBe(start + 1);
+		expect(paintedEpoch()).toBe(String(start + 1));
+		insert({ type: "user", groupId: "g1" });
+		expect(controller.blinkEpoch).toBe(start + 2);
+
+		insert("collaborator");
+		insert("ai");
+		insert({ type: "ai", requestId: "r1" });
+		select(5, "programmatic");
+		select(6, "mapped");
+		expect(controller.blinkEpoch).toBe(start + 2);
+
+		select(7, "keyboard");
+		expect(controller.blinkEpoch).toBe(start + 3);
+		select(7, "keyboard");
+		expect(controller.blinkEpoch).toBe(start + 3);
+
+		select(8, "pointer");
+		expect(controller.blinkEpoch).toBe(start + 4);
+		select(9, "ime");
+		expect(controller.blinkEpoch).toBe(start + 5);
+		expect(paintedEpoch()).toBe(String(start + 5));
+	});
+
+	it("O: two user commits collected by one flush advance the blink epoch twice", () => {
+		const { controller, editor, blockId } = fixture;
+		controller.registerContributor(focusCaretContributor());
+		select(1, "programmatic");
+		const start = controller.blinkEpoch;
+		for (const text of ["a", "b"]) {
+			editor.apply(
+				[{ type: "splice-text", blockId, from: 0, to: 0, insert: text }],
+				{ origin: "user" },
+			);
+		}
+		flushFrame();
+		expect(controller.blinkEpoch).toBe(start + 2);
 	});
 });

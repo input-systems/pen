@@ -24,6 +24,14 @@ function mount(root?: ParentNode): Announcer {
 	return announcer;
 }
 
+/** An announcer whose writes queue as jobs the test runs by hand. */
+function queued(options: { root?: ParentNode; now?: () => number } = {}) {
+	const jobs: Array<() => void> = [];
+	const announcer = createAnnouncer({ ...options, schedule: (write) => jobs.push(write) });
+	announcers.push(announcer);
+	return { announcer, jobs };
+}
+
 function liveRegion(container: ParentNode = document.body): HTMLElement | null {
 	return container.querySelector('[role="status"]');
 }
@@ -183,9 +191,7 @@ describe("createAnnouncer (AX2)", () => {
 	});
 
 	it("AX2: an injected schedule receives one write job per announcement and the region is untouched until it runs", () => {
-		const jobs: Array<() => void> = [];
-		const announcer = createAnnouncer({ schedule: (write) => jobs.push(write) });
-		announcers.push(announcer);
+		const { announcer, jobs } = queued();
 		const region = liveRegion()!;
 
 		announcer.announce("Converted to Heading", "assertive");
@@ -201,12 +207,7 @@ describe("createAnnouncer (AX2)", () => {
 	it("AX2: the rate limit is stamped at queue time", () => {
 		vi.useFakeTimers();
 		let clock = 1_000;
-		const jobs: Array<() => void> = [];
-		const announcer = createAnnouncer({
-			schedule: (write) => jobs.push(write),
-			now: () => clock,
-		});
-		announcers.push(announcer);
+		const { announcer, jobs } = queued({ now: () => clock });
 
 		announcer.announce("first", "polite", "key");
 		clock += 100;
@@ -224,10 +225,8 @@ describe("createAnnouncer (AX2)", () => {
 	});
 
 	it("AX2: a disposed announcer drops queued writes", () => {
-		const jobs: Array<() => void> = [];
-		const root = document.createElement("div");
-		document.body.appendChild(root);
-		const announcer = createAnnouncer({ root, schedule: (write) => jobs.push(write) });
+		const root = document.body.appendChild(document.createElement("div"));
+		const { announcer, jobs } = queued({ root });
 		const region = liveRegion(root)!;
 
 		announcer.announce("queued");

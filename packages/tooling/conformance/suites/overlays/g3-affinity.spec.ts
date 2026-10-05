@@ -1,8 +1,13 @@
-import { expect, test, type Page } from "@playwright/test";
-import { formatCheckReport } from "../../src/checkReport";
-import { localCarets, readSettledLayer } from "../../src/overlayLayer";
+import { expect, type Page } from "@playwright/test";
+import {
+	expectCheck,
+	insertMention,
+	localCarets,
+	readSettledLayer,
+} from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
 import type { GeometryLineBox } from "../../src/types";
+import { attachJson } from "../specHelpers";
 
 const WRAP_ID = "g5-wrap";
 const ATOM_OFFSET = 8;
@@ -44,15 +49,7 @@ scenario(
 	"G3: the overlay caret at a soft-wrap boundary sits on the line its affinity names",
 	async (s, page) => {
 		await s.load("g5-geometry");
-		await s.apply([
-			{
-				type: "splice-text",
-				blockId: WRAP_ID,
-				from: ATOM_OFFSET,
-				to: ATOM_OFFSET,
-				insert: { nodeType: "mention", props: { id: "user-ada", label: "Ada" } },
-			},
-		]);
+		await s.apply([insertMention(WRAP_ID, ATOM_OFFSET)]);
 		await forceWrap(page);
 		await page.evaluate(() => window.__penConformance.invalidateGeometry());
 		await page.locator(`[data-pen-editor-block][data-block-id="${WRAP_ID}"] [data-pen-inline-content]`).click();
@@ -69,25 +66,16 @@ scenario(
 		);
 		const upper = lines.find((line) => line.endOffset === wrap);
 		const lower = lines.find((line) => line.startOffset === wrap);
-		await test.info().attach("g3-lines", {
-			body: JSON.stringify(lines, null, 2),
-			contentType: "application/json",
-		});
-		expect(
-			upper && lower,
-			formatCheckReport(
-				"G3: an offset beside the atom is a soft wrap",
-				upper && lower ? "passed" : "failed",
-				`lines=${JSON.stringify(lines)}`,
-			),
-		).toBeTruthy();
+		await attachJson("g3-lines", lines);
+		expectCheck(
+			"G3: an offset beside the atom is a soft wrap",
+			Boolean(upper && lower),
+			`lines=${JSON.stringify(lines)}`,
+		);
 
 		const upstream = await caretTopFor(page, wrap!, "upstream");
 		const downstream = await caretTopFor(page, wrap!, "downstream");
-		await test.info().attach("g3-carets", {
-			body: JSON.stringify({ upstream, downstream }, null, 2),
-			contentType: "application/json",
-		});
+		await attachJson("g3-carets", { upstream, downstream });
 		expect(upstream?.affinity).toBe("upstream");
 		expect(downstream?.affinity).toBe("downstream");
 		// On a line: the caret's top lies inside that line box. A line that
@@ -95,13 +83,15 @@ scenario(
 		// beside a chip is W35.R16 (step 5), so only the line is pinned here.
 		const onLine = (top: number | undefined, line: GeometryLineBox) =>
 			top !== undefined && top >= line.top - 1 && top < line.bottom;
-		expect(
+		expectCheck(
+			"G3: upstream draws on the upper line",
 			onLine(upstream?.top, upper!),
-			formatCheckReport("G3: upstream draws on the upper line", onLine(upstream?.top, upper!) ? "passed" : "failed", `caret=${upstream?.top} upper=${JSON.stringify(upper)}`),
-		).toBe(true);
-		expect(
+			`caret=${upstream?.top} upper=${JSON.stringify(upper)}`,
+		);
+		expectCheck(
+			"G3: downstream draws on the lower line",
 			onLine(downstream?.top, lower!),
-			formatCheckReport("G3: downstream draws on the lower line", onLine(downstream?.top, lower!) ? "passed" : "failed", `caret=${downstream?.top} lower=${JSON.stringify(lower)}`),
-		).toBe(true);
+			`caret=${downstream?.top} lower=${JSON.stringify(lower)}`,
+		);
 	},
 );

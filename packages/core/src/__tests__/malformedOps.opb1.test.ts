@@ -3,9 +3,8 @@ import type { DiagnosticEvent, DocumentOp } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
-import { createEditor as createCoreEditor } from "../index";
-import { createDefaultSchema } from "./fixtures/testSchema";
-import { noDefaultExtensionsPreset } from "./ops.testHelpers";
+import { createEditor } from "./editorCore.testHelpers";
+import { mulberry32 } from "./fixtures/structuralEdits";
 
 // OPB1. Op payloads land in the CRDT verbatim, so a value the CRDT cannot
 // encode passes the write and fails the next `encodeStateAsUpdate`, after
@@ -14,23 +13,20 @@ import { noDefaultExtensionsPreset } from "./ops.testHelpers";
 
 const MALFORMED_CODE = "PEN_APPLY_004";
 
+const FRESH_BLOCK = { type: "insert-block", blockId: "fresh", blockType: "paragraph", position: "last" };
+
 function createPeer() {
 	const adapter = yjsAdapter();
-	const editor = createCoreEditor({
-		schema: createDefaultSchema(),
-		crdt: adapter,
-		preset: noDefaultExtensionsPreset,
-	});
+	const editor = createEditor({ crdt: adapter });
 	const ydoc = adapter.raw<Y.Doc>(editor.internals.crdtDoc);
 	const diagnostics: DiagnosticEvent[] = [];
 	editor.on("diagnostic", (event) => {
 		diagnostics.push(event);
 	});
 	const blockId = editor.firstBlock()!.id;
-	editor.apply([
-		{ type: "splice-text", blockId, from: 0, to: 0, insert: "hello" },
-	]);
-	return { editor, ydoc, diagnostics, blockId };
+	editor.apply([{ type: "splice-text", blockId, from: 0, to: 0, insert: "hello" }]);
+	const malformedDiagnostics = () => diagnostics.filter((d) => d.code === MALFORMED_CODE);
+	return { editor, ydoc, diagnostics, malformedDiagnostics, blockId };
 }
 
 function cyclic(): Record<string, unknown> {
@@ -39,15 +35,12 @@ function cyclic(): Record<string, unknown> {
 	return value;
 }
 
-function mulberry32(seed: number): () => number {
-	let state = seed >>> 0;
-	return () => {
-		state += 0x6d2b79f5;
-		let t = state;
-		t = Math.imul(t ^ (t >>> 15), t | 1);
-		t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-	};
+const insertX = (blockId: string) => ({ type: "splice-text", blockId, from: 0, to: 0, insert: "x" });
+const formatText = (blockId: string, marks: Record<string, unknown>) =>
+	({ type: "format-text", blockId, from: 0, to: 2, marks }) as DocumentOp;
+
+function blockMeta(ydoc: Y.Doc, blockId: string): Y.Map<unknown> | undefined {
+	return ydoc.getMap<Y.Map<unknown>>("blocks").get(blockId)!.get("meta") as Y.Map<unknown> | undefined;
 }
 
 describe("OPB1: validate rejects payloads the CRDT cannot encode", () => {
@@ -64,12 +57,7 @@ describe("OPB1: validate rejects payloads the CRDT cannot encode", () => {
 
 			expect(() => {
 				editor.apply([
-					{
-						type: "set-meta",
-						blockId,
-						namespace,
-						data: { reviewed: true },
-					} as unknown as DocumentOp,
+					{ type: "set-meta", blockId, namespace, data: { reviewed: true } } as unknown as DocumentOp,
 				]);
 			}).not.toThrow();
 
@@ -80,157 +68,41 @@ describe("OPB1: validate rejects payloads the CRDT cannot encode", () => {
 				}),
 			);
 			expect(() => Y.encodeStateAsUpdate(ydoc)).not.toThrow();
-			const meta = ydoc
-				.getMap<Y.Map<unknown>>("blocks")
-				.get(blockId)!
-				.get("meta") as Y.Map<unknown> | undefined;
-			expect(meta === undefined || meta.size === 0).toBe(true);
+			expect(blockMeta(ydoc, blockId)?.size ?? 0).toBe(0);
 
 			editor.destroy();
 		},
 	);
 
 	it("OPB1: a well-formed set-meta still writes its namespace", () => {
-		const { editor, ydoc, diagnostics, blockId } = createPeer();
+		const { editor, ydoc, malformedDiagnostics, blockId } = createPeer();
 
-		editor.apply([
-			{
-				type: "set-meta",
-				blockId,
-				namespace: "review",
-				data: { ok: true },
-			},
-		]);
+		editor.apply([{ type: "set-meta", blockId, namespace: "review", data: { ok: true } }]);
 
-		expect(diagnostics.filter((d) => d.code === MALFORMED_CODE)).toEqual(
-			[],
-		);
-		const meta = ydoc
-			.getMap<Y.Map<unknown>>("blocks")
-			.get(blockId)!
-			.get("meta") as Y.Map<unknown>;
-		expect(meta.get("review")).toEqual({ ok: true });
+		expect(malformedDiagnostics()).toEqual([]);
+		expect(blockMeta(ydoc, blockId)!.get("review")).toEqual({ ok: true });
 		expect(() => Y.encodeStateAsUpdate(ydoc)).not.toThrow();
 
 		editor.destroy();
 	});
 
 	it.each<[string, (blockId: string) => unknown]>([
-		[
-			"set-meta cyclic data",
-			(blockId) => ({
-				type: "set-meta",
-				blockId,
-				namespace: "n",
-				data: cyclic(),
-			}),
-		],
-		[
-			"set-meta non-object data",
-			(blockId) => ({
-				type: "set-meta",
-				blockId,
-				namespace: "n",
-				data: "x",
-			}),
-		],
-		[
-			"set-props cyclic value",
-			(blockId) => ({
-				type: "set-props",
-				blockId,
-				props: { k: cyclic() },
-			}),
-		],
-		[
-			"set-props null props",
-			(blockId) => ({ type: "set-props", blockId, props: null }),
-		],
-		[
-			"insert-block missing props",
-			() => ({
-				type: "insert-block",
-				blockId: "fresh",
-				blockType: "paragraph",
-				position: "last",
-			}),
-		],
-		[
-			"insert-block cyclic prop",
-			() => ({
-				type: "insert-block",
-				blockId: "fresh",
-				blockType: "paragraph",
-				props: { k: cyclic() },
-				position: "last",
-			}),
-		],
-		[
-			"insert-block null position",
-			() => ({
-				type: "insert-block",
-				blockId: "fresh",
-				blockType: "paragraph",
-				props: {},
-				position: null,
-			}),
-		],
-		[
-			"move-block null position",
-			(blockId) => ({ type: "move-block", blockId, position: null }),
-		],
-		[
-			"splice-text undefined mark value",
-			(blockId) => ({
-				type: "splice-text",
-				blockId,
-				from: 0,
-				to: 0,
-				insert: "x",
-				marks: { bold: undefined },
-			}),
-		],
-		[
-			"splice-text bigint mark value",
-			(blockId) => ({
-				type: "splice-text",
-				blockId,
-				from: 0,
-				to: 0,
-				insert: "x",
-				marks: { bold: 1n },
-			}),
-		],
+		["set-meta cyclic data", (blockId) => ({ type: "set-meta", blockId, namespace: "n", data: cyclic() })],
+		["set-meta non-object data", (blockId) => ({ type: "set-meta", blockId, namespace: "n", data: "x" })],
+		["set-props cyclic value", (blockId) => ({ type: "set-props", blockId, props: { k: cyclic() } })],
+		["set-props null props", (blockId) => ({ type: "set-props", blockId, props: null })],
+		["insert-block missing props", () => FRESH_BLOCK],
+		["insert-block cyclic prop", () => ({ ...FRESH_BLOCK, props: { k: cyclic() } })],
+		["insert-block null position", () => ({ ...FRESH_BLOCK, props: {}, position: null })],
+		["move-block null position", (blockId) => ({ type: "move-block", blockId, position: null })],
+		["splice-text undefined mark value", (blockId) => ({ ...insertX(blockId), marks: { bold: undefined } })],
+		["splice-text bigint mark value", (blockId) => ({ ...insertX(blockId), marks: { bold: 1n } })],
 		[
 			"splice-text atom with cyclic props",
-			(blockId) => ({
-				type: "splice-text",
-				blockId,
-				from: 0,
-				to: 0,
-				insert: { nodeType: "mention", props: cyclic() },
-			}),
+			(blockId) => ({ ...insertX(blockId), insert: { nodeType: "mention", props: cyclic() } }),
 		],
-		[
-			"format-text undefined mark value",
-			(blockId) => ({
-				type: "format-text",
-				blockId,
-				from: 0,
-				to: 2,
-				marks: { bold: undefined },
-			}),
-		],
-		[
-			"format-text cyclic mark value",
-			(blockId) => ({
-				type: "format-text",
-				blockId,
-				from: 0,
-				to: 2,
-				marks: { bold: cyclic() },
-			}),
-		],
+		["format-text undefined mark value", (blockId) => formatText(blockId, { bold: undefined })],
+		["format-text cyclic mark value", (blockId) => formatText(blockId, { bold: cyclic() })],
 		[
 			"app create cyclic config",
 			() => ({
@@ -244,24 +116,17 @@ describe("OPB1: validate rejects payloads the CRDT cannot encode", () => {
 				},
 			}),
 		],
-		[
-			"app update missing patch",
-			() => ({ type: "app", change: { kind: "update", appId: "a" } }),
-		],
+		["app update missing patch", () => ({ type: "app", change: { kind: "update", appId: "a" } })],
 		["null op", () => null],
 	])(
 		"OPB1: %s is dropped with PEN_APPLY_004 and the document still encodes",
 		(_label, build) => {
-			const { editor, ydoc, diagnostics, blockId } = createPeer();
+			const { editor, ydoc, malformedDiagnostics, blockId } = createPeer();
 			const before = editor.getBlock(blockId)!.textContent();
 
-			expect(() => {
-				editor.apply([build(blockId) as DocumentOp]);
-			}).not.toThrow();
+			expect(() => editor.apply([build(blockId) as DocumentOp])).not.toThrow();
 
-			expect(diagnostics).toContainEqual(
-				expect.objectContaining({ code: MALFORMED_CODE }),
-			);
+			expect(malformedDiagnostics()).not.toEqual([]);
 			expect(editor.getBlock(blockId)!.textContent()).toBe(before);
 			expect(() => Y.encodeStateAsUpdate(ydoc)).not.toThrow();
 
@@ -282,19 +147,13 @@ describe("OPB1: validate rejects payloads the CRDT cannot encode", () => {
 	])(
 		"OPB1: set-props with a %s value is dropped without writing the props before it",
 		(_label, value) => {
-			const { editor, ydoc, diagnostics, blockId } = createPeer();
+			const { editor, ydoc, malformedDiagnostics, blockId } = createPeer();
 
 			editor.apply([
-				{
-					type: "set-props",
-					blockId,
-					props: { a: 1, bad: value, z: 2 },
-				} as unknown as DocumentOp,
+				{ type: "set-props", blockId, props: { a: 1, bad: value, z: 2 } } as unknown as DocumentOp,
 			]);
 
-			expect(diagnostics).toContainEqual(
-				expect.objectContaining({ code: MALFORMED_CODE }),
-			);
+			expect(malformedDiagnostics()).not.toEqual([]);
 			expect(editor.getBlock(blockId)!.props).not.toHaveProperty("a");
 			expect(() => Y.encodeStateAsUpdate(ydoc)).not.toThrow();
 
@@ -303,21 +162,11 @@ describe("OPB1: validate rejects payloads the CRDT cannot encode", () => {
 	);
 
 	it("OPB1: insert-block with a function prop leaves no stored block outside the order", () => {
-		const { editor, ydoc, diagnostics } = createPeer();
+		const { editor, ydoc, malformedDiagnostics } = createPeer();
 
-		editor.apply([
-			{
-				type: "insert-block",
-				blockId: "fresh",
-				blockType: "paragraph",
-				props: { x: () => 1 },
-				position: "last",
-			} as unknown as DocumentOp,
-		]);
+		editor.apply([{ ...FRESH_BLOCK, props: { x: () => 1 } } as DocumentOp]);
 
-		expect(diagnostics).toContainEqual(
-			expect.objectContaining({ code: MALFORMED_CODE }),
-		);
+		expect(malformedDiagnostics()).not.toEqual([]);
 		expect(ydoc.getMap("blocks").has("fresh")).toBe(false);
 		expect(editor.getBlock("fresh")).toBeFalsy();
 
@@ -332,22 +181,18 @@ describe("OPB1: validate rejects payloads the CRDT cannot encode", () => {
 	])(
 		"OPB1: format-text with a %s mark value is dropped because peers would decode it differently",
 		(_label, marks) => {
-			const { editor, diagnostics, blockId } = createPeer();
+			const { editor, malformedDiagnostics, blockId } = createPeer();
 
-			editor.apply([
-				{ type: "format-text", blockId, from: 0, to: 2, marks },
-			]);
+			editor.apply([formatText(blockId, marks)]);
 
-			expect(diagnostics).toContainEqual(
-				expect.objectContaining({ code: MALFORMED_CODE }),
-			);
+			expect(malformedDiagnostics()).not.toEqual([]);
 
 			editor.destroy();
 		},
 	);
 
 	it("OPB1: plain data, a Uint8Array and nested null-prototype objects still write as props", () => {
-		const { editor, ydoc, diagnostics, blockId } = createPeer();
+		const { editor, ydoc, malformedDiagnostics, blockId } = createPeer();
 		const nested = Object.assign(Object.create(null), { k: 1 });
 
 		editor.apply([
@@ -366,9 +211,7 @@ describe("OPB1: validate rejects payloads the CRDT cannot encode", () => {
 			},
 		]);
 
-		expect(diagnostics.filter((d) => d.code === MALFORMED_CODE)).toEqual(
-			[],
-		);
+		expect(malformedDiagnostics()).toEqual([]);
 		expect(editor.getBlock(blockId)!.props).toMatchObject({
 			n: 1.5,
 			list: [1, { a: "b" }],
@@ -380,8 +223,7 @@ describe("OPB1: validate rejects payloads the CRDT cannot encode", () => {
 
 	it("OPB1: random malformed ops never throw from apply nor leave the document unencodable", () => {
 		const random = mulberry32(0x5e7ae7a);
-		const pick = <T>(items: readonly T[]): T =>
-			items[Math.floor(random() * items.length)]!;
+		const pick = <T>(items: readonly T[]): T => items[Math.floor(random() * items.length)]!;
 		const types: readonly DocumentOp["type"][] = [
 			"splice-text",
 			"format-text",

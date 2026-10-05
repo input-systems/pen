@@ -1,22 +1,20 @@
-import { expect, test, type Page } from "@playwright/test";
-import { formatCheckReport } from "../../src/checkReport";
+import { expect, type Page } from "@playwright/test";
 import {
 	blockBox,
 	charBox,
+	expectCheck,
 	itemsOfKind,
+	near,
 	readSettledLayer,
 	remoteCarets,
 } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
+import { attachJson } from "../specHelpers";
 
 const FIRST_ID = "two-p1";
 const SECOND_ID = "two-p2";
 const REMOTE_OFFSET = 3;
 const SPACER_GROWTH = 120;
-
-function near(actual: number, expected: number, tolerance = 1): boolean {
-	return Math.abs(actual - expected) <= tolerance;
-}
 
 /** Host content above the editor, outside React: a sibling before the harness container. */
 async function insertSpacer(page: Page): Promise<void> {
@@ -63,35 +61,22 @@ scenario(
 		const outline = itemsOfKind(after, "block-outline")[0]!;
 		const char = await charBox(page, FIRST_ID, REMOTE_OFFSET);
 		const block = await blockBox(page, SECOND_ID);
-		await test.info().attach("ov2-moved-root", {
-			body: JSON.stringify({ before, after, char, block }, null, 2),
-			contentType: "application/json",
-		});
+		await attachJson("ov2-moved-root", { before, after, char, block });
 
 		expect(after.selectionVersion, "no local selection change").toBe(versionBefore);
-		const caretOnText =
+		expectCheck(
+			"OV2: the remote caret moved with its text",
 			near(caret.box.left, char.left) &&
-			caret.box.top <= char.top + char.height / 2 &&
-			caret.box.bottom >= char.top + char.height / 2;
-		expect(
-			caretOnText,
-			formatCheckReport(
-				"OV2: the remote caret moved with its text",
-				caretOnText ? "passed" : "failed",
-				`caret=${JSON.stringify(caret.box)} char=${JSON.stringify(char)}`,
-			),
-		).toBe(true);
-		const outlineOnBlock =
+				caret.box.top <= char.top + char.height / 2 &&
+				caret.box.bottom >= char.top + char.height / 2,
+			`caret=${JSON.stringify(caret.box)} char=${JSON.stringify(char)}`,
+		);
+		expectCheck(
+			"OV2: the block outline moved with its block",
 			near(outline.box.left, block.left) &&
-			near(outline.box.top, block.top) &&
-			near(outline.box.height, block.height);
-		expect(
-			outlineOnBlock,
-			formatCheckReport(
-				"OV2: the block outline moved with its block",
-				outlineOnBlock ? "passed" : "failed",
-				`outline=${JSON.stringify(outline.box)} block=${JSON.stringify(block)}`,
-			),
-		).toBe(true);
+				near(outline.box.top, block.top) &&
+				near(outline.box.height, block.height),
+			`outline=${JSON.stringify(outline.box)} block=${JSON.stringify(block)}`,
+		);
 	},
 );

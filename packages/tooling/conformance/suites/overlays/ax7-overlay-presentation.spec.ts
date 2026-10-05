@@ -1,8 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
-import { formatCheckReport } from "../../src/checkReport";
+import { expect, type Page } from "@playwright/test";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
-import { readSettledLayer } from "../../src/overlayLayer";
+import { expectCheck, insertMention, readSettledLayer } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
+import { attachJson } from "../specHelpers";
 
 type Presentation = {
 	elements: number;
@@ -43,14 +43,12 @@ async function walkLayer(page: Page): Promise<Presentation> {
 }
 
 function assertPresentation(label: string, result: Presentation, kind: string): void {
-	expect(
-		result.kinds,
-		formatCheckReport(`AX7: ${label} painted a ${kind}`, result.kinds.includes(kind) ? "passed" : "failed", JSON.stringify(result.kinds)),
-	).toContain(kind);
-	expect(
+	expectCheck(`AX7: ${label} painted a ${kind}`, result.kinds.includes(kind), result.kinds);
+	expectCheck(
+		`AX7: ${label} every overlay element is aria-hidden and inert`,
+		result.offenders.length === 0,
 		result.offenders,
-		formatCheckReport(`AX7: ${label} every overlay element is aria-hidden and inert`, result.offenders.length === 0 ? "passed" : "failed", JSON.stringify(result.offenders)),
-	).toEqual([]);
+	);
 }
 
 scenario(
@@ -58,13 +56,7 @@ scenario(
 	async (s, page) => {
 		await s.load("two-paragraph");
 		await s.apply([
-			{
-				type: "splice-text",
-				blockId: "two-p1",
-				from: 5,
-				to: 5,
-				insert: { nodeType: "mention", props: { id: "user-ada", label: "Ada" } },
-			},
+			insertMention("two-p1", 5),
 			{ type: "insert-block", blockId: "ax7-empty", blockType: "paragraph", props: {}, position: { after: "two-p1" } },
 			{ type: "insert-block", blockId: "ax7-divider", blockType: "divider", props: {}, position: { after: "two-p2" } },
 		]);
@@ -82,10 +74,7 @@ scenario(
 			to: { blockId: "ax7-empty", offset: 0 },
 		});
 		const o4 = await walkLayer(page);
-		await test.info().attach("ax7-layer", {
-			body: JSON.stringify({ o1, o3, o4 }, null, 2),
-			contentType: "application/json",
-		});
+		await attachJson("ax7-layer", { o1, o3, o4 });
 
 		assertPresentation("O1", o1, "caret");
 		assertPresentation("O3", o3, "block-outline");

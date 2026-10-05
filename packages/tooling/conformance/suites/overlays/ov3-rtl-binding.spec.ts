@@ -1,7 +1,7 @@
-import { expect, test, type Page } from "@playwright/test";
-import { formatCheckReport } from "../../src/checkReport";
+import { expect, type Page } from "@playwright/test";
+import { expectCheck } from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
-import { clickOffset } from "../specHelpers";
+import { attachJson, clickOffset } from "../specHelpers";
 
 const FIRST_ID = "two-p1";
 const LOCAL_OFFSET = 3;
@@ -104,24 +104,14 @@ scenario(
 			.toBe(true);
 		await page.evaluate(() => window.__penConformance.overlayMatchesAuthority());
 		const paint = await readBindingPaint(page);
-		await test.info().attach("ov3-rtl-binding", {
-			body: JSON.stringify(paint, null, 2),
-			contentType: "application/json",
-		});
+		await attachJson("ov3-rtl-binding", paint);
 
 		for (const [name, node] of [
 			["local caret", paint.caret],
 			["remote caret", paint.remoteCaret],
 			["remote caret label", paint.label],
 		] as const) {
-			expect(
-				placed(node),
-				formatCheckReport(
-					`OV2: the binding's ${name} sits where its transform puts it`,
-					placed(node) ? "passed" : "failed",
-					JSON.stringify(node),
-				),
-			).toBe(true);
+			expectCheck(`OV2: the binding's ${name} sits where its transform puts it`, placed(node), node);
 		}
 	},
 	{ url: "/?customCaret=1&bindingCarets=1&col2=1" },

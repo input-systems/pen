@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { scenario } from "../src/scenario";
-import { blockInlineText, clickOffset } from "../suites/specHelpers";
+import { blockInlineText, clickOffset, readFocus } from "../suites/specHelpers";
 
 function historyBridge(page: Page) {
 	return {
@@ -22,24 +22,12 @@ function historyBridge(page: Page) {
 	};
 }
 
-async function focusOffset(page: Page): Promise<number | null> {
-	return page.evaluate(() => {
-		const selection = window.__penConformance.selection;
-		if (selection?.type !== "text") {
-			return null;
-		}
-		return selection.focus.offset;
-	});
+async function focusOffset(page: Page): Promise<number | undefined> {
+	return (await readFocus(page))?.offset;
 }
 
-async function focusBlockId(page: Page): Promise<string | null> {
-	return page.evaluate(() => {
-		const selection = window.__penConformance.selection;
-		if (selection?.type !== "text") {
-			return null;
-		}
-		return selection.focus.blockId;
-	});
+async function focusBlockId(page: Page): Promise<string | undefined> {
+	return (await readFocus(page))?.blockId;
 }
 
 scenario(

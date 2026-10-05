@@ -89,6 +89,13 @@ function paintedItems(layer: HTMLElement): HTMLElement[] {
 	return [...layer.querySelectorAll<HTMLElement>("[data-pen-overlay-item]")];
 }
 
+/** Item kind, with carets told apart by block and offset. */
+function nodeKey(node: HTMLElement): string | undefined {
+	return node.dataset.penOverlayItem === "caret"
+		? `caret:${node.getAttribute("data-offset")}:${node.getAttribute("data-block-id")}`
+		: node.dataset.penOverlayItem;
+}
+
 describe("overlay layer painter (OV1, OV2, AX7)", () => {
 	afterEach(() => {
 		document.body.replaceChildren();
@@ -184,14 +191,7 @@ describe("overlay layer painter (OV1, OV2, AX7)", () => {
 	it("O: an epoch change replaces only the local caret element", () => {
 		const { layer, painter } = setup();
 		painter.apply(everyKind(1), OPTIONS);
-		const before = new Map(
-			paintedItems(layer).map((node) => [
-				node.dataset.penOverlayItem === "caret"
-					? `caret:${node.getAttribute("data-offset")}:${node.getAttribute("data-block-id")}`
-					: node.dataset.penOverlayItem,
-				node,
-			]),
-		);
+		const before = new Map(paintedItems(layer).map((node) => [nodeKey(node), node]));
 		const caretBefore = layer.querySelector("[data-pen-editor-caret]");
 
 		painter.apply(everyKind(2), OPTIONS);
@@ -204,11 +204,7 @@ describe("overlay layer painter (OV1, OV2, AX7)", () => {
 			if (node === caretAfter) {
 				continue;
 			}
-			const key =
-				node.dataset.penOverlayItem === "caret"
-					? `caret:${node.getAttribute("data-offset")}:${node.getAttribute("data-block-id")}`
-					: node.dataset.penOverlayItem;
-			expect(before.get(key)).toBe(node);
+			expect(before.get(nodeKey(node))).toBe(node);
 		}
 	});
 

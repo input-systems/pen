@@ -2,98 +2,90 @@ import { describe, it, expect } from "vitest";
 import type { PendingBlock } from "@input/pen-core";
 import type { BlockSchema, SchemaRegistry } from "@input/pen-types";
 import { createDefaultSchema } from "@input/pen-schema";
-import { sanitizeHTML } from "../sanitize";
 import { parseHTML, type DOMNode } from "../domAdapter";
 import { domToBlocks } from "../domToBlocks";
-import { stubRegistry } from "./importHtml.testHelpers";
-
-function convert(html: string, registry: SchemaRegistry = stubRegistry) {
-	return domToBlocks(parseHTML(sanitizeHTML(html)), registry);
-}
+import { convert, stubRegistry } from "./importHtml.testHelpers";
 
 function outline(blocks: PendingBlock[]): string[] {
-	return blocks.map(
-		(block) =>
-			`${block.type}:${String(block.props.indent ?? "-")}:${block.content ?? ""}`,
-	);
+	return blocks.map((block) => {
+		const start =
+			block.props.start === undefined
+				? ""
+				: `(start=${String(block.props.start)})`;
+		return `${block.type}${start}:${String(block.props.indent ?? "-")}:${block.content ?? ""}`;
+	});
+}
+
+function textColor(color: string, start: number, end: number) {
+	return { type: "textColor", props: { color }, start, end };
 }
 
 describe("@input/pen-interop/html dom-to-blocks: list nesting", () => {
-	it("IOP11 keeps the ordered start after a nested-only item", () => {
-		const blocks = convert(
+	it.each([
+		[
+			"nested-only item",
 			'<ol start="5"><li><ul><li>Child</li></ul></li><li>Parent</li><li>Next</li></ol>',
-		);
-		expect(outline(blocks)).toEqual([
-			"bulletListItem:1:Child",
-			"numberedListItem:0:Parent",
-			"numberedListItem:0:Next",
-		]);
-		expect(blocks[1].props.start).toBe(5);
-		expect(blocks[2].props.start).toBeUndefined();
-	});
-
-	it("IOP11 keeps the ordered start after a directly nested list", () => {
-		const blocks = convert(
+			[
+				"bulletListItem:1:Child",
+				"numberedListItem(start=5):0:Parent",
+				"numberedListItem:0:Next",
+			],
+		],
+		[
+			"directly nested list",
 			'<ol start="5"><ul><li>Child</li></ul><li>Parent</li></ol>',
-		);
-		expect(blocks[1].props.start).toBe(5);
+			["bulletListItem:1:Child", "numberedListItem(start=5):0:Parent"],
+		],
+	])("IOP11 keeps the ordered start after a %s", (_, html, expected) => {
+		expect(outline(convert(html))).toEqual(expected);
 	});
 
-	it("keeps a list nested as a child of the list (Slack, Apple Notes, Google Docs)", () => {
-		const blocks = convert(
+	it.each([
+		[
+			"keeps a list nested as a child of the list (Slack, Apple Notes, Google Docs)",
 			"<ul><li>Parent</li><ul><li>Child</li><ul><li>Grandchild</li></ul></ul><li>Next</li></ul>",
-		);
-
-		expect(outline(blocks)).toEqual([
-			"bulletListItem:0:Parent",
-			"bulletListItem:1:Child",
-			"bulletListItem:2:Grandchild",
-			"bulletListItem:0:Next",
-		]);
-	});
-
-	it("keeps an ordered list nested as a child of a bullet list", () => {
-		const blocks = convert(
+			[
+				"bulletListItem:0:Parent",
+				"bulletListItem:1:Child",
+				"bulletListItem:2:Grandchild",
+				"bulletListItem:0:Next",
+			],
+		],
+		[
+			"keeps an ordered list nested as a child of a bullet list",
 			'<ul><li>Parent</li><ol start="3"><li>Child</li><li>Sibling</li></ol></ul>',
-		);
-
-		expect(outline(blocks)).toEqual([
-			"bulletListItem:0:Parent",
-			"numberedListItem:1:Child",
-			"numberedListItem:1:Sibling",
-		]);
-		expect(blocks[1].props.start).toBe(3);
-		expect(blocks[2].props.start).toBeUndefined();
-	});
-
-	it("does not emit an empty item for an <li> that only wraps a nested list", () => {
-		const blocks = convert(
+			[
+				"bulletListItem:0:Parent",
+				"numberedListItem(start=3):1:Child",
+				"numberedListItem:1:Sibling",
+			],
+		],
+		[
+			"does not emit an empty item for an <li> that only wraps a nested list",
 			'<ul><li>Parent</li><li style="list-style-type:none"><ul><li>Child</li></ul></li><li>Next</li></ul>',
-		);
-
-		expect(outline(blocks)).toEqual([
-			"bulletListItem:0:Parent",
-			"bulletListItem:1:Child",
-			"bulletListItem:0:Next",
-		]);
-	});
-
-	it("keeps an empty item that wraps nothing", () => {
-		expect(outline(convert("<ul><li>a</li><li></li></ul>"))).toEqual([
-			"bulletListItem:0:a",
-			"bulletListItem:0:",
-		]);
-	});
-
-	it("reads an item's block children as lines of the one item", () => {
-		const blocks = convert(
+			[
+				"bulletListItem:0:Parent",
+				"bulletListItem:1:Child",
+				"bulletListItem:0:Next",
+			],
+		],
+		[
+			"keeps an empty item that wraps nothing",
+			"<ul><li>a</li><li></li></ul>",
+			["bulletListItem:0:a", "bulletListItem:0:"],
+		],
+		[
+			"reads an item's block children as lines of the one item",
 			"<ul>\n <li>\n  <div>Parent</div>\n  <div>second line</div>\n  <ul><li><p>Child</p></li></ul>\n </li>\n</ul>",
-		);
-
-		expect(outline(blocks)).toEqual([
-			"bulletListItem:0:Parent\nsecond line",
-			"bulletListItem:1:Child",
-		]);
+			["bulletListItem:0:Parent\nsecond line", "bulletListItem:1:Child"],
+		],
+		[
+			"imports items copied without their list as bullets",
+			"<li>Loose item</li><li>Second</li>",
+			["bulletListItem:0:Loose item", "bulletListItem:0:Second"],
+		],
+	])("%s", (_, html, expected) => {
+		expect(outline(convert(html))).toEqual(expected);
 	});
 
 	it.each([
@@ -120,13 +112,6 @@ describe("@input/pen-interop/html dom-to-blocks: list nesting", () => {
 		]);
 	});
 
-	it("imports items copied without their list as bullets", () => {
-		expect(outline(convert("<li>Loose item</li><li>Second</li>"))).toEqual([
-			"bulletListItem:0:Loose item",
-			"bulletListItem:0:Second",
-		]);
-	});
-
 	it("keeps text placed between items", () => {
 		const blocks = convert(
 			"<ul>stray <b>text</b><li>a</li><p>para</p></ul>",
@@ -142,30 +127,31 @@ describe("@input/pen-interop/html dom-to-blocks: list nesting", () => {
 });
 
 describe("@input/pen-interop/html dom-to-blocks: inline wrapper around blocks", () => {
-	it("IOP10 inherits an outer mark across matching inner marks", () => {
-		const [block] = convert("<b><div>all <b>bold</b></div></b>");
-		expect(block.marks).toEqual([{ type: "bold", start: 0, end: 8 }]);
-	});
-
-	it("IOP10 respects explicit resets inside inherited formatting", () => {
-		const [block] = convert(
+	it.each([
+		[
+			"inherits an outer mark across matching inner marks",
+			"<b><div>all <b>bold</b></div></b>",
+			[{ type: "bold", start: 0, end: 8 }],
+		],
+		[
+			"respects explicit resets inside inherited formatting",
 			'<b><div>a<span style="font-weight:normal">b</span>c</div></b>',
-		);
-		expect(block.marks).toEqual([
-			{ type: "bold", start: 0, end: 1 },
-			{ type: "bold", start: 2, end: 3 },
-		]);
-	});
-
-	it("IOP10 overrides inherited color only over the inner range", () => {
-		const [block] = convert(
+			[
+				{ type: "bold", start: 0, end: 1 },
+				{ type: "bold", start: 2, end: 3 },
+			],
+		],
+		[
+			"overrides inherited color only over the inner range",
 			'<span style="color:red"><div>a<span style="color:blue">b</span>c</div></span>',
-		);
-		expect(block.marks).toEqual([
-			{ type: "textColor", props: { color: "red" }, start: 0, end: 1 },
-			{ type: "textColor", props: { color: "blue" }, start: 1, end: 2 },
-			{ type: "textColor", props: { color: "red" }, start: 2, end: 3 },
-		]);
+			[
+				textColor("red", 0, 1),
+				textColor("blue", 1, 2),
+				textColor("red", 2, 3),
+			],
+		],
+	])("IOP10 %s", (_, html, marks) => {
+		expect(convert(html)[0].marks).toEqual(marks);
 	});
 
 	it("IOP10 inherits marks in list items and table cells, but not code blocks", () => {
@@ -186,12 +172,7 @@ describe("@input/pen-interop/html dom-to-blocks: inline wrapper around blocks", 
 				`<b><table><${section} style="font-weight:normal;color:red"><tr><td>plain</td></tr></${section}></table></b>`,
 			);
 			expect(table.children?.[0].children?.[0].marks).toEqual([
-				{
-					type: "textColor",
-					props: { color: "red" },
-					start: 0,
-					end: 5,
-				},
+				textColor("red", 0, 5),
 			]);
 		},
 	);
@@ -229,14 +210,6 @@ describe("@input/pen-interop/html dom-to-blocks: inline wrapper around blocks", 
 			]);
 		}
 	});
-
-	it("keeps an image inside an inline wrapper in its line of text", () => {
-		const blocks = convert(
-			'<span>hi <img src="https://x.test/e.png" alt=":)"> there</span>',
-		);
-
-		expect(outline(blocks)).toEqual(["paragraph:-:hi  there"]);
-	});
 });
 
 describe("@input/pen-interop/html dom-to-blocks: IOP11 text preservation", () => {
@@ -273,26 +246,24 @@ describe("@input/pen-interop/html dom-to-blocks: IOP11 text preservation", () =>
 		]);
 	});
 
-	it("keeps a table caption as a paragraph before the table", () => {
-		const blocks = convert(
+	it.each([
+		[
+			"keeps a table caption as a paragraph before the table",
 			"<table><caption>Totals</caption><tr><td>a</td><td>b</td></tr></table>",
-		);
-
-		expect(blocks.map((block) => block.type)).toEqual([
-			"paragraph",
-			"table",
-		]);
-		expect(blocks[0].content).toBe("Totals");
-	});
-
-	it("keeps <pre> text that sits outside its <code>", () => {
-		const blocks = convert("<pre>outside<code>inside</code></pre>");
-
-		expect(blocks).toHaveLength(1);
-		expect(blocks[0]).toMatchObject({
-			type: "codeBlock",
-			content: "outsideinside",
-		});
+			["paragraph:-:Totals", "table:-:"],
+		],
+		[
+			"keeps <pre> text that sits outside its <code>",
+			"<pre>outside<code>inside</code></pre>",
+			["codeBlock:-:outsideinside"],
+		],
+		[
+			"keeps an image inside an inline wrapper in its line of text",
+			'<span>hi <img src="https://x.test/e.png" alt=":)"> there</span>',
+			["paragraph:-:hi  there"],
+		],
+	])("%s", (_, html, expected) => {
+		expect(outline(convert(html))).toEqual(expected);
 	});
 
 	// the sanitizer repairs most malformed markup, so the backstop is driven with a

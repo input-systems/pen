@@ -1,55 +1,14 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it } from "vitest";
-import { createEditor } from "@input/pen-core";
-import { defaultSchema } from "@input/pen-schema";
+import { afterEach, describe, expect, it } from "vitest";
 import type { DiagnosticEvent } from "@input/pen-types";
-import type { FieldEditorInputController } from "../controller";
-import type { FieldEditorTextLike } from "../crdt";
 import { ContentEditableBackend } from "../contenteditableBackend";
 import { extractTextFromDOM } from "../selectionBridge";
-import { stubFieldEditorParts } from "./fieldEditorParts.testHelpers";
-
-function getYText(
-	editor: ReturnType<typeof createEditor>,
-	blockId: string,
-): FieldEditorTextLike {
-	const adapter = editor.internals.adapter;
-	const doc = editor.internals.crdtDoc;
-	const ydoc = adapter.raw<{
-		getMap(name: string): {
-			get(key: string): { get(field: string): unknown } | undefined;
-		};
-	}>(doc);
-	const ytext = ydoc
-		.getMap("blocks")
-		.get(blockId)
-		?.get("content") as FieldEditorTextLike | null;
-	if (!ytext) {
-		throw new Error(`Missing test Y.Text for block ${blockId}`);
-	}
-	return ytext;
-}
-
-function createFieldEditor(blockId: string) {
-	return {
-		focusBlockId: blockId,
-		inputMode: "richtext" as const,
-		activeCellCoord: null,
-		activateCell: () => {},
-		activateTextSelection: () => {},
-		commitProgrammaticTextSelection: () => {},
-		deactivate: () => {},
-		selectAllBehavior: "block-first" as const,
-		...stubFieldEditorParts(),
-		setComposing: () => {},
-		notifyDomReconciled: () => {},
-		requestDomFocus: () => false,
-		applyDomTextSelection: () => {},
-		applyDocumentTextSelection: () => {},
-		syncTextSelection: () => {},
-	};
-}
+import {
+	getYText,
+	recordingController,
+	seedParagraphs,
+} from "./fieldEditorFixtures.testHelpers";
 
 class ProbeContentEditableBackend extends ContentEditableBackend {
 	invokeHandleMutations(mutations: MutationRecord[] = []): void {
@@ -57,9 +16,41 @@ class ProbeContentEditableBackend extends ContentEditableBackend {
 	}
 }
 
+const cleanups: Array<() => void> = [];
+
+afterEach(() => {
+	for (const cleanup of cleanups.splice(0)) cleanup();
+});
+
+/** A contenteditable backend activated on a "Hello" paragraph. */
+function mountWatchdog() {
+	const {
+		editor,
+		blockIds: [blockId],
+	} = seedParagraphs(["Hello"]);
+	const diagnostics: DiagnosticEvent[] = [];
+	editor.on("diagnostic", (event) => {
+		diagnostics.push(event);
+	});
+	const divergences = () =>
+		diagnostics.filter((event) => event.code === "dom-divergence");
+	const backend = new ProbeContentEditableBackend(
+		editor,
+		recordingController(blockId!).controller,
+	);
+	const host = document.createElement("div");
+	document.body.appendChild(host);
+	cleanups.push(() => {
+		backend.deactivate();
+		host.remove();
+		editor.destroy();
+	});
+	backend.activate(host, getYText(editor, blockId!));
+	return { editor, blockId: blockId!, backend, host, divergences };
+}
+
 function rewriteFirstTextNode(host: HTMLElement, suffix: string): void {
-	const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
-	const textNode = walker.nextNode();
+	const textNode = document.createTreeWalker(host, NodeFilter.SHOW_TEXT).nextNode();
 	if (!(textNode instanceof Text)) {
 		throw new Error("Missing text node.");
 	}
@@ -67,122 +58,33 @@ function rewriteFirstTextNode(host: HTMLElement, suffix: string): void {
 }
 
 describe("B1 mutation watchdog", () => {
-	it("B1 restores Hello after a foreign text-node rewrite instead of applying it", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const blockId = editor.firstBlock()!.id;
-		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hello" },
-		]);
+	it("B1 restores Hello after a foreign text-node rewrite instead of applying it, and does not emit again once restored", () => {
+		const { editor, blockId, backend, host, divergences } = mountWatchdog();
+		expect(extractTextFromDOM(host)).toBe("Hello");
 
-		const diagnostics: DiagnosticEvent[] = [];
-		editor.on("diagnostic", (event) => {
-			diagnostics.push(event);
-		});
+		rewriteFirstTextNode(host, "X");
+		expect(extractTextFromDOM(host)).toBe("HelloX");
+		backend.invokeHandleMutations([]);
 
-		const backend = new ProbeContentEditableBackend(
-			editor,
-			createFieldEditor(blockId) as unknown as FieldEditorInputController,
+		expect(editor.getBlock(blockId)?.textContent()).toBe("Hello");
+		expect(extractTextFromDOM(host)).toBe("Hello");
+		expect(divergences()).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ source: "mutation-observer" }),
+			]),
 		);
-		const host = document.createElement("div");
-		document.body.appendChild(host);
 
-		try {
-			backend.activate(host, getYText(editor, blockId));
-			expect(editor.getBlock(blockId)?.textContent()).toBe("Hello");
-			expect(extractTextFromDOM(host)).toBe("Hello");
-
-			rewriteFirstTextNode(host, "X");
-			expect(extractTextFromDOM(host)).toBe("HelloX");
-
-			backend.invokeHandleMutations([]);
-
-			expect(editor.getBlock(blockId)?.textContent()).toBe("Hello");
-			expect(extractTextFromDOM(host)).toBe("Hello");
-			expect(diagnostics).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						code: "dom-divergence",
-						source: "mutation-observer",
-					}),
-				]),
-			);
-		} finally {
-			backend.deactivate();
-			host.remove();
-			editor.destroy();
-		}
-	});
-
-	it("does not emit again when the restore already matches the model", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const blockId = editor.firstBlock()!.id;
-		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hello" },
-		]);
-
-		const diagnostics: DiagnosticEvent[] = [];
-		editor.on("diagnostic", (event) => {
-			diagnostics.push(event);
-		});
-
-		const backend = new ProbeContentEditableBackend(
-			editor,
-			createFieldEditor(blockId) as unknown as FieldEditorInputController,
-		);
-		const host = document.createElement("div");
-		document.body.appendChild(host);
-
-		try {
-			backend.activate(host, getYText(editor, blockId));
-			rewriteFirstTextNode(host, "X");
-			backend.invokeHandleMutations([]);
-			const afterRestore = diagnostics.filter(
-				(event) => event.code === "dom-divergence",
-			).length;
-			expect(afterRestore).toBeGreaterThan(0);
-			expect(extractTextFromDOM(host)).toBe("Hello");
-
-			backend.invokeHandleMutations([]);
-			expect(
-				diagnostics.filter((event) => event.code === "dom-divergence"),
-			).toHaveLength(afterRestore);
-		} finally {
-			backend.deactivate();
-			host.remove();
-			editor.destroy();
-		}
+		const afterRestore = divergences().length;
+		backend.invokeHandleMutations([]);
+		expect(divergences()).toHaveLength(afterRestore);
 	});
 
 	it("does not treat the activate reconcile as a foreign rewrite", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const blockId = editor.firstBlock()!.id;
-		editor.apply([
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hello" },
-		]);
+		const { backend, host, divergences } = mountWatchdog();
 
-		const diagnostics: DiagnosticEvent[] = [];
-		editor.on("diagnostic", (event) => {
-			diagnostics.push(event);
-		});
+		backend.invokeHandleMutations([]);
 
-		const backend = new ProbeContentEditableBackend(
-			editor,
-			createFieldEditor(blockId) as unknown as FieldEditorInputController,
-		);
-		const host = document.createElement("div");
-		document.body.appendChild(host);
-
-		try {
-			backend.activate(host, getYText(editor, blockId));
-			backend.invokeHandleMutations([]);
-			expect(
-				diagnostics.filter((event) => event.code === "dom-divergence"),
-			).toHaveLength(0);
-			expect(extractTextFromDOM(host)).toBe("Hello");
-		} finally {
-			backend.deactivate();
-			host.remove();
-			editor.destroy();
-		}
+		expect(divergences()).toHaveLength(0);
+		expect(extractTextFromDOM(host)).toBe("Hello");
 	});
 });

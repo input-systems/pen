@@ -20,11 +20,21 @@ const PROJECTION = {
 	requestFocus: (target: HTMLElement) => target.focus({ preventScroll: true }),
 };
 
+/** A sink inside a focusable connected root, so focus moves are observable. */
+function makeConnectedSink() {
+	const sink = makeSink();
+	const root = document.body.appendChild(document.createElement("div"));
+	root.tabIndex = -1;
+	root.append(sink.element);
+	return { sink, root };
+}
+
 afterEach(() => {
 	for (const sink of sinks) {
 		sink.dispose();
 	}
 	sinks.length = 0;
+	document.body.replaceChildren();
 });
 
 describe("syncFocusSink (AX1)", () => {
@@ -75,11 +85,7 @@ describe("syncFocusSink (AX1)", () => {
 				position: "last",
 			},
 		]);
-		const sink = makeSink();
-		const root = document.createElement("div");
-		document.body.append(root);
-		root.append(sink.element);
-		document.body.focus();
+		const { sink } = makeConnectedSink();
 
 		syncFocusSink(
 			sink,
@@ -99,7 +105,6 @@ describe("syncFocusSink (AX1)", () => {
 			"Text selected across 2 blocks",
 		);
 		expect(document.activeElement).toBe(sink.element);
-		root.remove();
 		editor.destroy();
 	});
 
@@ -157,31 +162,9 @@ describe("syncFocusSink (AX1)", () => {
 		editor.destroy();
 	});
 
-	it("HOST9: a connected sink takes document focus for a block selection", () => {
+	it("HOST9 AX1: a connected sink takes document focus for a block selection; a null selection then focuses the root", () => {
 		const editor = createHeadlessEditor({ schema: defaultSchema });
-		const sink = makeSink();
-		const root = document.createElement("div");
-		document.body.append(root);
-		root.append(sink.element);
-		document.body.focus();
-
-		syncFocusSink(sink, editor, {
-			type: "block",
-			blockIds: ["a"],
-		}, PROJECTION);
-
-		expect(document.activeElement).toBe(sink.element);
-		root.remove();
-		editor.destroy();
-	});
-
-	it("AX1: a null selection focuses the root when the editor owns focus", () => {
-		const editor = createHeadlessEditor({ schema: defaultSchema });
-		const sink = makeSink();
-		const root = document.createElement("div");
-		root.tabIndex = -1;
-		document.body.append(root);
-		root.append(sink.element);
+		const { sink, root } = makeConnectedSink();
 		syncFocusSink(sink, editor, { type: "block", blockIds: ["a"] }, PROJECTION);
 		expect(document.activeElement).toBe(sink.element);
 
@@ -189,23 +172,17 @@ describe("syncFocusSink (AX1)", () => {
 
 		expect(document.activeElement).toBe(root);
 		expect(sink.element.getAttribute("aria-hidden")).toBe("true");
-		root.remove();
 		editor.destroy();
 	});
 
 	it("HOST9: a null selection never pulls focus from the document into the editor", () => {
 		const editor = createHeadlessEditor({ schema: defaultSchema });
-		const sink = makeSink();
-		const root = document.createElement("div");
-		root.tabIndex = -1;
-		document.body.append(root);
-		root.append(sink.element);
+		const { sink, root } = makeConnectedSink();
 		(document.activeElement as HTMLElement | null)?.blur();
 
 		syncFocusSink(sink, editor, null, PROJECTION);
 
 		expect(document.activeElement).not.toBe(root);
-		root.remove();
 		editor.destroy();
 	});
 });

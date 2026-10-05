@@ -24,13 +24,14 @@ function setup(gc: boolean) {
 		change(remote);
 		Y.applyUpdate(local.ydoc, Y.encodeStateAsUpdate(remote, before), "remote");
 	};
-	return { events, deliver, unsubscribe };
+	const lastAffected = () => [...(events.at(-1)?.affectedBlocks ?? [])].sort();
+	return { lastAffected, deliver, unsubscribe };
 }
 
 describe("remote blockOrder changes report exact affected ids", () => {
 	for (const gc of [true, false]) {
 		it(`SCALE2: a remote blockOrder insert, delete and move report only the ids they touched (gc: ${gc})`, () => {
-			const { events, deliver, unsubscribe } = setup(gc);
+			const { lastAffected, deliver, unsubscribe } = setup(gc);
 			deliver((doc) => {
 				doc.transact(() => {
 					const map = new Y.Map<unknown>();
@@ -40,7 +41,7 @@ describe("remote blockOrder changes report exact affected ids", () => {
 					doc.getArray("blockOrder").insert(2, ["e"]);
 				});
 			});
-			expect([...(events.at(-1)?.affectedBlocks ?? [])].sort()).toEqual(["e"]);
+			expect(lastAffected()).toEqual(["e"]);
 
 			deliver((doc) => {
 				doc.transact(() => {
@@ -48,7 +49,7 @@ describe("remote blockOrder changes report exact affected ids", () => {
 					doc.getMap("blocks").delete("a");
 				});
 			});
-			expect([...(events.at(-1)?.affectedBlocks ?? [])].sort()).toEqual(["a"]);
+			expect(lastAffected()).toEqual(["a"]);
 
 			deliver((doc) => {
 				doc.transact(() => {
@@ -58,7 +59,7 @@ describe("remote blockOrder changes report exact affected ids", () => {
 					order.insert(0, ["d"]);
 				});
 			});
-			expect([...(events.at(-1)?.affectedBlocks ?? [])].sort()).toEqual(["d"]);
+			expect(lastAffected()).toEqual(["d"]);
 			unsubscribe();
 		});
 	}

@@ -1,6 +1,6 @@
 import { mountEditor } from "@input/pen-dom";
-import { getHarnessSession } from "./session";
-import { createSurfaceFrame, mountOnEachSession, readQueryFlag } from "./surfaceFrame";
+import { getHarnessSession, readQueryFlag } from "./session";
+import { createSurfaceFrame, mountOnEachSession } from "./surfaceFrame";
 
 /** `?surface=vanilla`: `mountEditor` from the framework-free DOM engine. */
 export function mountVanillaHost(root: HTMLElement): void {

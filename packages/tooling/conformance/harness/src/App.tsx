@@ -5,15 +5,13 @@ import type { EditorCaretRenderProps } from "../../../../rendering/react/src/pri
 import type { MultiplayerCaretRenderProps } from "../../../../rendering/react/src/primitives/multiplayer/caretOverlay";
 import { ColumnHeaderMenu } from "../../../../rendering/react/src/renderers/tableColumnMenu";
 import { isWindowedFixture } from "../../src/windowedRange";
-import { getHarnessSession, getWindowStart, subscribeHarness } from "./session";
+import {
+	getHarnessSession,
+	getWindowStart,
+	readQueryFlag,
+	subscribeHarness,
+} from "./session";
 import { WindowedContent } from "./windowedContent";
-
-function readQueryFlag(name: string): boolean {
-	if (typeof window === "undefined") {
-		return false;
-	}
-	return new URLSearchParams(window.location.search).get(name) === "1";
-}
 
 function Ax3BlockHandle({
 	blockId,

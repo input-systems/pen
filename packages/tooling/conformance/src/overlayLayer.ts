@@ -1,4 +1,6 @@
+import type { DocumentOp } from "@input/pen-types";
 import { expect, type Page } from "@playwright/test";
+import { formatCheckReport } from "./checkReport";
 
 /** One painted overlay item, read from the production layer. */
 export type LayerItem = {
@@ -201,4 +203,85 @@ export function remoteCarets(snapshot: LayerSnapshot): LayerItem[] {
 	return snapshot.items.filter(
 		(item) => item.kind === "caret" && !item.local && item.endpoint === null,
 	);
+}
+
+/** Whether a measured pixel value lies within `tolerance` of the expected one. */
+export function near(actual: number, expected: number, tolerance = 1): boolean {
+	return Math.abs(actual - expected) <= tolerance;
+}
+
+/** Poll until the settled layer paints `count` local carets, and return that layer. */
+export async function expectLocalCarets(
+	page: Page,
+	count: number,
+): Promise<LayerSnapshot> {
+	await expect
+		.poll(async () => localCarets(await readSettledLayer(page)).length)
+		.toBe(count);
+	return readSettledLayer(page);
+}
+
+/** The op that inserts an "Ada" mention atom at `offset` in `blockId`. */
+export function insertMention(blockId: string, offset: number): DocumentOp {
+	return {
+		type: "splice-text",
+		blockId,
+		from: offset,
+		to: offset,
+		insert: { nodeType: "mention", props: { id: "user-ada", label: "Ada" } },
+	};
+}
+
+/**
+ * Assert a boolean check, failing with its `formatCheckReport` line; a
+ * non-string detail is reported as JSON.
+ */
+export function expectCheck(check: string, ok: boolean, detail?: unknown): void {
+	const text =
+		detail === undefined || typeof detail === "string" ? detail : JSON.stringify(detail);
+	expect(ok, formatCheckReport(check, ok ? "passed" : "failed", text)).toBe(true);
+}
+
+/** The local caret node wherever a binding paints it, the layer's visibility flag, and the field's caret-color. */
+export type CaretOverlay = {
+	layerMounted: boolean;
+	caretVisible: boolean;
+	caret: {
+		blockId: string | null;
+		offset: string | null;
+		left: number;
+		top: number;
+		width: number;
+		height: number;
+	} | null;
+	/** Inline `caret-color` of the active field surface (or first inline content), or null without one. */
+	caretColor: string | null;
+};
+
+/** Read the first `[data-pen-editor-caret]` in the document and the layer's caret flag. */
+export async function readCaretOverlay(page: Page): Promise<CaretOverlay> {
+	return page.evaluate(() => {
+		const layer = document.querySelector("[data-pen-overlay-layer]");
+		const caret = document.querySelector("[data-pen-editor-caret]");
+		const surface = document.querySelector(
+			"[data-pen-field-editor-active-surface], [data-pen-inline-content]",
+		);
+		const box = caret instanceof HTMLElement ? caret.getBoundingClientRect() : null;
+		return {
+			layerMounted: layer instanceof HTMLElement,
+			caretVisible: layer instanceof HTMLElement && layer.hasAttribute("data-caret-visible"),
+			caret:
+				caret instanceof HTMLElement && box
+					? {
+							blockId: caret.getAttribute("data-block-id"),
+							offset: caret.getAttribute("data-offset"),
+							left: box.left,
+							top: box.top,
+							width: box.width,
+							height: box.height,
+						}
+					: null,
+			caretColor: surface instanceof HTMLElement ? surface.style.caretColor : null,
+		};
+	});
 }

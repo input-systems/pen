@@ -20,14 +20,20 @@ function setup(options?: { captureTimeout?: number; maxDepth?: number }) {
 		...options,
 	});
 	const ytext = doc.penDocument.blocks.get("b1")!.get("content") as Y.Text;
-	const write = (key: CRDTUndoCaptureKey, text: string) => {
+	const step = (key: CRDTUndoCaptureKey, run: () => void) => {
 		undo.setCaptureKey?.(key);
-		doc.ydoc.transact(() => {
-			ytext.insert(ytext.length, text);
-		}, "user");
+		doc.ydoc.transact(run, "user");
 		undo.setCaptureKey?.(null);
 	};
-	return { undo, ytext, write };
+	const write = (key: CRDTUndoCaptureKey, text: string) =>
+		step(key, () => ytext.insert(ytext.length, text));
+	/** Undoes until the stack is empty, returning the text after each step. */
+	const undoTrail = (): string[] => {
+		const seen: string[] = [];
+		while (undo.undo()) seen.push(ytext.toString());
+		return seen;
+	};
+	return { doc, undo, ytext, step, write, undoTrail };
 }
 
 afterEach(() => {
@@ -36,80 +42,56 @@ afterEach(() => {
 
 describe("keyed undo capture (AIB4)", () => {
 	it("AIB4: transactions under one explicit key form one stack item across other keys' writes", () => {
-		const { undo, ytext, write } = setup();
+		const { ytext, write, undoTrail } = setup();
 		write(G, "a");
 		write(U, "b");
 		write(G, "c");
 		expect(ytext.toString()).toBe("abc");
-
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("b");
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("");
-		expect(undo.canUndo()).toBe(false);
+		expect(undoTrail()).toEqual(["b", ""]);
 	});
 
 	it("AIB4: a non-explicit key merges only inside its capture window", () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(1_000_000);
-		const { undo, ytext, write } = setup({ captureTimeout: 400 });
+		const { write, undoTrail } = setup({ captureTimeout: 400 });
 		write(U, "a");
 		vi.setSystemTime(1_000_100);
 		write(U, "b");
 		vi.setSystemTime(1_000_600);
 		write(U, "c");
-
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("ab");
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("");
+		expect(undoTrail()).toEqual(["ab", ""]);
 	});
 
 	it("AIB4: a non-explicit key never merges across another key's item", () => {
-		const { undo, ytext, write } = setup({ captureTimeout: 10_000 });
+		const { write, undoTrail } = setup({ captureTimeout: 10_000 });
 		write(U, "a");
 		write(G, "b");
 		write(U, "c");
-
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("ab");
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("a");
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("");
+		expect(undoTrail()).toEqual(["ab", "a", ""]);
 	});
 
 	it("AIB4: stopCapturing closes non-explicit keys and leaves explicit keys open", () => {
-		const { undo, ytext, write } = setup({ captureTimeout: 10_000 });
+		const { undo, write, undoTrail } = setup({ captureTimeout: 10_000 });
 		write(G, "a");
 		write(U, "b");
 		undo.stopCapturing();
 		write(U, "c");
 		write(G, "d");
-
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("bc");
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("b");
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("");
+		expect(undoTrail()).toEqual(["bc", "b", ""]);
 	});
 
 	it("AIB4: undo and redo close every open key", () => {
-		const { undo, ytext, write } = setup();
+		const { write, undoTrail } = setup();
 		write(G, "a");
 		write(G, "b");
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("");
+		expect(undoTrail()).toEqual([""]);
 		write(G, "c");
 		write(G, "d");
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("");
-		expect(undo.canUndo()).toBe(false);
+		expect(undoTrail()).toEqual([""]);
 	});
 
 	it("CH7: maxDepth trims after a keyed merge and drops trimmed open items", () => {
-		const { undo, ytext, write } = setup({ maxDepth: 2 });
+		const { write, undoTrail } = setup({ maxDepth: 2 });
 		const other = (n: number): CRDTUndoCaptureKey => ({
 			key: `group:other-${n}`,
 			explicit: true,
@@ -119,22 +101,11 @@ describe("keyed undo capture (AIB4)", () => {
 		write(other(2), "c");
 		// G's item was trimmed; a new G write starts a fresh item.
 		write(G, "d");
-
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("abc");
-		expect(undo.undo()).toBe(true);
-		expect(ytext.toString()).toBe("ab");
-		expect(undo.canUndo()).toBe(false);
+		expect(undoTrail()).toEqual(["abc", "ab"]);
 	});
 
 	it("AIB4: a structured origin with a groupId captures by group when no key is declared", () => {
-		const doc = createYjsDocument(yjsAdapter());
-		doc.ydoc.transact(() => {
-			initBlockMap(doc.penDocument.blocks, "b1", "paragraph", "inline");
-			doc.penDocument.blockOrder.push(["b1"]);
-		});
-		const undo = createYjsUndoManager(doc, { trackedOriginTypes: ["user", "ai"] });
-		const ytext = doc.penDocument.blocks.get("b1")!.get("content") as Y.Text;
+		const { doc, undo, ytext } = setup();
 		const origin = { type: "ai", groupId: "g9" };
 		doc.ydoc.transact(() => ytext.insert(0, "a"), origin);
 		doc.ydoc.transact(() => ytext.insert(1, "b"), "user");
@@ -145,45 +116,24 @@ describe("keyed undo capture (AIB4)", () => {
 	});
 
 	it("AIB4: a group write after a user edit that deletes the group's text starts a new step instead of resurrecting it", () => {
-		const { undo, ytext, write } = setup();
-		const step = (key: CRDTUndoCaptureKey, run: () => void) => {
-			undo.setCaptureKey?.(key);
-			const doc = ytext.doc!;
-			doc.transact(run, "user");
-			undo.setCaptureKey?.(null);
-		};
+		const { undo, ytext, step, write, undoTrail } = setup();
 		step(U, () => ytext.insert(0, "Base"));
 		undo.stopCapturing();
 		write(G, " AI");
 		step(U, () => ytext.delete(4, 3));
 		write(G, " more");
 		expect(ytext.toString()).toBe("Base more");
-
-		const seen: string[] = [];
-		while (undo.undo()) {
-			seen.push(ytext.toString());
-		}
-		expect(seen).toEqual(["Base", "Base AI", "Base", ""]);
+		expect(undoTrail()).toEqual(["Base", "Base AI", "Base", ""]);
 	});
 
 	it("AIB4: a group write after user typing elsewhere in the text still joins the group's one step", () => {
-		const { undo, ytext } = setup();
-		const step = (key: CRDTUndoCaptureKey, run: () => void) => {
-			undo.setCaptureKey?.(key);
-			ytext.doc!.transact(run, "user");
-			undo.setCaptureKey?.(null);
-		};
+		const { undo, ytext, step, undoTrail } = setup();
 		step(U, () => ytext.insert(0, "Base"));
 		undo.stopCapturing();
 		step(G, () => ytext.insert(4, " AI"));
 		step(U, () => ytext.insert(0, "x"));
 		step(G, () => ytext.insert(ytext.length, " more"));
 		expect(ytext.toString()).toBe("xBase AI more");
-
-		const seen: string[] = [];
-		while (undo.undo()) {
-			seen.push(ytext.toString());
-		}
-		expect(seen).toEqual(["xBase", "Base", ""]);
+		expect(undoTrail()).toEqual(["xBase", "Base", ""]);
 	});
 });

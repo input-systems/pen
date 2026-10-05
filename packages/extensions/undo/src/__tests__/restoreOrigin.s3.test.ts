@@ -1,25 +1,14 @@
 import { getEditorSelectionRecord } from "@input/pen-core";
 import { describe, expect, it } from "vitest";
 
-import { BODY_ID, BODY_TEXT, createUndoEditor } from "./undoEditorFixture";
+import { BODY_ID, BODY_TEXT, createUndoEditor, splice } from "./undoEditorFixture";
 
 describe("@input/pen-undo selection restore origin", () => {
 	it("S3: undo and redo restore the selection with origin restore", async () => {
 		const { editor } = createUndoEditor();
 		const end = BODY_TEXT.length;
 		editor.selectText(BODY_ID, end, end, { origin: "keyboard" });
-		editor.apply(
-			[
-				{
-					type: "splice-text",
-					blockId: BODY_ID,
-					from: end,
-					to: end,
-					insert: "!",
-				},
-			],
-			{ origin: "user" },
-		);
+		editor.apply([splice(BODY_ID, end, end, "!")], { origin: "user" });
 		// CURSOR_AFTER settles in a microtask after the edit group.
 		await Promise.resolve();
 		editor.selectText(BODY_ID, 0, 0, { origin: "pointer" });
@@ -44,10 +33,7 @@ describe("@input/pen-undo selection restore origin", () => {
 	it("S3: undo keeps origin restore when mapping the restored caret changes nothing", async () => {
 		const { editor } = createUndoEditor();
 		editor.selectText(BODY_ID, 0, 0, { origin: "keyboard" });
-		editor.apply(
-			[{ type: "splice-text", blockId: BODY_ID, from: 0, to: 0, insert: "x" }],
-			{ origin: "user" },
-		);
+		editor.apply([splice(BODY_ID, 0, 0, "x")], { origin: "user" });
 		editor.selectText(BODY_ID, 1, 1, { origin: "keyboard" });
 		await Promise.resolve();
 

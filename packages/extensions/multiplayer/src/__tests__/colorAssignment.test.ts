@@ -46,18 +46,12 @@ describe("assignMultiplayerColor", () => {
 });
 
 describe("normalizeMultiplayerColor", () => {
-	it("preserves valid colors", () => {
-		expect(normalizeMultiplayerColor("#abc123", "#000000")).toBe("#abc123");
-		expect(normalizeMultiplayerColor("rgb(1 2 3)", "#000000")).toBe(
-			"rgb(1 2 3)",
-		);
-		expect(
-			normalizeMultiplayerColor("hsl(210deg 50% 40%)", "#000000"),
-		).toBe("hsl(210deg 50% 40%)");
-		expect(normalizeMultiplayerColor("RebeccaPurple", "#000000")).toBe(
-			"RebeccaPurple",
-		);
-	});
+	it.each(["#abc123", "rgb(1 2 3)", "hsl(210deg 50% 40%)", "RebeccaPurple"])(
+		"preserves the valid colour %j",
+		(color) => {
+			expect(normalizeMultiplayerColor(color, "#000000")).toBe(color);
+		},
+	);
 
 	it.each([
 		"rgb(0,0,0) url(https://evil/x.png)",
@@ -69,14 +63,9 @@ describe("normalizeMultiplayerColor", () => {
 		"rgb(0,0,0)/**/url(https://evil/x.png)",
 		"\\75 rl(https://evil/x.png)",
 		"notacolor",
-	])("COL2: falls back for the hostile colour %j", (color) => {
+		"red;position:absolute",
+		undefined,
+	])("COL2: falls back for the hostile or invalid colour %j", (color) => {
 		expect(normalizeMultiplayerColor(color, "#000000")).toBe("#000000");
-	});
-
-	it("falls back for invalid colors", () => {
-		expect(
-			normalizeMultiplayerColor("red;position:absolute", "#000000"),
-		).toBe("#000000");
-		expect(normalizeMultiplayerColor(undefined, "#000000")).toBe("#000000");
 	});
 });

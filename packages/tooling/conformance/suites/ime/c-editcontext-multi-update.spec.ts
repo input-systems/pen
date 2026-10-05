@@ -1,7 +1,9 @@
 import { expect, test, type CDPSession, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
-import { readBackend, readDocumentText, readSurfaceText } from "./compose";
+import type { ScenarioApi } from "../../src/types";
+import { readBackend, readDocumentText } from "../input/keys";
+import { readSurfaceText } from "./compose";
 
 /**
  * C4 one composition lifecycle on the Chromium EditContext backend, driven
@@ -48,7 +50,7 @@ async function readFieldState(page: Page): Promise<FieldState> {
 
 async function startEditContext(
 	page: Page,
-	s: Parameters<Parameters<typeof scenario>[1]>[0],
+	s: ScenarioApi,
 ): Promise<CDPSession> {
 	test.skip(
 		test.info().project.name !== "chromium",
@@ -62,12 +64,33 @@ async function startEditContext(
 	return page.context().newCDPSession(page);
 }
 
+async function press(page: Page, key: string, times: number): Promise<void> {
+	for (let index = 0; index < times; index++) {
+		await page.keyboard.press(key);
+	}
+}
+
 async function caretAt(page: Page, offset: number): Promise<void> {
 	await page.keyboard.press("Home");
-	for (let index = 0; index < offset; index++) {
-		await page.keyboard.press("ArrowRight");
-	}
+	await press(page, "ArrowRight", offset);
 	expect((await readFieldState(page)).focusOffset).toBe(offset);
+}
+
+/** Selects "world" backwards: anchor 11, focus 6. */
+async function selectWorld(page: Page): Promise<void> {
+	await page.keyboard.press("End");
+	await press(page, "Shift+ArrowLeft", 5);
+}
+
+/** `toBe` whose check report's outcome is the same comparison. */
+function expectCheck(
+	actual: unknown,
+	expected: unknown,
+	label: string,
+	report: string,
+): void {
+	const outcome = actual === expected ? "passed" : "failed";
+	expect(actual, formatCheckReport(label, outcome, report)).toBe(expected);
 }
 
 async function compose(cdp: CDPSession, text: string): Promise<void> {
@@ -97,36 +120,30 @@ async function expectHeldComposition(
 ): Promise<void> {
 	const state = await readFieldState(page);
 	const report = JSON.stringify(state);
-	expect(
+	expectCheck(
 		state.doc,
-		formatCheckReport(
-			`${label}: the composition is held out of Y.Text until it commits`,
-			state.doc === expectedDoc ? "passed" : "failed",
-			report,
-		),
-	).toBe(expectedDoc);
-	expect(
+		expectedDoc,
+		`${label}: the composition is held out of Y.Text until it commits`,
+		report,
+	);
+	expectCheck(
 		state.dom,
-		formatCheckReport(
-			`${label}: the field shows the composition`,
-			state.dom === expectedDom ? "passed" : "failed",
-			report,
-		),
-	).toBe(expectedDom);
+		expectedDom,
+		`${label}: the field shows the composition`,
+		report,
+	);
 	const [low, high] = replaced;
 	const inBounds =
 		state.focusOffset !== null &&
 		state.anchorOffset !== null &&
 		Math.min(state.focusOffset, state.anchorOffset) >= low &&
 		Math.max(state.focusOffset, state.anchorOffset) <= high;
-	expect(
+	expectCheck(
 		inBounds,
-		formatCheckReport(
-			`${label}: the selection record stays on the replaced Y.Text range [${low}, ${high}]`,
-			inBounds ? "passed" : "failed",
-			report,
-		),
-	).toBe(true);
+		true,
+		`${label}: the selection record stays on the replaced Y.Text range [${low}, ${high}]`,
+		report,
+	);
 }
 
 /** After a commit: one text everywhere, caret after the composed text. */
@@ -138,14 +155,12 @@ async function expectSettled(
 ): Promise<void> {
 	const state = await readFieldState(page);
 	const report = JSON.stringify(state);
-	expect(
+	expectCheck(
 		state.doc,
-		formatCheckReport(
-			`${label}: the commit lands at the replaced range`,
-			state.doc === expectedDoc ? "passed" : "failed",
-			report,
-		),
-	).toBe(expectedDoc);
+		expectedDoc,
+		`${label}: the commit lands at the replaced range`,
+		report,
+	);
 	expect(state.dom, `${label}: DOM equals the document (${report})`).toBe(
 		expectedDoc,
 	);
@@ -175,14 +190,12 @@ async function expectClosedAfterCommit(
 ): Promise<void> {
 	await page.keyboard.press("ArrowLeft");
 	const moved = await readFieldState(page);
-	expect(
+	expectCheck(
 		moved.focusOffset,
-		formatCheckReport(
-			`${label}: ArrowLeft runs after the commit (composition closed)`,
-			moved.focusOffset === caret - 1 ? "passed" : "failed",
-			JSON.stringify(moved),
-		),
-	).toBe(caret - 1);
+		caret - 1,
+		`${label}: ArrowLeft runs after the commit (composition closed)`,
+		JSON.stringify(moved),
+	);
 	await page.keyboard.type("!");
 	const typed = `${expectedDoc.slice(0, caret - 1)}!${expectedDoc.slice(caret - 1)}`;
 	await expectSettled(page, `${label} then "!"`, typed, caret);
@@ -220,30 +233,25 @@ scenario(
 	async (s, page) => {
 		const cdp = await startEditContext(page, s);
 		await caretAt(page, 5);
-		for (const jamo of ["ㅎ", "하", "한"]) {
-			await compose(cdp, jamo);
-			await expectHeldComposition(
-				page,
-				`update ${jamo}`,
-				"Hello world",
-				`Hello${jamo} world`,
-				[5, 5],
-			);
+		let typed = "";
+		for (const jamos of [["ㅎ", "하", "한"], ["ㄱ", "그", "글"]]) {
+			const caret = 5 + typed.length;
+			for (const jamo of jamos) {
+				await compose(cdp, jamo);
+				await expectHeldComposition(
+					page,
+					`update ${jamo}`,
+					`Hello${typed} world`,
+					`Hello${typed}${jamo} world`,
+					[caret, caret],
+				);
+			}
+			const syllable = jamos.at(-1)!;
+			typed += syllable;
+			await commit(cdp, syllable);
+			const settled = `Hello${typed} world`;
+			await expectSettled(page, `commit ${syllable}`, settled, caret + 1);
 		}
-		await commit(cdp, "한");
-		await expectSettled(page, "commit 한", "Hello한 world", 6);
-		for (const jamo of ["ㄱ", "그", "글"]) {
-			await compose(cdp, jamo);
-			await expectHeldComposition(
-				page,
-				`update ${jamo}`,
-				"Hello한 world",
-				`Hello한${jamo} world`,
-				[6, 6],
-			);
-		}
-		await commit(cdp, "글");
-		await expectSettled(page, "commit 글", "Hello한글 world", 7);
 		await expectClosedAfterCommit(page, "after 한글", "Hello한글 world", 7);
 		await s.assert.domMatchesAuthority();
 	},
@@ -254,28 +262,19 @@ scenario(
 	"C4: a Japanese composition over a selection replaces exactly the selection",
 	async (s, page) => {
 		const cdp = await startEditContext(page, s);
-		await page.keyboard.press("End");
-		for (let index = 0; index < 5; index++) {
-			await page.keyboard.press("Shift+ArrowLeft");
-		}
+		await selectWorld(page);
 		const selected = await readFieldState(page);
 		expect([selected.anchorOffset, selected.focusOffset]).toEqual([11, 6]);
-		await compose(cdp, "せ");
-		await expectHeldComposition(
-			page,
-			"update せ",
-			"Hello world",
-			"Hello せ",
-			[6, 11],
-		);
-		await compose(cdp, "せかい");
-		await expectHeldComposition(
-			page,
-			"update せかい",
-			"Hello world",
-			"Hello せかい",
-			[6, 11],
-		);
+		for (const text of ["せ", "せかい"]) {
+			await compose(cdp, text);
+			await expectHeldComposition(
+				page,
+				`update ${text}`,
+				"Hello world",
+				`Hello ${text}`,
+				[6, 11],
+			);
+		}
 		await commit(cdp, "世界");
 		await expectSettled(page, "commit 世界", "Hello 世界", 8);
 		await expectClosedAfterCommit(page, "after 世界", "Hello 世界", 8);
@@ -325,12 +324,7 @@ scenario(
 		}
 		await commit(cdp, "你");
 		await expectSettled(page, "commit 你", "XXXXHello world你", 16);
-		await expectClosedAfterCommit(
-			page,
-			"after 你",
-			"XXXXHello world你",
-			16,
-		);
+		await expectClosedAfterCommit(page, "after 你", "XXXXHello world你", 16);
 		await s.assert.domMatchesAuthority();
 	},
 	{ axe: false },
@@ -340,10 +334,7 @@ scenario(
 	"C2: a collaborator edit inside the replaced selection survives the composition",
 	async (s, page) => {
 		const cdp = await startEditContext(page, s);
-		await page.keyboard.press("End");
-		for (let index = 0; index < 5; index++) {
-			await page.keyboard.press("Shift+ArrowLeft");
-		}
+		await selectWorld(page);
 		await compose(cdp, "せ");
 		await page.evaluate((blockId) => {
 			window.__penConformance.remoteApply([
@@ -398,14 +389,12 @@ for (const updates of [1, 2, 3]) {
 			await page.mouse.click(5, 5);
 			const doc = await readDocumentText(page);
 			const dom = await readSurfaceText(page);
-			expect(
+			expectCheck(
 				doc.startsWith(`Hello world${composed}`),
-				formatCheckReport(
-					"C4: blur mid-composition commits the composed text",
-					doc.startsWith(`Hello world${composed}`) ? "passed" : "failed",
-					JSON.stringify({ doc, dom }),
-				),
-			).toBe(true);
+				true,
+				"C4: blur mid-composition commits the composed text",
+				JSON.stringify({ doc, dom }),
+			);
 			expect(dom).toBe(`Hello world${composed}`);
 		},
 		{ axe: false },

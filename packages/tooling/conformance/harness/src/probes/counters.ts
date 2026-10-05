@@ -37,3 +37,9 @@ export function readDistinct(): Record<string, number> {
 export function resetDistinct(): void {
 	distinct.clear();
 }
+
+/** One tracked block-level component render, attributed to its block (React P3, Vue P4). */
+export function countBlockRender(blockId: unknown): void {
+	bump("render.blockRenders");
+	if (typeof blockId === "string") addDistinct("render.blocksRendered", blockId);
+}

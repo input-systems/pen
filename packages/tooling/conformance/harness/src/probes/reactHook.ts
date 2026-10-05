@@ -1,4 +1,4 @@
-import { addDistinct, bump, PROBE_ENABLED } from "./counters";
+import { bump, countBlockRender, PROBE_ENABLED } from "./counters";
 
 /**
  * P3: a minimal React DevTools global hook, installed before react-dom loads
@@ -44,14 +44,10 @@ function didRender(fiber: Fiber): boolean {
 
 const COUNTERS: Readonly<Record<string, (fiber: Fiber) => void>> = Object.fromEntries([
 	[CONTENT, () => bump("render.contentRenders")],
-	...[...TRACKED].map((name) => [name, countBlockRender] as const),
+	...[...TRACKED].map(
+		(name) => [name, (fiber: Fiber) => countBlockRender(fiber.memoizedProps?.blockId)] as const,
+	),
 ]);
-
-function countBlockRender(fiber: Fiber): void {
-	bump("render.blockRenders");
-	const blockId = fiber.memoizedProps?.blockId;
-	if (typeof blockId === "string") addDistinct("render.blocksRendered", blockId);
-}
 
 function countFiber(fiber: Fiber): void {
 	const counter = COUNTERS[nameOf(fiber.type) ?? ""];

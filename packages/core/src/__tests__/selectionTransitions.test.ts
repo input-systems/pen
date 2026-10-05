@@ -361,45 +361,19 @@ describe("selection transitions", () => {
 			expect(escalateSelectAll(flatDoc, next)?.type).toBe("block");
 		});
 
-		it("T2: a structural focus covers the block in the drag direction", () => {
+		type Point = [blockId: string, offset: number];
+		it.each<[string, Point, Point, [Point, Point]]>([
+			["a structural focus covers the block in the drag direction (forward)", ["p2", 2], ["img", 0], [["p2", 2], ["img", 1]]],
+			["a structural focus covers the block in the drag direction (backward)", ["p3", 1], ["img", 1], [["p3", 1], ["img", 0]]],
+			["a structural anchor covers from the drag's start side", ["img", 1], ["p3", 2], [["img", 0], ["p3", 2]]],
+			["within one block the focus is clamped, not covered", ["p1", 2], ["p1", 99], [["p1", 2], ["p1", 8]]],
+		])("T2: %s", (_name, [anchorId, anchorOffset], [focusId, focusOffset], [from, to]) => {
 			expect(
-				convertPointerDrag(flatDoc, text({ blockId: "p2", offset: 2 }), {
-					blockId: "img",
-					offset: 0,
+				convertPointerDrag(flatDoc, text({ blockId: anchorId, offset: anchorOffset }), {
+					blockId: focusId,
+					offset: focusOffset,
 				}),
-			).toEqual(
-				text({ blockId: "p2", offset: 2 }, { blockId: "img", offset: 1 }),
-			);
-			expect(
-				convertPointerDrag(flatDoc, text({ blockId: "p3", offset: 1 }), {
-					blockId: "img",
-					offset: 1,
-				}),
-			).toEqual(
-				text({ blockId: "p3", offset: 1 }, { blockId: "img", offset: 0 }),
-			);
-		});
-
-		it("T2: a structural anchor covers from the drag's start side", () => {
-			expect(
-				convertPointerDrag(flatDoc, text({ blockId: "img", offset: 1 }), {
-					blockId: "p3",
-					offset: 2,
-				}),
-			).toEqual(
-				text({ blockId: "img", offset: 0 }, { blockId: "p3", offset: 2 }),
-			);
-		});
-
-		it("T2: within one block the focus is clamped, not covered", () => {
-			expect(
-				convertPointerDrag(flatDoc, text({ blockId: "p1", offset: 2 }), {
-					blockId: "p1",
-					offset: 99,
-				}),
-			).toEqual(
-				text({ blockId: "p1", offset: 2 }, { blockId: "p1", offset: 8 }),
-			);
+			).toEqual(text({ blockId: from[0], offset: from[1] }, { blockId: to[0], offset: to[1] }));
 		});
 	});
 

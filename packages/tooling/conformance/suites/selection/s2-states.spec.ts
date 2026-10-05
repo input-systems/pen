@@ -1,10 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
-import { itemsOfKind, readSettledLayer } from "../../src/overlayLayer";
+import {
+	itemsOfKind,
+	readSettledLayer,
+	type LayerSnapshot,
+} from "../../src/overlayLayer";
 import { scenario } from "../../src/scenario";
 import type { LogicalPoint, ScenarioApi } from "../../src/types";
 import { dispatchUnidentifiedKeyThenInput } from "../ime/compose";
-import { readModelBlockText } from "../specHelpers";
+import { readModelBlockText, readSelection } from "../specHelpers";
 
 /**
  * D5, W3.R17: the two declared S2 exceptions and their pinned substitute
@@ -25,38 +29,26 @@ const COLLAPSED_TEXT = "Li 52 of the large fuzz document.";
 const TALL_VIEWPORT = { width: 1280, height: 2400 };
 
 type ActiveTarget = {
-	kind: "sink" | "field" | "root" | "other";
+	kind: string;
 	role: string | null;
 	label: string | null;
 	blockId: string | null;
 };
 
+/** What holds DOM focus: the sink, a field (and its block), the root, or other. */
 async function activeTarget(page: Page): Promise<ActiveTarget> {
 	return page.evaluate(() => {
 		const active = document.activeElement;
-		if (!(active instanceof HTMLElement)) {
-			return {
-				kind: "other" as const,
-				role: null,
-				label: null,
-				blockId: null,
-			};
-		}
-		const kind = active.hasAttribute("data-pen-focus-sink")
-			? ("sink" as const)
-			: active.hasAttribute("data-pen-editor-root")
-				? ("root" as const)
-				: active.closest("[data-block-id]")
-					? ("field" as const)
-					: ("other" as const);
+		const element = active instanceof HTMLElement ? active : null;
+		const block = element?.closest("[data-block-id]") ?? null;
+		let kind = block ? "field" : "other";
+		if (element?.hasAttribute("data-pen-editor-root")) kind = "root";
+		if (element?.hasAttribute("data-pen-focus-sink")) kind = "sink";
 		return {
 			kind,
-			role: active.getAttribute("role"),
-			label: active.getAttribute("aria-label"),
-			blockId:
-				active
-					.closest("[data-block-id]")
-					?.getAttribute("data-block-id") ?? null,
+			role: element?.getAttribute("role") ?? null,
+			label: element?.getAttribute("aria-label") ?? null,
+			blockId: block?.getAttribute("data-block-id") ?? null,
 		};
 	});
 }
@@ -78,16 +70,25 @@ async function idle(page: Page): Promise<void> {
 	await page.evaluate(() => window.__penConformance.whenIdle());
 }
 
-/** A pointer drag from the anchor to the focus: a real 52-block range. */
-async function selectLargeRange(s: ScenarioApi, page: Page): Promise<void> {
-	await page.setViewportSize(TALL_VIEWPORT);
-	await s.load("fuzz-large");
+async function substituteState(page: Page): Promise<string | null> {
+	return page.evaluate(() => window.__penConformance.substituteState);
+}
+
+/** Presses at the anchor and moves to the focus, leaving the button down. */
+async function dragToFocus(page: Page): Promise<void> {
 	const anchor = await getInlineOffsetPoint(page, ANCHOR);
 	await page.mouse.move(anchor.x, anchor.y);
 	await page.mouse.down();
 	await idle(page);
 	const focus = await getInlineOffsetPoint(page, FOCUS);
 	await page.mouse.move(focus.x, focus.y, { steps: 24 });
+}
+
+/** A pointer drag from the anchor to the focus: a real 52-block range. */
+async function selectLargeRange(s: ScenarioApi, page: Page): Promise<void> {
+	await page.setViewportSize(TALL_VIEWPORT);
+	await s.load("fuzz-large");
+	await dragToFocus(page);
 	await page.mouse.up();
 	await idle(page);
 	await s.assert.selectionEquals({ anchor: ANCHOR, focus: FOCUS });
@@ -99,9 +100,7 @@ async function expectCaretInAnchorField(
 	offset: number,
 ): Promise<void> {
 	await idle(page);
-	expect(
-		await page.evaluate(() => window.__penConformance.substituteState),
-	).toBeNull();
+	expect(await substituteState(page)).toBeNull();
 	await s.assert.selectionEquals({
 		anchor: { blockId: ANCHOR.blockId, offset },
 		focus: { blockId: ANCHOR.blockId, offset },
@@ -113,13 +112,26 @@ async function expectCaretInAnchorField(
 	await s.assert.domMatchesAuthority();
 }
 
+/** The overlay paints both endpoint carets and a partial range in each endpoint block. */
+async function expectEndpointOverlay(page: Page): Promise<LayerSnapshot> {
+	const layer = await readSettledLayer(page);
+	const endpoints = itemsOfKind(layer, "caret")
+		.map((item) => item.endpoint)
+		.filter((endpoint) => endpoint !== null)
+		.sort();
+	expect(endpoints, "both endpoint carets").toEqual(["anchor", "focus"]);
+	expect(
+		itemsOfKind(layer, "range"),
+		"a partial range in each endpoint block",
+	).toHaveLength(2);
+	return layer;
+}
+
 scenario(
 	"S2: a 51-block text range shows no native range, focuses the text-range sink, and paints the range overlay",
 	async (s, page) => {
 		await selectLargeRange(s, page);
-		expect(
-			await page.evaluate(() => window.__penConformance.substituteState),
-		).toBe("block-surface-range");
+		expect(await substituteState(page)).toBe("block-surface-range");
 		expect(await nativeRangeCountInRoot(page)).toBe(0);
 		expect(await activeTarget(page)).toMatchObject({
 			kind: "sink",
@@ -127,16 +139,7 @@ scenario(
 			label: `Text selected across ${BLOCKS_IN_RANGE} blocks`,
 		});
 
-		const layer = await readSettledLayer(page);
-		const endpoints = itemsOfKind(layer, "caret")
-			.filter((item) => item.endpoint !== null)
-			.map((item) => item.endpoint)
-			.sort();
-		expect(endpoints, "both endpoint carets").toEqual(["anchor", "focus"]);
-		expect(
-			itemsOfKind(layer, "range"),
-			"a partial range in each endpoint block",
-		).toHaveLength(2);
+		const layer = await expectEndpointOverlay(page);
 		const spans = itemsOfKind(layer, "block-span");
 		expect(spans, "one span over the covered blocks").toHaveLength(1);
 		expect(spans[0]).toMatchObject({
@@ -159,31 +162,24 @@ scenario(
 		await idle(page);
 		await s.assert.selectionEquals({ anchor: editing, focus: editing });
 
-		const anchor = await getInlineOffsetPoint(page, ANCHOR);
-		await page.mouse.move(anchor.x, anchor.y);
-		await page.mouse.down();
-		await idle(page);
-		const focus = await getInlineOffsetPoint(page, FOCUS);
-		await page.mouse.move(focus.x, focus.y, { steps: 24 });
+		await dragToFocus(page);
 		await idle(page);
 		// Mid-drag: the pointer window the press opened is still open, so
 		// the user's native range stands and no substitute is written. The
 		// record is read directly: S2's standing check applies at flushes
 		// with editor focus, not mid-gesture.
-		expect(
-			await page.evaluate(() => window.__penConformance.selection),
-		).toMatchObject({ type: "text", anchor: ANCHOR, focus: FOCUS });
-		expect(
-			await page.evaluate(() => window.__penConformance.substituteState),
-		).toBeNull();
+		expect(await readSelection(page)).toMatchObject({
+			type: "text",
+			anchor: ANCHOR,
+			focus: FOCUS,
+		});
+		expect(await substituteState(page)).toBeNull();
 		expect(await nativeRangeCountInRoot(page)).toBe(1);
 
 		await page.mouse.up();
 		await idle(page);
 		await s.assert.selectionEquals({ anchor: ANCHOR, focus: FOCUS });
-		expect(
-			await page.evaluate(() => window.__penConformance.substituteState),
-		).toBe("block-surface-range");
+		expect(await substituteState(page)).toBe("block-surface-range");
 		expect(await nativeRangeCountInRoot(page)).toBe(0);
 		await s.assert.domMatchesAuthority();
 	},
@@ -204,14 +200,8 @@ scenario(
 			},
 		]);
 		// A range dragged inside the paragraph: the press reads it (R1).
-		const from = await getInlineOffsetPoint(page, {
-			blockId: "hello-p1",
-			offset: 1,
-		});
-		const to = await getInlineOffsetPoint(page, {
-			blockId: "hello-p1",
-			offset: 7,
-		});
+		const from = await getInlineOffsetPoint(page, { blockId: "hello-p1", offset: 1 });
+		const to = await getInlineOffsetPoint(page, { blockId: "hello-p1", offset: 7 });
 		await page.mouse.move(from.x, from.y);
 		await page.mouse.down();
 		await page.mouse.move(to.x, to.y, { steps: 8 });
@@ -229,9 +219,7 @@ scenario(
 			.first();
 		await cell.click();
 		await idle(page);
-		expect(
-			await page.evaluate(() => window.__penConformance.selection),
-		).toMatchObject({
+		expect(await readSelection(page)).toMatchObject({
 			type: "cell",
 			blockId: tableId,
 			anchor: { row: 0, col: 0 },
@@ -255,9 +243,7 @@ scenario(
 		});
 		await idle(page);
 
-		expect(
-			await page.evaluate(() => window.__penConformance.substituteState),
-		).toBe("engine-confined-range");
+		expect(await substituteState(page)).toBe("engine-confined-range");
 		expect(
 			await page.evaluate(
 				() => window.__penConformance.confiningWriteFault,
@@ -276,14 +262,7 @@ scenario(
 			role: "group",
 		});
 
-		const layer = await readSettledLayer(page);
-		expect(
-			itemsOfKind(layer, "caret")
-				.map((item) => item.endpoint)
-				.filter((endpoint) => endpoint !== null)
-				.sort(),
-		).toEqual(["anchor", "focus"]);
-		expect(itemsOfKind(layer, "range")).toHaveLength(2);
+		await expectEndpointOverlay(page);
 		await s.assert.domMatchesAuthority();
 	},
 );
@@ -387,9 +366,7 @@ scenario("S2: copy from the sink carries the range", async (s, page) => {
 	expect(copied!.text).toContain("Line 51 of the large fuzz document.");
 	expect(copied!.text.trimEnd().endsWith("Line")).toBe(true);
 	// Copy leaves the range and its substitute state in place.
-	expect(
-		await page.evaluate(() => window.__penConformance.substituteState),
-	).toBe("block-surface-range");
+	expect(await substituteState(page)).toBe("block-surface-range");
 	await s.assert.domMatchesAuthority();
 });
 
@@ -454,9 +431,7 @@ scenario(
 		await idle(page);
 		expect(targets.keydownTarget).toBe("sink");
 		expect(await readModelBlockText(page, ANCHOR.blockId)).toBe(anchorText);
-		expect(
-			await page.evaluate(() => window.__penConformance.substituteState),
-		).toBe("block-surface-range");
+		expect(await substituteState(page)).toBe("block-surface-range");
 		await s.assert.selectionEquals({ anchor: ANCHOR, focus: FOCUS });
 		await s.assert.domMatchesAuthority();
 		// The real Backspace that follows still deletes the range, once.

@@ -3,14 +3,15 @@ import { analyzeEditorSurface, formatAxeViolations } from "../src/axeSurface";
 import { FIXTURE_NAMES } from "../fixtures/catalog";
 import { scenario } from "../src/scenario";
 
+async function expectNoAxeViolations(page: Page): Promise<void> {
+	const { violations } = await analyzeEditorSurface(page);
+	expect(violations, formatAxeViolations(violations)).toEqual([]);
+}
+
 for (const fixture of FIXTURE_NAMES) {
 	scenario(`AX1: axe surface semantics on ${fixture}`, async (s, page) => {
 		await s.load(fixture);
-		const results = await analyzeEditorSurface(page);
-		expect(
-			results.violations,
-			formatAxeViolations(results.violations),
-		).toEqual([]);
+		await expectNoAxeViolations(page);
 	});
 }
 
@@ -92,8 +93,7 @@ for (const surface of ["vue", "vanilla"] as const) {
 		`AX1: ${surface} exposes the same list semantics as React for the semantics fixture`,
 		async (s, page) => {
 			await s.load("semantics");
-			const sequence = await listItemSequence(page);
-			expect(sequence).toEqual([
+			expect(await listItemSequence(page)).toEqual([
 				"list:listitem:1:1:2",
 				"list:listitem:2:1:1",
 				"list:listitem:1:2:2",
@@ -103,8 +103,7 @@ for (const surface of ["vue", "vanilla"] as const) {
 				"list:listitem:1:1:2",
 				"list:listitem:1:2:2",
 			]);
-			const results = await analyzeEditorSurface(page);
-			expect(results.violations, formatAxeViolations(results.violations)).toEqual([]);
+			await expectNoAxeViolations(page);
 		},
 		{ url: `/?surface=${surface}` },
 	);
@@ -128,15 +127,9 @@ scenario(
 		});
 		const before = page.locator("[data-ax1-before-editor]");
 		await before.focus();
-
 		await page.keyboard.press("Tab");
-
-		await expect(
-			root.locator("[data-pen-field-editor-active-surface]"),
-		).toBeFocused();
-
+		await expect(root.locator("[data-pen-field-editor-active-surface]")).toBeFocused();
 		await page.keyboard.press("Shift+Tab");
-
 		await expect(before).toBeFocused();
 	},
 );
@@ -167,9 +160,7 @@ scenario(
 			before.focus();
 		});
 		await expect(root).toHaveAttribute("tabindex", "0");
-
 		await page.keyboard.press("Tab");
-
 		await expect(sink).toBeFocused();
 		await expect(root).toHaveAttribute("tabindex", "-1");
 	},

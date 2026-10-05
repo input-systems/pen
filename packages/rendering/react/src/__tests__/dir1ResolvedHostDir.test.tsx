@@ -6,7 +6,6 @@ import { createRoot, type Root } from "react-dom/client";
 import {
 	blockDirectionFacet,
 	createEditor as createCoreEditor,
-	defaultDirectionFacet,
 	defineExtension,
 	resolveBlockDirection,
 } from "@input/pen-core";
@@ -97,6 +96,9 @@ function setBlockText(
 	]);
 }
 
+// First-strong text and pen.defaultDirection are core's resolution, covered in
+// core/src/direction/__tests__/resolve.dir1.test.ts; these cases pin what the
+// binding renders: no dir for resolved LTR, the resolved or explicit dir otherwise.
 const DIR1_CASES: Array<{
 	name: string;
 	extensions: NonNullable<
@@ -134,23 +136,6 @@ const DIR1_CASES: Array<{
 		text: "Hello",
 		direction: "ltr",
 		expected: "ltr",
-	},
-	{
-		name: "first-strong RTL text with no prop and no resolver renders RTL",
-		extensions: [],
-		text: "مرحبا",
-		expected: "rtl",
-	},
-	{
-		name: "pen.defaultDirection applies when nothing else does",
-		extensions: [
-			defineExtension({
-				name: "dir-default",
-				facets: [defaultDirectionFacet.of("rtl")],
-			}),
-		],
-		text: "12345",
-		expected: "rtl",
 	},
 ];
 

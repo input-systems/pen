@@ -1,6 +1,7 @@
 import { expect, type Page } from "@playwright/test";
-import { getInlineOffsetPoint } from "../src/domGeometry";
+import { readCaretOverlay } from "../src/overlayLayer";
 import { scenario } from "../src/scenario";
+import { clickOffset } from "../suites/specHelpers";
 
 const CUSTOM_CARET = "/?customCaret=1";
 
@@ -33,59 +34,25 @@ scenario(
 	"F39 HOST6: renders a custom local caret for collapsed selections only",
 	async (s, page) => {
 		await s.load("hello-world");
-		const caretPoint = await getInlineOffsetPoint(page, {
-			blockId: "hello-p1",
-			offset: 2,
-		});
-		await page.mouse.click(caretPoint.x, caretPoint.y);
+		await clickOffset(page, "hello-p1", 2);
 
 		const caret = page.locator("[data-pen-editor-caret]");
 		await expect(caret).toBeVisible();
 		await expect(caret).toHaveAttribute("data-block-id", "hello-p1");
 		await expect(caret).toHaveAttribute("data-offset", "2");
 
-		const collapsed = await page.evaluate(() => {
-			const caretElement = document.querySelector(
-				"[data-pen-editor-caret]",
-			);
-			const overlay = document.querySelector("[data-pen-overlay-layer]");
-			const surface = document.querySelector(
-				"[data-pen-field-editor-active-surface], [data-pen-inline-content]",
-			);
-			if (
-				!(caretElement instanceof HTMLElement) ||
-				!(overlay instanceof HTMLElement) ||
-				!(surface instanceof HTMLElement)
-			) {
-				return null;
-			}
-			const rect = caretElement.getBoundingClientRect();
-			return {
-				// No blink token on this URL: the host animation token
-				// resolves to none (the 500ms type-pause is retired).
-				animationName: getComputedStyle(caretElement).animationName,
-				caretColor: surface.style.caretColor,
-				overlayVisible: overlay.hasAttribute("data-caret-visible"),
-				width: rect.width,
-				height: rect.height,
-				left: rect.left,
-				top: rect.top,
-			};
-		});
-		expect(collapsed).not.toBeNull();
-		expect(collapsed?.animationName).toBe("none");
-		expect(collapsed?.caretColor).toBe("transparent");
-		expect(collapsed?.overlayVisible).toBe(true);
-		expect(collapsed?.width).toBeGreaterThan(0);
-		expect(collapsed?.height).toBeGreaterThan(0);
-		expect(collapsed?.left).toBeGreaterThan(0);
-		expect(collapsed?.top).toBeGreaterThan(0);
+		// No blink token on this URL: the host animation token resolves to
+		// none (the 500ms type-pause is retired).
+		expect(await caret.evaluate((node) => getComputedStyle(node).animationName)).toBe("none");
+		const collapsed = await readCaretOverlay(page);
+		expect(collapsed.caretColor).toBe("transparent");
+		expect(collapsed.caretVisible).toBe(true);
+		expect(collapsed.caret?.width).toBeGreaterThan(0);
+		expect(collapsed.caret?.height).toBeGreaterThan(0);
+		expect(collapsed.caret?.left).toBeGreaterThan(0);
+		expect(collapsed.caret?.top).toBeGreaterThan(0);
 
-		const rangeStart = await getInlineOffsetPoint(page, {
-			blockId: "hello-p1",
-			offset: 1,
-		});
-		await page.mouse.click(rangeStart.x, rangeStart.y);
+		await clickOffset(page, "hello-p1", 1);
 		await page.keyboard.down("Shift");
 		await page.keyboard.press("ArrowRight");
 		await page.keyboard.press("ArrowRight");
@@ -103,20 +70,8 @@ scenario(
 			)
 			.toBe(true);
 		await expect(page.locator("[data-pen-editor-caret]")).toHaveCount(0);
-		const expanded = await page.evaluate(() => {
-			const overlay = document.querySelector("[data-pen-overlay-layer]");
-			const surface = document.querySelector(
-				"[data-pen-field-editor-active-surface], [data-pen-inline-content]",
-			);
-			return {
-				overlayVisible:
-					overlay instanceof HTMLElement &&
-					overlay.hasAttribute("data-caret-visible"),
-				caretColor:
-					surface instanceof HTMLElement ? surface.style.caretColor : null,
-			};
-		});
-		expect(expanded.overlayVisible).toBe(false);
+		const expanded = await readCaretOverlay(page);
+		expect(expanded.caretVisible).toBe(false);
 		expect(expanded.caretColor).not.toBe("transparent");
 	},
 	{ url: CUSTOM_CARET },
@@ -126,11 +81,7 @@ scenario(
 	"F39 O: typing restarts the caret blink once per character with no timer",
 	async (s, page) => {
 		await s.load("hello-world");
-		const caretPoint = await getInlineOffsetPoint(page, {
-			blockId: "hello-p1",
-			offset: 2,
-		});
-		await page.mouse.click(caretPoint.x, caretPoint.y);
+		await clickOffset(page, "hello-p1", 2);
 		await expect(page.locator("[data-pen-editor-caret]")).toHaveCount(1);
 		const start = await caretIdentity(page);
 		expect(start).not.toBeNull();
