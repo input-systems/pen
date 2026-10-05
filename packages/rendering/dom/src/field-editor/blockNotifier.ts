@@ -412,8 +412,9 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	/**
-	 * Whether a block died or came back. Only `block-removed` ids are checked
-	 * for liveness, so a text commit reads nothing (SCALE2).
+	 * Whether a block died or came back. Only `block-removed` ids and the
+	 * dead ids already held (none outside a COL4 window) are checked for
+	 * liveness, so a text commit reads nothing (SCALE2).
 	 */
 	private _trackDeadIds(summary: ChangeSummary): boolean {
 		// A remote write or an undo can bring a dead block back by restoring
