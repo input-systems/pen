@@ -112,4 +112,26 @@ describe("cache property findings", () => {
 		expect(local!.documentState.blockOrder).not.toContain("scale-block-34");
 		expect(cacheProblems(local!)).toEqual([]);
 	});
+
+	it("finding 2: several parentId siblings moving in one apply keep their parent's children in root order", () => {
+		const [local, remote] = fork(2, [
+			...generateMixedBlockSpecs(20),
+			{ id: "t", type: "toggle", props: { open: true }, content: "T" },
+			{ id: "c0", type: "paragraph", props: { parentId: "t" }, content: "zero" },
+			{ id: "c1", type: "paragraph", props: { parentId: "t" }, content: "one" },
+			{ id: "c2", type: "paragraph", props: { parentId: "t" }, content: "two" },
+		]);
+		for (const editor of [local!, remote!]) {
+			expect(editor.documentState.childrenOf("t")).toEqual(["c0", "c1", "c2"]);
+		}
+		local!.apply([
+			{ type: "move-block", blockId: "c0", position: { after: "c2" } },
+			{ type: "move-block", blockId: "c1", position: { after: "c0" } },
+		]);
+		expect(local!.documentState.childrenOf("t")).toEqual(["c2", "c0", "c1"]);
+		expect(cacheProblems(local!)).toEqual([]);
+		harness!.deliver(0, 1);
+		expect(remote!.documentState.childrenOf("t")).toEqual(["c2", "c0", "c1"]);
+		expect(cacheProblems(remote!)).toEqual([]);
+	});
 });
