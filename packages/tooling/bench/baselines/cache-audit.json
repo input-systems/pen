@@ -1,9 +1,9 @@
 {
-	"date": "2026-10-04",
+	"date": "2026-10-05",
 	"machine": "Apple M4 Pro, 14 cores, Node v25.6.1",
 	"runs": 31,
-	"loadBefore": "76.07 80.43 48.38",
-	"loadAfter": "30.87 69.18 83.73",
+	"loadBefore": "8.95 11.25 11.34",
+	"loadAfter": "6.65 9.60 10.66",
 	"cells": [
 		{
 			"cache": "A",
@@ -11,13 +11,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.41504200000008495,
-				"opMedian": 1.924874999999929,
-				"componentMin": 0.002083000000084212,
-				"componentMedian": 0.007458999999926164,
+				"opMin": 0.0937080000000492,
+				"opMedian": 0.1276250000000232,
+				"componentMin": 0.0018749999999840838,
+				"componentMedian": 0.0024169999999799074,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -25,14 +25,14 @@
 				}
 			},
 			"naive": {
-				"opMin": 2.2600420000001122,
-				"opMedian": 5.184500000000071,
-				"componentMin": 0.8216670000001614,
-				"componentMedian": 2.6010000000001128,
+				"opMin": 0.4238330000000019,
+				"opMedian": 0.8988339999999653,
+				"componentMin": 0.21304200000002993,
+				"componentMedian": 0.6431249999999977,
 				"counts": {
 					"blockOrderReads": 1050,
 					"blocksMapReads": 1111,
-					"blocksMapIterations": 2100,
+					"blocksMapIterations": 1050,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
 					"documentWalks": 0
@@ -45,8 +45,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.015709000000015294,
-				"opMedian": 0.026542000000063126,
+				"opMin": 0.01379199999996672,
+				"opMedian": 0.015666999999950804,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -59,8 +59,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.01558300000010604,
-				"opMedian": 0.03166699999997036,
+				"opMin": 0.014625000000023647,
+				"opMedian": 0.0160420000000272,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -79,28 +79,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 7.379291000000194,
-				"opMedian": 11.565458999999919,
-				"componentMin": 0.6124170000002778,
-				"componentMedian": 1.7293330000002243,
+				"opMin": 0.2459999999999809,
+				"opMedian": 0.2807500000000118,
+				"componentMin": 0.002250000000003638,
+				"componentMedian": 0.002958999999975731,
 				"counts": {
-					"blockOrderReads": 3892,
-					"blocksMapReads": 2285,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 2,
+					"blocksMapReads": 47,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 4.17083300000013,
-				"opMedian": 12.156124999999975,
-				"componentMin": 0.5528329999997368,
-				"componentMedian": 2.127749999999878,
+				"opMin": 0.6370000000000005,
+				"opMedian": 0.7180420000000254,
+				"componentMin": 0.28804099999996424,
+				"componentMedian": 0.31358299999999417,
 				"counts": {
-					"blockOrderReads": 3898,
-					"blocksMapReads": 2289,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 1123,
+					"blocksMapReads": 1168,
+					"blocksMapIterations": 1122,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -113,28 +113,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 6.86266599999999,
-				"opMedian": 12.136417000000165,
-				"componentMin": 0.48670799999990777,
-				"componentMedian": 2.101166999999805,
+				"opMin": 0.330332999999996,
+				"opMedian": 0.37608399999999165,
+				"componentMin": 0.0023339999999620886,
+				"componentMedian": 0.003417000000013104,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 2545,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 2,
+					"blocksMapReads": 302,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 6.412082999999711,
-				"opMedian": 12.590083999999933,
-				"componentMin": 0.5645830000003116,
-				"componentMedian": 1.8902909999997064,
+				"opMin": 0.7269159999999601,
+				"opMedian": 0.9523749999999609,
+				"componentMin": 0.28608400000001666,
+				"componentMedian": 0.3302919999999858,
 				"counts": {
-					"blockOrderReads": 4569,
-					"blocksMapReads": 2544,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 1123,
+					"blocksMapReads": 1423,
+					"blocksMapIterations": 1122,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -147,28 +147,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 4.811166999999841,
-				"opMedian": 10.7729589999999,
-				"componentMin": 0.3837919999996302,
-				"componentMedian": 2.1699579999999514,
+				"opMin": 0.22945799999996552,
+				"opMedian": 0.3128749999999627,
+				"componentMin": 0.0010839999999916472,
+				"componentMedian": 0.0014999999999645297,
 				"counts": {
-					"blockOrderReads": 3157,
-					"blocksMapReads": 2133,
-					"blocksMapIterations": 5261,
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 1052,
 					"textFullReads": 2,
 					"orderArrayReads": 1054,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 2.341500000000451,
-				"opMedian": 10.9721669999999,
-				"componentMin": 0.36525000000074215,
-				"componentMedian": 2.039958999999726,
+				"opMin": 0.6283339999999953,
+				"opMedian": 0.7498330000000237,
+				"componentMin": 0.2712089999999989,
+				"componentMedian": 0.3007910000000038,
 				"counts": {
-					"blockOrderReads": 3151,
-					"blocksMapReads": 2229,
-					"blocksMapIterations": 5251,
+					"blockOrderReads": 1050,
+					"blocksMapReads": 1180,
+					"blocksMapIterations": 2100,
 					"textFullReads": 2,
 					"orderArrayReads": 1052,
 					"documentWalks": 0
@@ -181,28 +181,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 3.050583000000188,
-				"opMedian": 12.40741700000035,
-				"componentMin": 0.5674590000007811,
-				"componentMedian": 1.7922499999995125,
+				"opMin": 0.23175000000003365,
+				"opMedian": 0.27891699999997854,
+				"componentMin": 0.002666000000033364,
+				"componentMedian": 0.0037909999999783395,
 				"counts": {
-					"blockOrderReads": 3888,
-					"blocksMapReads": 2316,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 3,
+					"blocksMapReads": 80,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 6.725209000000177,
-				"opMedian": 12.16150000000016,
-				"componentMin": 0.8703329999998459,
-				"componentMedian": 1.6925419999997757,
+				"opMin": 0.6015419999999949,
+				"opMedian": 0.6641249999999559,
+				"componentMin": 0.2693329999999605,
+				"componentMedian": 0.2926249999999868,
 				"counts": {
-					"blockOrderReads": 3894,
-					"blocksMapReads": 2320,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 1123,
+					"blocksMapReads": 1200,
+					"blocksMapIterations": 1122,
 					"textFullReads": 13,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -215,13 +215,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.0950829999992493,
-				"opMedian": 0.6765409999998155,
-				"componentMin": 0.0005000000001018634,
-				"componentMedian": 0.00220900000022084,
+				"opMin": 0.053916999999955806,
+				"opMedian": 0.08079200000008768,
+				"componentMin": 0.0003329999999550637,
+				"componentMedian": 0.0005419999999958236,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -229,13 +229,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.899583000000348,
-				"opMedian": 4.696624999999585,
-				"componentMin": 0.6657500000001164,
-				"componentMedian": 2.8917499999997744,
+				"opMin": 0.5310410000000729,
+				"opMedian": 0.6324580000000424,
+				"componentMin": 0.46570900000006077,
+				"componentMedian": 0.5274590000000217,
 				"counts": {
 					"blockOrderReads": 1051,
-					"blocksMapReads": 1114,
+					"blocksMapReads": 1112,
 					"blocksMapIterations": 1050,
 					"textFullReads": 1008,
 					"orderArrayReads": 2,
@@ -249,8 +249,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.011457999999947788,
-				"opMedian": 0.012541000000055647,
+				"opMin": 0.010084000000006199,
+				"opMedian": 0.011417000000051303,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -263,8 +263,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.011416999999710242,
-				"opMedian": 0.012375000000247383,
+				"opMin": 0.010041000000001077,
+				"opMedian": 0.01145900000005895,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -283,29 +283,29 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 5.098416999999245,
-				"opMedian": 12.06958300000042,
-				"componentMin": 0.8636670000005324,
-				"componentMedian": 3.1854590000002645,
+				"opMin": 0.19533400000000256,
+				"opMedian": 0.2688340000000835,
+				"componentMin": 0.0028750000000172804,
+				"componentMedian": 0.06845799999996416,
 				"counts": {
-					"blockOrderReads": 3892,
-					"blocksMapReads": 2285,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 4.75512499999968,
-				"opMedian": 18.85608400000001,
-				"componentMin": 0.7784590000001117,
-				"componentMedian": 3.104000000000269,
+				"opMin": 0.6737919999999349,
+				"opMedian": 0.7582089999999653,
+				"componentMin": 0.4760829999999032,
+				"componentMedian": 0.5297090000000253,
 				"counts": {
-					"blockOrderReads": 5020,
-					"blocksMapReads": 3411,
-					"blocksMapIterations": 5609,
-					"textFullReads": 1078,
+					"blockOrderReads": 1124,
+					"blocksMapReads": 1168,
+					"blocksMapIterations": 1122,
+					"textFullReads": 1077,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
 				}
@@ -317,29 +317,29 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 4.790541999998823,
-				"opMedian": 13.41820800000005,
-				"componentMin": 1.1549580000009882,
-				"componentMedian": 3.0150830000002316,
+				"opMin": 0.28054099999997106,
+				"opMedian": 0.3513749999999618,
+				"componentMin": 0.0028330000000096334,
+				"componentMedian": 0.04920900000001893,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 2545,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 7.861458000001221,
-				"opMedian": 19.081500000000233,
-				"componentMin": 0.8652080000010756,
-				"componentMedian": 3.1637080000000424,
+				"opMin": 0.7932500000000573,
+				"opMedian": 0.9486670000000004,
+				"componentMin": 0.5132089999999607,
+				"componentMedian": 0.589334000000008,
 				"counts": {
-					"blockOrderReads": 5692,
-					"blocksMapReads": 3667,
-					"blocksMapIterations": 6732,
-					"textFullReads": 1078,
+					"blockOrderReads": 1124,
+					"blocksMapReads": 1423,
+					"blocksMapIterations": 1122,
+					"textFullReads": 1077,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
 				}
@@ -351,28 +351,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 1.9794999999994616,
-				"opMedian": 13.856041000000914,
-				"componentMin": 0.6220830000002024,
-				"componentMedian": 3.260083000001032,
+				"opMin": 0.21783300000004147,
+				"opMedian": 0.2757090000000062,
+				"componentMin": 0.0017080000000078144,
+				"componentMedian": 0.002457999999933236,
 				"counts": {
-					"blockOrderReads": 3157,
-					"blocksMapReads": 2133,
-					"blocksMapIterations": 5261,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 1052,
 					"textFullReads": 2,
 					"orderArrayReads": 1054,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 5.024541999999201,
-				"opMedian": 15.474084000001312,
-				"componentMin": 1.4128330000003189,
-				"componentMedian": 3.357958000000508,
+				"opMin": 0.7202079999999569,
+				"opMedian": 0.8300419999999349,
+				"componentMin": 0.49233299999991686,
+				"componentMedian": 0.5380410000000211,
 				"counts": {
-					"blockOrderReads": 4201,
-					"blocksMapReads": 3279,
-					"blocksMapIterations": 6301,
+					"blockOrderReads": 1050,
+					"blocksMapReads": 1180,
+					"blocksMapIterations": 2100,
 					"textFullReads": 1001,
 					"orderArrayReads": 1052,
 					"documentWalks": 0
@@ -385,29 +385,29 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 3.8640420000010636,
-				"opMedian": 13.070707999999286,
-				"componentMin": 0.747083999998722,
-				"componentMedian": 2.78125,
+				"opMin": 0.19783399999994344,
+				"opMedian": 0.2668749999999136,
+				"componentMin": 0.002916000000027452,
+				"componentMedian": 0.045999999999935426,
 				"counts": {
-					"blockOrderReads": 3888,
-					"blocksMapReads": 2316,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 6.868249999999534,
-				"opMedian": 17.702166999999463,
-				"componentMin": 0.7985410000001139,
-				"componentMedian": 3.1667919999999867,
+				"opMin": 0.6682919999999513,
+				"opMedian": 0.747459000000049,
+				"componentMin": 0.4560420000000249,
+				"componentMedian": 0.5065409999999702,
 				"counts": {
-					"blockOrderReads": 5016,
-					"blocksMapReads": 3442,
-					"blocksMapIterations": 5609,
-					"textFullReads": 1084,
+					"blockOrderReads": 1125,
+					"blocksMapReads": 1200,
+					"blocksMapIterations": 1122,
+					"textFullReads": 1082,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
 				}
@@ -419,13 +419,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.05483299999832525,
-				"opMedian": 0.1471670000009908,
-				"componentMin": 0.017166999999972177,
-				"componentMedian": 0.039999999999054126,
+				"opMin": 0.04558299999996507,
+				"opMedian": 0.05566699999997127,
+				"componentMin": 0.014374999999972715,
+				"componentMedian": 0.017249999999989996,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -433,13 +433,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.05454199999985576,
-				"opMedian": 0.17387499999858846,
-				"componentMin": 0.016834000000017113,
-				"componentMedian": 0.030375000000276486,
+				"opMin": 0.04566599999998289,
+				"opMedian": 0.05308300000001509,
+				"componentMin": 0.01462499999990996,
+				"componentMedian": 0.01758299999994506,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -453,10 +453,10 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.011624999999185093,
-				"opMedian": 0.012749999999869033,
-				"componentMin": 0.006666999999652035,
-				"componentMedian": 0.007583000000522588,
+				"opMin": 0.00995900000009442,
+				"opMedian": 0.011416000000053828,
+				"componentMin": 0.005916999999953987,
+				"componentMedian": 0.006666999999993095,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 19,
@@ -467,10 +467,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.011500000000523869,
-				"opMedian": 0.012709000000540982,
-				"componentMin": 0.006792000000132248,
-				"componentMedian": 0.007416000000375789,
+				"opMin": 0.010125000000016371,
+				"opMedian": 0.011374999999929969,
+				"componentMin": 0.005832999999938693,
+				"componentMedian": 0.00666599999999562,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 19,
@@ -487,28 +487,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 2.691084000000046,
-				"opMedian": 3.3699589999996533,
-				"componentMin": 0.2011659999989206,
-				"componentMedian": 0.2468749999989086,
+				"opMin": 0.19566599999996015,
+				"opMedian": 0.23729200000002493,
+				"componentMin": 0.12629099999992377,
+				"componentMedian": 0.15441699999996672,
 				"counts": {
-					"blockOrderReads": 3892,
-					"blocksMapReads": 2285,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 4.320958000000246,
-				"opMedian": 6.9146249999994325,
-				"componentMin": 1.965041999999812,
-				"componentMedian": 2.8820829999986017,
+				"opMin": 1.8296249999999645,
+				"opMedian": 2.035957999999937,
+				"componentMin": 1.757082999999966,
+				"componentMedian": 1.9537499999999,
 				"counts": {
-					"blockOrderReads": 3898,
-					"blocksMapReads": 12021,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 2,
+					"blocksMapReads": 9778,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -521,28 +521,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 3.0281250000007276,
-				"opMedian": 7.052958000000217,
-				"componentMin": 0.30004100000041944,
-				"componentMedian": 0.4851670000007289,
+				"opMin": 0.2757080000000087,
+				"opMedian": 0.32187499999997726,
+				"componentMin": 0.19887499999992997,
+				"componentMedian": 0.2269170000000713,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 2545,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 6.36145900000156,
-				"opMedian": 11.219499999999243,
-				"componentMin": 2.0541250000005675,
-				"componentMedian": 3.7185000000008586,
+				"opMin": 1.8217079999999441,
+				"opMedian": 2.017541999999935,
+				"componentMin": 1.7364999999999782,
+				"componentMedian": 1.8917500000000018,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 12023,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 2,
+					"blocksMapReads": 9779,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -555,28 +555,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 3.6097499999996217,
-				"opMedian": 7.099291999998968,
-				"componentMin": 0.18716700000004494,
-				"componentMedian": 0.3398329999999987,
+				"opMin": 0.21270800000002055,
+				"opMedian": 0.23887500000000728,
+				"componentMin": 0.09466599999996106,
+				"componentMedian": 0.10866599999997106,
 				"counts": {
-					"blockOrderReads": 3157,
-					"blocksMapReads": 2133,
-					"blocksMapIterations": 5261,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 1052,
 					"textFullReads": 2,
 					"orderArrayReads": 1054,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 6.097999999999956,
-				"opMedian": 10.841040999999677,
-				"componentMin": 2.261333000000377,
-				"componentMedian": 5.301582999998573,
+				"opMin": 1.7773750000000064,
+				"opMedian": 1.8832909999999856,
+				"componentMin": 1.6610420000000659,
+				"componentMedian": 1.7414999999999736,
 				"counts": {
-					"blockOrderReads": 3151,
-					"blocksMapReads": 11573,
-					"blocksMapIterations": 5251,
+					"blockOrderReads": 0,
+					"blocksMapReads": 9474,
+					"blocksMapIterations": 1050,
 					"textFullReads": 2,
 					"orderArrayReads": 1052,
 					"documentWalks": 0
@@ -589,28 +589,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 4.678667000000132,
-				"opMedian": 9.79308299999866,
-				"componentMin": 0.25716600000123435,
-				"componentMedian": 0.575249999999869,
+				"opMin": 0.2147499999999809,
+				"opMedian": 0.26708400000006804,
+				"componentMin": 0.13745899999992162,
+				"componentMedian": 0.17212499999982356,
 				"counts": {
-					"blockOrderReads": 3888,
-					"blocksMapReads": 2316,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 8.842583000001468,
-				"opMedian": 17.225249999999505,
-				"componentMin": 2.560583000000406,
-				"componentMedian": 6.443874999999025,
+				"opMin": 1.7789579999999887,
+				"opMedian": 1.9061249999999745,
+				"componentMin": 1.6984590000001845,
+				"componentMedian": 1.8050000000000637,
 				"counts": {
-					"blockOrderReads": 3894,
-					"blocksMapReads": 12050,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 3,
+					"blocksMapReads": 9808,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -623,13 +623,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.05091600000014296,
-				"opMedian": 0.09229200000117999,
-				"componentMin": 0.0033750000002328306,
-				"componentMedian": 0.006498999999166699,
+				"opMin": 0.04891700000007404,
+				"opMedian": 0.058457999999973254,
+				"componentMin": 0.003165999999964697,
+				"componentMedian": 0.0038329999999859865,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -637,13 +637,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.5357499999990978,
-				"opMedian": 0.9104169999991427,
-				"componentMin": 0.4855420000021695,
-				"componentMedian": 0.7884589999994205,
+				"opMin": 0.49779100000000653,
+				"opMedian": 0.6018329999999423,
+				"componentMin": 0.44708399999990434,
+				"componentMedian": 0.5486250000001291,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 3211,
+					"blocksMapReads": 3209,
 					"blocksMapIterations": 0,
 					"textFullReads": 1007,
 					"orderArrayReads": 2,
@@ -657,8 +657,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.010083999997732462,
-				"opMedian": 0.011500000000523869,
+				"opMin": 0.00937500000009095,
+				"opMedian": 0.011166000000002896,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -671,8 +671,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.010249999999359716,
-				"opMedian": 0.011249999999563443,
+				"opMin": 0.009499999999889042,
+				"opMedian": 0.011124999999992724,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -691,28 +691,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 6.554584000001341,
-				"opMedian": 10.789208000001963,
-				"componentMin": 0.03499999999985448,
-				"componentMedian": 0.06408300000111922,
+				"opMin": 0.1855830000001788,
+				"opMedian": 0.20116699999994125,
+				"componentMin": 0.002875999999787382,
+				"componentMedian": 0.0034580000001369626,
 				"counts": {
-					"blockOrderReads": 3892,
-					"blocksMapReads": 2285,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 7.094417000000249,
-				"opMedian": 10.355625000000146,
-				"componentMin": 1.0819999999985157,
-				"componentMedian": 2.272041000000172,
+				"opMin": 0.663291000000072,
+				"opMedian": 0.7108749999999873,
+				"componentMin": 0.47654199999965385,
+				"componentMedian": 0.5112919999999122,
 				"counts": {
-					"blockOrderReads": 3898,
-					"blocksMapReads": 5652,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 2,
+					"blocksMapReads": 3409,
+					"blocksMapIterations": 0,
 					"textFullReads": 1077,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -725,28 +725,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 2.7039589999985765,
-				"opMedian": 9.391707999999198,
-				"componentMin": 0.00891599999886239,
-				"componentMedian": 0.04841599999781465,
+				"opMin": 0.2624590000000353,
+				"opMedian": 0.2836250000000291,
+				"componentMin": 0.0028739999997924315,
+				"componentMedian": 0.003375000000005457,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 2545,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 3.9267090000030294,
-				"opMedian": 11.537125000002561,
-				"componentMin": 0.8365830000002461,
-				"componentMedian": 1.8055419999982405,
+				"opMin": 0.7717499999998836,
+				"opMedian": 0.828708000000006,
+				"componentMin": 0.49545899999998255,
+				"componentMedian": 0.5359169999999267,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 5908,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 2,
+					"blocksMapReads": 3664,
+					"blocksMapIterations": 0,
 					"textFullReads": 1077,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -759,28 +759,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 2.5759580000012647,
-				"opMedian": 6.833750000001601,
-				"componentMin": 0.016834000001836102,
-				"componentMedian": 0.03495899999688845,
+				"opMin": 0.2130419999998594,
+				"opMedian": 0.23004200000013952,
+				"componentMin": 0.0019160000001647859,
+				"componentMedian": 0.0024160000000392756,
 				"counts": {
-					"blockOrderReads": 3157,
-					"blocksMapReads": 2133,
-					"blocksMapIterations": 5261,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 1052,
 					"textFullReads": 2,
 					"orderArrayReads": 1054,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 4.582332999998471,
-				"opMedian": 8.029207999999926,
-				"componentMin": 1.1243340000000899,
-				"componentMedian": 2.226082999997743,
+				"opMin": 0.7055830000001606,
+				"opMedian": 0.7456250000000182,
+				"componentMin": 0.4857919999999467,
+				"componentMedian": 0.5163749999999254,
 				"counts": {
-					"blockOrderReads": 3151,
-					"blocksMapReads": 5379,
-					"blocksMapIterations": 5251,
+					"blockOrderReads": 0,
+					"blocksMapReads": 3280,
+					"blocksMapIterations": 1050,
 					"textFullReads": 1001,
 					"orderArrayReads": 1052,
 					"documentWalks": 0
@@ -793,28 +793,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 6.912625000000844,
-				"opMedian": 10.73475000000326,
-				"componentMin": 0.03208399999857647,
-				"componentMedian": 0.048042000002169516,
+				"opMin": 0.20933400000012625,
+				"opMedian": 0.23195899999996072,
+				"componentMin": 0.0028339999998934218,
+				"componentMedian": 0.0034580000001369626,
 				"counts": {
-					"blockOrderReads": 3888,
-					"blocksMapReads": 2316,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 7.9004580000000715,
-				"opMedian": 12.315707999998267,
-				"componentMin": 0.9702919999981532,
-				"componentMedian": 2.2457070000018575,
+				"opMin": 0.7129169999998339,
+				"opMedian": 0.763332999999875,
+				"componentMin": 0.4911250000002383,
+				"componentMedian": 0.5252089999999043,
 				"counts": {
-					"blockOrderReads": 3894,
-					"blocksMapReads": 5680,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 3,
+					"blocksMapReads": 3438,
+					"blocksMapIterations": 0,
 					"textFullReads": 1082,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -827,13 +827,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.04916600000069593,
-				"opMedian": 0.05954099999871687,
-				"componentMin": 0.0022920000010344665,
-				"componentMedian": 0.00275099999998929,
+				"opMin": 0.04870899999991707,
+				"opMedian": 0.06029199999989032,
+				"componentMin": 0.0025000000000545697,
+				"componentMedian": 0.0028319999998984713,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -841,13 +841,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.6603749999994761,
-				"opMedian": 0.7388749999990978,
-				"componentMin": 0.606750999999349,
-				"componentMedian": 0.6838329999991402,
+				"opMin": 0.6572089999999662,
+				"opMedian": 0.7304579999999987,
+				"componentMin": 0.5965409999998883,
+				"componentMedian": 0.6833329999999478,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 5347,
+					"blocksMapReads": 5345,
 					"blocksMapIterations": 0,
 					"textFullReads": 1011,
 					"orderArrayReads": 2,
@@ -861,8 +861,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.010082999997393927,
-				"opMedian": 0.010665999998309417,
+				"opMin": 0.009415999999873748,
+				"opMedian": 0.010500000000092768,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -875,8 +875,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.009916999999404652,
-				"opMedian": 0.010541999999986729,
+				"opMin": 0.009708000000046013,
+				"opMedian": 0.010375000000067303,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -895,28 +895,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 5.374792000002344,
-				"opMedian": 11.00512499999968,
-				"componentMin": 0.1854590000002645,
-				"componentMedian": 0.33191699999952107,
+				"opMin": 0.18033299999979135,
+				"opMedian": 0.2100420000001577,
+				"componentMin": 0.018457000000125845,
+				"componentMedian": 0.02104100000019571,
 				"counts": {
-					"blockOrderReads": 3892,
-					"blocksMapReads": 2285,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 5.604875000000902,
-				"opMedian": 13.172875000000204,
-				"componentMin": 0.9193749999976717,
-				"componentMedian": 2.4701249999961874,
+				"opMin": 0.7543329999998605,
+				"opMedian": 0.8255830000000515,
+				"componentMin": 0.580417000000125,
+				"componentMedian": 0.6455410000000938,
 				"counts": {
-					"blockOrderReads": 3898,
-					"blocksMapReads": 7932,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 2,
+					"blocksMapReads": 5689,
+					"blocksMapIterations": 0,
 					"textFullReads": 1081,
 					"orderArrayReads": 1124,
 					"documentWalks": 1
@@ -929,28 +929,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 6.813167000000249,
-				"opMedian": 10.42962500000067,
-				"componentMin": 0.19291700000030687,
-				"componentMedian": 0.3614999999954307,
+				"opMin": 0.2700830000001133,
+				"opMedian": 0.2936660000000302,
+				"componentMin": 0.013625000000047294,
+				"componentMedian": 0.021459000000049855,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 2545,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 7.747791999998299,
-				"opMedian": 12.647874999998749,
-				"componentMin": 1.1334999999999127,
-				"componentMedian": 2.3168749999967986,
+				"opMin": 0.8192079999998896,
+				"opMedian": 0.9450409999999465,
+				"componentMin": 0.5677490000002763,
+				"componentMedian": 0.6534999999998945,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 8188,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 2,
+					"blocksMapReads": 5944,
+					"blocksMapIterations": 0,
 					"textFullReads": 1081,
 					"orderArrayReads": 1124,
 					"documentWalks": 1
@@ -963,28 +963,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 2.7400000000016007,
-				"opMedian": 5.7210830000003625,
-				"componentMin": 0.1937080000025162,
-				"componentMedian": 0.39754200000243145,
+				"opMin": 0.2166669999999158,
+				"opMedian": 0.24104099999999562,
+				"componentMin": 0.01691700000014862,
+				"componentMedian": 0.02049899999997251,
 				"counts": {
-					"blockOrderReads": 3157,
-					"blocksMapReads": 2133,
-					"blocksMapIterations": 5261,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 1052,
 					"textFullReads": 2,
 					"orderArrayReads": 1054,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 4.078625000001921,
-				"opMedian": 7.310124999999971,
-				"componentMin": 1.0170000000034634,
-				"componentMedian": 2.1994159999994736,
+				"opMin": 0.8110000000001492,
+				"opMedian": 0.8623749999999291,
+				"componentMin": 0.5803330000001097,
+				"componentMedian": 0.6375000000000455,
 				"counts": {
-					"blockOrderReads": 3151,
-					"blocksMapReads": 7517,
-					"blocksMapIterations": 5251,
+					"blockOrderReads": 0,
+					"blocksMapReads": 5418,
+					"blocksMapIterations": 1050,
 					"textFullReads": 1005,
 					"orderArrayReads": 1052,
 					"documentWalks": 1
@@ -997,28 +997,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 5.638209000000643,
-				"opMedian": 12.554541000001336,
-				"componentMin": 0.21879100000296603,
-				"componentMedian": 0.4500000000007276,
+				"opMin": 0.21745800000007875,
+				"opMedian": 0.24900000000002365,
+				"componentMin": 0.020916999999826658,
+				"componentMedian": 0.026333000000022366,
 				"counts": {
-					"blockOrderReads": 3888,
-					"blocksMapReads": 2316,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 6.810084000000643,
-				"opMedian": 14.37566599999991,
-				"componentMin": 1.0175420000014128,
-				"componentMedian": 1.719582999998238,
+				"opMin": 0.8002500000000055,
+				"opMedian": 0.8430829999999787,
+				"componentMin": 0.5784169999999449,
+				"componentMedian": 0.6316670000001068,
 				"counts": {
-					"blockOrderReads": 3894,
-					"blocksMapReads": 7958,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 3,
+					"blocksMapReads": 5716,
+					"blocksMapIterations": 0,
 					"textFullReads": 1086,
 					"orderArrayReads": 1124,
 					"documentWalks": 1
@@ -1031,13 +1031,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.07883399999991525,
-				"opMedian": 0.35304099999848404,
-				"componentMin": 0.006208999999216758,
-				"componentMedian": 0.024333999997907085,
+				"opMin": 0.04566700000009405,
+				"opMedian": 0.05475000000001273,
+				"componentMin": 0.0036250000000563887,
+				"componentMedian": 0.0051249999999072315,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -1045,13 +1045,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 1.4533330000012938,
-				"opMedian": 3.032999999999447,
-				"componentMin": 1.1304999999993015,
-				"componentMedian": 2.5432920000021113,
+				"opMin": 0.8023329999998623,
+				"opMedian": 0.8657919999998285,
+				"componentMin": 0.753582999999935,
+				"componentMedian": 0.8174159999998665,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 3225,
+					"blocksMapReads": 3223,
 					"blocksMapIterations": 0,
 					"textFullReads": 1011,
 					"orderArrayReads": 2,
@@ -1065,8 +1065,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.01058299999931478,
-				"opMedian": 0.011749999997846317,
+				"opMin": 0.00916600000005019,
+				"opMedian": 0.009999999999990905,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -1079,8 +1079,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.010416999997687526,
-				"opMedian": 0.011625000002823072,
+				"opMin": 0.009000000000014552,
+				"opMedian": 0.010041999999884865,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -1099,28 +1099,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 7.034500000001572,
-				"opMedian": 12.84033400000044,
-				"componentMin": 0.011792000001150882,
-				"componentMedian": 0.01450000000113505,
+				"opMin": 0.1754160000000411,
+				"opMedian": 0.19612499999993815,
+				"componentMin": 0.0010839999999916472,
+				"componentMedian": 0.0015410000000883883,
 				"counts": {
-					"blockOrderReads": 3892,
-					"blocksMapReads": 2285,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 9.023042000000714,
-				"opMedian": 16.397083000003477,
-				"componentMin": 1.215875000001688,
-				"componentMedian": 2.6620419999999285,
+				"opMin": 0.8936250000001564,
+				"opMedian": 0.9548750000001291,
+				"componentMin": 0.7060830000000351,
+				"componentMedian": 0.7580419999999322,
 				"counts": {
-					"blockOrderReads": 3898,
-					"blocksMapReads": 5666,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 2,
+					"blocksMapReads": 3423,
+					"blocksMapIterations": 0,
 					"textFullReads": 1081,
 					"orderArrayReads": 1124,
 					"documentWalks": 1
@@ -1133,28 +1133,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 5.16216699999859,
-				"opMedian": 9.86737500000163,
-				"componentMin": 0.017416999999113614,
-				"componentMedian": 0.023958000001584878,
+				"opMin": 0.25208299999985684,
+				"opMedian": 0.2895419999999831,
+				"componentMin": 0.0019999999999527063,
+				"componentMedian": 0.0028750000001309672,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 2545,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 6.987625000001572,
-				"opMedian": 11.79479100000026,
-				"componentMin": 1.1468749999985448,
-				"componentMedian": 1.7395000000033178,
+				"opMin": 1.0008329999998296,
+				"opMedian": 1.139790999999832,
+				"componentMin": 0.7493750000001,
+				"componentMedian": 0.83787499999994,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 5922,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 2,
+					"blocksMapReads": 3678,
+					"blocksMapIterations": 0,
 					"textFullReads": 1081,
 					"orderArrayReads": 1124,
 					"documentWalks": 1
@@ -1167,28 +1167,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 1.4286250000004657,
-				"opMedian": 2.0529999999998836,
-				"componentMin": 0.0035000000025320332,
-				"componentMedian": 0.006750000000465661,
+				"opMin": 0.21033299999999144,
+				"opMedian": 0.2419999999999618,
+				"componentMin": 0.0007499999999254214,
+				"componentMedian": 0.0012910000000374566,
 				"counts": {
-					"blockOrderReads": 3157,
-					"blocksMapReads": 2133,
-					"blocksMapIterations": 5261,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 1052,
 					"textFullReads": 2,
 					"orderArrayReads": 1054,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 2.3889170000002196,
-				"opMedian": 3.223291000002064,
-				"componentMin": 0.8279170000023441,
-				"componentMedian": 1.052040999999008,
+				"opMin": 0.9975830000000769,
+				"opMedian": 1.0609999999999218,
+				"componentMin": 0.7705419999999776,
+				"componentMedian": 0.8132920000000468,
 				"counts": {
-					"blockOrderReads": 3151,
-					"blocksMapReads": 5393,
-					"blocksMapIterations": 5251,
+					"blockOrderReads": 0,
+					"blocksMapReads": 3294,
+					"blocksMapIterations": 1050,
 					"textFullReads": 1005,
 					"orderArrayReads": 1052,
 					"documentWalks": 1
@@ -1201,28 +1201,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 5.350875000000087,
-				"opMedian": 6.32933299999786,
-				"componentMin": 0.010707999997976003,
-				"componentMedian": 0.01804199999969569,
+				"opMin": 0.21395800000004783,
+				"opMedian": 0.24766700000009223,
+				"componentMin": 0.002124999999978172,
+				"componentMedian": 0.0031249999999545253,
 				"counts": {
-					"blockOrderReads": 3888,
-					"blocksMapReads": 2316,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 6.28570899999977,
-				"opMedian": 7.382125000000087,
-				"componentMin": 0.986709000000701,
-				"componentMedian": 1.0792079999991984,
+				"opMin": 1.0068750000000364,
+				"opMedian": 1.0644170000000486,
+				"componentMin": 0.7822909999999865,
+				"componentMedian": 0.8241669999999885,
 				"counts": {
-					"blockOrderReads": 3894,
-					"blocksMapReads": 5694,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 3,
+					"blocksMapReads": 3452,
+					"blocksMapIterations": 0,
 					"textFullReads": 1086,
 					"orderArrayReads": 1124,
 					"documentWalks": 1
@@ -1235,13 +1235,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.04787499999656575,
-				"opMedian": 0.052250000000640284,
-				"componentMin": 0.0019170000014128163,
-				"componentMedian": 0.0022090000020398293,
+				"opMin": 0.04358300000012605,
+				"opMedian": 0.051750000000083674,
+				"componentMin": 0.0017080000000078144,
+				"componentMedian": 0.00204200000007404,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -1249,13 +1249,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.4227500000015425,
-				"opMedian": 0.4471659999981057,
-				"componentMin": 0.36108299999978044,
-				"componentMedian": 0.38058400000227266,
+				"opMin": 0.22758299999986775,
+				"opMedian": 0.2445420000001377,
+				"componentMin": 0.18262499999991633,
+				"componentMedian": 0.19504200000005767,
 				"counts": {
 					"blockOrderReads": 1051,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 1050,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -1269,8 +1269,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.009541999999783002,
-				"opMedian": 0.010209000000031665,
+				"opMin": 0.009791999999833934,
+				"opMedian": 0.010291999999935797,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -1283,7 +1283,7 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.009749999997438863,
+				"opMin": 0.009833000000071479,
 				"opMedian": 0.010209000000031665,
 				"componentMin": 0,
 				"componentMedian": 0,
@@ -1303,28 +1303,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 6.009249999999156,
-				"opMedian": 6.587208000000828,
-				"componentMin": 0.8404580000023998,
-				"componentMedian": 0.8926250000004075,
+				"opMin": 0.18924999999990177,
+				"opMedian": 0.2080829999999878,
+				"componentMin": 0.0016669999999976426,
+				"componentMedian": 0.00204200000007404,
 				"counts": {
-					"blockOrderReads": 3892,
-					"blocksMapReads": 2285,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 5.871166999997513,
-				"opMedian": 6.472582999998849,
-				"componentMin": 0.839417000002868,
-				"componentMedian": 0.8929170000010345,
+				"opMin": 0.37020800000004783,
+				"opMedian": 0.39887500000008913,
+				"componentMin": 0.1790409999998701,
+				"componentMedian": 0.18933300000003328,
 				"counts": {
-					"blockOrderReads": 3898,
-					"blocksMapReads": 2289,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 1124,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 1122,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -1337,28 +1337,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 3.5410420000007434,
-				"opMedian": 4.966000000000349,
-				"componentMin": 0.35200000000259024,
-				"componentMedian": 1.9170000000012806,
+				"opMin": 0.26012500000001637,
+				"opMedian": 0.2757080000001224,
+				"componentMin": 0.0018749999999272404,
+				"componentMedian": 0.0023330000001351436,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 2545,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 3.668041999997513,
-				"opMedian": 4.930374999999913,
-				"componentMin": 0.3543329999993148,
-				"componentMedian": 0.47224999999889405,
+				"opMin": 0.45045900000013717,
+				"opMedian": 0.48429200000009587,
+				"componentMin": 0.1888339999998152,
+				"componentMedian": 0.197208000000046,
 				"counts": {
-					"blockOrderReads": 4570,
-					"blocksMapReads": 2545,
-					"blocksMapIterations": 5610,
+					"blockOrderReads": 1124,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 1122,
 					"textFullReads": 7,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -1371,28 +1371,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 1.4637079999993148,
-				"opMedian": 1.706291999998939,
-				"componentMin": 0.06287499999962165,
-				"componentMedian": 0.0906250000007276,
+				"opMin": 0.2231249999999818,
+				"opMedian": 0.3500840000001517,
+				"componentMin": 0.05858299999999872,
+				"componentMedian": 0.06574999999997999,
 				"counts": {
-					"blockOrderReads": 3157,
-					"blocksMapReads": 2133,
-					"blocksMapIterations": 5261,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 1052,
 					"textFullReads": 2,
 					"orderArrayReads": 1054,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 1.4353750000009313,
-				"opMedian": 1.627375000000029,
-				"componentMin": 0.06391699999949196,
-				"componentMedian": 0.07854100000258768,
+				"opMin": 0.2133339999998043,
+				"opMedian": 0.35183299999994233,
+				"componentMin": 0.05704199999991033,
+				"componentMedian": 0.064583999999968,
 				"counts": {
-					"blockOrderReads": 3151,
-					"blocksMapReads": 2229,
-					"blocksMapIterations": 5251,
+					"blockOrderReads": 1051,
+					"blocksMapReads": 130,
+					"blocksMapIterations": 2100,
 					"textFullReads": 2,
 					"orderArrayReads": 1052,
 					"documentWalks": 0
@@ -1405,28 +1405,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 5.86162499999773,
-				"opMedian": 6.817334000003029,
-				"componentMin": 0.4447919999984151,
-				"componentMedian": 0.515625,
+				"opMin": 0.21145799999999326,
+				"opMedian": 0.24091700000008132,
+				"componentMin": 0.0015000000000782165,
+				"componentMedian": 0.0017920000000231084,
 				"counts": {
-					"blockOrderReads": 3888,
-					"blocksMapReads": 2316,
-					"blocksMapIterations": 4479,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 1122,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 5.978790999997727,
-				"opMedian": 6.857416999999259,
-				"componentMin": 0.4302910000005795,
-				"componentMedian": 0.4852080000018759,
+				"opMin": 0.3465000000001055,
+				"opMedian": 0.39341699999999946,
+				"componentMin": 0.13279199999988123,
+				"componentMedian": 0.15300000000002,
 				"counts": {
-					"blockOrderReads": 3894,
-					"blocksMapReads": 2320,
-					"blocksMapIterations": 4487,
+					"blockOrderReads": 1125,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 1122,
 					"textFullReads": 13,
 					"orderArrayReads": 1124,
 					"documentWalks": 0
@@ -1439,10 +1439,10 @@
 			"row": "paint after keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.0008330000018759165,
-				"opMedian": 0.001082999999198364,
-				"componentMin": 0.0008330000018759165,
-				"componentMedian": 0.001082999999198364,
+				"opMin": 0.0006670000000212895,
+				"opMedian": 0.0009170000000722212,
+				"componentMin": 0.0006670000000212895,
+				"componentMedian": 0.0009170000000722212,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -1453,10 +1453,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.000875000001542503,
-				"opMedian": 0.001082999999198364,
-				"componentMin": 0.000875000001542503,
-				"componentMedian": 0.001082999999198364,
+				"opMin": 0.0007080000000314612,
+				"opMedian": 0.0009169999998448475,
+				"componentMin": 0.0007080000000314612,
+				"componentMedian": 0.0009169999998448475,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -1473,10 +1473,10 @@
 			"row": "paint after caret move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.00029100000028847717,
-				"opMedian": 0.00033400000029359944,
-				"componentMin": 0.00029100000028847717,
-				"componentMedian": 0.00033400000029359944,
+				"opMin": 0.0002500000000509317,
+				"opMedian": 0.0003329999999550637,
+				"componentMin": 0.0002500000000509317,
+				"componentMedian": 0.0003329999999550637,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
@@ -1487,10 +1487,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.0010000000002037268,
-				"opMedian": 0.001082999999198364,
-				"componentMin": 0.0010000000002037268,
-				"componentMedian": 0.001082999999198364,
+				"opMin": 0.0007920000000467553,
+				"opMedian": 0.0009159999999610591,
+				"componentMin": 0.0007920000000467553,
+				"componentMedian": 0.0009159999999610591,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -1507,10 +1507,10 @@
 			"row": "repaint, D5 range over half the document",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.0003749999996216502,
-				"opMedian": 0.00041700000292621553,
-				"componentMin": 0.0003749999996216502,
-				"componentMedian": 0.00041700000292621553,
+				"opMin": 0.0003329999999550637,
+				"opMedian": 0.0004999999998744897,
+				"componentMin": 0.0003329999999550637,
+				"componentMedian": 0.0004999999998744897,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
@@ -1521,10 +1521,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.0024999999986903276,
-				"opMedian": 0.0033750000002328306,
-				"componentMin": 0.0024999999986903276,
-				"componentMedian": 0.0033750000002328306,
+				"opMin": 0.002207999999882304,
+				"opMedian": 0.0033330000001114968,
+				"componentMin": 0.002207999999882304,
+				"componentMedian": 0.0033330000001114968,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -1541,10 +1541,10 @@
 			"row": "repaint, block selection of every root block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.0003749999996216502,
-				"opMedian": 0.0005830000009154901,
-				"componentMin": 0.0003749999996216502,
-				"componentMedian": 0.0005830000009154901,
+				"opMin": 0.0003329999999550637,
+				"opMedian": 0.0005830000000059954,
+				"componentMin": 0.0003329999999550637,
+				"componentMedian": 0.0005830000000059954,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
@@ -1555,10 +1555,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.07066599999961909,
-				"opMedian": 0.0745840000017779,
-				"componentMin": 0.07066599999961909,
-				"componentMedian": 0.0745840000017779,
+				"opMin": 0.06583299999988412,
+				"opMedian": 0.07424999999989268,
+				"componentMin": 0.06583299999988412,
+				"componentMedian": 0.07424999999989268,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
@@ -1575,13 +1575,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.1845419999990554,
-				"opMedian": 2.4760000000023865,
-				"componentMin": 0.0011659999981930014,
-				"componentMedian": 0.004124999999476131,
+				"opMin": 0.15095899999960238,
+				"opMedian": 0.2289159999995718,
+				"componentMin": 0.0011250000002291927,
+				"componentMedian": 0.00454200000012861,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -1589,14 +1589,14 @@
 				}
 			},
 			"naive": {
-				"opMin": 7.3255000000026484,
-				"opMedian": 9.433124999999563,
-				"componentMin": 4.04608300000109,
-				"componentMedian": 4.672957999999198,
+				"opMin": 5.6734590000000935,
+				"opMedian": 7.618291999999656,
+				"componentMin": 3.4301249999998618,
+				"componentMedian": 4.261082999999871,
 				"counts": {
 					"blockOrderReads": 10500,
 					"blocksMapReads": 10561,
-					"blocksMapIterations": 21000,
+					"blocksMapIterations": 10500,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
 					"documentWalks": 0
@@ -1609,8 +1609,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.051292000000103144,
-				"opMedian": 0.0545830000010028,
+				"opMin": 0.047207999999955064,
+				"opMedian": 0.05220899999994799,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -1623,8 +1623,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.05137500000273576,
-				"opMedian": 0.05479099999865866,
+				"opMin": 0.04587499999979627,
+				"opMedian": 0.05425000000013824,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -1643,28 +1643,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 27.626875000001746,
-				"opMedian": 30.016208000000915,
-				"componentMin": 4.593417000000045,
-				"componentMedian": 4.891625000000204,
+				"opMin": 2.0032920000003287,
+				"opMedian": 2.255333000000064,
+				"componentMin": 0.002084000000195374,
+				"componentMedian": 0.0054169999998521234,
 				"counts": {
-					"blockOrderReads": 36967,
-					"blocksMapReads": 21185,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 47,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 27.510957999998936,
-				"opMedian": 30.390542000001005,
-				"componentMin": 4.423832999997103,
-				"componentMedian": 4.771541000001889,
+				"opMin": 7.983208999999988,
+				"opMedian": 9.780916000000161,
+				"componentMin": 3.864915999999994,
+				"componentMedian": 4.550833000000239,
 				"counts": {
-					"blockOrderReads": 36973,
-					"blocksMapReads": 21189,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 10573,
+					"blocksMapReads": 10618,
+					"blocksMapIterations": 10572,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -1677,28 +1677,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 28.687416000000667,
-				"opMedian": 30.979040999998688,
-				"componentMin": 4.709999999999127,
-				"componentMedian": 5.030792000001384,
+				"opMin": 2.342666999999892,
+				"opMedian": 2.6266249999998763,
+				"componentMin": 0.002167000000099506,
+				"componentMedian": 0.004750000000058208,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 21445,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 302,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 27.642916000004334,
-				"opMedian": 30.894000000000233,
-				"componentMin": 4.6614579999986745,
-				"componentMedian": 4.894040999999561,
+				"opMin": 9.27383299999974,
+				"opMedian": 9.77841699999999,
+				"componentMin": 4.27670900000021,
+				"componentMedian": 4.691375000000335,
 				"counts": {
-					"blockOrderReads": 42369,
-					"blocksMapReads": 21444,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 10573,
+					"blocksMapReads": 10873,
+					"blocksMapIterations": 10572,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -1711,28 +1711,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 24.957209000000148,
-				"opMedian": 27.414083000003302,
-				"componentMin": 4.19883299999492,
-				"componentMedian": 4.784583000000566,
+				"opMin": 3.4968339999995806,
+				"opMedian": 3.9774999999999636,
+				"componentMin": 0.0019999999999527063,
+				"componentMedian": 0.0038749999998799467,
 				"counts": {
-					"blockOrderReads": 31507,
-					"blocksMapReads": 21033,
-					"blocksMapIterations": 52511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 10502,
 					"textFullReads": 2,
 					"orderArrayReads": 10504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 25.500749999999243,
-				"opMedian": 27.49395799999911,
-				"componentMin": 4.5335420000046724,
-				"componentMedian": 4.713042000003043,
+				"opMin": 9.19295800000009,
+				"opMedian": 10.520916999999827,
+				"componentMin": 3.4461660000001757,
+				"componentMedian": 4.002042000000074,
 				"counts": {
-					"blockOrderReads": 31501,
-					"blocksMapReads": 21129,
-					"blocksMapIterations": 52501,
+					"blockOrderReads": 10500,
+					"blocksMapReads": 10630,
+					"blocksMapIterations": 21000,
 					"textFullReads": 2,
 					"orderArrayReads": 10502,
 					"documentWalks": 0
@@ -1745,28 +1745,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 27.866916999999376,
-				"opMedian": 30.365916999995534,
-				"componentMin": 4.576790999999503,
-				"componentMedian": 4.956458000000566,
+				"opMin": 2.129750000000058,
+				"opMedian": 2.315625000000182,
+				"componentMin": 0.003374999999323336,
+				"componentMedian": 0.00687500000003638,
 				"counts": {
-					"blockOrderReads": 36963,
-					"blocksMapReads": 21216,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 80,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 26.820750000006228,
-				"opMedian": 30.352792000005138,
-				"componentMin": 4.637708000002021,
-				"componentMedian": 4.840208000001439,
+				"opMin": 8.368582999999944,
+				"opMedian": 9.570708000000195,
+				"componentMin": 3.8395000000000437,
+				"componentMedian": 4.605249999999614,
 				"counts": {
-					"blockOrderReads": 36969,
-					"blocksMapReads": 21220,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 10573,
+					"blocksMapReads": 10650,
+					"blocksMapIterations": 10572,
 					"textFullReads": 13,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -1779,13 +1779,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.1747079999986454,
-				"opMedian": 0.2593750000014552,
-				"componentMin": 0.0002499999973224476,
-				"componentMedian": 0.0008750000051804818,
+				"opMin": 0.15270800000052986,
+				"opMedian": 0.2057909999994081,
+				"componentMin": 0.0001250000004802132,
+				"componentMedian": 0.0007919999998193816,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -1793,13 +1793,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 7.992250000002969,
-				"opMedian": 8.732250000000931,
-				"componentMin": 7.507041000004392,
-				"componentMedian": 8.2376660000009,
+				"opMin": 7.631500000000415,
+				"opMedian": 7.825249999999869,
+				"componentMin": 7.079208000000108,
+				"componentMedian": 7.271249999999782,
 				"counts": {
 					"blockOrderReads": 10501,
-					"blocksMapReads": 10564,
+					"blocksMapReads": 10562,
 					"blocksMapIterations": 10500,
 					"textFullReads": 9999,
 					"orderArrayReads": 2,
@@ -1813,8 +1813,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.05000000000291038,
-				"opMedian": 0.061165999999502674,
+				"opMin": 0.04604099999960454,
+				"opMedian": 0.054500000000189175,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -1827,8 +1827,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.04987500000424916,
-				"opMedian": 0.05799999999726424,
+				"opMin": 0.047999999999774445,
+				"opMedian": 0.053167000000030384,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -1847,29 +1847,29 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 26.564041999998153,
-				"opMedian": 28.576625000001513,
-				"componentMin": 8.425959000000148,
-				"componentMedian": 9.64508300000307,
+				"opMin": 2.0540000000000873,
+				"opMedian": 2.7943749999994907,
+				"componentMin": 0.011958999999478692,
+				"componentMedian": 0.5823749999999563,
 				"counts": {
-					"blockOrderReads": 36967,
-					"blocksMapReads": 21185,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 33.95995799999946,
-				"opMedian": 38.077166999995825,
-				"componentMin": 7.879791999999725,
-				"componentMedian": 8.436333999998169,
+				"opMin": 9.606416999999965,
+				"opMedian": 9.920416999999361,
+				"componentMin": 6.958042000000205,
+				"componentMedian": 7.3339169999999285,
 				"counts": {
-					"blockOrderReads": 47545,
-					"blocksMapReads": 31761,
-					"blocksMapIterations": 52859,
-					"textFullReads": 10069,
+					"blockOrderReads": 10574,
+					"blocksMapReads": 10618,
+					"blocksMapIterations": 10572,
+					"textFullReads": 10068,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
 				}
@@ -1881,29 +1881,29 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 29.283000000003085,
-				"opMedian": 33.065207999999984,
-				"componentMin": 8.979832999997598,
-				"componentMedian": 10.123291999996582,
+				"opMin": 2.4243329999999332,
+				"opMedian": 3.2019170000003214,
+				"componentMin": 0.01224999999976717,
+				"componentMedian": 0.5858330000000933,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 21445,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 38.62129200000345,
-				"opMedian": 42.631625000001804,
-				"componentMin": 7.791542000006302,
-				"componentMedian": 8.651458000000275,
+				"opMin": 10.095750000000407,
+				"opMedian": 10.448374999999942,
+				"componentMin": 7.145333999999821,
+				"componentMedian": 7.421542000000045,
 				"counts": {
-					"blockOrderReads": 52942,
-					"blocksMapReads": 32017,
-					"blocksMapIterations": 63432,
-					"textFullReads": 10069,
+					"blockOrderReads": 10574,
+					"blocksMapReads": 10873,
+					"blocksMapIterations": 10572,
+					"textFullReads": 10068,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
 				}
@@ -1915,28 +1915,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 28.3550000000032,
-				"opMedian": 31.61120800000208,
-				"componentMin": 9.563249999999243,
-				"componentMedian": 10.51945899999555,
+				"opMin": 3.8675410000005286,
+				"opMedian": 4.82183299999997,
+				"componentMin": 0.005959000000075321,
+				"componentMedian": 0.008667000000059488,
 				"counts": {
-					"blockOrderReads": 31507,
-					"blocksMapReads": 21033,
-					"blocksMapIterations": 52511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 10502,
 					"textFullReads": 2,
 					"orderArrayReads": 10504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 38.13683300000412,
-				"opMedian": 40.62566700000025,
-				"componentMin": 8.526249999995343,
-				"componentMedian": 9.958208999996714,
+				"opMin": 11.029958000000079,
+				"opMedian": 11.69800000000032,
+				"componentMin": 6.757125000000087,
+				"componentMedian": 7.058124999999563,
 				"counts": {
-					"blockOrderReads": 42001,
-					"blocksMapReads": 31629,
-					"blocksMapIterations": 63001,
+					"blockOrderReads": 10500,
+					"blocksMapReads": 10630,
+					"blocksMapIterations": 21000,
 					"textFullReads": 9992,
 					"orderArrayReads": 10502,
 					"documentWalks": 0
@@ -1949,29 +1949,29 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 33.603250000000116,
-				"opMedian": 45.499792000002344,
-				"componentMin": 10.321875000001455,
-				"componentMedian": 14.97216599999956,
+				"opMin": 2.2378329999992275,
+				"opMedian": 3.01495900000009,
+				"componentMin": 0.013500000000021828,
+				"componentMedian": 0.5779580000007627,
 				"counts": {
-					"blockOrderReads": 36963,
-					"blocksMapReads": 21216,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 43.92220800000359,
-				"opMedian": 53.44400000000314,
-				"componentMin": 9.003499999998894,
-				"componentMedian": 11.382082999996783,
+				"opMin": 9.771165999999539,
+				"opMedian": 10.480792000000292,
+				"componentMin": 7.118500000000495,
+				"componentMedian": 7.492624999999862,
 				"counts": {
-					"blockOrderReads": 47541,
-					"blocksMapReads": 31792,
-					"blocksMapIterations": 52859,
-					"textFullReads": 10075,
+					"blockOrderReads": 10575,
+					"blocksMapReads": 10650,
+					"blocksMapIterations": 10572,
+					"textFullReads": 10073,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
 				}
@@ -1983,13 +1983,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.16241699999955017,
-				"opMedian": 0.18462500000168802,
-				"componentMin": 0.11849899999651825,
-				"componentMedian": 0.13262500000564614,
+				"opMin": 0.1369170000007216,
+				"opMedian": 0.1555419999995138,
+				"componentMin": 0.10179099999913888,
+				"componentMedian": 0.11758399999962421,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -1997,13 +1997,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.16308399999979883,
-				"opMedian": 0.1844169999967562,
-				"componentMin": 0.11970799999835435,
-				"componentMedian": 0.1318340000070748,
+				"opMin": 0.1358330000002752,
+				"opMedian": 0.15883300000041345,
+				"componentMin": 0.1017920000003869,
+				"componentMedian": 0.11991700000089622,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -2017,10 +2017,10 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.05595900000480469,
-				"opMedian": 0.062375000001338776,
-				"componentMin": 0.050582999996549916,
-				"componentMedian": 0.054708000003302004,
+				"opMin": 0.05333399999926769,
+				"opMedian": 0.057458000000224274,
+				"componentMin": 0.047999999999774445,
+				"componentMedian": 0.05179200000020501,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 19,
@@ -2031,10 +2031,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.05625000000145519,
-				"opMedian": 0.06187499999941792,
-				"componentMin": 0.05045799999788869,
-				"componentMedian": 0.05587499999819556,
+				"opMin": 0.05437499999970896,
+				"opMedian": 0.058457999999518506,
+				"componentMin": 0.04899999999997817,
+				"componentMedian": 0.05258400000002439,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 19,
@@ -2051,28 +2051,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 31.219915999994555,
-				"opMedian": 33.91895800000202,
-				"componentMin": 2.04608300000109,
-				"componentMedian": 2.4025410000031115,
+				"opMin": 2.1090000000003783,
+				"opMedian": 2.6373750000002474,
+				"componentMin": 1.7216669999997976,
+				"componentMedian": 2.0640830000002097,
 				"counts": {
-					"blockOrderReads": 36967,
-					"blocksMapReads": 21185,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 56.53254200000083,
-				"opMedian": 60.760042000001704,
-				"componentMin": 28.094499999999243,
-				"componentMedian": 29.43920899999648,
+				"opMin": 22.947167000000263,
+				"opMedian": 25.52087500000016,
+				"componentMin": 22.513084000000163,
+				"componentMedian": 24.88116600000012,
 				"counts": {
-					"blockOrderReads": 36973,
-					"blocksMapReads": 115971,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 2,
+					"blocksMapReads": 94828,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -2085,28 +2085,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 35.020416999999725,
-				"opMedian": 37.64320900000166,
-				"componentMin": 2.3615829999980633,
-				"componentMedian": 2.792249999998603,
+				"opMin": 2.521875000000364,
+				"opMedian": 3.0359169999992446,
+				"componentMin": 2.029708000000028,
+				"componentMedian": 2.419499999999971,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 21445,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 61.68220899999869,
-				"opMedian": 64.88750000000437,
-				"componentMin": 28.440917000007175,
-				"componentMedian": 29.729749999998603,
+				"opMin": 22.848417000001064,
+				"opMedian": 24.435333999999784,
+				"componentMin": 22.36841699999968,
+				"componentMedian": 23.79754200000025,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 115973,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 94829,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -2119,28 +2119,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 31.461665999995603,
-				"opMedian": 36.07587500000227,
-				"componentMin": 1.6217079999987618,
-				"componentMedian": 1.9242080000040005,
+				"opMin": 3.832957999999053,
+				"opMedian": 4.520958000000974,
+				"componentMin": 1.3489169999993464,
+				"componentMedian": 1.6216249999997672,
 				"counts": {
-					"blockOrderReads": 31507,
-					"blocksMapReads": 21033,
-					"blocksMapIterations": 52511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 10502,
 					"textFullReads": 2,
 					"orderArrayReads": 10504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 58.002040999999736,
-				"opMedian": 62.20783300000767,
-				"componentMin": 28.47841700000572,
-				"componentMedian": 30.981500000001688,
+				"opMin": 25.288291000000754,
+				"opMedian": 26.426665999999386,
+				"componentMin": 22.399875000000975,
+				"componentMedian": 23.711333000001105,
 				"counts": {
-					"blockOrderReads": 31501,
-					"blocksMapReads": 115523,
-					"blocksMapIterations": 52501,
+					"blockOrderReads": 0,
+					"blocksMapReads": 94524,
+					"blocksMapIterations": 10500,
 					"textFullReads": 2,
 					"orderArrayReads": 10502,
 					"documentWalks": 0
@@ -2153,28 +2153,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 32.780750000005355,
-				"opMedian": 35.260249999992084,
-				"componentMin": 2.370333999991999,
-				"componentMedian": 2.5997500000084983,
+				"opMin": 2.2482079999990674,
+				"opMedian": 2.762249999999767,
+				"componentMin": 1.7826249999998254,
+				"componentMedian": 2.1869580000002316,
 				"counts": {
-					"blockOrderReads": 36963,
-					"blocksMapReads": 21216,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 58.849874999999884,
-				"opMedian": 62.48450000000594,
-				"componentMin": 27.304916999986744,
-				"componentMedian": 30.170834000004106,
+				"opMin": 23.468708000000333,
+				"opMedian": 25.34533300000112,
+				"componentMin": 22.86633299999994,
+				"componentMedian": 24.713041999999405,
 				"counts": {
-					"blockOrderReads": 36969,
-					"blocksMapReads": 116000,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 3,
+					"blocksMapReads": 94858,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -2187,13 +2187,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.19425000000046566,
-				"opMedian": 0.4209590000100434,
-				"componentMin": 0.00416699999186676,
-				"componentMedian": 0.009332999994512647,
+				"opMin": 0.16079100000024482,
+				"opMedian": 0.24804199999925913,
+				"componentMin": 0.0029169999997975538,
+				"componentMedian": 0.0054579999996349216,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -2201,13 +2201,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 7.460040999998455,
-				"opMedian": 8.393125000002328,
-				"componentMin": 6.833999000009499,
-				"componentMedian": 7.6872500000026776,
+				"opMin": 6.2448330000006536,
+				"opMedian": 6.918500000001586,
+				"componentMin": 5.76458200000161,
+				"componentMedian": 6.350792000001093,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 31561,
+					"blocksMapReads": 31559,
 					"blocksMapIterations": 0,
 					"textFullReads": 9998,
 					"orderArrayReads": 2,
@@ -2221,8 +2221,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.050166999993962236,
-				"opMedian": 0.06504100000893231,
+				"opMin": 0.051499999999577994,
+				"opMedian": 0.05820800000037707,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -2235,8 +2235,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.05033299999195151,
-				"opMedian": 0.07004099999903701,
+				"opMin": 0.05245900000045367,
+				"opMedian": 0.057666999999128166,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -2255,28 +2255,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 31.765625,
-				"opMedian": 35.16525000000547,
-				"componentMin": 0.03495800001837779,
-				"componentMedian": 0.04520799999590963,
+				"opMin": 2.075124999999389,
+				"opMedian": 2.490125000000262,
+				"componentMin": 0.004957999999533058,
+				"componentMedian": 0.011791999999331892,
 				"counts": {
-					"blockOrderReads": 36967,
-					"blocksMapReads": 21185,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 39.975875000003725,
-				"opMedian": 43.54691599999205,
-				"componentMin": 10.307999999989988,
-				"componentMedian": 12.128458999999566,
+				"opMin": 8.498625000000175,
+				"opMedian": 9.14904099999876,
+				"componentMin": 5.6649580000012065,
+				"componentMedian": 6.411293000001024,
 				"counts": {
-					"blockOrderReads": 36973,
-					"blocksMapReads": 52902,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 2,
+					"blocksMapReads": 31759,
+					"blocksMapIterations": 0,
 					"textFullReads": 10068,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -2289,28 +2289,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 36.537209000001894,
-				"opMedian": 39.608875000005355,
-				"componentMin": 0.03741600000648759,
-				"componentMedian": 0.04529200000979472,
+				"opMin": 2.667457999999897,
+				"opMedian": 3.059166000000914,
+				"componentMin": 0.007500000001527951,
+				"componentMedian": 0.014917000002242276,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 21445,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 44.95054099999834,
-				"opMedian": 47.433208000002196,
-				"componentMin": 10.093000000008033,
-				"componentMedian": 12.057459000003291,
+				"opMin": 9.262374999998428,
+				"opMedian": 10.084875000000466,
+				"componentMin": 6.042208000000755,
+				"componentMedian": 6.748917000000802,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 53158,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 32014,
+					"blocksMapIterations": 0,
 					"textFullReads": 10068,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -2323,28 +2323,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 30.437583999999333,
-				"opMedian": 32.308709000004455,
-				"componentMin": 0.027916000006371178,
-				"componentMedian": 0.03608399999211542,
+				"opMin": 3.660041999999521,
+				"opMedian": 4.493583999999828,
+				"componentMin": 0.007916000000477652,
+				"componentMedian": 0.013542000000597909,
 				"counts": {
-					"blockOrderReads": 31507,
-					"blocksMapReads": 21033,
-					"blocksMapIterations": 52511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 10502,
 					"textFullReads": 2,
 					"orderArrayReads": 10504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 37.9163750000007,
-				"opMedian": 40.76258300000336,
-				"componentMin": 10.166375000000698,
-				"componentMedian": 12.09591599999112,
+				"opMin": 10.544625000000451,
+				"opMedian": 11.285707999999431,
+				"componentMin": 5.974583000001076,
+				"componentMedian": 6.596250000000509,
 				"counts": {
-					"blockOrderReads": 31501,
-					"blocksMapReads": 52629,
-					"blocksMapIterations": 52501,
+					"blockOrderReads": 0,
+					"blocksMapReads": 31630,
+					"blocksMapIterations": 10500,
 					"textFullReads": 9992,
 					"orderArrayReads": 10502,
 					"documentWalks": 0
@@ -2357,28 +2357,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 31.809666000001016,
-				"opMedian": 34.58904199999233,
-				"componentMin": 0.031584000011207536,
-				"componentMedian": 0.04604099999414757,
+				"opMin": 2.2378329999992275,
+				"opMedian": 2.541790999999648,
+				"componentMin": 0.005708999999114894,
+				"componentMedian": 0.012042000000292319,
 				"counts": {
-					"blockOrderReads": 36963,
-					"blocksMapReads": 21216,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 39.97262499999488,
-				"opMedian": 42.56524999999965,
-				"componentMin": 10.472334000005503,
-				"componentMedian": 11.765375000002678,
+				"opMin": 8.382375000001048,
+				"opMedian": 8.999374999999418,
+				"componentMin": 5.867165999999997,
+				"componentMedian": 6.163833999999042,
 				"counts": {
-					"blockOrderReads": 36969,
-					"blocksMapReads": 52930,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 3,
+					"blocksMapReads": 31788,
+					"blocksMapIterations": 0,
 					"textFullReads": 10073,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -2391,13 +2391,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.2192090000025928,
-				"opMedian": 0.588000000003376,
-				"componentMin": 0.0035829999833367765,
-				"componentMedian": 0.006666999994195066,
+				"opMin": 0.16629199999988487,
+				"opMedian": 0.5142499999983556,
+				"componentMin": 0.0028759999986505136,
+				"componentMedian": 0.0046249999995779945,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -2405,13 +2405,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 8.097125000000233,
-				"opMedian": 9.385625000009895,
-				"componentMin": 7.878874999994878,
-				"componentMedian": 8.936583999995491,
+				"opMin": 7.2672079999993,
+				"opMedian": 7.684832999999344,
+				"componentMin": 6.929792000000816,
+				"componentMedian": 7.267584000001079,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 52939,
+					"blocksMapReads": 52937,
 					"blocksMapIterations": 0,
 					"textFullReads": 10038,
 					"orderArrayReads": 2,
@@ -2425,8 +2425,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.050541999997221865,
-				"opMedian": 0.05770800000755116,
+				"opMin": 0.04912500000136788,
+				"opMedian": 0.057124999999359716,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -2439,8 +2439,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.051500000001396984,
-				"opMedian": 0.05779099999926984,
+				"opMin": 0.05049999999937427,
+				"opMedian": 0.05679200000122364,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -2459,28 +2459,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 31.525417000011657,
-				"opMedian": 34.52474999999686,
-				"componentMin": 3.663750000006985,
-				"componentMedian": 3.973623999991105,
+				"opMin": 2.1746669999993173,
+				"opMedian": 2.5851670000010927,
+				"componentMin": 0.1887910000004922,
+				"componentMedian": 0.20704099999966274,
 				"counts": {
-					"blockOrderReads": 36967,
-					"blocksMapReads": 21185,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 40.74820900001214,
-				"opMedian": 43.99766599999566,
-				"componentMin": 11.886250000010477,
-				"componentMedian": 13.270458000013605,
+				"opMin": 9.351250000001528,
+				"opMedian": 10.058875000000626,
+				"componentMin": 7.021915999999692,
+				"componentMedian": 7.603708000000552,
 				"counts": {
-					"blockOrderReads": 36973,
-					"blocksMapReads": 74424,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 2,
+					"blocksMapReads": 53281,
+					"blocksMapIterations": 0,
 					"textFullReads": 10108,
 					"orderArrayReads": 10574,
 					"documentWalks": 1
@@ -2493,28 +2493,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 34.39391699999396,
-				"opMedian": 38.46491699999024,
-				"componentMin": 3.41133400000399,
-				"componentMedian": 3.944333999985247,
+				"opMin": 2.583290999999008,
+				"opMedian": 3.2982499999998254,
+				"componentMin": 0.15633400000115216,
+				"componentMedian": 0.21220899999934772,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 21445,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 45.245209000000614,
-				"opMedian": 48.30416699999478,
-				"componentMin": 11.411376000003656,
-				"componentMedian": 13.033001000003424,
+				"opMin": 9.76208299999962,
+				"opMedian": 10.782749999998487,
+				"componentMin": 7.205040999999255,
+				"componentMedian": 7.895957999999155,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 74680,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 53536,
+					"blocksMapIterations": 0,
 					"textFullReads": 10108,
 					"orderArrayReads": 10574,
 					"documentWalks": 1
@@ -2527,28 +2527,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 29.895292000001064,
-				"opMedian": 33.26016599999275,
-				"componentMin": 3.531375000005937,
-				"componentMedian": 3.865249999988009,
+				"opMin": 4.243000000000393,
+				"opMedian": 4.622209000001021,
+				"componentMin": 0.1818330000005517,
+				"componentMedian": 0.21391699999730918,
 				"counts": {
-					"blockOrderReads": 31507,
-					"blocksMapReads": 21033,
-					"blocksMapIterations": 52511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 10502,
 					"textFullReads": 2,
 					"orderArrayReads": 10504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 37.771000000007916,
-				"opMedian": 41.70458399999188,
-				"componentMin": 11.710875000004307,
-				"componentMedian": 13.098582999999053,
+				"opMin": 12.011207999999897,
+				"opMedian": 12.653833000000304,
+				"componentMin": 7.713791000000128,
+				"componentMedian": 8.209625999998025,
 				"counts": {
-					"blockOrderReads": 31501,
-					"blocksMapReads": 74009,
-					"blocksMapIterations": 52501,
+					"blockOrderReads": 0,
+					"blocksMapReads": 53010,
+					"blocksMapIterations": 10500,
 					"textFullReads": 10032,
 					"orderArrayReads": 10502,
 					"documentWalks": 1
@@ -2561,28 +2561,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 31.332500000004075,
-				"opMedian": 34.831583999999566,
-				"componentMin": 3.4014989999996033,
-				"componentMedian": 3.988707999989856,
+				"opMin": 2.3520000000007713,
+				"opMedian": 2.826791999999841,
+				"componentMin": 0.18916599999829486,
+				"componentMedian": 0.20679200000085984,
 				"counts": {
-					"blockOrderReads": 36963,
-					"blocksMapReads": 21216,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 40.409583000000566,
-				"opMedian": 44.40962500000023,
-				"componentMin": 11.817708000002312,
-				"componentMedian": 13.013208000018494,
+				"opMin": 9.68408400000044,
+				"opMedian": 10.604624999999942,
+				"componentMin": 7.185457999999926,
+				"componentMedian": 7.7849999999998545,
 				"counts": {
-					"blockOrderReads": 36969,
-					"blocksMapReads": 74450,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 3,
+					"blocksMapReads": 53308,
+					"blocksMapIterations": 0,
 					"textFullReads": 10113,
 					"orderArrayReads": 10574,
 					"documentWalks": 1
@@ -2595,13 +2595,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.20487500001036096,
-				"opMedian": 0.4767500000016298,
-				"componentMin": 0.006916999991517514,
-				"componentMedian": 0.01879200000257697,
+				"opMin": 0.15599999999903957,
+				"opMedian": 0.27370800000062445,
+				"componentMin": 0.0049580000013520475,
+				"componentMedian": 0.013915999999881024,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -2609,13 +2609,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 11.466500000009546,
-				"opMedian": 12.621459000001778,
-				"componentMin": 10.645541999998386,
-				"componentMedian": 11.854625000007218,
+				"opMin": 9.673209000000497,
+				"opMedian": 10.37408399999913,
+				"componentMin": 9.063458999999057,
+				"componentMedian": 9.735749999999825,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 31701,
+					"blocksMapReads": 31699,
 					"blocksMapIterations": 0,
 					"textFullReads": 10038,
 					"orderArrayReads": 2,
@@ -2629,8 +2629,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.056249999994179234,
-				"opMedian": 0.0670830000017304,
+				"opMin": 0.046208000003389316,
+				"opMedian": 0.05570799999986775,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -2643,8 +2643,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.05308300000615418,
-				"opMedian": 0.0669589999888558,
+				"opMin": 0.04704100000162725,
+				"opMedian": 0.055624999997235136,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -2663,28 +2663,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 31.89495899999747,
-				"opMedian": 34.20937500000582,
-				"componentMin": 0.010167000000365078,
-				"componentMedian": 0.012583000003360212,
+				"opMin": 2.2529170000016165,
+				"opMedian": 2.6934589999982563,
+				"componentMin": 0.0027919999993173406,
+				"componentMedian": 0.006958999998460058,
 				"counts": {
-					"blockOrderReads": 36967,
-					"blocksMapReads": 21185,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 43.21158400000422,
-				"opMedian": 46.983708999992814,
-				"componentMin": 11.277957999991486,
-				"componentMedian": 11.946833000009065,
+				"opMin": 11.834624999999505,
+				"opMedian": 12.731791999998677,
+				"componentMin": 9.129541000002064,
+				"componentMedian": 9.694707999999082,
 				"counts": {
-					"blockOrderReads": 36973,
-					"blocksMapReads": 53042,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 2,
+					"blocksMapReads": 31899,
+					"blocksMapIterations": 0,
 					"textFullReads": 10108,
 					"orderArrayReads": 10574,
 					"documentWalks": 1
@@ -2697,28 +2697,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 33.713457999998354,
-				"opMedian": 39.85599999999977,
-				"componentMin": 0.016625000003841706,
-				"componentMedian": 0.023709000000962988,
+				"opMin": 2.537499999998545,
+				"opMedian": 3.081084000001283,
+				"componentMin": 0.005208999999013031,
+				"componentMedian": 0.010166000000026543,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 21445,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 46.90412500000093,
-				"opMedian": 51.79237500000454,
-				"componentMin": 10.611749999996391,
-				"componentMedian": 12.033792000001995,
+				"opMin": 12.248999999999796,
+				"opMedian": 13.22491699999955,
+				"componentMin": 9.149540999998862,
+				"componentMedian": 9.746249999996508,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 53298,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 32154,
+					"blocksMapIterations": 0,
 					"textFullReads": 10108,
 					"orderArrayReads": 10574,
 					"documentWalks": 1
@@ -2731,28 +2731,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 29.89900000000489,
-				"opMedian": 33.646292000004905,
-				"componentMin": 0.006833000006736256,
-				"componentMedian": 0.009666999991168268,
+				"opMin": 3.771166999998968,
+				"opMedian": 4.526207999999315,
+				"componentMin": 0.003916999998182291,
+				"componentMedian": 0.006832999999460299,
 				"counts": {
-					"blockOrderReads": 31507,
-					"blocksMapReads": 21033,
-					"blocksMapIterations": 52511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 10502,
 					"textFullReads": 2,
 					"orderArrayReads": 10504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 42.746375000002445,
-				"opMedian": 45.75966699999117,
-				"componentMin": 10.547792000012123,
-				"componentMedian": 12.139582999996492,
+				"opMin": 13.753790999999183,
+				"opMedian": 14.313915999999153,
+				"componentMin": 8.88037500000064,
+				"componentMedian": 9.708165999996709,
 				"counts": {
-					"blockOrderReads": 31501,
-					"blocksMapReads": 52769,
-					"blocksMapIterations": 52501,
+					"blockOrderReads": 0,
+					"blocksMapReads": 31770,
+					"blocksMapIterations": 10500,
 					"textFullReads": 10032,
 					"orderArrayReads": 10502,
 					"documentWalks": 1
@@ -2765,28 +2765,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 32.212458000009065,
-				"opMedian": 35.14708300000348,
-				"componentMin": 0.017249999989871867,
-				"componentMedian": 0.024457999999867752,
+				"opMin": 2.437040999997407,
+				"opMedian": 2.8058749999981956,
+				"componentMin": 0.006041000000550412,
+				"componentMedian": 0.01224999999976717,
 				"counts": {
-					"blockOrderReads": 36963,
-					"blocksMapReads": 21216,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 43.73912499999278,
-				"opMedian": 47.23649999999907,
-				"componentMin": 10.519624999986263,
-				"componentMedian": 12.101792000001296,
+				"opMin": 11.921415999997407,
+				"opMedian": 12.628666000000521,
+				"componentMin": 8.907999999999447,
+				"componentMedian": 9.551041999999143,
 				"counts": {
-					"blockOrderReads": 36969,
-					"blocksMapReads": 53070,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 3,
+					"blocksMapReads": 31928,
+					"blocksMapIterations": 0,
 					"textFullReads": 10113,
 					"orderArrayReads": 10574,
 					"documentWalks": 1
@@ -2799,13 +2799,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.18616599999950267,
-				"opMedian": 0.28049999999348074,
-				"componentMin": 0.003416999999899417,
-				"componentMedian": 0.008000000001629815,
+				"opMin": 0.1476249999977881,
+				"opMedian": 0.19020799999998417,
+				"componentMin": 0.002165999998396728,
+				"componentMedian": 0.0043750000004365575,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -2813,13 +2813,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 6.117334000009578,
-				"opMedian": 6.95975000000908,
-				"componentMin": 5.663000000000466,
-				"componentMedian": 6.248249999989639,
+				"opMin": 2.6926670000029844,
+				"opMedian": 3.7412079999994603,
+				"componentMin": 2.2864579999986745,
+				"componentMedian": 3.246166999997513,
 				"counts": {
 					"blockOrderReads": 10501,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 10500,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -2833,8 +2833,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.05224999999336433,
-				"opMedian": 0.060125000003608875,
+				"opMin": 0.047374999998282874,
+				"opMedian": 0.05408299999908195,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -2847,8 +2847,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.05129199998918921,
-				"opMedian": 0.06345800000417512,
+				"opMin": 0.04766600000220933,
+				"opMedian": 0.05441700000301353,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -2867,28 +2867,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 30.813208000006853,
-				"opMedian": 33.16774999999325,
-				"componentMin": 5.026415999993333,
-				"componentMedian": 6.138666999991983,
+				"opMin": 2.2397079999973357,
+				"opMedian": 2.5026250000009895,
+				"componentMin": 0.004165999998804182,
+				"componentMedian": 0.007792000000335975,
 				"counts": {
-					"blockOrderReads": 36967,
-					"blocksMapReads": 21185,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 31.70358299999498,
-				"opMedian": 33.73495900000853,
-				"componentMin": 4.805624999993597,
-				"componentMedian": 6.035707999995793,
+				"opMin": 5.4302500000012515,
+				"opMedian": 6.322834000002331,
+				"componentMin": 2.8360410000022966,
+				"componentMedian": 3.5437910000000556,
 				"counts": {
-					"blockOrderReads": 36973,
-					"blocksMapReads": 21189,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 10574,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 10572,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -2901,28 +2901,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 34.688916999992216,
-				"opMedian": 39.65866699999606,
-				"componentMin": 4.7482079999899724,
-				"componentMedian": 6.360042000000249,
+				"opMin": 2.587374999999156,
+				"opMedian": 3.1205410000002303,
+				"componentMin": 0.004290999997465406,
+				"componentMedian": 0.007459000000380911,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 21445,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 34.121750000005704,
-				"opMedian": 39.65374999999767,
-				"componentMin": 4.54529100000218,
-				"componentMedian": 6.338042000003043,
+				"opMin": 6.264584000000468,
+				"opMedian": 6.780041999998502,
+				"componentMin": 2.995208000000275,
+				"componentMedian": 3.4416669999991427,
 				"counts": {
-					"blockOrderReads": 42370,
-					"blocksMapReads": 21445,
-					"blocksMapIterations": 52860,
+					"blockOrderReads": 10574,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 10572,
 					"textFullReads": 7,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -2935,28 +2935,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 30.77187500000582,
-				"opMedian": 33.70699999999488,
-				"componentMin": 1.765917000011541,
-				"componentMedian": 2.205082999993465,
+				"opMin": 4.342791999999463,
+				"opMedian": 7.639332999999169,
+				"componentMin": 1.72858400000041,
+				"componentMedian": 2.2672920000004524,
 				"counts": {
-					"blockOrderReads": 31507,
-					"blocksMapReads": 21033,
-					"blocksMapIterations": 52511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 10502,
 					"textFullReads": 2,
 					"orderArrayReads": 10504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 30.99304200000188,
-				"opMedian": 34.324290999997174,
-				"componentMin": 1.680040999999619,
-				"componentMedian": 2.435790999996243,
+				"opMin": 4.4540000000015425,
+				"opMedian": 7.340583000001061,
+				"componentMin": 1.6294579999994312,
+				"componentMedian": 2.30158400000073,
 				"counts": {
-					"blockOrderReads": 31501,
-					"blocksMapReads": 21129,
-					"blocksMapIterations": 52501,
+					"blockOrderReads": 10501,
+					"blocksMapReads": 130,
+					"blocksMapIterations": 21000,
 					"textFullReads": 2,
 					"orderArrayReads": 10502,
 					"documentWalks": 0
@@ -2969,28 +2969,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 33.836332999999286,
-				"opMedian": 36.219541999991634,
-				"componentMin": 5.9071249999979045,
-				"componentMedian": 6.558917000002111,
+				"opMin": 2.395667000000685,
+				"opMedian": 2.8435000000026776,
+				"componentMin": 0.005124999999679858,
+				"componentMedian": 0.009667000002082204,
 				"counts": {
-					"blockOrderReads": 36963,
-					"blocksMapReads": 21216,
-					"blocksMapIterations": 42279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 10572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 33.791207999995095,
-				"opMedian": 35.70466699999815,
-				"componentMin": 5.216667000000598,
-				"componentMedian": 6.429749999995693,
+				"opMin": 5.815540999999939,
+				"opMedian": 6.61816700000054,
+				"componentMin": 3.1190830000014103,
+				"componentMedian": 3.6257909999985714,
 				"counts": {
-					"blockOrderReads": 36969,
-					"blocksMapReads": 21220,
-					"blocksMapIterations": 42287,
+					"blockOrderReads": 10575,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 10572,
 					"textFullReads": 13,
 					"orderArrayReads": 10574,
 					"documentWalks": 0
@@ -3003,10 +3003,10 @@
 			"row": "paint after keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.0009169999975711107,
-				"opMedian": 0.0013330000074347481,
-				"componentMin": 0.0009169999975711107,
-				"componentMedian": 0.0013330000074347481,
+				"opMin": 0.0008749999979045242,
+				"opMedian": 0.0011250000025029294,
+				"componentMin": 0.0008749999979045242,
+				"componentMedian": 0.0011250000025029294,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -3017,10 +3017,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.0009579999896232039,
-				"opMedian": 0.0014170000067679211,
-				"componentMin": 0.0009579999896232039,
-				"componentMedian": 0.0014170000067679211,
+				"opMin": 0.0009579999968991615,
+				"opMedian": 0.0011249999988649506,
+				"componentMin": 0.0009579999968991615,
+				"componentMedian": 0.0011249999988649506,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -3038,9 +3038,9 @@
 			"runs": 31,
 			"incremental": {
 				"opMin": 0.0002919999969890341,
-				"opMedian": 0.000375000003259629,
+				"opMedian": 0.0003749999996216502,
 				"componentMin": 0.0002919999969890341,
-				"componentMedian": 0.000375000003259629,
+				"componentMedian": 0.0003749999996216502,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
@@ -3051,10 +3051,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.0011249999952269718,
-				"opMedian": 0.0012920000008307397,
-				"componentMin": 0.0011249999952269718,
-				"componentMedian": 0.0012920000008307397,
+				"opMin": 0.0011249999988649506,
+				"opMedian": 0.0012500000011641532,
+				"componentMin": 0.0011249999988649506,
+				"componentMedian": 0.0012500000011641532,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -3071,10 +3071,10 @@
 			"row": "repaint, D5 range over half the document",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.00033299998904112726,
-				"opMedian": 0.00045900000259280205,
-				"componentMin": 0.00033299998904112726,
-				"componentMedian": 0.00045900000259280205,
+				"opMin": 0.0003329999999550637,
+				"opMedian": 0.00041700000292621553,
+				"componentMin": 0.0003329999999550637,
+				"componentMedian": 0.00041700000292621553,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
@@ -3085,10 +3085,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.01679199999489356,
-				"opMedian": 0.01983400000608526,
-				"componentMin": 0.01679199999489356,
-				"componentMedian": 0.01983400000608526,
+				"opMin": 0.015416000002005603,
+				"opMedian": 0.016290999999910127,
+				"componentMin": 0.015416000002005603,
+				"componentMedian": 0.016290999999910127,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -3105,10 +3105,10 @@
 			"row": "repaint, block selection of every root block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.0010829999955603853,
-				"opMedian": 0.0022499999904539436,
-				"componentMin": 0.0010829999955603853,
-				"componentMedian": 0.0022499999904539436,
+				"opMin": 0.0010419999998703133,
+				"opMedian": 0.0019170000014128163,
+				"componentMin": 0.0010419999998703133,
+				"componentMedian": 0.0019170000014128163,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
@@ -3119,10 +3119,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.6703330000018468,
-				"opMedian": 0.90625,
-				"componentMin": 0.6703330000018468,
-				"componentMedian": 0.90625,
+				"opMin": 0.6751250000015716,
+				"opMedian": 0.8117499999971187,
+				"componentMin": 0.6751250000015716,
+				"componentMedian": 0.8117499999971187,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
@@ -3139,13 +3139,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 1.6202919999923324,
-				"opMedian": 21.674874999996973,
-				"componentMin": 0.006124999999883585,
-				"componentMedian": 0.009290999994846061,
+				"opMin": 1.098999999998341,
+				"opMedian": 1.374166999998124,
+				"componentMin": 0.003749999999854481,
+				"componentMedian": 0.008708000001206528,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -3153,14 +3153,14 @@
 				}
 			},
 			"naive": {
-				"opMin": 49.31204100001196,
-				"opMedian": 70.50316700000258,
-				"componentMin": 25.620207999993,
-				"componentMedian": 28.057707999993,
+				"opMin": 44.25054199999795,
+				"opMedian": 45.978250000000116,
+				"componentMin": 22.95616599999994,
+				"componentMedian": 23.78979199999958,
 				"counts": {
 					"blockOrderReads": 52500,
 					"blocksMapReads": 52561,
-					"blocksMapIterations": 105000,
+					"blocksMapIterations": 52500,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
 					"documentWalks": 0
@@ -3173,8 +3173,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.3579579999932321,
-				"opMedian": 0.6162079999921843,
+				"opMin": 0.2682920000006561,
+				"opMedian": 0.3257499999999709,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -3187,8 +3187,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.36816600000020117,
-				"opMedian": 0.6467499999998836,
+				"opMin": 0.27733299999817973,
+				"opMedian": 0.32937500000116415,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -3207,28 +3207,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 183.41216700000223,
-				"opMedian": 206.9685419999878,
-				"componentMin": 25.29637499997625,
-				"componentMedian": 29.648125000006985,
+				"opMin": 11.802209000001312,
+				"opMedian": 12.657208000000537,
+				"componentMin": 0.005375000000640284,
+				"componentMedian": 0.007582999998703599,
 				"counts": {
-					"blockOrderReads": 183967,
-					"blocksMapReads": 105185,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 47,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 196.31729199999245,
-				"opMedian": 208.33370899999863,
-				"componentMin": 26.27766600000905,
-				"componentMedian": 30.04537499998696,
+				"opMin": 56.37195900000006,
+				"opMedian": 60.45283399999971,
+				"componentMin": 23.800500000001193,
+				"componentMedian": 24.830291000002035,
 				"counts": {
-					"blockOrderReads": 183973,
-					"blocksMapReads": 105189,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 52573,
+					"blocksMapReads": 52618,
+					"blocksMapIterations": 52572,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -3241,28 +3241,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 185.08708300002036,
-				"opMedian": 203.48233400000026,
-				"componentMin": 24.587916999997105,
-				"componentMedian": 26.7472500000149,
+				"opMin": 14.094708000000537,
+				"opMedian": 15.084208000000217,
+				"componentMin": 0.006832999999460299,
+				"componentMedian": 0.008291000001918292,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 105445,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 302,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 183.55624999999418,
-				"opMedian": 206.0379580000008,
-				"componentMin": 24.568625000014435,
-				"componentMedian": 26.798291999992216,
+				"opMin": 59.63062499999796,
+				"opMedian": 62.1988339999989,
+				"componentMin": 23.919165999999677,
+				"componentMedian": 24.642040999999153,
 				"counts": {
-					"blockOrderReads": 210369,
-					"blocksMapReads": 105444,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 52573,
+					"blocksMapReads": 52873,
+					"blocksMapIterations": 52572,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -3275,28 +3275,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 183.6351250000007,
-				"opMedian": 193.926959000004,
-				"componentMin": 25.697500000009313,
-				"componentMedian": 29.56470800001989,
+				"opMin": 21.180625000000873,
+				"opMedian": 22.760459000000992,
+				"componentMin": 0.004166999999142718,
+				"componentMedian": 0.005541999998968095,
 				"counts": {
-					"blockOrderReads": 157507,
-					"blocksMapReads": 105033,
-					"blocksMapIterations": 262511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 52502,
 					"textFullReads": 2,
 					"orderArrayReads": 52504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 183.91224999999395,
-				"opMedian": 194.0227920000034,
-				"componentMin": 25.82562499999767,
-				"componentMedian": 29.565833000000566,
+				"opMin": 67.91487500000221,
+				"opMedian": 70.10100000000239,
+				"componentMin": 23.83783300000505,
+				"componentMedian": 25.36345799999981,
 				"counts": {
-					"blockOrderReads": 157501,
-					"blocksMapReads": 105129,
-					"blocksMapIterations": 262501,
+					"blockOrderReads": 52500,
+					"blocksMapReads": 52630,
+					"blocksMapIterations": 105000,
 					"textFullReads": 2,
 					"orderArrayReads": 52502,
 					"documentWalks": 0
@@ -3309,28 +3309,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 166.60016700002598,
-				"opMedian": 177.30624999999418,
-				"componentMin": 24.01133400000981,
-				"componentMedian": 24.9795420000155,
+				"opMin": 12.511708999998518,
+				"opMedian": 13.247624999996333,
+				"componentMin": 0.0076249999983701855,
+				"componentMedian": 0.009833999996772036,
 				"counts": {
-					"blockOrderReads": 183963,
-					"blocksMapReads": 105216,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 80,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 172.22174999999697,
-				"opMedian": 183.6832089999807,
-				"componentMin": 23.682124999992084,
-				"componentMedian": 25.115665999997873,
+				"opMin": 56.6639159999977,
+				"opMedian": 59.92287500000384,
+				"componentMin": 23.688708000001498,
+				"componentMedian": 24.62579199999891,
 				"counts": {
-					"blockOrderReads": 183969,
-					"blocksMapReads": 105220,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 52573,
+					"blocksMapReads": 52650,
+					"blocksMapIterations": 52572,
 					"textFullReads": 13,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -3343,13 +3343,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 1.2565830000094138,
-				"opMedian": 1.6640000000188593,
-				"componentMin": 0.0005000000237487257,
-				"componentMedian": 0.0009999999892897904,
+				"opMin": 1.1036669999957667,
+				"opMedian": 1.3705409999965923,
+				"componentMin": 0.0003330000035930425,
+				"componentMedian": 0.0010420000035082921,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -3357,13 +3357,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 49.14229200000409,
-				"opMedian": 56.61375000001863,
-				"componentMin": 47.40970799999195,
-				"componentMedian": 54.3859999999986,
+				"opMin": 45.858875000005355,
+				"opMedian": 49.607332999999926,
+				"componentMin": 44.071750000002794,
+				"componentMedian": 47.69562500000029,
 				"counts": {
 					"blockOrderReads": 52501,
-					"blocksMapReads": 52564,
+					"blocksMapReads": 52562,
 					"blocksMapIterations": 52500,
 					"textFullReads": 49959,
 					"orderArrayReads": 2,
@@ -3377,8 +3377,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.35654199999407865,
-				"opMedian": 0.4979999999923166,
+				"opMin": 0.278375000001688,
+				"opMedian": 0.3821250000037253,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -3391,8 +3391,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.40245799999684095,
-				"opMedian": 0.5392080000019632,
+				"opMin": 0.27979199999390403,
+				"opMedian": 0.3492919999989681,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -3411,29 +3411,29 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 168.298415999976,
-				"opMedian": 192.33674999998766,
-				"componentMin": 57.41158300000825,
-				"componentMedian": 68.83525000000373,
+				"opMin": 11.881499999995867,
+				"opMedian": 15.210124999997788,
+				"componentMin": 0.115458000000217,
+				"componentMedian": 3.24279199999728,
 				"counts": {
-					"blockOrderReads": 183967,
-					"blocksMapReads": 105185,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 218.51504200001364,
-				"opMedian": 267.270709000004,
-				"componentMin": 48.1697920000006,
-				"componentMedian": 61.13375000000815,
+				"opMin": 58.66791699999885,
+				"opMedian": 63.20054099999834,
+				"componentMin": 44.78208400000585,
+				"componentMedian": 48.97291699999914,
 				"counts": {
-					"blockOrderReads": 236545,
-					"blocksMapReads": 157761,
-					"blocksMapIterations": 262859,
-					"textFullReads": 50029,
+					"blockOrderReads": 52574,
+					"blocksMapReads": 52618,
+					"blocksMapIterations": 52572,
+					"textFullReads": 50028,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
 				}
@@ -3445,29 +3445,29 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 211.76125000001048,
-				"opMedian": 433.05100000000675,
-				"componentMin": 71.63808400000562,
-				"componentMedian": 141.51912500002072,
+				"opMin": 14.025125000000116,
+				"opMedian": 17.17566700000316,
+				"componentMin": 0.10854200000176206,
+				"componentMedian": 3.0209579999936977,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 105445,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 309.852790999983,
-				"opMedian": 538.8455000000249,
-				"componentMin": 57.74900000001071,
-				"componentMedian": 153.213791999995,
+				"opMin": 60.382417000000714,
+				"opMedian": 65.78112500000134,
+				"componentMin": 45.19174999999814,
+				"componentMedian": 49.748625000000175,
 				"counts": {
-					"blockOrderReads": 262942,
-					"blocksMapReads": 158017,
-					"blocksMapIterations": 315432,
-					"textFullReads": 50029,
+					"blockOrderReads": 52574,
+					"blocksMapReads": 52873,
+					"blocksMapIterations": 52572,
+					"textFullReads": 50028,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
 				}
@@ -3479,28 +3479,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 233.95350000000326,
-				"opMedian": 1563.6193330000388,
-				"componentMin": 80.5854999999865,
-				"componentMedian": 606.4547920000041,
+				"opMin": 21.046041000001424,
+				"opMedian": 24.386624999999185,
+				"componentMin": 0.040000000000873115,
+				"componentMedian": 0.051500000001396984,
 				"counts": {
-					"blockOrderReads": 157507,
-					"blocksMapReads": 105033,
-					"blocksMapIterations": 262511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 52502,
 					"textFullReads": 2,
 					"orderArrayReads": 52504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 889.7476669999887,
-				"opMedian": 2514.2201660000137,
-				"componentMin": 94.94866699998965,
-				"componentMedian": 671.4423330000136,
+				"opMin": 66.92445899999439,
+				"opMedian": 71.01366699999926,
+				"componentMin": 44.3459159999984,
+				"componentMedian": 46.876374999999825,
 				"counts": {
-					"blockOrderReads": 210001,
-					"blocksMapReads": 157629,
-					"blocksMapIterations": 315001,
+					"blockOrderReads": 52500,
+					"blocksMapReads": 52630,
+					"blocksMapIterations": 105000,
 					"textFullReads": 49952,
 					"orderArrayReads": 52502,
 					"documentWalks": 0
@@ -3513,29 +3513,29 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 203.1917920000269,
-				"opMedian": 2434.187042000005,
-				"componentMin": 66.27283400000306,
-				"componentMedian": 869.1825830000453,
+				"opMin": 12.622499999997672,
+				"opMedian": 16.100958999995783,
+				"componentMin": 0.11200000000098953,
+				"componentMedian": 3.249916000000667,
 				"counts": {
-					"blockOrderReads": 183963,
-					"blocksMapReads": 105216,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 1429.4615840000333,
-				"opMedian": 3327.5963749999646,
-				"componentMin": 183.64408299990464,
-				"componentMedian": 907.8444169999566,
+				"opMin": 56.894749999999476,
+				"opMedian": 62.31733299999905,
+				"componentMin": 44.357834000002185,
+				"componentMedian": 48.21766700000444,
 				"counts": {
-					"blockOrderReads": 236541,
-					"blocksMapReads": 157792,
-					"blocksMapIterations": 262859,
-					"textFullReads": 50035,
+					"blockOrderReads": 52575,
+					"blocksMapReads": 52650,
+					"blocksMapIterations": 52572,
+					"textFullReads": 50033,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
 				}
@@ -3547,13 +3547,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 2.912417000043206,
-				"opMedian": 10.76120800001081,
-				"componentMin": 2.496875000069849,
-				"componentMedian": 8.633584000053816,
+				"opMin": 0.7712919999976293,
+				"opMedian": 0.9995840000046883,
+				"componentMin": 0.6929170000003069,
+				"componentMedian": 0.8654999999998836,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -3561,13 +3561,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 2.8135000000474975,
-				"opMedian": 10.949499999987893,
-				"componentMin": 2.3615419999696314,
-				"componentMedian": 8.921291999868117,
+				"opMin": 0.7499160000006668,
+				"opMedian": 1.0438330000033602,
+				"componentMin": 0.6700409999975818,
+				"componentMedian": 0.9266659999993863,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -3581,10 +3581,10 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 1.2005829999689013,
-				"opMedian": 4.857834000024013,
-				"componentMin": 1.1510839998954907,
-				"componentMedian": 4.74633300001733,
+				"opMin": 0.2814159999979893,
+				"opMedian": 0.3207089999996242,
+				"componentMin": 0.27499999999417923,
+				"componentMedian": 0.31245900000067195,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 19,
@@ -3595,10 +3595,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.8513749999692664,
-				"opMedian": 3.5432079999009147,
-				"componentMin": 0.8225410000886768,
-				"componentMedian": 3.1869160000933334,
+				"opMin": 0.2768750000032014,
+				"opMedian": 0.30350000000180444,
+				"componentMin": 0.2708749999947031,
+				"componentMedian": 0.29575000000477303,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 19,
@@ -3615,28 +3615,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 322.9620420000283,
-				"opMedian": 1665.487417000113,
-				"componentMin": 11.87783299991861,
-				"componentMedian": 113.06091700005345,
+				"opMin": 11.642541000001074,
+				"opMedian": 12.543250000002445,
+				"componentMin": 10.021833999999217,
+				"componentMedian": 10.50274999999965,
 				"counts": {
-					"blockOrderReads": 183967,
-					"blocksMapReads": 105185,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 482.606334000011,
-				"opMedian": 3000.1840830000583,
-				"componentMin": 204.01808299997356,
-				"componentMedian": 1328.370458999998,
+				"opMin": 144.08816699999443,
+				"opMedian": 146.7830829999948,
+				"componentMin": 142.1591250000056,
+				"componentMedian": 144.74095800000214,
 				"counts": {
-					"blockOrderReads": 183973,
-					"blocksMapReads": 577971,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 2,
+					"blocksMapReads": 472828,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -3649,28 +3649,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 216.04370899999049,
-				"opMedian": 1144.5092500000028,
-				"componentMin": 12.257666999939829,
-				"componentMedian": 42.29904200008605,
+				"opMin": 13.97950000000128,
+				"opMedian": 14.818624999999884,
+				"componentMin": 11.634416999993846,
+				"componentMedian": 12.422291000002588,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 105445,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 592.6042499999749,
-				"opMedian": 2215.821292000008,
-				"componentMin": 193.7227079999866,
-				"componentMedian": 969.3749169999501,
+				"opMin": 143.29454200000328,
+				"opMedian": 152.4481670000023,
+				"componentMin": 140.88887499999691,
+				"componentMedian": 149.99270899999829,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 577973,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 472829,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -3683,28 +3683,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 172.41245800000615,
-				"opMedian": 657.5819999999367,
-				"componentMin": 7.690708999987692,
-				"componentMedian": 20.52445899997838,
+				"opMin": 21.024665999997524,
+				"opMedian": 21.52104099999997,
+				"componentMin": 7.484083000003011,
+				"componentMedian": 7.99891700000444,
 				"counts": {
-					"blockOrderReads": 157507,
-					"blocksMapReads": 105033,
-					"blocksMapIterations": 262511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 52502,
 					"textFullReads": 2,
 					"orderArrayReads": 52504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 349.2372500000056,
-				"opMedian": 1172.455709000118,
-				"componentMin": 174.87799999990966,
-				"componentMedian": 561.5435000000289,
+				"opMin": 155.458083000005,
+				"opMedian": 157.97054199999548,
+				"componentMin": 141.68408399999316,
+				"componentMedian": 143.7491250000021,
 				"counts": {
-					"blockOrderReads": 157501,
-					"blocksMapReads": 577523,
-					"blocksMapIterations": 262501,
+					"blockOrderReads": 0,
+					"blocksMapReads": 472524,
+					"blocksMapIterations": 52500,
 					"textFullReads": 2,
 					"orderArrayReads": 52502,
 					"documentWalks": 0
@@ -3717,28 +3717,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 315.40200000000186,
-				"opMedian": 815.2969579999335,
-				"componentMin": 13.922791999997571,
-				"componentMedian": 32.0794580001384,
+				"opMin": 12.60245799999393,
+				"opMedian": 13.493875000000116,
+				"componentMin": 10.644499999994878,
+				"componentMedian": 11.318624999999884,
 				"counts": {
-					"blockOrderReads": 183963,
-					"blocksMapReads": 105216,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 1041.5281669998076,
-				"opMedian": 1441.6357920002192,
-				"componentMin": 344.63662500004284,
-				"componentMedian": 650.0059169998858,
+				"opMin": 143.67758399999002,
+				"opMedian": 152.2280000000028,
+				"componentMin": 141.51699999999255,
+				"componentMedian": 150.20887499999662,
 				"counts": {
-					"blockOrderReads": 183969,
-					"blocksMapReads": 578000,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 3,
+					"blocksMapReads": 472858,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -3751,13 +3751,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 2.1818750000093132,
-				"opMedian": 4.112999999895692,
-				"componentMin": 0.0169170000590384,
-				"componentMedian": 0.031207999913021922,
+				"opMin": 1.0761669999919832,
+				"opMedian": 1.3302499999990687,
+				"componentMin": 0.006124999999883585,
+				"componentMedian": 0.011041999983717687,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -3765,13 +3765,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 49.06724999984726,
-				"opMedian": 340.9849999998696,
-				"componentMin": 46.640124999918044,
-				"componentMedian": 302.47849999996834,
+				"opMin": 38.251625000004424,
+				"opMedian": 39.36366600000474,
+				"componentMin": 36.303249999982654,
+				"componentMedian": 37.49099999999453,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 157561,
+					"blocksMapReads": 157559,
 					"blocksMapIterations": 0,
 					"textFullReads": 49958,
 					"orderArrayReads": 2,
@@ -3785,8 +3785,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.3237090001348406,
-				"opMedian": 0.44279200001619756,
+				"opMin": 0.2717089999932796,
+				"opMedian": 0.33320899998943787,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -3799,8 +3799,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.3276249999180436,
-				"opMedian": 0.46445799991488457,
+				"opMin": 0.2706250000046566,
+				"opMedian": 0.33100000000558794,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -3819,28 +3819,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 287.55449999985285,
-				"opMedian": 671.0007919999771,
-				"componentMin": 0.03862400003708899,
-				"componentMedian": 0.04516599979251623,
+				"opMin": 11.955042000001413,
+				"opMedian": 12.305458000002545,
+				"componentMin": 0.015165999997407198,
+				"componentMedian": 0.020709000003989786,
 				"counts": {
-					"blockOrderReads": 183967,
-					"blocksMapReads": 105185,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 391.22066699992865,
-				"opMedian": 806.7507500001229,
-				"componentMin": 85.4765840000473,
-				"componentMedian": 204.16191599983722,
+				"opMin": 49.68887499999255,
+				"opMedian": 51.82304099999601,
+				"componentMin": 37.352040999991004,
+				"componentMedian": 38.756042000008165,
 				"counts": {
-					"blockOrderReads": 183973,
-					"blocksMapReads": 262902,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 2,
+					"blocksMapReads": 157759,
+					"blocksMapIterations": 0,
 					"textFullReads": 50028,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -3853,28 +3853,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 190.42787499981932,
-				"opMedian": 205.60995900002308,
-				"componentMin": 0.039625999983400106,
-				"componentMedian": 0.04562500002793968,
+				"opMin": 13.956957999995211,
+				"opMedian": 15.70495800000208,
+				"componentMin": 0.01970699999947101,
+				"componentMedian": 0.02487600001040846,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 105445,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 229.72462500003166,
-				"opMedian": 247.58983399998397,
-				"componentMin": 61.17045899992809,
-				"componentMedian": 65.05975000024773,
+				"opMin": 52.50312500000291,
+				"opMedian": 55.98479099999531,
+				"componentMin": 38.63258400000632,
+				"componentMedian": 40.556291999993846,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 263158,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 158014,
+					"blocksMapIterations": 0,
 					"textFullReads": 50028,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -3887,28 +3887,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 162.3932499999646,
-				"opMedian": 167.30533300014213,
-				"componentMin": 0.030165999894961715,
-				"componentMedian": 0.03479199972935021,
+				"opMin": 21.19179100000474,
+				"opMedian": 22.366958999991766,
+				"componentMin": 0.017249999989871867,
+				"componentMedian": 0.02187500002037268,
 				"counts": {
-					"blockOrderReads": 157507,
-					"blocksMapReads": 105033,
-					"blocksMapIterations": 262511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 52502,
 					"textFullReads": 2,
 					"orderArrayReads": 52504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 200.6132500001695,
-				"opMedian": 208.228208999848,
-				"componentMin": 58.667708000168204,
-				"componentMedian": 61.692042000126094,
+				"opMin": 59.951499999995576,
+				"opMedian": 61.45349999998871,
+				"componentMin": 37.49554200000421,
+				"componentMedian": 39.23750000000291,
 				"counts": {
-					"blockOrderReads": 157501,
-					"blocksMapReads": 262629,
-					"blocksMapIterations": 262501,
+					"blockOrderReads": 0,
+					"blocksMapReads": 157630,
+					"blocksMapIterations": 52500,
 					"textFullReads": 49952,
 					"orderArrayReads": 52502,
 					"documentWalks": 0
@@ -3921,28 +3921,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 169.36991600017063,
-				"opMedian": 178.25487499986775,
-				"componentMin": 0.03912400011904538,
-				"componentMedian": 0.04454099992290139,
+				"opMin": 12.523457999996026,
+				"opMedian": 13.277332999990904,
+				"componentMin": 0.01275000000896398,
+				"componentMedian": 0.021833999999216758,
 				"counts": {
-					"blockOrderReads": 183963,
-					"blocksMapReads": 105216,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 207.84541599988006,
-				"opMedian": 219.81733400002122,
-				"componentMin": 58.36833299999125,
-				"componentMedian": 62.074875000165775,
+				"opMin": 50.345415999996476,
+				"opMedian": 52.655541000000085,
+				"componentMin": 37.671208999992814,
+				"componentMedian": 38.81974999999511,
 				"counts": {
-					"blockOrderReads": 183969,
-					"blocksMapReads": 262930,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 3,
+					"blocksMapReads": 157788,
+					"blocksMapIterations": 0,
 					"textFullReads": 50033,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -3955,13 +3955,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 1.4112080000340939,
-				"opMedian": 2.1676250000018626,
-				"componentMin": 0.010207999963313341,
-				"componentMedian": 0.02379200025461614,
+				"opMin": 1.2067500000121072,
+				"opMedian": 1.829667000012705,
+				"componentMin": 0.008626000009826384,
+				"componentMedian": 0.018582999997306615,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -3969,13 +3969,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 51.55320800002664,
-				"opMedian": 59.335707999998704,
-				"componentMin": 50.42279199976474,
-				"componentMedian": 57.244249999988824,
+				"opMin": 46.42983300000196,
+				"opMedian": 48.68633399999817,
+				"componentMin": 45.026290999987395,
+				"componentMedian": 46.82645799999591,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 264459,
+					"blocksMapReads": 264457,
 					"blocksMapIterations": 0,
 					"textFullReads": 50158,
 					"orderArrayReads": 2,
@@ -3989,8 +3989,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.4147910000756383,
-				"opMedian": 0.5752499999944121,
+				"opMin": 0.28304100000241306,
+				"opMedian": 0.33645800000522286,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -4003,8 +4003,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.444167000008747,
-				"opMedian": 0.6337500000372529,
+				"opMin": 0.2824170000094455,
+				"opMedian": 0.3302079999994021,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -4023,28 +4023,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 164.30050000012852,
-				"opMedian": 175.69554099999368,
-				"componentMin": 19.909915999975055,
-				"componentMedian": 20.814042000100017,
+				"opMin": 12.383832999999868,
+				"opMedian": 13.029165999992983,
+				"componentMin": 0.9831260000064503,
+				"componentMedian": 1.01708299999882,
 				"counts": {
-					"blockOrderReads": 183967,
-					"blocksMapReads": 105185,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 213.47912499983795,
-				"opMedian": 228.70920799998567,
-				"componentMin": 67.39420800004154,
-				"componentMedian": 74.8798760001082,
+				"opMin": 61.02620799999568,
+				"opMedian": 64.7039999999979,
+				"componentMin": 49.358957999997074,
+				"componentMedian": 52.277499000003445,
 				"counts": {
-					"blockOrderReads": 183973,
-					"blocksMapReads": 369944,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 2,
+					"blocksMapReads": 264801,
+					"blocksMapIterations": 0,
 					"textFullReads": 50228,
 					"orderArrayReads": 52574,
 					"documentWalks": 1
@@ -4057,28 +4057,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 181.07720800000243,
-				"opMedian": 185.2736670000013,
-				"componentMin": 19.8636679998599,
-				"componentMedian": 20.536124999867752,
+				"opMin": 13.977333000002545,
+				"opMedian": 15.306915999986813,
+				"componentMin": 0.7819170000002487,
+				"componentMedian": 0.9795409999933327,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 105445,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 230.00691599980928,
-				"opMedian": 237.0435000001453,
-				"componentMin": 68.24945799983107,
-				"componentMedian": 71.42375000030734,
+				"opMin": 60.18445899999642,
+				"opMedian": 62.334499999997206,
+				"componentMin": 46.92995900000096,
+				"componentMedian": 49.29649999999674,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 370200,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 265056,
+					"blocksMapIterations": 0,
 					"textFullReads": 50228,
 					"orderArrayReads": 52574,
 					"documentWalks": 1
@@ -4091,28 +4091,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 170.83220799989067,
-				"opMedian": 1543.7283330000937,
-				"componentMin": 21.09058399987407,
-				"componentMedian": 119.91541699995287,
+				"opMin": 21.112166999999317,
+				"opMedian": 21.901957999987644,
+				"componentMin": 0.9241250000195578,
+				"componentMedian": 1.0051249999960419,
 				"counts": {
-					"blockOrderReads": 157507,
-					"blocksMapReads": 105033,
-					"blocksMapIterations": 262511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 52502,
 					"textFullReads": 2,
 					"orderArrayReads": 52504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 207.9258339998778,
-				"opMedian": 1860.8299160001334,
-				"componentMin": 71.28175000008196,
-				"componentMedian": 577.421917000087,
+				"opMin": 67.57920900000317,
+				"opMedian": 70.0607919999893,
+				"componentMin": 46.77379099999962,
+				"componentMedian": 48.85804200000712,
 				"counts": {
-					"blockOrderReads": 157501,
-					"blocksMapReads": 369529,
-					"blocksMapIterations": 262501,
+					"blockOrderReads": 0,
+					"blocksMapReads": 264530,
+					"blocksMapIterations": 52500,
 					"textFullReads": 50152,
 					"orderArrayReads": 52502,
 					"documentWalks": 1
@@ -4125,28 +4125,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 174.73091699997894,
-				"opMedian": 1094.5329170001205,
-				"componentMin": 20.8328339997679,
-				"componentMedian": 115.43941699992865,
+				"opMin": 12.584583000003477,
+				"opMedian": 14.329957999987528,
+				"componentMin": 0.9445419999974547,
+				"componentMedian": 1.01212499999383,
 				"counts": {
-					"blockOrderReads": 183963,
-					"blocksMapReads": 105216,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 404.9703749998007,
-				"opMedian": 1373.4562079999596,
-				"componentMin": 77.81949999998324,
-				"componentMedian": 420.96341600012966,
+				"opMin": 60.50591599999461,
+				"opMedian": 64.54541700000118,
+				"componentMin": 47.87508299999172,
+				"componentMedian": 52.313125999993645,
 				"counts": {
-					"blockOrderReads": 183969,
-					"blocksMapReads": 369970,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 3,
+					"blocksMapReads": 264828,
+					"blocksMapIterations": 0,
 					"textFullReads": 50233,
 					"orderArrayReads": 52574,
 					"documentWalks": 1
@@ -4159,13 +4159,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 1.1090420000255108,
-				"opMedian": 1.5378330000676215,
-				"componentMin": 0.011707999976351857,
-				"componentMedian": 0.023541000206023455,
+				"opMin": 1.1231669999979204,
+				"opMedian": 1.3621249999996508,
+				"componentMin": 0.01295800000661984,
+				"componentMedian": 0.018750000002910383,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -4173,13 +4173,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 61.31720900000073,
-				"opMedian": 65.60562499985099,
-				"componentMin": 59.42620799993165,
-				"componentMedian": 63.50058399979025,
+				"opMin": 58.68516599999566,
+				"opMedian": 60.28529099999287,
+				"componentMin": 56.27808400000504,
+				"componentMedian": 58.462916999997105,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 158261,
+					"blocksMapReads": 158259,
 					"blocksMapIterations": 0,
 					"textFullReads": 50158,
 					"orderArrayReads": 2,
@@ -4193,8 +4193,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.31004200014285743,
-				"opMedian": 0.47999999998137355,
+				"opMin": 0.30112499999813735,
+				"opMedian": 0.35587499999383,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -4207,8 +4207,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.3122920000459999,
-				"opMedian": 0.5495830001309514,
+				"opMin": 0.3004169999912847,
+				"opMedian": 0.36616700000013225,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -4227,28 +4227,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 170.1077500001993,
-				"opMedian": 191.2287500000093,
-				"componentMin": 0.010459000011906028,
-				"componentMedian": 0.012125000124797225,
+				"opMin": 12.156999999991967,
+				"opMedian": 12.534792000005837,
+				"componentMin": 0.0058330000028945506,
+				"componentMedian": 0.008291999998618849,
 				"counts": {
-					"blockOrderReads": 183967,
-					"blocksMapReads": 105185,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 233.60874999989755,
-				"opMedian": 267.26800000015646,
-				"componentMin": 62.36958299996331,
-				"componentMedian": 70.95320799993351,
+				"opMin": 69.67008300000452,
+				"opMedian": 72.61233400000492,
+				"componentMin": 57.267084000006435,
+				"componentMedian": 58.95512500000768,
 				"counts": {
-					"blockOrderReads": 183973,
-					"blocksMapReads": 263602,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 2,
+					"blocksMapReads": 158459,
+					"blocksMapIterations": 0,
 					"textFullReads": 50228,
 					"orderArrayReads": 52574,
 					"documentWalks": 1
@@ -4261,28 +4261,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 183.3618340000976,
-				"opMedian": 188.60370800015517,
-				"componentMin": 0.018832999980077147,
-				"componentMedian": 0.02154099987819791,
+				"opMin": 13.96258300000045,
+				"opMedian": 14.962459000002127,
+				"componentMin": 0.011249999995925464,
+				"componentMedian": 0.014207999993232079,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 105445,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 246.1382909999229,
-				"opMedian": 253.3288749998901,
-				"componentMin": 59.880040999967605,
-				"componentMedian": 63.330333000048995,
+				"opMin": 71.85704200000328,
+				"opMedian": 76.53100000000268,
+				"componentMin": 57.13162500000908,
+				"componentMedian": 60.63962500001071,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 263858,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 158714,
+					"blocksMapIterations": 0,
 					"textFullReads": 50228,
 					"orderArrayReads": 52574,
 					"documentWalks": 1
@@ -4295,28 +4295,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 159.51433399994858,
-				"opMedian": 165.46195799997076,
-				"componentMin": 0.006874999962747097,
-				"componentMedian": 0.008167000021785498,
+				"opMin": 21.277375000005122,
+				"opMedian": 22.086499999990338,
+				"componentMin": 0.006625000009080395,
+				"componentMedian": 0.007542000006651506,
 				"counts": {
-					"blockOrderReads": 157507,
-					"blocksMapReads": 105033,
-					"blocksMapIterations": 262511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 52502,
 					"textFullReads": 2,
 					"orderArrayReads": 52504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 222.08400000003166,
-				"opMedian": 226.23820800008252,
-				"componentMin": 59.723375000059605,
-				"componentMedian": 62.29720799997449,
+				"opMin": 80.09829199999513,
+				"opMedian": 83.19883399999526,
+				"componentMin": 57.03704199999629,
+				"componentMedian": 60.69370899999922,
 				"counts": {
-					"blockOrderReads": 157501,
-					"blocksMapReads": 263329,
-					"blocksMapIterations": 262501,
+					"blockOrderReads": 0,
+					"blocksMapReads": 158330,
+					"blocksMapIterations": 52500,
 					"textFullReads": 50152,
 					"orderArrayReads": 52502,
 					"documentWalks": 1
@@ -4329,28 +4329,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 166.72458300017752,
-				"opMedian": 174.76387499994598,
-				"componentMin": 0.020583000034093857,
-				"componentMedian": 0.023708000080659986,
+				"opMin": 12.169625000009546,
+				"opMedian": 13.099040999994031,
+				"componentMin": 0.009915999995428137,
+				"componentMedian": 0.01433299999916926,
 				"counts": {
-					"blockOrderReads": 183963,
-					"blocksMapReads": 105216,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 227.2609999999404,
-				"opMedian": 236.8114170001354,
-				"componentMin": 58.44362499983981,
-				"componentMedian": 62.28012500004843,
+				"opMin": 69.10020800000348,
+				"opMedian": 72.32458300000872,
+				"componentMin": 56.131750000000466,
+				"componentMedian": 58.778416000001016,
 				"counts": {
-					"blockOrderReads": 183969,
-					"blocksMapReads": 263630,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 3,
+					"blocksMapReads": 158488,
+					"blocksMapIterations": 0,
 					"textFullReads": 50233,
 					"orderArrayReads": 52574,
 					"documentWalks": 1
@@ -4363,13 +4363,13 @@
 			"row": "keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 1.243375000078231,
-				"opMedian": 1.6248329998925328,
-				"componentMin": 0.007999999914318323,
-				"componentMedian": 0.013665999984368682,
+				"opMin": 1.0612499999988358,
+				"opMedian": 1.3378339999908349,
+				"componentMin": 0.00554200001352001,
+				"componentMedian": 0.008916999999200925,
 				"counts": {
 					"blockOrderReads": 1,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 0,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -4377,13 +4377,13 @@
 				}
 			},
 			"naive": {
-				"opMin": 32.260666999965906,
-				"opMedian": 35.99204199993983,
-				"componentMin": 30.046624999959022,
-				"componentMedian": 33.21266600000672,
+				"opMin": 19.399791999996523,
+				"opMedian": 19.846624999991036,
+				"componentMin": 17.68704199999047,
+				"componentMedian": 18.048667000010028,
 				"counts": {
 					"blockOrderReads": 52501,
-					"blocksMapReads": 64,
+					"blocksMapReads": 62,
 					"blocksMapIterations": 52500,
 					"textFullReads": 9,
 					"orderArrayReads": 2,
@@ -4397,8 +4397,8 @@
 			"row": "caret-move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.3104999999050051,
-				"opMedian": 0.45441599981859326,
+				"opMin": 0.2694999999948777,
+				"opMedian": 0.2933340000017779,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -4411,8 +4411,8 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.3430840000510216,
-				"opMedian": 0.435457999818027,
+				"opMin": 0.2660829999949783,
+				"opMedian": 0.3064579999918351,
 				"componentMin": 0,
 				"componentMedian": 0,
 				"counts": {
@@ -4431,28 +4431,28 @@
 			"row": "insert-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 171.3697079999838,
-				"opMedian": 197.96629100013524,
-				"componentMin": 27.883582999929786,
-				"componentMedian": 33.91683300002478,
+				"opMin": 12.186709000001429,
+				"opMedian": 12.971833000003244,
+				"componentMin": 0.010249999992083758,
+				"componentMedian": 0.013124999997671694,
 				"counts": {
-					"blockOrderReads": 183967,
-					"blocksMapReads": 105185,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 175.9754580000881,
-				"opMedian": 194.92083299998194,
-				"componentMin": 27.702167000155896,
-				"componentMedian": 33.98925000010058,
+				"opMin": 31.046042000001762,
+				"opMedian": 32.65099999999802,
+				"componentMin": 17.99612499999057,
+				"componentMedian": 18.975040999997873,
 				"counts": {
-					"blockOrderReads": 183973,
-					"blocksMapReads": 105189,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 52574,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 52572,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -4465,28 +4465,28 @@
 			"row": "move-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 195.3255000000354,
-				"opMedian": 222.0733749999199,
-				"componentMin": 29.484958000015467,
-				"componentMedian": 34.39791699987836,
+				"opMin": 14.03475000000617,
+				"opMedian": 15.33612500000163,
+				"componentMin": 0.00941699999384582,
+				"componentMedian": 0.015165999997407198,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 105445,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 191.25104200001806,
-				"opMedian": 215.939500000095,
-				"componentMin": 30.31866700015962,
-				"componentMedian": 33.59920799988322,
+				"opMin": 31.983915999997407,
+				"opMedian": 35.11462500000198,
+				"componentMin": 17.780208000011044,
+				"componentMedian": 18.940583999996306,
 				"counts": {
-					"blockOrderReads": 210370,
-					"blocksMapReads": 105445,
-					"blocksMapIterations": 262860,
+					"blockOrderReads": 52574,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 52572,
 					"textFullReads": 7,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -4499,28 +4499,28 @@
 			"row": "delete-block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 263.5196660000365,
-				"opMedian": 362.5946250001434,
-				"componentMin": 12.264290999853984,
-				"componentMedian": 19.684374999953434,
+				"opMin": 21.068624999999884,
+				"opMedian": 38.93154200000572,
+				"componentMin": 11.376375000007101,
+				"componentMedian": 11.712666999999783,
 				"counts": {
-					"blockOrderReads": 157507,
-					"blocksMapReads": 105033,
-					"blocksMapIterations": 262511,
+					"blockOrderReads": 0,
+					"blocksMapReads": 30,
+					"blocksMapIterations": 52502,
 					"textFullReads": 2,
 					"orderArrayReads": 52504,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 178.00283400015905,
-				"opMedian": 344.4657910000533,
-				"componentMin": 11.923165999818593,
-				"componentMedian": 18.557541999965906,
+				"opMin": 21.15241700000479,
+				"opMedian": 39.13900000001013,
+				"componentMin": 11.176540999993449,
+				"componentMedian": 11.699708999993163,
 				"counts": {
-					"blockOrderReads": 157501,
-					"blocksMapReads": 105129,
-					"blocksMapIterations": 262501,
+					"blockOrderReads": 52501,
+					"blocksMapReads": 130,
+					"blocksMapIterations": 105000,
 					"textFullReads": 2,
 					"orderArrayReads": 52502,
 					"documentWalks": 0
@@ -4533,28 +4533,28 @@
 			"row": "split",
 			"runs": 31,
 			"incremental": {
-				"opMin": 168.69583399989642,
-				"opMedian": 182.0694580001291,
-				"componentMin": 28.054332999978215,
-				"componentMedian": 30.750042000086978,
+				"opMin": 12.525041000000783,
+				"opMedian": 13.015125000005355,
+				"componentMin": 0.008625000002211891,
+				"componentMedian": 0.011249999995925464,
 				"counts": {
-					"blockOrderReads": 183963,
-					"blocksMapReads": 105216,
-					"blocksMapIterations": 210279,
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
 					"textFullReads": 13,
 					"orderArrayReads": 52572,
 					"documentWalks": 0
 				}
 			},
 			"naive": {
-				"opMin": 172.60362499998882,
-				"opMedian": 182.17150000017136,
-				"componentMin": 29.084583000047132,
-				"componentMedian": 31.3845830000937,
+				"opMin": 30.084834000008414,
+				"opMedian": 31.108875000005355,
+				"componentMin": 17.428708000021288,
+				"componentMedian": 17.95845800000825,
 				"counts": {
-					"blockOrderReads": 183969,
-					"blocksMapReads": 105220,
-					"blocksMapIterations": 210287,
+					"blockOrderReads": 52575,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 52572,
 					"textFullReads": 13,
 					"orderArrayReads": 52574,
 					"documentWalks": 0
@@ -4567,10 +4567,10 @@
 			"row": "paint after keystroke",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.0014580001588910818,
-				"opMedian": 0.0025839998852461576,
-				"componentMin": 0.0014580001588910818,
-				"componentMedian": 0.0025839998852461576,
+				"opMin": 0.0009580000187270343,
+				"opMedian": 0.0020000000076834112,
+				"componentMin": 0.0009580000187270343,
+				"componentMedian": 0.0020000000076834112,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -4581,10 +4581,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.0012499999720603228,
-				"opMedian": 0.002334000077098608,
-				"componentMin": 0.0012499999720603228,
-				"componentMedian": 0.002334000077098608,
+				"opMin": 0.0008749999979045242,
+				"opMedian": 0.0019169999868609011,
+				"componentMin": 0.0008749999979045242,
+				"componentMedian": 0.0019169999868609011,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -4601,10 +4601,10 @@
 			"row": "paint after caret move",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.00033299997448921204,
-				"opMedian": 0.0005000000819563866,
-				"componentMin": 0.00033299997448921204,
-				"componentMedian": 0.0005000000819563866,
+				"opMin": 0.0002919999824371189,
+				"opMedian": 0.00041599999531172216,
+				"componentMin": 0.0002919999824371189,
+				"componentMedian": 0.00041599999531172216,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
@@ -4615,10 +4615,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.0019580000080168247,
-				"opMedian": 0.0024999999441206455,
-				"componentMin": 0.0019580000080168247,
-				"componentMedian": 0.0024999999441206455,
+				"opMin": 0.0012500000011641532,
+				"opMedian": 0.0016659999964758754,
+				"componentMin": 0.0012500000011641532,
+				"componentMedian": 0.0016659999964758754,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -4635,10 +4635,10 @@
 			"row": "repaint, D5 range over half the document",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.00037499982863664627,
-				"opMedian": 0.0004999998491257429,
-				"componentMin": 0.00037499982863664627,
-				"componentMedian": 0.0004999998491257429,
+				"opMin": 0.0003330000035930425,
+				"opMedian": 0.0005419999943114817,
+				"componentMin": 0.0003330000035930425,
+				"componentMedian": 0.0005419999943114817,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
@@ -4649,10 +4649,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 0.17966700019314885,
-				"opMedian": 0.18475000001490116,
-				"componentMin": 0.17966700019314885,
-				"componentMedian": 0.18475000001490116,
+				"opMin": 0.16762500000186265,
+				"opMedian": 0.2146249999932479,
+				"componentMin": 0.16762500000186265,
+				"componentMedian": 0.2146249999932479,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 3,
@@ -4669,10 +4669,10 @@
 			"row": "repaint, block selection of every root block",
 			"runs": 31,
 			"incremental": {
-				"opMin": 0.026374999899417162,
-				"opMedian": 0.03212499991059303,
-				"componentMin": 0.026374999899417162,
-				"componentMedian": 0.03212499991059303,
+				"opMin": 0.02704099999391474,
+				"opMedian": 0.032417000009445474,
+				"componentMin": 0.02704099999391474,
+				"componentMedian": 0.032417000009445474,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
@@ -4683,10 +4683,10 @@
 				}
 			},
 			"naive": {
-				"opMin": 4.380333000095561,
-				"opMedian": 4.81104200007394,
-				"componentMin": 4.380333000095561,
-				"componentMedian": 4.81104200007394,
+				"opMin": 4.317957999999635,
+				"opMedian": 4.70045800000662,
+				"componentMin": 4.317957999999635,
+				"componentMedian": 4.70045800000662,
 				"counts": {
 					"blockOrderReads": 0,
 					"blocksMapReads": 0,
