@@ -235,6 +235,32 @@ describe("block notifier (SCALE2 fan-out)", () => {
 		editor.destroy();
 	});
 
+	it("SCALE6: a text range ending in a children-array child slices its root endpoint from the anchor", () => {
+		const editor = createEditor({ schema: defaultSchema });
+		const first = editor.firstBlock()!.id;
+		editor.apply(
+			[
+				{ type: "splice-text", blockId: first, from: 0, to: 0, insert: "first" },
+				{ type: "insert-block", blockId: "tg", blockType: "toggle", props: { open: true }, position: "last" },
+				{ type: "insert-block", blockId: "child", blockType: "paragraph", props: {}, position: { parent: "tg", index: 0 } },
+				{ type: "splice-text", blockId: "child", from: 0, to: 0, insert: "child" },
+			],
+			{ origin: "system" },
+		);
+		const notifier = createBlockNotifier(editor);
+		const unsubscribes = [first, "child"].map((id) => notifier.subscribeBlock(id, () => {}));
+		editor.setSelection({
+			type: "text",
+			anchor: { blockId: first, offset: 1 },
+			focus: { blockId: "child", offset: 2 },
+		});
+		expect(editor.documentState.indexOf("child"), "outside the root order").toBe(-1);
+		// The anchor comes first in document order: it is the range's start.
+		expect(notifier.getBlockSnapshot(first).selection.textRange).toEqual({ from: 1, to: "end" });
+		for (const unsubscribe of unsubscribes) unsubscribe();
+		editor.destroy();
+	});
+
 	it("SCALE4: the block notifier releases subscribers and source subscriptions", () => {
 		const editor = createDocument(10);
 		const notifier = createBlockNotifier(editor);

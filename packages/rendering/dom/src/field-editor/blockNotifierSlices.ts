@@ -196,13 +196,25 @@ function textRangeFor(
 	if (anchor.blockId === focus.blockId) {
 		return { from: Math.min(anchor.offset, focus.offset), to: Math.max(anchor.offset, focus.offset) };
 	}
-	const state = editor.documentState;
-	const forward = state.indexOf(anchor.blockId) <= state.indexOf(focus.blockId);
+	const forward = inDocumentOrder(editor, anchor.blockId, focus.blockId);
 	const start = forward ? anchor : focus;
 	const end = forward ? focus : anchor;
 	if (blockId === start.blockId) return { from: start.offset, to: "end" };
 	if (blockId === end.blockId) return { from: 0, to: end.offset };
 	return { from: 0, to: "end" };
+}
+
+/**
+ * Whether `firstId` comes no later than `secondId` in document order. Two
+ * root-order blocks compare by root index; a children-array child has none
+ * (-1), so then both compare by core's preorder index.
+ */
+function inDocumentOrder(editor: Editor, firstId: string, secondId: string): boolean {
+	const state = editor.documentState;
+	const first = state.indexOf(firstId);
+	const second = state.indexOf(secondId);
+	if (first >= 0 && second >= 0) return first <= second;
+	return state.preorderIndexOf(firstId) <= state.preorderIndexOf(secondId);
 }
 
 export function buildFieldSlice(
