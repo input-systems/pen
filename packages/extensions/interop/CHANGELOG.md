@@ -1,5 +1,40 @@
 # @input/pen-interop
 
+## 0.3.0
+
+### Minor Changes
+
+- 55f100d: Raise `engines.node` from `>=22` to `^22.22.2 || ^24.15.0 || >=26.0.0` (HOST3). `@input/pen-interop` sanitizes HTML through `isomorphic-dompurify` 4.3, which builds its Node window with jsdom 30, and jsdom 30 declares that range; `@input/pen`, `@input/pen-react`, and `@input/pen-vue` depend on interop, so the workspace-wide floor moves with it. Node 22 releases before 22.22.2, Node 24 releases before 24.15.0, and Node 23 and 25 are no longer supported.
+
+  Breaking: yes — hosts running Node below 22.22.2, 24.0–24.14, or 23/25 must move to a supported Node line (^22.22.2, ^24.15.0 or >=26.0.0)
+
+### Patch Changes
+
+- 4d1c512: HTML import no longer drops pasted text.
+
+  - Nested lists from Slack, Apple Notes and Google Docs keep every item at the right indent.
+  - Block content wrapped in an inline element (Google Docs' outer `<b>`) stays as separate blocks.
+  - Table captions and text outside `<code>` in a `<pre>` are kept.
+  - A conversion that would still lose text falls back to plain paragraphs or the literal clipboard text.
+  - The sanitizer's `isomorphic-dompurify` moves from `~2.36.0` to `~4.3.0`. Its allowlist and output are unchanged (SEC7).
+
+  Breaking: no
+
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [55f100d]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+  - @input/pen-types@0.3.0
+  - @input/pen-core@0.3.0
+  - @input/pen-ingest@0.3.0
+  - @input/pen-markdown@0.3.0
+
 ## 0.2.14
 
 ### Patch Changes

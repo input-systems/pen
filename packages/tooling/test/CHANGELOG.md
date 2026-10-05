@@ -1,5 +1,49 @@
 # @input/pen-test
 
+## 0.3.0
+
+### Minor Changes
+
+- 55f100d: Raise `engines.node` from `>=22` to `^22.22.2 || ^24.15.0 || >=26.0.0` (HOST3). `@input/pen-interop` sanitizes HTML through `isomorphic-dompurify` 4.3, which builds its Node window with jsdom 30, and jsdom 30 declares that range; `@input/pen`, `@input/pen-react`, and `@input/pen-vue` depend on interop, so the workspace-wide floor moves with it. Node 22 releases before 22.22.2, Node 24 releases before 24.15.0, and Node 23 and 25 are no longer supported.
+
+  Breaking: yes — hosts running Node below 22.22.2, 24.0–24.14, or 23/25 must move to a supported Node line (^22.22.2, ^24.15.0 or >=26.0.0)
+
+### Patch Changes
+
+- 4d1c512: Scale measurement and multi-peer test tooling.
+
+  - `@input/pen-test` adds:
+    - `createPeerHarness(n)`, with seeded delivery schedules (`PEER_SCHEDULES`, `runPeerSchedules`), `quiesce()` and an awareness relay. `createTwoPeerHarness()` is now its two-peer form and also destroys each `Y.Doc`.
+    - The COL4 structural oracle (`findStructuralViolations`, `assertStructuralInvariants`).
+    - `createScanProbe(editor)` for counting document reads.
+    - The mixed 1k–50k block fixture (`generateMixedBlockSpecs`, `mixedFixtureOps` and related helpers).
+  - `@input/pen-bench` adds:
+    - A realistic SCALE3 variant with AI and search installed.
+    - A synced-peer SCALE3 axis.
+    - Structural-commit read gates.
+    - Renderer rows in `ENVELOPE.md`, and a measured concurrent-peer row.
+    - The envelope re-recorded on a quiet machine.
+  - `bench:caches` fails on any diagnostic except `anchor-budget`.
+
+  Breaking: no
+
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [55f100d]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+  - @input/pen-types@0.3.0
+  - @input/pen-core@0.3.0
+  - @input/pen-yjs@0.3.0
+  - @input/pen-interop@0.3.0
+  - @input/pen-schema@0.3.0
+
 ## 0.2.14
 
 ### Patch Changes

@@ -1,5 +1,64 @@
 # @input/pen-transport
 
+## 0.3.0
+
+### Minor Changes
+
+- 4d1c512: AI tool calls are attributed, classified and undone per call (AIB3, AIB4).
+
+  - `openAIToolCall()` returns the call's own `context`. `executeAITool()` and both transports run handlers with it. Every write path books a write to the call that issued it, and refuses a read-only call's write.
+  - The user's typing while a call is open is no call's write.
+  - `StreamingTarget.disableActiveWriter()` is replaced by the `activeWriter` getter.
+  - `ToolDefinition.destructive` may be a resolver `(input, { staged }) => boolean` (`ToolDestructiveResolver`, `ToolAuthorityContext`).
+  - `edit_document` consults `confirm` only for direct calls that remove or replace content: direct replaces, deletes of non-empty blocks, and content-kind changes. `authorizeAIToolCall` and `isDestructiveAITool` take the call's context.
+  - New `unconfirmedDestructive: "refuse"` (on `aiExtension`, `AIToolGrant`, `AIToolTurnOptions` and `AgenticLoopOptions`) blocks destructive calls when no resolver is installed. Use it in production if you expose `delete_block` or `write_document`.
+  - A host that used `confirm` as an "every AI edit" hook moves to `onBeforeApply` or the commit event.
+  - `UndoManager.syncExplicitUndoGroup` is replaced by `withCapture(origin, groupId, run)`. `CRDTUndoManager` gains an optional `setCaptureKey` (`CRDTUndoCaptureKey`).
+
+  Host migration:
+
+  - Tool handlers that compared `ctx.editor === editor` compare `ctx.editor.internals.adapter` (or the document) instead, because `ctx.editor` is now a per-call view.
+  - Code that called `StreamingTarget.disableActiveWriter()` reads `activeWriter`.
+  - Code that reads `ToolDefinition.destructive` as a boolean must handle a function.
+  - Hosts that implement `UndoManager` replace `syncExplicitUndoGroup` with `withCapture`.
+
+  Breaking: yes — tool handlers compare `ctx.editor.internals.adapter` instead of `ctx.editor === editor`, read `activeWriter` instead of `disableActiveWriter()`, handle a function-valued `ToolDefinition.destructive`, and `UndoManager` implementations replace `syncExplicitUndoGroup` with `withCapture`
+
+- 55f100d: Raise `engines.node` from `>=22` to `^22.22.2 || ^24.15.0 || >=26.0.0` (HOST3). `@input/pen-interop` sanitizes HTML through `isomorphic-dompurify` 4.3, which builds its Node window with jsdom 30, and jsdom 30 declares that range; `@input/pen`, `@input/pen-react`, and `@input/pen-vue` depend on interop, so the workspace-wide floor moves with it. Node 22 releases before 22.22.2, Node 24 releases before 24.15.0, and Node 23 and 25 are no longer supported.
+
+  Breaking: yes — hosts running Node below 22.22.2, 24.0–24.14, or 23/25 must move to a supported Node line (^22.22.2, ^24.15.0 or >=26.0.0)
+
+### Patch Changes
+
+- 4d1c512: AI write attribution, undo grouping and review preview fixes:
+
+  - **Undo grouping (AIB4)**
+    - Undo capture is keyed. One AI action stays one undo step even when the user types during it, and the user's typing stays its own steps.
+    - `directTransport` and `createSSEHandler` give each request one undo group.
+  - **Overlapping calls (AIB3)**
+    - Overlapping tool calls and generations keep their own write guard and staged-write binding. A call closing out of order no longer drops another call's guard or unstages its writes.
+    - `directTransport`, `createSSEHandler` and `processStream` apply the editor's `confirm` / `unconfirmedDestructive` policy and accept their own overrides. They allow destructive calls by default when no `confirm` is set, so a server reachable by clients should pass `"refuse"` or a `confirm`.
+  - **Review preview (RS6):** the `edit_document` streaming preview matches what accept will do: multi-block and nested replaces and deletes, insert placement, empty replacements, and moves and formatting. `EditDocumentPreviewUpdate` gains `blockIds`, `placement` and `complete`. `AIStreamingReviewPreviewInput` gains `complete`, `deletesBlocks` and `replacesBlocks`.
+  - **Undo drift anchors:** undo reuses the selection authority's anchors through `editor.internals.selectionAnchors()` and `selectionAnchorRepair()` (AN14). This stops spurious `anchor-target-missing` for ranges that end on dividers or tables, and halves `anchor-budget` churn.
+  - **Anchor repair (AN2, AN14):** `repairAnchor` reads an anchor's position from before the commit even when something resolved it after the commit landed, so a split no longer moves an anchor to the start of the new block. An anchor that resolved to `null` before a commit stays dead instead of being revived from an older position, and a merge carries an `assoc: -1` anchor at the start of the merged-away block into the target instead of losing it.
+  - **React AI chrome:** the AI suggestions popover is scoped to its own editor. `Pen.AI.ContextualPromptComposer` no longer throws a hook-order error when a session opens.
+
+  Breaking: no
+
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [55f100d]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+- Updated dependencies [4d1c512]
+  - @input/pen-types@0.3.0
+  - @input/pen-ai@0.3.0
+  - @input/pen-core@0.3.0
+
 ## 0.2.14
 
 ### Patch Changes
