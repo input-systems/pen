@@ -102,6 +102,7 @@ export const PROPERTY_OPS = [
 	"resolve-suggestion",
 	"select",
 	"concurrent-delete-move",
+	"listener-write",
 ] as const;
 
 export type PropertyOp = (typeof PROPERTY_OPS)[number];
@@ -1557,6 +1558,32 @@ export function createPropertyCase(
 		if (rng.chance(0.5)) exchange(left, right);
 	};
 
+	/**
+	 * A peer's `commit` listener writes while a remote delivery or an undo is
+	 * being committed on it: the first commit it hears applies one random
+	 * op's batch from inside the listener, as a host reacting to a commit
+	 * does. Every cache must still equal its recompute afterwards.
+	 */
+	const listenerWrite = () => {
+		const peer = pickPeer();
+		const op = rng.pick(BATCHABLE_OPS);
+		let fired = false;
+		const off = peer.editor.on("commit", (event: CommitEvent) => {
+			if (fired) return;
+			fired = true;
+			trace.push(
+				`${peer.label} commit listener (${JSON.stringify(event.origin)}) writes ${op}`,
+			);
+			writeBatch(peer.editor, op);
+		});
+		try {
+			if (rng.chance(0.3)) undoOrRedo(peer, "undo");
+			else deliver(pickOtherPeer(peer), peer);
+		} finally {
+			off();
+		}
+	};
+
 	const runOp = (op: PropertyOp): void => {
 		switch (op) {
 			case "keystroke":
@@ -1685,6 +1712,9 @@ export function createPropertyCase(
 				exchange(left, right);
 				return;
 			}
+			case "listener-write":
+				listenerWrite();
+				return;
 			case "concurrent-delete-move": {
 				// COL4: a delete against a peer's move leaves a dead order entry
 				// on the deleting peer until its next local pass; an undo
