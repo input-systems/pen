@@ -3,6 +3,7 @@ import type { ChangeSummary, DiagnosticEvent, DocumentOp } from "@input/pen-type
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
+import { createBlockIndexSnapshotFromDocument } from "../changes/fromDocument";
 import { replaceRangeOps } from "../commands/helpers";
 import { createEditor as createCoreEditor } from "../index";
 import { createDefaultSchema } from "./fixtures/testSchema";
@@ -171,6 +172,157 @@ describe("COL4 dangling structural entries (Rule 12)", () => {
 				{ type: "block-removed", blockId: "p2", parentId: null, index: 0 },
 			]);
 			expect(summaries[0]!.affectedBlockIds).toEqual(["p2"]);
+		} finally {
+			destroyAll(peers);
+		}
+	});
+
+	it("COL4: a remote delete that leaves the mover's entry drops the block from a cached preorder", () => {
+		const peers = forkPeers(2, FLAT_SEED);
+		const [a, b] = peers as [Peer, Peer];
+		try {
+			a.editor.apply([{ type: "delete-block", blockId: "p2" }]);
+			b.editor.apply(moveP2("first"));
+			const state = b.editor.documentState;
+			expect(state.preorderBlockIds()).toEqual(["p2", "p1", "p3"]);
+			const generation = state.generation;
+
+			const update = Y.encodeStateAsUpdate(
+				a.ydoc,
+				Y.encodeStateVector(b.ydoc),
+			);
+			b.editor.internals.adapter.applyUpdate(
+				b.editor.internals.crdtDoc,
+				update,
+			);
+
+			// The entry survives in storage; the preorder skips it, as a fresh build does.
+			expect(blockOrderIds(b)).toEqual(["p2", "p1", "p3"]);
+			expect(state.preorderBlockIds()).toEqual(["p1", "p3"]);
+			expect(state.preorderIndexOf("p2")).toBe(-1);
+			expect(state.generation).toBeGreaterThan(generation);
+		} finally {
+			destroyAll(peers);
+		}
+	});
+
+	it("COL4: a local pass that swaps a dangling root entry for a re-homed orphan updates the document index", () => {
+		const seed = encodeSeed(
+			["p1", "p2", "p3", "t"],
+			[
+				{ id: "p1", type: "paragraph", text: "One" },
+				{ id: "p2", type: "paragraph", text: "Two" },
+				{ id: "p3", type: "paragraph", text: "Three" },
+				{ id: "t", type: "toggle", children: [] },
+			],
+		);
+		const peers = forkPeers(2, seed);
+		const [a, b] = peers as [Peer, Peer];
+		try {
+			a.editor.apply([{ type: "delete-block", blockId: "p2" }]);
+			a.editor.apply([{ type: "delete-block", blockId: "t" }]);
+			b.editor.apply(moveP2("last"));
+			b.editor.apply([
+				{
+					type: "move-block",
+					blockId: "p1",
+					position: { parent: "t", index: 0 },
+				},
+			]);
+			syncAll(peers);
+			// b: `p2` is a dangling root entry, `p1` an orphan in a deleted
+			// toggle; `p3`, the block the next op writes, keeps its position.
+			expect(blockOrderIds(b)).toEqual(["p3", "p2"]);
+
+			// The pass inside any local apply repairs both, keeping the length.
+			b.editor.apply([
+				{
+					type: "splice-text",
+					blockId: "p3",
+					from: 0,
+					to: 0,
+					insert: "x",
+				},
+			]);
+
+			expect(blockOrderIds(b)).toEqual(["p3", "p1"]);
+			expect(b.editor.documentState.blockOrder).toEqual(["p3", "p1"]);
+			expect(b.editor.documentState.preorderBlockIds()).toEqual([
+				"p3",
+				"p1",
+			]);
+		} finally {
+			destroyAll(peers);
+		}
+	});
+
+	it("COL4: a block map arriving under a deleted parent reshapes the change-summary index", () => {
+		const seed = encodeSeed(
+			["p1", "t"],
+			[
+				{ id: "p1", type: "paragraph", text: "One" },
+				{ id: "t", type: "toggle", children: [] },
+			],
+		);
+		const peers = forkPeers(2, seed);
+		const [a, b] = peers as [Peer, Peer];
+		try {
+			// Both peers write once first, so the concurrent commit carries no
+			// first-write metadata of its own.
+			a.editor.apply([
+				{
+					type: "splice-text",
+					blockId: "p1",
+					from: 0,
+					to: 0,
+					insert: "a",
+				},
+			]);
+			b.editor.apply([
+				{
+					type: "splice-text",
+					blockId: "p1",
+					from: 0,
+					to: 0,
+					insert: "b",
+				},
+			]);
+			syncAll(peers);
+			a.editor.apply([
+				{
+					type: "insert-block",
+					blockId: "c",
+					blockType: "paragraph",
+					props: {},
+					position: { parent: "t", index: 0 },
+				},
+			]);
+			b.editor.apply([{ type: "delete-block", blockId: "t" }]);
+			const summaries: ChangeSummary[] = [];
+			const off = b.editor.on("commit", (event) =>
+				summaries.push(event.summary),
+			);
+			const update = Y.encodeStateAsUpdate(
+				a.ydoc,
+				Y.encodeStateVector(b.ydoc),
+			);
+			b.editor.internals.adapter.applyUpdate(
+				b.editor.internals.crdtDoc,
+				update,
+			);
+			off();
+
+			// `c`'s map lands; its entry went into an array b already deleted.
+			expect(b.ydoc.getMap("blocks").has("c")).toBe(true);
+			expect(summaries.flatMap((summary) => summary.structural)).toEqual(
+				[],
+			);
+			const index = (
+				b.editor as unknown as { _blockIndex: { snapshot(): unknown } }
+			)._blockIndex.snapshot();
+			expect(index).toEqual(
+				createBlockIndexSnapshotFromDocument(b.editor.internals.doc),
+			);
 		} finally {
 			destroyAll(peers);
 		}

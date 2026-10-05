@@ -64,8 +64,11 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 				}
 				// A text-only commit moves lengths and nothing else, so the
 				// index advances in place. Rebuilding it from the document
-				// would read every block's text on every keystroke (SCALE2).
-				if (summary.structural.length === 0) {
+				// would read every block's text on every keystroke (SCALE2). An
+				// array edit, or a block map arriving or leaving, that reports no
+				// structural change (a duplicate entry's repair, an orphan whose
+				// parent a peer deleted; COL4) still reshapes the index.
+				if (summary.structural.length === 0 && !reshapesIndex(delta)) {
 					host._blockIndex.applyTextLengths(summary.blockText);
 				} else {
 					host._blockIndex.replace(
@@ -95,6 +98,17 @@ function flushDeferredCRDTEvent(host: ChangeSummaryHost): void {
 	if (!deferred) return;
 	host._deferredCRDTEvent = null;
 	host._dispatchCRDTEvent(deferred);
+}
+
+/** Whether a commit edited an order array or added or removed a block map. */
+function reshapesIndex(delta: RawCommitDelta): boolean {
+	if (delta.blockOrderDelta.length > 0 || delta.childArrayDeltas.size > 0) {
+		return true;
+	}
+	for (const keys of delta.blockMapChanges.values()) {
+		if (keys.size === 0) return true;
+	}
+	return false;
 }
 
 /** Keys of a block map whose change can move the block in the tree. */

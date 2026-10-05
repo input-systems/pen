@@ -318,6 +318,17 @@ class BlockNotifierImpl implements BlockNotifier {
 		const previousRootIds = this._document?.rootIds ?? null;
 		if (summary.structural.length > 0) {
 			this._reselect(ids);
+			// A multi-block text range's endpoint slices follow the endpoints'
+			// document order, which a structural commit can flip while the
+			// selection itself is unchanged.
+			const selection = this._selection;
+			if (
+				selection?.type === "text" &&
+				selection.anchor.blockId !== selection.focus.blockId
+			) {
+				ids.add(selection.anchor.blockId);
+				ids.add(selection.focus.blockId);
+			}
 			this._collectListRuns(summary, ids, context);
 		}
 		const liveness = this._trackDeadIds(summary);
@@ -354,9 +365,17 @@ class BlockNotifierImpl implements BlockNotifier {
 
 	private _onSelection(): void {
 		const previous = this._selection;
+		const previousSelected = this._selected;
 		this._selection = this._editor.selection;
 		const ids = new Set<string>([...endpoints(previous), ...endpoints(this._selection)]);
 		this._reselect(ids);
+		// A selection that changed kind re-slices every block it covered or
+		// covers, not only those whose membership moved: a block inside both a
+		// text range and the block selection replacing it loses its text range.
+		if (previous?.type !== this._selection?.type) {
+			for (const id of previousSelected) ids.add(id);
+			for (const id of this._selected) ids.add(id);
+		}
 		this._deliver("selection", ids);
 	}
 
@@ -642,17 +661,28 @@ class BlockNotifierImpl implements BlockNotifier {
 					add(change.parentId);
 					add(this._cachedParentOf(change.blockId));
 					break;
+				// The array a move wrote into is touched even when the index
+				// resolves the block elsewhere: concurrent moves can list it in
+				// two arrays (COL4) until the next local pass repairs that. A
+				// `parentId`-route child moved into an array leaves the container
+				// that rendered it, which the summary does not name, and the index
+				// may resolve to either route.
 				case "block-moved":
 					add(change.fromParentId);
+					add(change.toParentId);
+					add(this._cachedParentOf(change.blockId));
 					addCurrent(change.blockId);
 					break;
 				case "block-split":
 					addCurrent(change.blockId);
 					addCurrent(change.newBlockId);
 					break;
+				// The merge removes its source and names no `block-removed` for
+				// it: a `parentId`-route source's container still lists it.
 				case "blocks-merged":
 					addCurrent(change.targetBlockId);
 					addCurrent(change.sourceBlockId);
+					add(this._cachedParentOf(change.sourceBlockId));
 					break;
 				case "block-props-changed":
 					if (!change.keys.some((key) => LIST_SEMANTIC_PROPS.has(key))) break;

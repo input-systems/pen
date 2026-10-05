@@ -128,6 +128,33 @@ describe("summarySource", () => {
 		]);
 	});
 
+	it("reports the children array of a block that arrived carrying one", () => {
+		const doc = adapter.createDocument() as YjsCRDTDocument;
+		seedDocument(doc);
+		const deltas: RawCommitDelta[] = [];
+		createSummarySource(doc, (delta) => {
+			deltas.push(delta);
+		});
+
+		adapter.transact(doc, () => {
+			initBlockMap(doc.penDocument.blocks, "box", "column", "nested");
+			initBlockMap(doc.penDocument.blocks, "c1", "paragraph", "inline");
+			(
+				doc.penDocument.blocks
+					.get("box")!
+					.get("children") as Y.Array<string>
+			).push(["c1"]);
+			doc.penDocument.blockOrder.push(["box"]);
+		});
+
+		expect(deltas).toHaveLength(1);
+		// Yjs reports no delta for an array created inside the transaction.
+		expect(deltas[0]!.childArrayDeltas.has("box")).toBe(false);
+		expect(Object.fromEntries(deltas[0]!.arrivedChildArrays ?? [])).toEqual(
+			{ box: ["c1"] },
+		);
+	});
+
 	it("does not report a reordered block's existing text as an insert", () => {
 		const doc = adapter.createDocument() as YjsCRDTDocument;
 		seedDocument(doc);

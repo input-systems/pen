@@ -46,6 +46,13 @@ export interface RawCommitDelta {
 	readonly blockOrderDelta: YArrayDelta;
 	readonly childArrayDeltas: ReadonlyMap<string, YArrayDelta>;
 	readonly blockMapChanges: ReadonlyMap<string, ReadonlySet<string>>;
+	/**
+	 * Each non-empty `children` array created in this transaction: on a block
+	 * whose map arrived whole (an undo restoring a container, a peer's
+	 * insert), or set on an existing block by its first child. Yjs reports no
+	 * array delta for an array created inside the transaction.
+	 */
+	readonly arrivedChildArrays?: ReadonlyMap<string, readonly string[]>;
 	readonly appChanges: ReadonlySet<string>;
 	readonly metadataChanges: ReadonlySet<string>;
 }
@@ -172,6 +179,7 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 	const textDeltas = new Map<string, YTextDelta[]>();
 	const childArrayDeltas = new Map<string, YArrayDelta>();
 	const blockMapChanges = new Map<string, Set<string>>();
+	const arrivedChildArrays = new Map<string, readonly string[]>();
 	const entryChangedBlockIds = new Set<string>();
 	const appChanges = new Set<string>();
 	const metadataChanges = new Set<string>();
@@ -260,6 +268,15 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 
 			if (item?.parent === blocks) {
 				addKeys(blockMapChanges, blockId, keys);
+				// A `children` array set on an existing block (created on its
+				// first child) arrives whole, like a new block's.
+				if (keys.has("children")) {
+					addArrivedChildren(
+						arrivedChildArrays,
+						blockId,
+						(ytype as Y.Map<unknown>).get("children"),
+					);
+				}
 				continue;
 			}
 
@@ -274,7 +291,12 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 		}
 	}
 
-	addArrivedBlockText(blocks, entryChangedBlockIds, textDeltas);
+	addArrivedBlockContent(
+		blocks,
+		entryChangedBlockIds,
+		textDeltas,
+		arrivedChildArrays,
+	);
 
 	return {
 		originTag: readOriginTag(txn),
@@ -282,6 +304,7 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 		blockOrderDelta,
 		childArrayDeltas,
 		blockMapChanges,
+		arrivedChildArrays,
 		appChanges,
 		metadataChanges,
 	};
@@ -295,20 +318,38 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
  * its own. Every observer downstream would see the block appear and its text
  * arrive from nowhere — which is what left AN14's remote pairing with a delete
  * and nothing to pair it against when a peer split a block.
+ *
+ * The same holds for a `children` array the block arrived with: its entries
+ * are returned per block, read from the one block map read.
  */
-function addArrivedBlockText(
+function addArrivedBlockContent(
 	blocks: Y.Map<Y.Map<unknown>>,
 	entryChangedBlockIds: ReadonlySet<string>,
 	textDeltas: Map<string, YTextDelta[]>,
+	arrivedChildArrays: Map<string, readonly string[]>,
 ): void {
 	for (const blockId of entryChangedBlockIds) {
+		const block = blocks.get(blockId);
+		addArrivedChildren(arrivedChildArrays, blockId, block?.get("children"));
 		if (textDeltas.has(blockId)) continue;
-		const content = blocks.get(blockId)?.get("content");
+		const content = block?.get("content");
 		if (!(content instanceof Y.Text) || content.length === 0) continue;
 		textDeltas.set(blockId, [
 			snapshotTextDelta(content.toDelta() as YTextDeltaOp[]),
 		]);
 	}
+}
+
+function addArrivedChildren(
+	arrivedChildArrays: Map<string, readonly string[]>,
+	blockId: string,
+	children: unknown,
+): void {
+	if (!(children instanceof Y.Array) || children.length === 0) return;
+	arrivedChildArrays.set(
+		blockId,
+		children.toArray().filter((id): id is string => typeof id === "string"),
+	);
 }
 
 export function createSummarySource(

@@ -45,9 +45,11 @@ export class SuggestionListIndex {
 	// fallow-ignore-next-line unused-class-member
 	list(editor: Editor): PersistentSuggestion[] {
 		const state = editor.documentState;
-		const blockIds = [...this._byBlock.keys()].sort(
-			(left, right) => state.preorderIndexOf(left) - state.preorderIndexOf(right),
-		);
+		// A block outside the preorder is stored but rendered nowhere (a COL4
+		// orphan until the next local pass re-homes it); the full walk skips it.
+		const blockIds = [...this._byBlock.keys()]
+			.filter((blockId) => state.preorderIndexOf(blockId) >= 0)
+			.sort((left, right) => state.preorderIndexOf(left) - state.preorderIndexOf(right));
 		return blockIds.flatMap((blockId) => this._byBlock.get(blockId) ?? []);
 	}
 

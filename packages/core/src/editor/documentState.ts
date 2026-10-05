@@ -374,6 +374,7 @@ export class DocumentStateImpl implements DocumentState {
 	private _parentChanged(blockId: string): boolean {
 		const cached = this._parentIndex.get(blockId);
 		const blockMap = (this._doc.blocks as CRDTBlockMap).get(blockId);
+		if (this._livenessMoved(blockId, blockMap !== undefined)) return true;
 		const props = blockMap?.get("props") as CRDTMap<unknown> | undefined;
 		const parentId = props?.get?.("parentId");
 		if (typeof parentId === "string" && parentId !== "") {
@@ -391,6 +392,18 @@ export class DocumentStateImpl implements DocumentState {
 			if (children.get(i) === blockId) return false;
 		}
 		return true;
+	}
+
+	/**
+	 * A root entry whose block map left or arrived without an array edit: a
+	 * remote delete against a concurrent move keeps the order entry (COL4),
+	 * and an order entry can arrive before its block map. The preorder skips
+	 * an entry without a block map, so it is rebuilt. A nested entry's
+	 * liveness is caught by `_positionChanged`. Reads nothing new.
+	 */
+	private _livenessMoved(blockId: string, stored: boolean): boolean {
+		if (!this._preorder || !this._positionIndex.has(blockId)) return false;
+		return this._preorder.index.has(blockId) !== stored;
 	}
 
 	private _isIndexedNestedChild(blockId: string): boolean {

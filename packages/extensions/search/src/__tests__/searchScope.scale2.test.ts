@@ -155,4 +155,70 @@ describe("SCALE2 scoped search", () => {
 		expect(controller.getState().matches.map((match) => match.blockId)).not.toContain("c");
 		editor.destroy();
 	});
+
+	it("SCALE2: a commit naming a stored block no array reaches does not bring its matches back", () => {
+		const editor = createSearchEditor(2, "alpha");
+		editor.apply(
+			[
+				{
+					type: "insert-block",
+					blockId: "t",
+					blockType: "toggle",
+					props: {},
+					position: "last",
+				},
+				{
+					type: "insert-block",
+					blockId: "c",
+					blockType: "paragraph",
+					props: {},
+					position: { parent: "t", index: 0 },
+				},
+				{
+					type: "splice-text",
+					blockId: "c",
+					from: 0,
+					to: 0,
+					insert: "alpha child",
+				},
+			],
+			{ origin: "system" },
+		);
+		// A peer's delete of `t` lands without `c`'s: `c` stays stored, and
+		// no array reaches it (COL4) until a local pass re-homes it.
+		const { adapter, crdtDoc, doc } = editor.internals;
+		adapter.transact(crdtDoc, () => {
+			(doc.blocks as unknown as { delete(key: string): void }).delete(
+				"t",
+			);
+			const order = doc.blockOrder as unknown as {
+				toArray(): string[];
+				delete(index: number, length: number): void;
+			};
+			order.delete(order.toArray().indexOf("t"), 1);
+		});
+		expect(editor.documentState.preorderIndexOf("c")).toBe(-1);
+		const controller = getSearchController(editor)! as unknown as {
+			recomputeForCommit(summary: unknown): void;
+			getState(): ReturnType<
+				NonNullable<ReturnType<typeof getSearchController>>["getState"]
+			>;
+		};
+
+		// An undo or redo restoring `c`'s map names it again.
+		controller.recomputeForCommit({
+			commitId: 99,
+			blockText: [],
+			structural: [],
+			affectedBlockIds: ["c"],
+		});
+
+		expect(controller.getState().matches).toEqual(
+			findDocumentMatches(editor, "alpha", controller.getState().options),
+		);
+		expect(
+			controller.getState().matches.map((match) => match.blockId),
+		).not.toContain("c");
+		editor.destroy();
+	});
 });

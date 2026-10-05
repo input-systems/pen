@@ -214,9 +214,12 @@ export class SearchControllerImpl implements SearchController {
 
 	private flattenMatches(): SearchMatch[] {
 		const state = this.editor.documentState;
-		const blockIds = [...this.matchesByBlock.keys()].sort(
-			(left, right) => state.preorderIndexOf(left) - state.preorderIndexOf(right),
-		);
+		// A block outside the preorder is stored but rendered nowhere (a
+		// COL4 orphan until the next local pass re-homes it): the full
+		// rescan walks the document and never finds it, so neither does this.
+		const blockIds = [...this.matchesByBlock.keys()]
+			.filter((blockId) => state.preorderIndexOf(blockId) >= 0)
+			.sort((left, right) => state.preorderIndexOf(left) - state.preorderIndexOf(right));
 		const matches: SearchMatch[] = [];
 		for (const blockId of blockIds) {
 			for (const match of this.matchesByBlock.get(blockId) ?? []) {

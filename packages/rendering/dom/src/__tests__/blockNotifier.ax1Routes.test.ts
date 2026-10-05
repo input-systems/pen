@@ -1,4 +1,4 @@
-import { createEditor, getListItemSemantics, getListSegments } from "@input/pen-core";
+import { applyMergeBlocks, createEditor, getListItemSemantics, getListSegments } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import type { DocumentOp, Editor } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
@@ -196,6 +196,21 @@ describe("block notifier (AX1 list semantics on every child route)", () => {
 		expect(notifier.getBlockSnapshot("bq-b").list).toMatchObject({ posinset: 1, setsize: 2 });
 		expect(notifier.getBlockSnapshot("bq-c").list).toMatchObject({ posinset: 2, setsize: 2 });
 		expectListStateCurrent(editor, notifier, "after delete");
+		surface.detach();
+		editor.destroy();
+	});
+
+	it("AX1: merging a parentId child into a root block re-segments the container it left", () => {
+		const editor = createRoutedEditor();
+		const notifier = createBlockNotifier(editor);
+		const surface = attach(editor, notifier);
+		const rootId = editor.firstBlock()!.id;
+
+		applyMergeBlocks(editor, { targetBlockId: rootId, sourceBlockId: "bq-a", applyOptions: { origin: "user" } });
+
+		expect(editor.getBlock("bq-a")).toBeNull();
+		expect(notifier.getListSegments("bq")).toEqual([expect.objectContaining({ kind: "list", blockIds: ["bq-b", "bq-c"] })]);
+		expectListStateCurrent(editor, notifier, "after merge");
 		surface.detach();
 		editor.destroy();
 	});

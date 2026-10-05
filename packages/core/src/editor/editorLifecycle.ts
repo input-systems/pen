@@ -23,6 +23,7 @@ import {
 	teardownChangeSummaries,
 } from "../changes/install";
 import { createEmptySummary } from "../changes/summaryBuilder";
+import { summaryTouchedBlockIds } from "../changes/affectedBlocks";
 import {
 	buildCommitEvent,
 	resolveCommitSource,
@@ -362,6 +363,26 @@ export function createCommitEvent(
 	};
 }
 
+/**
+ * A local apply names the blocks its ops wrote; the normalization pass inside
+ * it can re-home or remove others (COL4 repairs), which only the summary
+ * names. The document index follows both, so a repair that keeps the root
+ * order's length is never invisible to it. The same array when the summary
+ * names nothing new, which is every keystroke.
+ */
+function indexAffectedBlocks(
+	affectedBlocks: readonly string[],
+	summary: ChangeSummary | null,
+): readonly string[] {
+	if (!summary) return affectedBlocks;
+	const touched = summaryTouchedBlockIds(summary);
+	if (touched.length === 0) return affectedBlocks;
+	const known = new Set(affectedBlocks);
+	const extra = touched.filter((blockId) => !known.has(blockId));
+	if (extra.length === 0) return affectedBlocks;
+	return [...affectedBlocks, ...new Set(extra)];
+}
+
 export function dispatchCRDTEvent(
 	editor: EditorImplRuntime,
 	event: CRDTEvent,
@@ -370,7 +391,12 @@ export function dispatchCRDTEvent(
 	self._syncDocumentProfileFromStorage();
 	self._recordPipelinePhase("summarize");
 	const documentCommit = self._createCommitEvent(event);
-	self._documentState.incrementalUpdate(event.affectedBlocks);
+	self._documentState.incrementalUpdate(
+		indexAffectedBlocks(
+			event.affectedBlocks,
+			self._pendingSummary as ChangeSummary | null,
+		),
+	);
 	const selectionBefore =
 		self._selectionBeforeRecord ??
 		snapshotSelectionRecord(self._selection.record);

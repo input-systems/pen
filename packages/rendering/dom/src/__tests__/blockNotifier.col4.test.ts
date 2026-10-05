@@ -1,4 +1,4 @@
-import { createEditor } from "@input/pen-core";
+import { createEditor, getListSegments } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import type { Editor } from "@input/pen-types";
 import { afterEach, describe, expect, it } from "vitest";
@@ -57,5 +57,186 @@ describe("block notifier (COL4 dangling entries)", () => {
 		expect(notifier.getDocumentSnapshot().rootIds).toContain("kept");
 		expect(documentChanges, "renderers hear the change").toBe(1);
 		unsubscribe();
+	});
+
+	it("COL4: a remote move into a children array re-segments the parentId container the block left", () => {
+		const { a, b } = createPeers();
+		a.apply(
+			[
+				// `item` is stored before `box`, so a rebuilt index resolves it to
+				// the array route, not the `parentId` route it rendered under.
+				{
+					type: "insert-block",
+					blockId: "item",
+					blockType: "bulletListItem",
+					props: {},
+					position: "last",
+				},
+				{
+					type: "insert-block",
+					blockId: "box",
+					blockType: "toggle",
+					props: { open: true },
+					position: "last",
+				},
+				{
+					type: "insert-block",
+					blockId: "bq",
+					blockType: "blockquote",
+					props: {},
+					position: "last",
+				},
+				{
+					type: "insert-block",
+					blockId: "bq-a",
+					blockType: "bulletListItem",
+					props: { parentId: "bq" },
+					position: "last",
+				},
+			],
+			{ origin: "system" },
+		);
+		deliver(a, b);
+		const notifier = createBlockNotifier(b);
+		const unsubscribes = [
+			notifier.subscribeListSegments("bq", () => {}),
+			notifier.subscribeListSegments("box", () => {}),
+			...["box", "bq", "bq-a", "item"].map((id) =>
+				notifier.subscribeBlock(id, () => {}),
+			),
+		];
+
+		// b adopts `item` into the blockquote through `parentId` while a moves
+		// it into the toggle's array: b ends up with both routes (COL4).
+		b.apply(
+			[
+				{
+					type: "move-block",
+					blockId: "item",
+					position: { after: "bq-a" },
+				},
+				{
+					type: "set-props",
+					blockId: "item",
+					props: { parentId: "bq" },
+				},
+			],
+			{ origin: "user" },
+		);
+		expect(notifier.getListSegments("bq")).toEqual([
+			expect.objectContaining({
+				kind: "list",
+				blockIds: ["bq-a", "item"],
+			}),
+		]);
+		a.apply(
+			[
+				{
+					type: "move-block",
+					blockId: "item",
+					position: { parent: "box", index: 0 },
+				},
+			],
+			{ origin: "user" },
+		);
+		deliver(a, b);
+
+		expect(b.documentState.childrenOf("bq")).toEqual(["bq-a"]);
+		expect(notifier.getListSegments("bq")).toEqual(
+			getListSegments(b, ["bq-a"]),
+		);
+		expect(notifier.getListSegments("box")).toEqual(
+			getListSegments(b, b.documentState.childrenOf("box")),
+		);
+		for (const unsubscribe of unsubscribes) unsubscribe();
+	});
+
+	it("COL4: concurrent moves into two children arrays re-segment both arrays", () => {
+		const { a, b } = createPeers();
+		a.apply(
+			[
+				{
+					type: "insert-block",
+					blockId: "box1",
+					blockType: "toggle",
+					props: { open: true },
+					position: "last",
+				},
+				{
+					type: "insert-block",
+					blockId: "box2",
+					blockType: "toggle",
+					props: { open: true },
+					position: "last",
+				},
+				{
+					type: "insert-block",
+					blockId: "box1-a",
+					blockType: "bulletListItem",
+					props: {},
+					position: { parent: "box1", index: 0 },
+				},
+				{
+					type: "insert-block",
+					blockId: "box2-a",
+					blockType: "bulletListItem",
+					props: {},
+					position: { parent: "box2", index: 0 },
+				},
+				{
+					type: "insert-block",
+					blockId: "item",
+					blockType: "bulletListItem",
+					props: {},
+					position: "last",
+				},
+			],
+			{ origin: "system" },
+		);
+		deliver(a, b);
+		const notifier = createBlockNotifier(b);
+		const unsubscribes = [
+			notifier.subscribeListSegments("box1", () => {}),
+			notifier.subscribeListSegments("box2", () => {}),
+			...["box1", "box2", "box1-a", "box2-a", "item"].map((id) =>
+				notifier.subscribeBlock(id, () => {}),
+			),
+		];
+		notifier.getListSegments("box1");
+		notifier.getListSegments("box2");
+
+		a.apply(
+			[
+				{
+					type: "move-block",
+					blockId: "item",
+					position: { parent: "box1", index: 0 },
+				},
+			],
+			{ origin: "user" },
+		);
+		b.apply(
+			[
+				{
+					type: "move-block",
+					blockId: "item",
+					position: { parent: "box2", index: 0 },
+				},
+			],
+			{ origin: "user" },
+		);
+		deliver(a, b);
+
+		for (const parentId of ["box1", "box2"]) {
+			const siblings = b.documentState.childrenOf(parentId);
+			expect(
+				siblings,
+				`${parentId} lists the moved item until a local pass repairs it`,
+			).toContain("item");
+			expect(notifier.getListSegments(parentId), parentId).toEqual(
+				getListSegments(b, siblings),
+			);
+		}
+		for (const unsubscribe of unsubscribes) unsubscribe();
 	});
 });

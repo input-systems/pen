@@ -114,6 +114,73 @@ describe("block notifier (SCALE2 fan-out)", () => {
 		editor.destroy();
 	});
 
+	it("SCALE6: a selection that changes kind re-slices the blocks inside both selections", () => {
+		const editor = createDocument(10);
+		const notifier = createBlockNotifier(editor);
+		const probe = subscribeAll(editor, notifier);
+		editor.selectTextRange?.(
+			{ blockId: "b1", offset: 1 },
+			{ blockId: "b5", offset: 2 },
+		);
+		expect(notifier.getBlockSnapshot("b3").selection.textRange).toEqual({
+			from: 0,
+			to: "end",
+		});
+
+		editor.selectBlocks(["b2", "b3", "b4"]);
+		for (const id of ["b2", "b3", "b4"]) {
+			expect(notifier.getBlockSnapshot(id).selection, id).toMatchObject({
+				inSelection: true,
+				textRange: null,
+			});
+		}
+
+		editor.selectTextRange?.(
+			{ blockId: "b1", offset: 1 },
+			{ blockId: "b5", offset: 2 },
+		);
+		expect(notifier.getBlockSnapshot("b3").selection).toMatchObject({
+			inSelection: true,
+			textRange: { from: 0, to: "end" },
+		});
+		probe.unsubscribeAll();
+		editor.destroy();
+	});
+
+	it("SCALE6: a structural commit that reverses a text range's endpoints re-slices both endpoints", () => {
+		const editor = createDocument(10);
+		const notifier = createBlockNotifier(editor);
+		const probe = subscribeAll(editor, notifier);
+		editor.selectTextRange?.(
+			{ blockId: "b2", offset: 1 },
+			{ blockId: "b5", offset: 2 },
+		);
+		expect(notifier.getBlockSnapshot("b2").selection.textRange).toEqual({
+			from: 1,
+			to: "end",
+		});
+
+		editor.apply(
+			[{ type: "move-block", blockId: "b5", position: { before: "b1" } }],
+			{ origin: "user" },
+		);
+
+		expect(editor.selection).toMatchObject({
+			anchor: { blockId: "b2", offset: 1 },
+			focus: { blockId: "b5", offset: 2 },
+		});
+		expect(notifier.getBlockSnapshot("b2").selection.textRange).toEqual({
+			from: 0,
+			to: 1,
+		});
+		expect(notifier.getBlockSnapshot("b5").selection.textRange).toEqual({
+			from: 2,
+			to: "end",
+		});
+		probe.unsubscribeAll();
+		editor.destroy();
+	});
+
 	it("SCALE2: unchanged slices keep identity", () => {
 		const editor = createDocument(10);
 		const notifier = createBlockNotifier(editor);
