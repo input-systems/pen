@@ -25,11 +25,24 @@ class FakeEditContext implements EditContext {
 	text = "";
 	selectionStart = 0;
 	selectionEnd = 0;
+	private readonly listeners = new Map<string, Set<(event: Event) => void>>();
 	updateText(): void {}
 	updateSelection(): void {}
 	updateCharacterBounds(): void {}
-	addEventListener(): void {}
-	removeEventListener(): void {}
+	addEventListener(type: string, handler: (event: Event) => void): void {
+		const handlers = this.listeners.get(type) ?? new Set();
+		handlers.add(handler);
+		this.listeners.set(type, handlers);
+	}
+	removeEventListener(type: string, handler: (event: Event) => void): void {
+		this.listeners.get(type)?.delete(handler);
+	}
+	emit(type: string, init: Record<string, unknown> = {}): void {
+		const event = Object.assign(new Event(type), init);
+		for (const handler of this.listeners.get(type) ?? []) {
+			handler(event);
+		}
+	}
 }
 
 function getYText(editor: Editor, blockId: string): FieldEditorTextLike {
@@ -129,6 +142,8 @@ function stubController(
 		deactivate: () => {},
 		requestDomFocus: () => false,
 		applyDomTextSelection: () => {},
+		syncTextSelection: () => {},
+		syncCellTextSelection: () => {},
 		selectAllBehavior: "block-first" as const,
 		...stubFieldEditorParts({ shouldProjectSelectionAfterReconcile }),
 		setComposing: () => {},
@@ -165,11 +180,37 @@ function mount(
 	return { element, decorate, selectionWrites };
 }
 
-const backends = [
+/** Opens and closes a composition that changes nothing (cancelled, or committed empty). */
+type CompositionDriver = {
+	start(element: HTMLElement): void;
+	endUnchanged(element: HTMLElement): void;
+};
+
+function editContextOf(element: HTMLElement): FakeEditContext {
+	return (element as HTMLElement & { editContext: FakeEditContext })
+		.editContext;
+}
+
+const backends: Array<{
+	name: string;
+	create: (
+		editor: Editor,
+		controller: FieldEditorInputController,
+	) => InputBackend;
+	composition: CompositionDriver;
+}> = [
 	{
 		name: "contenteditable",
 		create: (editor: Editor, controller: FieldEditorInputController) =>
 			new ContentEditableBackend(editor, controller),
+		composition: {
+			start: (element) =>
+				element.dispatchEvent(new Event("compositionstart")),
+			endUnchanged: (element) =>
+				element.dispatchEvent(
+					Object.assign(new Event("compositionend"), { data: "" }),
+				),
+		},
 	},
 	{
 		name: "EditContext",
@@ -177,6 +218,11 @@ const backends = [
 			(globalThis as { EditContext?: unknown }).EditContext =
 				FakeEditContext;
 			return new EditContextBackend(editor, controller);
+		},
+		composition: {
+			start: (element) => editContextOf(element).emit("compositionstart"),
+			endUnchanged: (element) =>
+				editContextOf(element).emit("compositionend", { data: "" }),
 		},
 	},
 ];
@@ -214,6 +260,27 @@ describe.each(backends)(
 				element.querySelector(`[${DECORATION_ATTRIBUTE}]`),
 			).not.toBeNull();
 			expect(selectionWrites()).toBeGreaterThan(0);
+		});
+	},
+);
+
+describe.each(backends)(
+	"HOST9: $name decoration change during a composition",
+	({ create, composition }) => {
+		it("renders the decoration when the composition closes with no change", () => {
+			const { element, decorate } = mount(create, true);
+
+			composition.start(element);
+			decorate();
+			expect(
+				element.querySelector(`[${DECORATION_ATTRIBUTE}]`),
+				"deferred while the composition owns the field",
+			).toBeNull();
+			composition.endUnchanged(element);
+
+			expect(
+				element.querySelector(`[${DECORATION_ATTRIBUTE}]`),
+			).not.toBeNull();
 		});
 	},
 );

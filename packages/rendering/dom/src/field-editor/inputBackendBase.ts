@@ -186,6 +186,18 @@ export abstract class FieldInputBackendBase extends InputBackendBase {
 		this.fieldEditor.notifyDomReconciled(blockId);
 	}
 
+	/**
+	 * Whether the decorations render differently from the field's last
+	 * build. A change while a composition holds the field is deferred
+	 * (`handleDecorationsChange`), so the composition's close checks this
+	 * even when it changed no text.
+	 */
+	protected decorationsChangedSinceBuild(): boolean {
+		return (
+			this.getInlineDecorationsSignature() !== this.inlineDecorationsSignature
+		);
+	}
+
 	/** Patches the field with `delta`; true when it fell back to a full rebuild. */
 	protected reconcileDelta(
 		blockId: string | null,

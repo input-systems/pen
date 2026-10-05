@@ -420,10 +420,14 @@ export class EditContextBackend extends FieldInputBackendBase {
 		const composition = this.composition;
 		this.composition = null;
 		this.fieldEditor.setComposing(false);
+		// A decoration change the composition deferred rebuilds the field
+		// even when the composition left it as it was.
 		if (
 			this.element &&
 			this.ytext &&
-			(composition.field !== "base" || composition.deferred.length > 0)
+			(composition.field !== "base" ||
+				composition.deferred.length > 0 ||
+				this.decorationsChangedSinceBuild())
 		) {
 			if (!detaching && this.editContext) {
 				syncEditContextBuffer(

@@ -313,8 +313,14 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 			this.restoreCompositionStartRange(blockId);
 		}
 
-		if (this.deferredRemoteDeltas.length > 0) {
+		// Deferred remote text, or a decoration change the composition
+		// deferred, reaches the field now, whether or not it changed text.
+		if (
+			this.deferredRemoteDeltas.length > 0 ||
+			this.decorationsChangedSinceBuild()
+		) {
 			this.deferredRemoteDeltas = [];
+			this.inlineDecorationsSignature = this.getInlineDecorationsSignature();
 			this.rebuildField();
 		}
 
