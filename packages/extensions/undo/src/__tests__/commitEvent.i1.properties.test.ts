@@ -55,7 +55,10 @@ class Rng {
 	}
 }
 
-function parseFuzzSeed(raw: string | undefined): { raw: string; numeric: number } {
+function parseFuzzSeed(raw: string | undefined): {
+	raw: string;
+	numeric: number;
+} {
 	const source = raw && raw.length > 0 ? raw : "20260820";
 	const asNumber = Number(source);
 	if (Number.isFinite(asNumber)) {
@@ -115,7 +118,10 @@ function watchWrites(editor: Editor): () => boolean {
 	ydocOf(editor.internals.crdtDoc).on(
 		"afterTransaction",
 		(transaction: Y.Transaction) => {
-			if (transaction.deleteSet.clients.size > 0 || stateMoved(transaction)) {
+			if (
+				transaction.deleteSet.clients.size > 0 ||
+				stateMoved(transaction)
+			) {
 				wrote = true;
 			}
 		},
@@ -226,7 +232,10 @@ async function runCommitEventProperty(property: PropertyRun): Promise<void> {
 			adapter.transact(
 				remoteDoc,
 				() => {
-					text.insert(rng.int(text.length + 1), rng.pick(["r", "rr"]));
+					text.insert(
+						rng.int(text.length + 1),
+						rng.pick(["r", "rr"]),
+					);
 				},
 				"collaborator",
 			);
@@ -331,6 +340,8 @@ describe("@input/pen-undo commit event one-event property", () => {
 				steps: PINNED_STEP_COUNT,
 			});
 		},
+		// 2,000 steps run past Vitest's 10 s default on the macOS Node runner.
+		60_000,
 	);
 
 	it("I1: a splice that rewrites a character with the same character is one commit", async () => {
