@@ -70,4 +70,50 @@ describe("apply into a missing parent", () => {
 		expect(editor.getBlock("cols2-b")).toBeNull();
 		editor.destroy();
 	});
+
+	it("PR5: a parentId prop naming a non-existent block is dropped with PEN_APPLY_003", () => {
+		const editor = createNestedEditor();
+		const codes: string[] = [];
+		editor.on("diagnostic", (event) => codes.push(event.code));
+		editor.apply([
+			{ type: "insert-block", blockId: "p", blockType: "paragraph", props: {}, position: "last" },
+		]);
+		const roots = [...editor.documentState.rootBlockIds()];
+		expect(roots).toContain("p");
+
+		editor.apply([{ type: "set-props", blockId: "p", props: { parentId: "nope" } }]);
+		editor.apply([
+			{
+				type: "insert-block",
+				blockId: "q",
+				blockType: "paragraph",
+				props: { parentId: "nope" },
+				position: { after: "p" },
+			},
+		]);
+
+		expect(codes.filter((code) => code === "PEN_APPLY_003")).toHaveLength(2);
+		expect(editor.getBlock("p")?.props.parentId).toBeUndefined();
+		expect(editor.getBlock("q")).toBeNull();
+		expect(editor.documentState.rootBlockIds()).toEqual(roots);
+		editor.destroy();
+	});
+
+	it("PR5: a parentId naming a live block, one inserted earlier in the batch, or null is applied", () => {
+		const editor = createNestedEditor();
+		const codes: string[] = [];
+		editor.on("diagnostic", (event) => codes.push(event.code));
+		editor.apply([
+			{ type: "insert-block", blockId: "t", blockType: "paragraph", props: {}, position: "last" },
+			{ type: "insert-block", blockId: "c", blockType: "paragraph", props: { parentId: "t" }, position: { after: "t" } },
+			{ type: "insert-block", blockId: "d", blockType: "paragraph", props: {}, position: { after: "c" } },
+			{ type: "set-props", blockId: "d", props: { parentId: "t" } },
+		]);
+		expect(editor.getBlock("c")?.props.parentId).toBe("t");
+		expect(editor.getBlock("d")?.props.parentId).toBe("t");
+		editor.apply([{ type: "set-props", blockId: "d", props: { parentId: null } }]);
+		expect(editor.getBlock("d")?.props.parentId).toBeUndefined();
+		expect(codes).not.toContain("PEN_APPLY_003");
+		editor.destroy();
+	});
 });

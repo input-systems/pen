@@ -763,7 +763,7 @@ function executeOps(
 				code: "PEN_APPLY_003",
 				level: "warn",
 				source: "apply",
-				message: `apply: skipping ${nextOp.type} into non-existent parent "${missingParent}"`,
+				message: `apply: skipping ${nextOp.type} under non-existent parent "${missingParent}"`,
 			});
 			continue;
 		}
@@ -862,17 +862,37 @@ function recordBatchLiveness(batch: BatchLiveness, op: DocumentOp): void {
 	}
 }
 
-/** The parent an insert or move targets when that parent is not live at that point in the batch. */
+/**
+ * The parent an op names — an insert's or move's `{ parent }` position, or
+ * the `parentId` prop an insert or `set-props` writes — when that parent is
+ * not live at that point in the batch.
+ */
 function missingParentId(
 	pipeline: ApplyPipelineInternal,
 	op: DocumentOp,
 	batch: BatchLiveness,
 ): string | null {
-	if (op.type !== "insert-block" && op.type !== "move-block") return null;
-	const position = op.position;
-	if (typeof position !== "object" || !("parent" in position)) return null;
-	const parent = position.parent;
-	return liveInBatch(pipeline, batch, parent) ? null : parent;
+	for (const parent of namedParentIds(op)) {
+		if (!liveInBatch(pipeline, batch, parent)) return parent;
+	}
+	return null;
+}
+
+/** The parent ids an op places its block under, through either nesting route (RI6). */
+function namedParentIds(op: DocumentOp): string[] {
+	const parents: string[] = [];
+	if (op.type === "insert-block" || op.type === "move-block") {
+		const position = op.position;
+		if (typeof position === "object" && "parent" in position) {
+			parents.push(position.parent);
+		}
+	}
+	if (op.type === "insert-block" || op.type === "set-props") {
+		const parentId = (op.props as Record<string, unknown> | undefined)
+			?.parentId;
+		if (typeof parentId === "string" && parentId !== "") parents.push(parentId);
+	}
+	return parents;
 }
 
 function emitApplyBoundary(
