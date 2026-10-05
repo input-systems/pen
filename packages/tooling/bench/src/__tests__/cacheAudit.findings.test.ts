@@ -552,6 +552,50 @@ describe("cache property findings", () => {
 		notifier.destroy();
 	});
 
+	it("a list item's map an undo restores whole over a peer's indent change re-segments its list", () => {
+		const peers = fork(2, [
+			{ id: "p", type: "paragraph", content: "p" },
+			{ id: "x", type: "numberedListItem", props: { indent: 1 }, content: "x" },
+			{ id: "a", type: "bulletListItem", props: { indent: 0 }, content: "a" },
+			{ id: "q", type: "paragraph", content: "q" },
+		]);
+		const [receiver, other] = peers as [TestEditor, TestEditor];
+		const notifier = internals.createBlockNotifier(receiver);
+		const off = notifier.subscribeListSegments(null, () => {});
+		// COL4: a delete against a move. The deleting peer's undo restores
+		// x's map and its old entry; its next local pass keeps the later
+		// entry, the move's, so the receiver's order does not change.
+		receiver.apply([{ type: "move-block", blockId: "x", position: { after: "a" } }]);
+		other.apply([{ type: "delete-block", blockId: "x" }]);
+		harness!.deliver(0, 1);
+		other.undoManager.stopCapturing();
+		expect(other.undoManager.undo()).toBe(true);
+		other.apply([{ type: "splice-text", blockId: "p", from: 0, to: 0, insert: "o" }]);
+		expect(other.documentState.blockOrder).toEqual(["p", "a", "x", "q"]);
+		// At level 1 x's type differs from a's, so it starts its own group.
+		receiver.apply([{ type: "set-props", blockId: "x", props: { indent: 0 } }]);
+		expect(notifier.getListSegments(null)).toHaveLength(4);
+		const summaries: ChangeSummary[] = [];
+		const offCommit = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		// The undo's new map for x, without the receiver's indent, replaces
+		// the receiver's: x is back at level 2, inside a's group.
+		harness!.deliver(1, 0);
+		offCommit();
+		expect(receiver.getBlock("x")?.props.indent).toBe(1);
+		const changes = summaries.flatMap((summary) =>
+			summary.structural.filter((change) => "blockId" in change && change.blockId === "x"),
+		);
+		expect(changes).toEqual([{ type: "block-props-changed", blockId: "x", keys: ["indent"] }]);
+		const fresh = internals.createBlockNotifier(receiver);
+		expect(notifier.getListSegments(null)).toEqual(fresh.getListSegments(null));
+		expect(notifier.getListSegments(null)).toHaveLength(3);
+		fresh.destroy();
+		off();
+		notifier.destroy();
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },

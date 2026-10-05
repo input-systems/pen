@@ -8,6 +8,7 @@ import type {
 import { affectedBlockIdsFromSummary } from "./affectedBlocks";
 import type { BlockIndexSnapshot } from "./blockIndex";
 import { sortIntoDocumentOrder } from "./documentOrder";
+import { asMap } from "./readStored";
 import type {
 	BlockTextChange,
 	ChangeSummary,
@@ -65,6 +66,12 @@ export interface SummaryLookups {
 	readonly listedMoreThanOnce?: (blockId: string) => boolean;
 	/** The id's position in the pre-commit root order. Without it, sorting the affected ids scans the order. */
 	readonly rootIndexOf?: (blockId: string) => number;
+	/**
+	 * The stored block map; asked only for a block whose map a commit
+	 * replaced whole while the block stays. Without it, such a replacement
+	 * reports no props change.
+	 */
+	readonly readBlock?: (blockId: string) => unknown;
 }
 
 export function buildChangeSummary(
@@ -195,7 +202,7 @@ function buildStructuralChanges(
 	delta: RawCommitDelta,
 	index: BlockIndexSnapshot,
 	structuralOrigin: StructuralOriginTag | null,
-	{ blockExists, listedMoreThanOnce }: SummaryLookups,
+	{ blockExists, listedMoreThanOnce, readBlock }: SummaryLookups,
 ): StructuralChange[] {
 	const structural: StructuralChange[] = [];
 	const edits = collectArrayEdits(delta, index, listedMoreThanOnce);
@@ -492,7 +499,12 @@ function buildStructuralChanges(
 
 	for (const [blockId, keys] of delta.blockMapChanges) {
 		if (newIds.has(blockId)) continue;
-		const keyList = [...keys];
+		const keyList =
+			keys.size > 0
+				? [...keys]
+				: removedIds.has(blockId)
+					? []
+					: replacedBlockKeys(blockId, index, readBlock);
 		const residual = keyList.filter(
 			(key) => !IGNORABLE_BLOCK_KEYS.has(key),
 		);
@@ -527,6 +539,34 @@ function buildStructuralChanges(
 	}
 
 	return structural;
+}
+
+/**
+ * The keys a block map replaced whole can have changed, for a block the index
+ * held that stays stored: an undo restoring a block a peer deleted, delivered
+ * with that delete, replaces the map a peer's prop writes went into, and no
+ * key change names them (COL4). The type when it differs from the indexed
+ * one, and every prop and meta key the arrived map holds; the replaced map is
+ * gone, so a key only it held is not named. Reads one map, only for a whole
+ * replacement (SCALE2).
+ */
+function replacedBlockKeys(
+	blockId: string,
+	index: BlockIndexSnapshot,
+	readBlock: SummaryLookups["readBlock"],
+): string[] {
+	if (!readBlock || !index.typeById.has(blockId)) return [];
+	const block = asMap(readBlock(blockId));
+	if (!block) return [];
+	const keys: string[] = [];
+	if (block.get("type") !== index.typeById.get(blockId)) keys.push("type");
+	for (const key of ["props", "meta"]) keys.push(...mapKeys(block.get(key)));
+	return keys;
+}
+
+function mapKeys(value: unknown): string[] {
+	const map = value as { keys?: () => Iterable<string> } | null | undefined;
+	return typeof map?.keys === "function" ? [...map.keys()] : [];
 }
 
 /**
