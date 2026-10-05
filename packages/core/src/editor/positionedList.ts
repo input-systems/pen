@@ -1,5 +1,5 @@
 /** Splices held in the edit log before the positions after them are re-indexed. */
-const EDITS_BEFORE_REINDEX = 128;
+const EDITS_BEFORE_REINDEX = 256;
 
 /** One splice: `removed` ids left at `at` and `inserted` ids took their place. */
 interface Edit {
@@ -15,7 +15,7 @@ interface Edit {
  * position was stored, so it costs O(splices), not O(list). After enough
  * splices the tail is re-indexed once, which the splices it absorbs pay for.
  * An edit of one entry in a list of M costs O(M) native array moves and
- * O(M / 128) amortized map writes.
+ * O(M / 256) amortized map writes.
  */
 export class PositionedList {
 	private readonly _ids: string[];

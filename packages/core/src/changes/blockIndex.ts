@@ -1,5 +1,6 @@
 import type { RawCommitDelta, YArrayDelta } from "@input/pen-yjs";
 
+import { PositionedList } from "../editor/positionedList";
 import { asMap, readStringArray, storedText } from "./readStored";
 import { logicalLengthFromStored } from "./summaryBuilder";
 import type { BlockTextChange, TextSplice } from "./types";
@@ -37,6 +38,8 @@ export interface BlockIndex {
 	): boolean;
 	/** Whether the index lists the id in more than one array entry (COL4). */
 	listedMoreThanOnce(blockId: string): boolean;
+	/** The id's position in the held root order, or -1; O(1) while no id is listed twice. */
+	rootIndexOf(blockId: string): number;
 	/** Takes ownership of a freshly built snapshot; the caller must not keep it. */
 	replace(snapshot: BlockIndexSnapshot): void;
 }
@@ -109,6 +112,11 @@ export function createBlockIndex(initial: BlockIndexSnapshot): BlockIndex {
 		listings ??= countListings(current);
 		return listings;
 	};
+	/**
+	 * Positions over the held root order itself, built on first lookup while
+	 * no id is listed twice; the advance splices the order through it.
+	 */
+	let rootPositions: PositionedList | null = null;
 	return {
 		snapshot() {
 			return current;
@@ -129,20 +137,32 @@ export function createBlockIndex(initial: BlockIndexSnapshot): BlockIndex {
 				readBlock,
 				delta,
 				named,
+				rootPositions,
 			);
 			// A refused advance may have moved some entries; the caller
 			// replaces the whole index, and the counts are rebuilt from it.
-			if (!advanced) listings = null;
+			if (!advanced) {
+				listings = null;
+				rootPositions = null;
+			}
 			return advanced;
 		},
 		listedMoreThanOnce(blockId) {
 			return (listingsOf().count.get(blockId) ?? 0) > 1;
+		},
+		rootIndexOf(blockId) {
+			if (listingsOf().multiListed > 0) return current.roots.indexOf(blockId);
+			rootPositions ??= PositionedList.of(current.roots as string[]);
+			return rootPositions
+				? rootPositions.indexOf(blockId)
+				: current.roots.indexOf(blockId);
 		},
 		replace(snapshot) {
 			// Fresh from createBlockIndexSnapshot, which already built new maps;
 			// cloning again would copy every entry a second time.
 			current = snapshot as OwnedBlockIndexSnapshot;
 			listings = null;
+			rootPositions = null;
 		},
 	};
 }
@@ -171,8 +191,9 @@ type Entry = readonly [childId: string, parentId: string | null];
 
 /**
  * The commit's array edits as entries removed and added, applied to a copy
- * of `pre`, or to `pre` itself when `inPlace`. Null when an op runs past the
- * held array or inserts a non-id.
+ * of `pre`, or to `pre` itself when `inPlace` — through `positions` when it
+ * holds `pre`. Null when an op runs past the held array, inserts a non-id,
+ * or would list an id twice in `positions`.
  */
 function applyArrayDelta(
 	pre: readonly string[],
@@ -181,8 +202,10 @@ function applyArrayDelta(
 	removed: Entry[],
 	added: Entry[],
 	inPlace = false,
+	positions: PositionedList | null = null,
 ): string[] | null {
 	const next = inPlace ? (pre as string[]) : pre.slice();
+	if (positions) return applyThroughPositions(positions, delta, parentId, removed, added) ? next : null;
 	let at = 0;
 	for (const op of delta) {
 		if (op.retain != null) {
@@ -207,6 +230,52 @@ function applyArrayDelta(
 	return next;
 }
 
+/**
+ * The same edits through a positions list: every delete first, in
+ * pre-commit indexes from the back, then the inserts in post-commit indexes,
+ * so a move within the array never lists its block twice.
+ */
+function applyThroughPositions(
+	positions: PositionedList,
+	delta: YArrayDelta,
+	parentId: string | null,
+	removed: Entry[],
+	added: Entry[],
+): boolean {
+	const deletes: [at: number, count: number][] = [];
+	const inserts: [at: number, ids: string[]][] = [];
+	let before = 0;
+	let after = 0;
+	for (const op of delta) {
+		if (op.retain != null) {
+			before += op.retain;
+			after += op.retain;
+			if (before > positions.length) return false;
+		} else if (op.delete != null) {
+			deletes.push([before, op.delete]);
+			before += op.delete;
+		} else if (op.insert) {
+			const ids: string[] = [];
+			for (const value of op.insert) {
+				if (typeof value !== "string") return false;
+				ids.push(value);
+				added.push([value, parentId]);
+			}
+			inserts.push([after, ids]);
+			after += ids.length;
+		}
+	}
+	for (let k = deletes.length - 1; k >= 0; k -= 1) {
+		const gone = positions.splice(deletes[k]![0], deletes[k]![1]);
+		if (!gone) return false;
+		for (const childId of gone) removed.push([childId, parentId]);
+	}
+	for (const [at, ids] of inserts) {
+		if (!positions.splice(at, 0, ids)) return false;
+	}
+	return true;
+}
+
 function readLength(block: { get(key: string): unknown }): number {
 	return logicalLengthFromStored(storedText(block.get("content")));
 }
@@ -229,6 +298,7 @@ function advanceStructure(
 	readBlock: StoredBlockReader,
 	delta: RawCommitDelta,
 	named: ReadonlySet<string>,
+	rootPositions: PositionedList | null,
 ): boolean {
 	if (listings.multiListed > 0) return false;
 	const removed: Entry[] = [];
@@ -245,6 +315,7 @@ function advanceStructure(
 			removed,
 			added,
 			true,
+			rootPositions,
 		);
 		if (!roots) return false;
 		index.roots = roots;

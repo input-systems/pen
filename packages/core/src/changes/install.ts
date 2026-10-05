@@ -78,6 +78,7 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 						blockExists: (blockId) => readBlock(blockId) !== undefined,
 						listedMoreThanOnce: (blockId) =>
 							host._blockIndex.listedMoreThanOnce(blockId),
+						rootIndexOf: (blockId) => host._blockIndex.rootIndexOf(blockId),
 					},
 				);
 				host._pendingSummary = summary;

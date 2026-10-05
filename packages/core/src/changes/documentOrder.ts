@@ -8,6 +8,7 @@ import type { BlockIndexSnapshot } from "./blockIndex";
 function documentPath(
 	index: BlockIndexSnapshot,
 	blockId: string,
+	rootIndexOf: ((blockId: string) => number) | undefined,
 ): number[] | null {
 	const path: number[] = [];
 	const seen = new Set<string>();
@@ -19,7 +20,10 @@ function documentPath(
 		if (parentId === undefined) return null;
 		const siblings =
 			parentId === null ? index.roots : index.childrenByParentId.get(parentId);
-		const at = siblings?.indexOf(current) ?? -1;
+		const at =
+			parentId === null && rootIndexOf
+				? rootIndexOf(current)
+				: (siblings?.indexOf(current) ?? -1);
 		if (at < 0) return null;
 		path.push(at);
 		if (parentId === null) return path.reverse();
@@ -50,9 +54,12 @@ function comparePaths(left: number[] | null, right: number[] | null): number {
 export function sortIntoDocumentOrder(
 	index: BlockIndexSnapshot,
 	blockIds: readonly string[],
+	rootIndexOf?: (blockId: string) => number,
 ): string[] {
 	const paths = new Map<string, number[] | null>();
-	for (const blockId of blockIds) paths.set(blockId, documentPath(index, blockId));
+	for (const blockId of blockIds) {
+		paths.set(blockId, documentPath(index, blockId, rootIndexOf));
+	}
 	return [...blockIds].sort((left, right) =>
 		comparePaths(paths.get(left)!, paths.get(right)!),
 	);

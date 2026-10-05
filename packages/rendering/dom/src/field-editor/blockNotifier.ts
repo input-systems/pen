@@ -1250,7 +1250,8 @@ function patchSegmentRange(
 		...previous.slice(last + 1, windowEnd),
 	]);
 	if (segmentsEqual(replaced, next)) return previous;
-	const patched = previous.slice(0, windowStart).concat(next, previous.slice(windowEnd));
+	const patched = previous.slice();
+	patched.splice(windowStart, windowEnd - windowStart, ...next);
 	// The map moves to the patched list: the window's blocks are re-pointed.
 	for (const segment of replaced) {
 		for (const blockId of segmentIds(segment)) if (index.get(blockId) === segment) index.delete(blockId);

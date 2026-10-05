@@ -20,6 +20,8 @@ export interface ChangeSummaryState {
 	readonly blockText: readonly BlockTextChange[];
 	readonly structural: readonly StructuralChange[];
 	readonly index?: BlockIndexSnapshot;
+	/** Positions in `index.roots`, when the index keeps them. */
+	readonly rootIndexOf?: (blockId: string) => number;
 }
 
 export function createChangeSummary(state: ChangeSummaryState): ChangeSummary {
@@ -32,7 +34,7 @@ export function createChangeSummary(state: ChangeSummaryState): ChangeSummary {
 		structural,
 		affectedBlockIds:
 			state.index && collected.length > 1
-				? sortIntoDocumentOrder(state.index, collected)
+				? sortIntoDocumentOrder(state.index, collected, state.rootIndexOf)
 				: collected,
 	};
 }
@@ -61,6 +63,8 @@ export interface SummaryLookups {
 	 * (COL4). Without it, a removal scans every array for another entry.
 	 */
 	readonly listedMoreThanOnce?: (blockId: string) => boolean;
+	/** The id's position in the pre-commit root order. Without it, sorting the affected ids scans the order. */
+	readonly rootIndexOf?: (blockId: string) => number;
 }
 
 export function buildChangeSummary(
@@ -82,6 +86,7 @@ export function buildChangeSummary(
 		blockText,
 		structural,
 		index,
+		rootIndexOf: lookups.rootIndexOf,
 	});
 }
 
