@@ -448,6 +448,28 @@ describe("cache property findings", () => {
 		expect(cacheProblems(receiver)).toEqual([]);
 	});
 
+	it("a container map an undo restores whole reports the children the replaced map held", () => {
+		const peers = fork(2);
+		const [receiver, other] = peers as [TestEditor, TestEditor];
+		// `scale-block-14` is a blockquote without a `children` array.
+		receiver.apply([
+			{
+				type: "insert-block",
+				blockId: "x",
+				blockType: "paragraph",
+				props: {},
+				position: { parent: "scale-block-14", index: 0 },
+			},
+			{ type: "splice-text", blockId: "x", from: 0, to: 0, insert: "fox" },
+		]);
+		other.apply([{ type: "delete-block", blockId: "scale-block-14" }]);
+		other.undoManager.stopCapturing();
+		expect(other.undoManager.undo()).toBe(true);
+		// The undo stores a new map for the container, without x's array.
+		expect(touchedProblems(receiver, () => harness!.deliver(1, 0))).toEqual([]);
+		expect(cacheProblems(receiver)).toEqual([]);
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },

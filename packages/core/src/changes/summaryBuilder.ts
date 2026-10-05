@@ -200,7 +200,7 @@ function buildStructuralChanges(
 	const structural: StructuralChange[] = [];
 	const edits = collectArrayEdits(delta, index, listedMoreThanOnce);
 	const removed = edits.removed;
-	addReplacedChildArrays(removed, delta, index);
+	addReplacedChildArrays(removed, delta, index, blockExists);
 	if (delta.arrivedChildArrays?.size) {
 		addInsertedDescendants(edits.inserted, delta.arrivedChildArrays);
 	}
@@ -519,7 +519,8 @@ function buildStructuralChanges(
 /**
  * A `children` key replaced or removed on a block the index already held —
  * two peers' concurrent first-child inserts each create an array and Yjs
- * keeps one, or an undo takes back the array a first child created — drops
+ * keeps one, an undo takes back the array a first child created, or an undo
+ * stores a whole new map for a container a peer wrote a child into — drops
  * every entry of the array it replaced, and no array edit names them. Each
  * entry the new array (`arrivedChildArrays`, absent when empty or gone) does
  * not list is reported removed from the old one; one the commit placed
@@ -529,9 +530,19 @@ function addReplacedChildArrays(
 	removed: { id: string; parentId: string | null; index: number }[],
 	delta: RawCommitDelta,
 	index: BlockIndexSnapshot,
+	blockExists: SummaryLookups["blockExists"],
 ): void {
 	for (const [blockId, keys] of delta.blockMapChanges) {
-		if (!keys.has("children") || !index.typeById.has(blockId)) continue;
+		if (!index.typeById.has(blockId)) continue;
+		// The whole map replaced (an undo restoring a container a peer's
+		// array edit had written into) drops the old map's array as well; a
+		// map deleted outright reports its subtree through the removal.
+		const replaced =
+			keys.has("children") ||
+			(keys.size === 0 &&
+				(index.childrenByParentId.get(blockId)?.length ?? 0) > 0 &&
+				(blockExists?.(blockId) ?? false));
+		if (!replaced) continue;
 		// An array edited in place reports its own delta.
 		if (delta.childArrayDeltas.has(blockId)) continue;
 		const pre = index.childrenByParentId.get(blockId) ?? [];
