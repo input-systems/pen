@@ -1,5 +1,9 @@
 import type { ChangeSummary, CRDTEvent, PenDocument } from "@input/pen-types";
-import { createSummarySource, type RawCommitDelta } from "@input/pen-yjs";
+import {
+	createSummarySource,
+	type RawCommitDelta,
+	type YArrayDelta,
+} from "@input/pen-yjs";
 
 import {
 	createBlockIndex,
@@ -17,6 +21,8 @@ export interface ChangeSummaryHost {
 	_pendingSummary: ChangeSummary | null;
 	_lastChangeSummary: ChangeSummary | null;
 	_blockIndex: BlockIndex;
+	_storedBlocks: StoredBlockReader | null;
+	_documentState: { applyRootDelta(delta: YArrayDelta): void };
 	_unsubSummary: (() => void) | null;
 	_deferredCRDTEvent: CRDTEvent | null;
 	_engine: {
@@ -27,7 +33,10 @@ export interface ChangeSummaryHost {
 		): void;
 		notifyExternalCommit(blockIds: Iterable<string>): void;
 	};
-	_pipeline: { readonly suppressObserver: boolean };
+	_pipeline: {
+		readonly suppressObserver: boolean;
+		noteExternalBlocks(blockIds: Iterable<string>): void;
+	};
 	_dispatchCRDTEvent(event: CRDTEvent): void;
 }
 
@@ -46,6 +55,7 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 			host._crdtDoc as never,
 			(delta) => {
 				const readBlock = storedBlockReader(host._doc);
+				host._storedBlocks = readBlock;
 				// A local apply advanced the normalizer's pass index at each
 				// write; a remote or undo transaction advances it by its delta.
 				host._engine.observeCommit(
@@ -53,6 +63,9 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 					host._pipeline.suppressObserver,
 					readBlock,
 				);
+				// The document index follows the root order transaction by
+				// transaction; its commit dispatch indexes the rest.
+				host._documentState.applyRootDelta(delta.blockOrderDelta);
 				const summary = buildChangeSummary(
 					delta,
 					host._blockIndex.snapshot(),
@@ -69,6 +82,7 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 				if (!host._pipeline.suppressObserver) {
 					const touched = structurallyTouchedBlockIds(delta, summary);
 					if (touched.size > 0) host._engine.notifyExternalCommit(touched);
+					host._pipeline.noteExternalBlocks(storedOrRetyped(delta));
 				}
 				// A text-only commit moves lengths and nothing else, so the
 				// index advances in place. Rebuilding it from the document
@@ -101,6 +115,7 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 
 export function teardownChangeSummaries(host: ChangeSummaryHost): void {
 	host._deferredCRDTEvent = null;
+	host._storedBlocks = null;
 	if (!host._unsubSummary) return;
 	host._unsubSummary();
 	host._unsubSummary = null;
@@ -108,8 +123,9 @@ export function teardownChangeSummaries(host: ChangeSummaryHost): void {
 
 /**
  * One commit's reads of stored block maps, shared by the pass index, the
- * summary and the block index so each map is read once (SCALE2). The document
- * does not change while the commit's observers run.
+ * summary, the block index and the document index so each map is read once
+ * per commit (SCALE2). Each transaction installs a fresh reader before
+ * anything reads, so the held one always answers for the current document.
  */
 function storedBlockReader(doc: PenDocument): StoredBlockReader {
 	const reads = new Map<string, unknown>();
@@ -189,6 +205,15 @@ function structurallyTouchedBlockIds(
 		}
 	}
 	return touched;
+}
+
+/** Blocks a commit stored whole or retyped: the ones that can carry a new block type. */
+function storedOrRetyped(delta: RawCommitDelta): string[] {
+	const blockIds: string[] = [];
+	for (const [blockId, keys] of delta.blockMapChanges) {
+		if (keys.size === 0 || keys.has("type")) blockIds.push(blockId);
+	}
+	return blockIds;
 }
 
 /** Blocks whose text a structural commit may have changed, so must be re-read. */

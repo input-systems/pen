@@ -3,49 +3,49 @@
 	"rule": "SCALE2",
 	"points": {
 		"enter.100": {
-			"blockOrderReads": 108,
+			"blockOrderReads": 3,
 			"blocksMapReads": 20,
-			"blocksMapIterations": 215,
+			"blocksMapIterations": 0,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
 		"remoteInsert.100": {
-			"blockOrderReads": 108,
+			"blockOrderReads": 2,
 			"blocksMapReads": 3,
-			"blocksMapIterations": 108,
+			"blocksMapIterations": 0,
 			"textFullReads": 1,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
 		"enter.1000": {
-			"blockOrderReads": 1053,
+			"blockOrderReads": 3,
 			"blocksMapReads": 20,
-			"blocksMapIterations": 2105,
+			"blocksMapIterations": 0,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
 		"remoteInsert.1000": {
-			"blockOrderReads": 1053,
+			"blockOrderReads": 2,
 			"blocksMapReads": 3,
-			"blocksMapIterations": 1053,
+			"blocksMapIterations": 0,
 			"textFullReads": 1,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
 		"enter.5000": {
-			"blockOrderReads": 5253,
+			"blockOrderReads": 3,
 			"blocksMapReads": 20,
-			"blocksMapIterations": 10505,
+			"blocksMapIterations": 0,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
 		"remoteInsert.5000": {
-			"blockOrderReads": 5253,
+			"blockOrderReads": 2,
 			"blocksMapReads": 3,
-			"blocksMapIterations": 5253,
+			"blocksMapIterations": 0,
 			"textFullReads": 1,
 			"orderArrayReads": 0,
 			"documentWalks": 0
@@ -71,6 +71,10 @@
 		{
 			"date": "2026-10-05",
 			"reason": "Phase 2b: the normalization pass index advances at each structural write and by external deltas instead of rebuilding, and the block executors resolve positions through it"
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2b: the document index advances the root order by each commit's delta and reads each named block map once, and the unknown-type sweep runs after a load and for remote or undo blocks only"
 		}
 	]
 }

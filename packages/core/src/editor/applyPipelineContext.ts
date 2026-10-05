@@ -64,12 +64,10 @@ export interface ApplyPipelineOrchestrationContext extends ApplyPipelineDocument
 	_applyStormEmitted: boolean;
 	_suppressObserver: boolean;
 	_unknownBlockTypesReported: Set<string> | undefined;
-	/**
-	 * `documentState.generation` at the last unknown-type scan. Only a load or
-	 * a remote insert can add a type, and both rebuild `DocumentState`, so an
-	 * unchanged generation skips the scan (SCALE2).
-	 */
-	_unknownScanGeneration: number | undefined;
+	/** Whether the next apply sweeps every block for unknown types: after a load. */
+	_unknownScanPending: boolean;
+	/** Blocks a remote or undo commit stored or retyped since the last apply. */
+	readonly _unknownTypeCandidates: Set<string>;
 	_commitDiagnostics: DiagnosticEvent[];
 	readonly _queue: {
 		ops: DocumentOp[];
@@ -81,8 +79,6 @@ export interface ApplyPipelineOrchestrationContext extends ApplyPipelineDocument
 	_onDidApply: ((event: CRDTEvent) => void) | null;
 	_recordPhase: ((phase: PipelinePhase) => void) | null;
 	_captureSelectionBefore: (() => void) | null;
-	/** `documentState.generation`, wired by the editor; null before `_init`. */
-	_documentGeneration: (() => number) | null;
 	_resolveBeforeApplyHooks:
 		| (() => ReadonlyArray<
 				(

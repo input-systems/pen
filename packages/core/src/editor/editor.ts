@@ -82,7 +82,10 @@ import {
 	getEditorBlockRevision,
 	destroyEditor,
 } from "./editorApiHelpers";
-import { createEmptyBlockIndex } from "../changes/blockIndex";
+import {
+	createEmptyBlockIndex,
+	type StoredBlockReader,
+} from "../changes/blockIndex";
 import { snapshotSelectionRecord } from "./commitEvent";
 import { openEditorTextStream } from "./openTextStream";
 import {
@@ -163,6 +166,7 @@ class EditorImpl implements Editor {
 	private _lastChangeSummary: ChangeSummary | null = null;
 	private _blockIndex = createEmptyBlockIndex();
 	private _unsubSummary: Unsubscribe | null = null;
+	private _storedBlocks: StoredBlockReader | null = null;
 	private readonly _blockRevisions = new Map<string, number>();
 	private _decorations: DecorationSet;
 	private readonly _decorationCollector: DecorationCollector;
@@ -308,7 +312,6 @@ class EditorImpl implements Editor {
 			() => this._resolveBeforeApplyHooks(),
 			(phase) => this._recordPipelinePhase(phase),
 			() => this._captureSelectionBeforeForCommit(),
-			() => this._documentState.generation,
 		);
 		this._wireObservation();
 		this._extensionLifecycle = this._activateExtensions();

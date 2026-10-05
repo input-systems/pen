@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"rule": "SCALE3",
-	"producedOn": "2026-10-02",
+	"producedOn": "2026-10-05",
 	"points": [
 		{
 			"id": "scale3.realistic.keystroke.100",
@@ -10,7 +10,7 @@
 			"searchMatches": 1,
 			"counts": {
 				"blockOrderReads": 1,
-				"blocksMapReads": 27,
+				"blocksMapReads": 25,
 				"blocksMapIterations": 0,
 				"textFullReads": 6,
 				"orderArrayReads": 0,
@@ -24,7 +24,7 @@
 			"searchMatches": 1,
 			"counts": {
 				"blockOrderReads": 1,
-				"blocksMapReads": 27,
+				"blocksMapReads": 25,
 				"blocksMapIterations": 0,
 				"textFullReads": 6,
 				"orderArrayReads": 0,
@@ -38,7 +38,7 @@
 			"searchMatches": 1,
 			"counts": {
 				"blockOrderReads": 1,
-				"blocksMapReads": 27,
+				"blocksMapReads": 25,
 				"blocksMapIterations": 0,
 				"textFullReads": 6,
 				"orderArrayReads": 0,
@@ -102,6 +102,15 @@
 				"scale3.realistic.keystroke.5000/blocksMapReads: 27 !== 70015",
 				"scale3.realistic.keystroke.5000/textFullReads: 6 !== 20003",
 				"scale3.realistic.keystroke.5000/documentWalks: 0 !== 4"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2b: the document index reads each named block map once per commit through the commit's shared reader",
+			"moved": [
+				"scale3.realistic.keystroke.100/blocksMapReads: 25 !== 27",
+				"scale3.realistic.keystroke.1000/blocksMapReads: 25 !== 27",
+				"scale3.realistic.keystroke.5000/blocksMapReads: 25 !== 27"
 			]
 		}
 	]

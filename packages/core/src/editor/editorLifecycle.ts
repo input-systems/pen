@@ -269,7 +269,6 @@ export async function rebindActiveScope(
 		() => self._resolveBeforeApplyHooks(),
 		(phase: PipelinePhase) => self._recordPipelinePhase(phase),
 		() => self._captureSelectionBeforeForCommit(),
-		() => self._documentState.generation,
 	);
 	self._wireObservation();
 	await self._activateExtensions();
@@ -396,6 +395,7 @@ export function dispatchCRDTEvent(
 			event.affectedBlocks,
 			self._pendingSummary as ChangeSummary | null,
 		),
+		self._storedBlocks,
 	);
 	const selectionBefore =
 		self._selectionBeforeRecord ??

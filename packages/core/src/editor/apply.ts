@@ -41,7 +41,8 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 	_applyStormEmitted = false;
 	_suppressObserver = false;
 	_unknownBlockTypesReported: Set<string> | undefined;
-	_unknownScanGeneration: number | undefined;
+	_unknownScanPending = true;
+	readonly _unknownTypeCandidates = new Set<string>();
 	readonly _queue: {
 		ops: DocumentOp[];
 		origin: OpOrigin;
@@ -76,7 +77,6 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 		| null = null;
 	_recordPhase: ((phase: PipelinePhase) => void) | null = null;
 	_captureSelectionBefore: (() => void) | null = null;
-	_documentGeneration: (() => number) | null = null;
 	_commitDiagnostics: DiagnosticEvent[] = [];
 
 	get suppressObserver(): boolean {
@@ -135,13 +135,11 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 		>,
 		recordPhase?: (phase: PipelinePhase) => void,
 		captureSelectionBefore?: () => void,
-		documentGeneration?: () => number,
 	): void {
 		this._onDidApply = onDidApply ?? null;
 		this._resolveBeforeApplyHooks = resolveBeforeApplyHooks ?? null;
 		this._recordPhase = recordPhase ?? null;
 		this._captureSelectionBefore = captureSelectionBefore ?? null;
-		this._documentGeneration = documentGeneration ?? null;
 	}
 
 	getBeforeApplyHooks(): ReadonlyArray<{
@@ -223,6 +221,15 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 		this._doc = doc;
 		this._crdtDoc = crdtDoc;
 		this._engine = engine;
-		this._unknownScanGeneration = undefined;
+		this._unknownScanPending = true;
+		this._unknownTypeCandidates.clear();
+	}
+
+	/**
+	 * Blocks a commit this pipeline did not apply stored whole or retyped (a
+	 * remote insert, an undo): the next apply checks their types (DUR3).
+	 */
+	noteExternalBlocks(blockIds: Iterable<string>): void {
+		for (const blockId of blockIds) this._unknownTypeCandidates.add(blockId);
 	}
 }

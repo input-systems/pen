@@ -167,34 +167,38 @@ function emitSchemaUnknownBlock(
 
 /**
  * DUR3 wants one diagnostic per unknown type per session, including for blocks
- * no op touches, so the sweep has to look at the whole document. Apply refuses
- * `insert-block` and `set-props` carrying an unregistered type (PEN_APPLY_002),
- * so no local apply can add a type a previous sweep did not already see; only
- * a load or a remote insert can, and both rebuild `DocumentState`, which bumps
- * its generation. The gate reads that generation: `blocks.size` would itself
- * iterate every block (`YMap#size` spreads its keys), making every keystroke
- * O(document) (SCALE2).
+ * no op touches, so the first apply after a load sweeps the whole document.
+ * Apply refuses `insert-block` and `set-props` carrying an unregistered type
+ * (PEN_APPLY_002), so no local apply can add a type a previous sweep did not
+ * already see; only a load or a remote or undo commit can, and such a commit
+ * names the blocks it stored or retyped. Later applies check only those, so a
+ * keystroke or a structural commit sweeps nothing (SCALE2).
  */
 function reportUnknownBlocksInDocument(pipeline: ApplyPipelineInternal): void {
-	const generation = pipeline._documentGeneration?.();
-	if (generation !== undefined && generation === pipeline._unknownScanGeneration) {
+	if (pipeline._unknownScanPending) {
+		pipeline._unknownScanPending = false;
+		pipeline._unknownTypeCandidates.clear();
+		for (const [, rawBlockMap] of pipeline._doc.blocks.entries()) {
+			reportUnknownBlockType(pipeline, rawBlockMap);
+		}
 		return;
 	}
-	pipeline._unknownScanGeneration = generation;
-
-	for (const [, rawBlockMap] of pipeline._doc.blocks.entries()) {
-		if (!isCRDTMap(rawBlockMap)) {
-			continue;
-		}
-		const type = rawBlockMap.get("type");
-		if (typeof type !== "string") {
-			continue;
-		}
-		if (isRegisteredBlockType(pipeline._registry, type)) {
-			continue;
-		}
-		emitSchemaUnknownBlock(pipeline, type);
+	if (pipeline._unknownTypeCandidates.size === 0) return;
+	for (const blockId of pipeline._unknownTypeCandidates) {
+		reportUnknownBlockType(pipeline, pipeline._doc.blocks.get(blockId));
 	}
+	pipeline._unknownTypeCandidates.clear();
+}
+
+function reportUnknownBlockType(
+	pipeline: ApplyPipelineInternal,
+	rawBlockMap: unknown,
+): void {
+	if (!isCRDTMap(rawBlockMap)) return;
+	const type = rawBlockMap.get("type");
+	if (typeof type !== "string") return;
+	if (isRegisteredBlockType(pipeline._registry, type)) return;
+	emitSchemaUnknownBlock(pipeline, type);
 }
 
 function readStoredBlockType(

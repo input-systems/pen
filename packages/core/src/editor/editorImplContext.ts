@@ -28,7 +28,7 @@ import type {
 	UndoManager,
 	Unsubscribe,
 } from "@input/pen-types";
-import type { BlockIndex } from "../changes/blockIndex";
+import type { BlockIndex, StoredBlockReader } from "../changes/blockIndex";
 import type { SchemaEngineImpl } from "../schema/normalize";
 import type { FacetRegistry } from "../facets/registry";
 import type { ApplyPipeline } from "./apply";
@@ -74,6 +74,8 @@ export interface EditorApiContext {
 	_deferredCRDTEvent: CRDTEvent | null;
 	_lastChangeSummary: ChangeSummary | null;
 	_blockIndex: BlockIndex;
+	/** The last commit's block-map reads, valid until the next transaction (SCALE2). */
+	_storedBlocks: StoredBlockReader | null;
 	readonly _documentState: DocumentStateImpl;
 	_releaseSession: Unsubscribe | null;
 	readonly _registry: SchemaRegistry;
