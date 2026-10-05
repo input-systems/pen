@@ -268,6 +268,7 @@ class BlockNotifierImpl implements BlockNotifier {
 		this._segmentSubscribers.clear();
 		this._segments.clear();
 		this._segmentBasis.clear();
+		this._deadIds.clear();
 		this._detach();
 	}
 
@@ -379,7 +380,8 @@ class BlockNotifierImpl implements BlockNotifier {
 	 * for liveness, so a text commit reads nothing (SCALE2).
 	 */
 	private _trackDeadIds(summary: ChangeSummary): boolean {
-		let changed = false;
+		// A remote write can bring a dead block back without naming it.
+		let changed = summary.structural.length > 0 && this._reviveDeadIds();
 		for (const change of summary.structural) {
 			if (change.type === "block-inserted" || change.type === "block-moved") {
 				if (this._deadIds.delete(change.blockId)) changed = true;
@@ -538,12 +540,26 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _liveRootIds(): readonly string[] {
 		this._rootIdsGeneration = this._editor.documentState.generation;
 		const rootIds = getRootBlockIds(this._editor);
-		for (const id of this._deadIds) {
-			if (this._editor.documentState.indexOf(id) < 0) this._deadIds.delete(id);
-		}
+		this._reviveDeadIds();
 		this._coreRootIds = this._deadIds.size === 0 ? rootIds : null;
 		if (this._deadIds.size === 0) return rootIds;
 		return rootIds.filter((id) => !this._deadIds.has(id));
+	}
+
+	/**
+	 * Forgets every dead id core no longer lists or holds a block for again.
+	 * Detached, the notifier hears no commit, so a block re-inserted meanwhile
+	 * is only found here (COL4). O(dead ids).
+	 */
+	private _reviveDeadIds(): boolean {
+		let changed = false;
+		for (const id of this._deadIds) {
+			if (this._editor.documentState.indexOf(id) < 0 || this._editor.getBlock(id) !== null) {
+				this._deadIds.delete(id);
+				changed = true;
+			}
+		}
+		return changed;
 	}
 
 	/** The sibling list a parent renders: the live root ids, or `childrenOf` (RI6). */

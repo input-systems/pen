@@ -59,6 +59,32 @@ describe("block notifier (COL4 dangling entries)", () => {
 		unsubscribe();
 	});
 
+	it("COL4: a dead block re-inserted while the notifier was detached is back in rootIds", () => {
+		const { a, b } = createPeers();
+		const notifier = createBlockNotifier(b);
+		const first = notifier.subscribeDocument(() => {});
+		a.apply([{ type: "delete-block", blockId: "victim" }], { origin: "user" });
+		b.apply([{ type: "move-block", blockId: "victim", position: "first" }], { origin: "user" });
+		deliver(a, b);
+		expect(notifier.getDocumentSnapshot().rootIds).not.toContain("victim");
+		first();
+		expect(notifier.diagnostics.sourceSubscriptions, "detached").toBe(0);
+
+		a.apply(
+			[{ type: "insert-block", blockId: "victim", blockType: "paragraph", props: {}, position: "last" }],
+			{ origin: "user" },
+		);
+		deliver(a, b);
+		expect(b.getBlock("victim"), "live again").not.toBeNull();
+
+		const again = notifier.subscribeDocument(() => {});
+		const fresh = createBlockNotifier(b);
+		expect(notifier.getDocumentSnapshot().rootIds).toContain("victim");
+		expect(notifier.getDocumentSnapshot().rootIds).toEqual(fresh.getDocumentSnapshot().rootIds);
+		fresh.destroy();
+		again();
+	});
+
 	it("COL4: a remote move into a children array re-segments the parentId container the block left", () => {
 		const { a, b } = createPeers();
 		a.apply(
