@@ -500,20 +500,29 @@ function addReplacedChildArrays(
  * summary source reads it from there (`arrivedChildArrays`). Each
  * descendant is added as an insert into its parent's array, so it reports
  * `block-inserted`, or `block-moved` when it sat elsewhere before, and a
- * per-block index reads it. Bounded by the inserted subtrees (SCALE2).
+ * per-block index reads it. An entry is added once per array, so a block
+ * the same commit also lists in another array (concurrent moves into two
+ * containers, COL4) reports both. Bounded by the inserted subtrees (SCALE2).
  */
 function addInsertedDescendants(
 	inserted: ArrayInsert[],
 	arrivedChildArrays: ReadonlyMap<string, readonly string[]>,
 ): void {
-	const seen = new Set(inserted.map((item) => item.id));
+	const entryKey = (parentId: string | null, blockId: string) =>
+		`${parentId ?? ""}\u0000${blockId}`;
+	const listed = new Set(inserted.map((item) => entryKey(item.parentId, item.id)));
+	const walked = new Set<string>();
 	const visit = (blockId: string) => {
+		if (walked.has(blockId)) return;
+		walked.add(blockId);
 		const children = arrivedChildArrays.get(blockId) ?? [];
 		for (let at = 0; at < children.length; at += 1) {
 			const childId = children[at]!;
-			if (seen.has(childId)) continue;
-			seen.add(childId);
-			inserted.push({ id: childId, parentId: blockId, index: at, arrived: true });
+			const key = entryKey(blockId, childId);
+			if (!listed.has(key)) {
+				listed.add(key);
+				inserted.push({ id: childId, parentId: blockId, index: at, arrived: true });
+			}
 			visit(childId);
 		}
 	};

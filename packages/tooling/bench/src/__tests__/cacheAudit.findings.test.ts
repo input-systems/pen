@@ -2,6 +2,7 @@ import {
 	createPeerHarness,
 	generateMixedBlockSpecs,
 	type PeerHarness,
+	type TestBlock,
 	type TestEditor,
 } from "@input/pen-test";
 import type { ChangeSummary, CommitEvent, Editor } from "@input/pen-types";
@@ -26,6 +27,16 @@ import {
  */
 
 const ROOT_COUNT = 40;
+
+/** A callout holding one `children`-array child. */
+function callout(id: string): TestBlock {
+	return {
+		id,
+		type: "callout",
+		content: id,
+		children: [{ id: `${id}-1`, type: "paragraph", content: "one" }],
+	};
+}
 
 let internals: AuditInternals;
 let harness: PeerHarness | null = null;
@@ -175,12 +186,6 @@ describe("cache property findings", () => {
 	});
 
 	it("finding 5: a block two children arrays list keeps a parent when one entry goes", () => {
-		const callout = (id: string) => ({
-			id,
-			type: "callout",
-			content: id,
-			children: [{ id: `${id}-1`, type: "paragraph", content: "one" }],
-		});
 		const peers = fork(2, [
 			...generateMixedBlockSpecs(20),
 			callout("callout-a"),
@@ -233,6 +238,34 @@ describe("cache property findings", () => {
 			expect(peers[to]!.documentState.blockOrder.filter((id) => id === "scale-block-5")).toHaveLength(2);
 			expect(cacheProblems(peers[to]!)).toEqual([]);
 		}
+	});
+
+	it("a first child's new array is reported when the same commit lists the block in another array too", () => {
+		const peers = fork(3, [...generateMixedBlockSpecs(ROOT_COUNT), callout("callout-a")]);
+		const [a, , d] = peers as [TestEditor, TestEditor, TestEditor];
+		a.apply([
+			{ type: "move-block", blockId: "scale-block-4", position: { parent: "callout-a", index: 2 } },
+		]);
+		// `scale-block-14` is a blockquote without a `children` array.
+		d.apply([
+			{ type: "move-block", blockId: "scale-block-4", position: { parent: "scale-block-14", index: 0 } },
+		]);
+		harness!.deliver(0, 2);
+		const summaries: ChangeSummary[] = [];
+		const off = peers[1]!.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		harness!.deliver(2, 1);
+		off();
+		const targets = summaries.flatMap((summary) =>
+			summary.structural.flatMap((change) =>
+				change.type === "block-moved" && change.blockId === "scale-block-4"
+					? [change.toParentId]
+					: [],
+			),
+		);
+		expect(targets.sort()).toEqual(["callout-a", "scale-block-14"]);
+		expect(cacheProblems(peers[1]!)).toEqual([]);
 	});
 
 	describe.each([
