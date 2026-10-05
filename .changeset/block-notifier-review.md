@@ -10,5 +10,6 @@ Block notifier fixes:
 - A keystroke or caret move in a numbered list item keeps its `list` slice, ordinal included, instead of re-reading the whole numbered run (a 5,000-item run read about 12,500 blocks per keystroke).
 - A container subscribed only through `subscribeListSegments` re-segments when a `parentId`-route child is removed, re-parented or merged away, and a merge re-segments the array its source left (`sourceParentId`).
 - `getListSegments` read before `subscribeListSegments` (React reads in render and subscribes in an effect) is current once subscribed: a read attaches the notifier, a commit that touches an unsubscribed cached list drops it, and the notifier detaches at an event with no subscriber left. A subscribed list is no longer patched from a list cached before it subscribed.
+- `getBlockSnapshot` read before `subscribeBlock` is kept current the same way and keeps its identity across events that do not name the block (a newly mounted React block is no longer re-rendered with new slice identities and a reset `domSyncVersion` by an unrelated event); a commit that names it drops it. A snapshot read while no subscriber existed is no longer returned stale after a commit.
 
 Breaking: no

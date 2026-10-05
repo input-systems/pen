@@ -305,10 +305,13 @@ describe("block notifier (SCALE2 fan-out)", () => {
 		// A subscribe after destroy re-attaches.
 		const again = notifier.subscribeBlock("b3", () => {});
 		expect(notifier.diagnostics.sourceSubscriptions).toBeGreaterThan(0);
-		// A read without a subscriber is gone after the next event.
+		// A read without a subscriber survives an event that does not name it
+		// and is gone after a commit that does.
 		notifier.getBlockSnapshot("b4");
 		expect(notifier.diagnostics.cachedSnapshots).toBe(2);
 		editor.apply([{ type: "splice-text", blockId: "b5", from: 0, to: 0, insert: "x" }]);
+		expect(notifier.diagnostics.cachedSnapshots).toBe(2);
+		editor.apply([{ type: "splice-text", blockId: "b4", from: 0, to: 0, insert: "x" }]);
 		expect(notifier.diagnostics.cachedSnapshots).toBe(1);
 		again();
 		editor.destroy();

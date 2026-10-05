@@ -73,6 +73,53 @@ describe("block notifier subscription lifetime", () => {
 		block();
 	});
 
+	it("SCALE6: a block read before subscribing keeps its snapshot across events that do not name it", () => {
+		const editor = createListEditor();
+		const notifier = createBlockNotifier(editor);
+		const mounted = notifier.subscribeBlock("b1", () => {});
+		const read = notifier.getBlockSnapshot("b2");
+		editor.apply([{ type: "splice-text", blockId: "b3", from: 0, to: 0, insert: "x" }], { origin: "user" });
+		editor.selectText("b1", 0, 0);
+		const unsubscribe = notifier.subscribeBlock("b2", () => {});
+		// A renderer that mounted b2 before these events does not re-render it.
+		expect(notifier.getBlockSnapshot("b2")).toBe(read);
+		unsubscribe();
+		mounted();
+	});
+
+	it("SCALE6: a block read before subscribing is current once subscribed", () => {
+		const editor = createListEditor();
+		for (const attachedBy of [null, "b1"]) {
+			const notifier = createBlockNotifier(editor);
+			const mounted = attachedBy ? notifier.subscribeBlock(attachedBy, () => {}) : () => {};
+			const read = notifier.getBlockSnapshot("b2");
+			editor.apply(
+				[
+					{ type: "splice-text", blockId: "b2", from: 0, to: 0, insert: "x" },
+					{ type: "set-props", blockId: "b2", props: { indent: 1 } },
+				],
+				{ origin: "user" },
+			);
+			const unsubscribe = notifier.subscribeBlock("b2", () => {});
+			const snapshot = notifier.getBlockSnapshot("b2");
+			expect(snapshot, `attached by ${attachedBy}`).not.toBe(read);
+			expect(snapshot.commit.revision).toBe(editor.getBlockRevision("b2"));
+			expect(snapshot.commit.props?.indent).toBe(1);
+			expect(snapshot.list?.level).toBe(2);
+			unsubscribe();
+			mounted();
+		}
+	});
+
+	it("SCALE4: reads without any subscriber hold the notifier only until the next event", () => {
+		const editor = createListEditor();
+		const notifier = createBlockNotifier(editor);
+		notifier.getBlockSnapshot("b1");
+		notifier.getListSegments(null);
+		editor.selectText("b3", 0, 0);
+		expect(notifier.diagnostics).toMatchObject({ sourceSubscriptions: 0, cachedSnapshots: 0 });
+	});
+
 	it("SCALE4: a stale segment unsubscribe leaves a newer subscriber on the same parent", () => {
 		const editor = createListEditor();
 		const notifier = createBlockNotifier(editor);

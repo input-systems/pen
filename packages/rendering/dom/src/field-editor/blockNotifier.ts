@@ -144,8 +144,6 @@ class BlockNotifierImpl implements BlockNotifier {
 	 * a lookup reads one entry rather than every cached snapshot.
 	 */
 	private readonly _cachedParents = new Map<string, Set<string>>();
-	/** Entries read without a subscriber, dropped at the next event (SCALE4). */
-	private readonly _unsubscribed = new Set<string>();
 	private _sharedReadContext: EventContext | null = null;
 	private _deliveries = 0;
 	private readonly _fanout = emptyFanout();
@@ -174,7 +172,6 @@ class BlockNotifierImpl implements BlockNotifier {
 		this._attach();
 		const entry = this._entryFor(blockId);
 		entry.subscribers.add(onChange);
-		this._unsubscribed.delete(blockId);
 		return () => {
 			entry.subscribers.delete(onChange);
 			if (entry.subscribers.size === 0 && this._entries.get(blockId) === entry) {
@@ -184,7 +181,15 @@ class BlockNotifierImpl implements BlockNotifier {
 		};
 	}
 
+	/**
+	 * A read attaches, so a snapshot read in render before its block
+	 * subscribes (React) is kept current by the events between the two: it
+	 * keeps its identity across events that do not name the block, a commit
+	 * that names it drops it so the next read rebuilds it, and the notifier
+	 * detaches at an event with no subscriber left (SCALE4, SCALE6).
+	 */
 	getBlockSnapshot(blockId: string): BlockSnapshot {
+		this._attach();
 		return this._entryFor(blockId).snapshot;
 	}
 
@@ -898,12 +903,11 @@ class BlockNotifierImpl implements BlockNotifier {
 	// ── Snapshots and delivery ───────────────────────────────
 
 	/**
-	 * The context first reads build snapshots in. Attached, it is shared until
-	 * the next structural commit, so a mount walks each list run once rather
-	 * than once per item; detached, nothing invalidates it, so each read is fresh.
+	 * The context first reads build snapshots in, shared until the next
+	 * structural commit, so a mount walks each list run once rather than once
+	 * per item. Reads attach first, so commits invalidate it.
 	 */
 	private _readContext(): EventContext {
-		if (this._sources.length === 0) return newContext();
 		this._sharedReadContext ??= newContext();
 		return this._sharedReadContext;
 	}
@@ -920,7 +924,6 @@ class BlockNotifierImpl implements BlockNotifier {
 			};
 			this._setSnapshot(blockId, entry, this._buildSnapshot(blockId, entry, this._readContext()));
 			this._entries.set(blockId, entry);
-			this._unsubscribed.add(blockId);
 		}
 		return entry;
 	}
@@ -929,13 +932,12 @@ class BlockNotifierImpl implements BlockNotifier {
 		const previous = entry.snapshot as BlockSnapshot | undefined;
 		const editor = this._editor;
 		const commit = buildCommitSlice(editor, blockId, entry.lastCommit, previous?.commit);
-		// Read once: detached, each read rebuilds the root ids.
 		const document = this.getDocumentSnapshot();
 		const next: BlockSnapshot = {
 			blockId,
 			commit,
-			selection: buildSelectionSlice(editor, this._selectionFor(), this._selectedFor(), blockId, previous?.selection),
-			field: buildFieldSlice(editor, this._storeFor(), blockId, entry.domSyncVersion, previous?.field),
+			selection: buildSelectionSlice(editor, this._selection, this._selected, blockId, previous?.selection),
+			field: buildFieldSlice(editor, this._store, blockId, entry.domSyncVersion, previous?.field),
 			decorations: editor.getDecorations().forBlock(blockId),
 			childIds: this._childIdsFor(blockId, previous),
 			list: this._listFor(blockId, commit.type, context, previous?.list, document.rootIds),
@@ -951,21 +953,6 @@ class BlockNotifierImpl implements BlockNotifier {
 		return previous && arraysEqual(previous.childIds, childIds) ? previous.childIds : [...childIds];
 	}
 
-	private _selectionFor(): SelectionState | null {
-		return this._sources.length > 0 ? this._selection : this._editor.selection;
-	}
-
-	private _selectedFor(): ReadonlySet<string> {
-		// Detached: compute on demand so a render-before-subscribe read is current.
-		return this._sources.length > 0
-			? this._selected
-			: new Set(selectedBlockIds(this._editor, this._editor.selection));
-	}
-
-	private _storeFor(): FieldEditorStoreSnapshot | null {
-		return this._sources.length > 0 ? this._store : (this._fieldEditor?.getSnapshot() ?? null);
-	}
-
 	private _visibleCompletion(): InlineCompletionSuggestion | null {
 		const controller = this._completion ?? getInlineCompletionController(this._editor);
 		return controller?.getState().visibleSuggestion ?? null;
@@ -978,11 +965,16 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	private _deliver(kind: BlockNotifierEventKind, ids: Iterable<string>, context: EventContext = newContext()): void {
-		this._dropUnsubscribed();
 		const changed: string[] = [];
 		for (const id of new Set(ids)) {
 			const entry = this._entries.get(id);
 			if (!entry) continue;
+			// A snapshot read without a subscriber lives until a commit names
+			// it; the next read rebuilds it (SCALE4).
+			if (kind === "commit" && entry.subscribers.size === 0) {
+				this._forget(id, entry);
+				continue;
+			}
 			const next = this._buildSnapshot(id, entry, context);
 			if (next === entry.snapshot) continue;
 			this._setSnapshot(id, entry, next);
@@ -999,15 +991,6 @@ class BlockNotifierImpl implements BlockNotifier {
 				subscriber(changed);
 			}
 		}
-	}
-
-	/** Snapshots read without a subscriber live until the next event (SCALE4). */
-	private _dropUnsubscribed(): void {
-		for (const id of this._unsubscribed) {
-			const entry = this._entries.get(id);
-			if (entry && entry.subscribers.size === 0) this._forget(id, entry);
-		}
-		this._unsubscribed.clear();
 	}
 
 	/** Stores a snapshot, moving its children in the cached parent map when they changed. */
@@ -1038,14 +1021,12 @@ class BlockNotifierImpl implements BlockNotifier {
 
 	private _forget(blockId: string, entry: Entry): void {
 		this._entries.delete(blockId);
-		this._unsubscribed.delete(blockId);
 		this._unlinkChildren(blockId, entry.snapshot.childIds);
 	}
 
 	private _clearEntries(): void {
 		this._entries.clear();
 		this._cachedParents.clear();
-		this._unsubscribed.clear();
 	}
 
 	private _notifyAll(subscribers: ReadonlySet<() => void>): void {
