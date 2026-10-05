@@ -395,7 +395,7 @@ function patchEditorApply(editor: Editor): () => void {
 		editor,
 		"apply",
 		(originalApply) => (ops, applyOptions) => {
-			const owner = resolveWriteOwner(editor);
+			const owner = resolveWriteOwner(editor, applyOptions?.origin);
 			if (owner.kind === "none") {
 				originalApply(ops, applyOptions);
 				return;
@@ -406,27 +406,33 @@ function patchEditorApply(editor: Editor): () => void {
 				}
 				return;
 			}
-			const { call } = owner;
-			const turn = call.turn;
+			const turn = owner.call.turn;
 			if (turn) {
-				const rejection = turn.tryRecordOps(ops.length);
-				if (rejection) {
-					// Reject the whole batch: a partially applied edit is worse than a
-					// failed tool call the model can see and retry.
-					throw new AIToolBudgetError(
-						rejection === "budget-total-ops-exhausted"
-							? "budget-total-ops-exhausted"
-							: "budget-ops-per-call-exhausted",
-						ops.length,
-						turn.limits,
-					);
-				}
+				recordTurnOps(turn, ops.length);
 			}
 			const resolvedOptions = turn
 				? applyOptionsWithTurn(applyOptions, turn)
 				: applyOptions;
 			applyToolOps(editor, originalApply, ops, resolvedOptions);
 		},
+	);
+}
+
+/**
+ * Books `count` ops to the turn, or throws for the whole batch: a partially
+ * applied edit is worse than a failed tool call the model can see and retry.
+ */
+function recordTurnOps(turn: AIToolTurn, count: number): void {
+	const rejection = turn.tryRecordOps(count);
+	if (!rejection) {
+		return;
+	}
+	throw new AIToolBudgetError(
+		rejection === "budget-total-ops-exhausted"
+			? "budget-total-ops-exhausted"
+			: "budget-ops-per-call-exhausted",
+		count,
+		turn.limits,
 	);
 }
 
@@ -438,7 +444,7 @@ function patchEditorOpenTextStream(editor: Editor): () => void {
 		editor,
 		"openTextStream",
 		(originalOpen) => (target, streamOptions) => {
-			const owner = resolveWriteOwner(editor);
+			const owner = resolveWriteOwner(editor, streamOptions?.origin);
 			if (owner.kind === "none") {
 				return originalOpen(target, streamOptions);
 			}

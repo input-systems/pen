@@ -281,6 +281,65 @@ describe("AIB3 per-call write attribution", () => {
 		expect(writeCall.close({ ok: true })).toEqual({ ok: true });
 	});
 
+	it("AIB3: the user's typing while a read-only call is open lands and is not reported against the call", async () => {
+		const { editor, applied, diagnostics } = createRecordingEditor();
+		const runtime = createRuntime();
+		const readCall = await openCall(
+			runtime,
+			editor,
+			"read_document",
+			"g-a",
+		);
+
+		editor.apply([insertOp("typed")], { origin: "user" });
+		expect(applied).toEqual([
+			{ ops: [insertOp("typed")], options: { origin: "user" } },
+		]);
+		expect(readOnlyMutations(diagnostics)).toEqual([]);
+		expect(readCall.close({ ok: true })).toEqual({ ok: true });
+	});
+
+	it.each(["user", "history", "input-rule", "collaborator"] as const)(
+		"AIB3: a %s-origin write while a mutating call is open joins neither its group nor its budget (AIB4)",
+		async (origin) => {
+			const { editor, applied } = createRecordingEditor();
+			const runtime = createRuntime();
+			const writeCall = await openCall(
+				runtime,
+				editor,
+				"insert_block",
+				"g-b",
+			);
+
+			editor.apply([insertOp("a"), insertOp("b"), insertOp("c")], {
+				origin,
+			});
+			expect(applied).toHaveLength(1);
+			expect(applied[0].options).toEqual({ origin });
+			expect(writeCall.turn.ops).toBe(0);
+			writeCall.close({ ok: true });
+		},
+	);
+
+	it("AIB3: an unframed write with an AI origin still belongs to the only open call", async () => {
+		const { editor, applied } = createRecordingEditor();
+		const runtime = createRuntime();
+		const writeCall = await openCall(
+			runtime,
+			editor,
+			"insert_block",
+			"g-b",
+		);
+
+		editor.apply([insertOp("late")], { origin: { type: "ai" } });
+		expect(applied[0].options?.origin).toEqual({
+			type: "ai",
+			groupId: "g-b",
+		});
+		expect(writeCall.turn.ops).toBe(1);
+		writeCall.close({ ok: true });
+	});
+
 	it("AIB3: a write no call can be named for is refused while any read-only call is open", async () => {
 		const { editor, applied, diagnostics } = createRecordingEditor();
 		const runtime = createRuntime();

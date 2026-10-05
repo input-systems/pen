@@ -59,6 +59,7 @@ export function ToolbarSelect(props: ToolbarSelectProps) {
 					newType: value,
 					newProps: tableProps,
 				}),
+				{ origin: "user" },
 			);
 
 			if (isTable && tableActivationTarget) {

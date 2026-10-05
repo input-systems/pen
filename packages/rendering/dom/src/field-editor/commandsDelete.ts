@@ -135,12 +135,15 @@ export function applyBackspaceBehavior(
 
 	const targetOffset = previousBlock.length();
 	if (action.action === "delete" || getLogicalInlineLength(ytext) === 0) {
-		editor.apply([
-			{
-				type: "delete-block",
-				blockId,
-			} as DocumentOp,
-		]);
+		editor.apply(
+			[
+				{
+					type: "delete-block",
+					blockId,
+				} as DocumentOp,
+			],
+			{ origin: "user" },
+		);
 	} else {
 		applyMergeBlocks(editor, {
 			targetBlockId: previousBlock.id,

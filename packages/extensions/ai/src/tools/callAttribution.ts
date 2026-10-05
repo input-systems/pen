@@ -1,3 +1,5 @@
+import type { OpOrigin } from "@input/pen-types";
+
 import type { AIToolTurn } from "./authority";
 
 /** One open tool call, as the write guard sees it (AIB3). */
@@ -88,15 +90,27 @@ export function runPastGuards<R>(editor: object, run: () => R): R {
 	return runInFrame(editor, PASS_THROUGH, run);
 }
 
+/** Origin types a tool call's own writes carry. */
+const AI_ORIGIN_TYPES: ReadonlySet<string> = new Set(["ai", "ai-session"]);
+
+function isAIOrigin(origin: OpOrigin): boolean {
+	return AI_ORIGIN_TYPES.has(typeof origin === "string" ? origin : origin.type);
+}
+
 /**
  * Names the call a write on `editor` belongs to (AIB3). A call's own code is
  * on the synchronous stack whenever it writes through its call view, so that
- * frame decides. A write with no open call's frame — a handler that captured
- * the shared editor, a timer, a host write — belongs to the only open call;
- * with several open it cannot be attributed, so it is refused while any of
- * them is read-only and otherwise goes to the newest mutating call.
+ * frame decides. A write with no open call's frame that names a non-AI
+ * origin — the user typing, undo, an input rule — is no call's and runs
+ * unguarded. Any other unframed write — a handler that captured the shared
+ * editor, a timer — belongs to the only open call; with several open it
+ * cannot be attributed, so it is refused while any of them is read-only and
+ * otherwise goes to the newest mutating call.
  */
-export function resolveWriteOwner(editor: object): WriteOwner {
+export function resolveWriteOwner(
+	editor: object,
+	origin?: OpOrigin,
+): WriteOwner {
 	const registry = registries.get(editor);
 	if (!registry) {
 		return NO_OWNER;
@@ -107,6 +121,9 @@ export function resolveWriteOwner(editor: object): WriteOwner {
 	}
 	if (frame && registry.live.includes(frame)) {
 		return { kind: "call", call: frame };
+	}
+	if (origin !== undefined && !isAIOrigin(origin)) {
+		return NO_OWNER;
 	}
 	const { live } = registry;
 	if (live.length === 0) {
