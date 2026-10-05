@@ -52,6 +52,8 @@ Empty text-capable `Y.Text` is `""`. Relative-position mint and resolve walk `pe
 
 `createSummarySource` reports a block that arrives carrying content as an insert of that content. Yjs leaves a type created inside a transaction out of `txn.changed`, so a block whose text was written at construction — a split's tail block, an import, a paste — emits no text delta of its own, and every observer downstream would otherwise see the block appear and its text arrive from nowhere. The gate is the block's entry changing on the `blocks` map, so a reorder, which only touches order arrays, never restates existing text as an insert. This is what gives AN14's remote delete/insert pairing an insert to pair against when a peer splits a block.
 
+A write made while another transaction is being observed — a commit listener applying ops during a remote delivery or an undo — is queued by Yjs, and its observers run only after the earlier transactions' cleanup. That cleanup merges structs: a deleted run with the struct beside it the queued write deleted, and, from an earlier queued transaction whose state vector is read only when its cleanup starts (Yjs opens an empty one whenever a text delta is read from an observer), the queued write's new struct with the one the same client wrote just before. The queued write's own events then miss that delete or insert. `createSummarySource` therefore reads each transaction queued behind the one it just reported before that one's cleanup runs, and reports those deltas when the queued transaction is observed, so a listener write's summary names everything it changed.
+
 ## Integration Notes
 
 - Path in workspace: `packages/crdt/yjs`

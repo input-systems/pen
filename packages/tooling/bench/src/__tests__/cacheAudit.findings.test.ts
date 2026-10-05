@@ -683,6 +683,80 @@ describe("cache property findings", () => {
 		notifier.destroy();
 	});
 
+	describe("a commit listener's write while a remote commit is observed", () => {
+		/** Runs `write` from `editor`'s first commit listener call while `deliver` runs; returns every summary. */
+		function writeFromListener(editor: TestEditor, deliver: () => void, write: () => void): ChangeSummary[] {
+			const summaries: ChangeSummary[] = [];
+			let fired = false;
+			const off = editor.on("commit", (event: CommitEvent) => {
+				summaries.push(event.summary);
+				if (fired) return;
+				fired = true;
+				write();
+			});
+			try {
+				deliver();
+			} finally {
+				off();
+			}
+			expect(fired).toBe(true);
+			return summaries;
+		}
+
+		it("reports an entry it appends next to the entry its client wrote last", () => {
+			const peers = fork(2, [...generateMixedBlockSpecs(20), callout("callout-a")]);
+			const [receiver, other] = peers as [TestEditor, TestEditor];
+			// The receiver's last struct is x's entry in callout-a.
+			receiver.apply([
+				{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-a", index: 1 } },
+			]);
+			other.apply([{ type: "splice-text", blockId: "scale-block-9", from: 0, to: 0, insert: "ox " }]);
+			const before = storedBlockStates(receiver);
+			// Reading the remote commit's text delta opens an empty Yjs
+			// transaction; its cleanup merged the listener's new entry into
+			// x's before the listener's own commit was observed.
+			const summaries = writeFromListener(
+				receiver,
+				() => harness!.deliver(1, 0),
+				() =>
+					receiver.apply([
+						{ type: "move-block", blockId: "scale-block-5", position: { parent: "callout-a", index: 2 } },
+					]),
+			);
+			expect(receiver.documentState.childrenOf("callout-a")).toEqual(["callout-a-1", "scale-block-3", "scale-block-5"]);
+			const moved = summaries.flatMap((summary) =>
+				summary.structural.filter((change) => "blockId" in change && change.blockId === "scale-block-5"),
+			);
+			expect(moved.map((change) => change.type)).toEqual(["block-moved"]);
+			expect(checkTouchedIds(before, storedBlockStates(receiver), summaries)).toEqual([]);
+			expect(cacheProblems(receiver)).toEqual([]);
+		});
+
+		it("reports text it deletes next to a run the remote commit deleted", () => {
+			const peers = fork(2);
+			const [receiver, other] = peers as [TestEditor, TestEditor];
+			// One insert: a single text struct of the other peer's.
+			other.apply([{ type: "splice-text", blockId: "scale-block-4", from: 0, to: 0, insert: "abcd" }]);
+			harness!.deliver(1, 0);
+			other.apply([{ type: "splice-text", blockId: "scale-block-4", from: 0, to: 2, insert: "" }]);
+			// The remote commit deletes "ab"; the listener deletes the "c"
+			// beside it, which the remote commit's cleanup merged into the
+			// deleted "ab" before the listener's commit was observed.
+			const summaries = writeFromListener(
+				receiver,
+				() => harness!.deliver(1, 0),
+				() =>
+					receiver.apply([{ type: "splice-text", blockId: "scale-block-4", from: 0, to: 1, insert: "" }]),
+			);
+			expect(receiver.getBlock("scale-block-4")?.textContent().startsWith("dBlock 4")).toBe(true);
+			const spliced = summaries.flatMap((summary) =>
+				summary.blockText.filter((change) => change.blockId === "scale-block-4"),
+			);
+			expect(spliced).toHaveLength(2);
+			expect(cacheProblems(receiver)).toEqual([]);
+		});
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },
