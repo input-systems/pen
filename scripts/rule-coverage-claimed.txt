@@ -303,3 +303,4 @@ rules/interop#IOP11
 rules/dom#FE2
 rules/dom#RI6
 rules/dom#OV4
+rules/selection#P4
