@@ -16,6 +16,10 @@ import {
 	type CRDTUnknownArray,
 	type CRDTUnknownMap,
 } from "../editor/crdtShapes";
+import type { RawCommitDelta } from "@input/pen-yjs";
+import type { StoredBlockReader } from "../changes/blockIndex";
+import { NormalizePassIndex } from "./passIndex";
+
 export function sortDeltaAttributes(
 	attributes: Record<string, unknown>,
 	registry: SchemaRegistry,
@@ -95,25 +99,6 @@ const MAX_ITERATIONS = 1000;
 
 type DiagnosticSink = (event: DiagnosticEvent) => void;
 
-type DanglingEntry = {
-	/** `null` for `blockOrder`, otherwise the block whose `children` holds it. */
-	parentId: string | null;
-	blockId: string;
-	index: number;
-};
-
-type NormalizePassIndex = {
-	blockOrderSet: Set<string>;
-	blockOrderIndices: Map<string, number[]>;
-	parentByChild: Map<string, string>;
-	/** Every parent whose `children` lists the id, for ids listed by more than one. */
-	multiParentsByChild: Map<string, string[]>;
-	/** Entries naming a deleted block, found while building. */
-	dangling: DanglingEntry[];
-	/** Ids with a `doc.blocks` entry when the index was built. */
-	liveIds: Set<string>;
-};
-
 export class SchemaEngineImpl implements SchemaEngine {
 	private readonly registry: SchemaRegistry;
 	private readonly doc: PenDocument;
@@ -124,6 +109,8 @@ export class SchemaEngineImpl implements SchemaEngine {
 	private readonly externalStructuralIds = new Set<string>();
 	private onDiagnostic: DiagnosticSink | undefined;
 	private passIndex: NormalizePassIndex | null = null;
+	/** Whether this engine wrote structure since the last observed commit. */
+	private wroteStructure = false;
 
 	constructor(
 		registry: SchemaRegistry,
@@ -146,13 +133,50 @@ export class SchemaEngineImpl implements SchemaEngine {
 	}
 
 	/**
-	 * Drop the cached pass index because `blockOrder` or a `children` array
-	 * changed outside this engine — an executing op, or a remote/undo update.
-	 * Every structural mutation the engine performs itself already invalidates
-	 * at the mutation site, so those callers do not go through here.
+	 * A commit landed. A local apply's executors and this engine's repairs
+	 * advanced the pass index at each write, so it is current. Any other
+	 * commit (remote, undo) advances it by the commit's delta, in proportion
+	 * to what the commit touched; one this engine also wrote into outside an
+	 * apply (a deferred block's normalization) cannot be told apart from the
+	 * delta, so the index is dropped and rebuilt on next read.
 	 */
-	notifyStructureChanged(): void {
-		this.invalidatePassIndex();
+	observeCommit(
+		delta: RawCommitDelta,
+		localApply: boolean,
+		readBlock: StoredBlockReader,
+	): void {
+		const wrote = this.wroteStructure;
+		this.wroteStructure = false;
+		if (localApply || !this.passIndex) return;
+		if (wrote || !this.passIndex.applyCommitDelta(readBlock, delta)) {
+			this.invalidatePassIndex();
+		}
+	}
+
+	/** The pass index, built on first read; the apply executors resolve positions through it. */
+	structure(): NormalizePassIndex {
+		return this.getPassIndex();
+	}
+
+	/** `blockIds` were inserted into `blockOrder` at `index`. */
+	noteRootInserted(index: number, blockIds: readonly string[]): void {
+		this.wroteStructure = true;
+		this.passIndex?.rootInserted(index, blockIds);
+	}
+
+	/** `count` entries were deleted from `blockOrder` at `index`. */
+	noteRootDeleted(index: number, count: number): void {
+		this.wroteStructure = true;
+		this.passIndex?.rootDeleted(index, count);
+	}
+
+	/**
+	 * A block map was stored or deleted (`blockMap` is then `undefined`), or
+	 * its `children` array written. The caller hands over the map it holds.
+	 */
+	noteBlockChanged(blockId: string, blockMap: unknown): void {
+		this.wroteStructure = true;
+		this.passIndex?.blockChanged(blockId, blockMap);
 	}
 
 	/**
@@ -165,16 +189,6 @@ export class SchemaEngineImpl implements SchemaEngine {
 	notifyExternalCommit(blockIds: Iterable<string>): void {
 		for (const blockId of blockIds) {
 			this.externalStructuralIds.add(blockId);
-			// A block map arriving or leaving without an array edit (an order
-			// entry delivered before its block map) changes liveness under a
-			// cached index.
-			if (
-				this.passIndex &&
-				this.passIndex.liveIds.has(blockId) !==
-					this.doc.blocks.has(blockId)
-			) {
-				this.invalidatePassIndex();
-			}
 		}
 	}
 
@@ -508,20 +522,27 @@ export class SchemaEngineImpl implements SchemaEngine {
 			? getArrayProp<string>(blockMap, "children")
 			: null;
 		if (children) {
-			this.deduplicateChildren(children);
+			this.deduplicateChildren(blockId, children);
 		}
 	}
 
 	private deduplicateBlockOrder(blockId: string): void {
-		const indices = this.getPassIndex().blockOrderIndices.get(blockId);
-		if (!indices || indices.length <= 1) return;
-		this.deduplicateAtIndices(this.blockOrder, indices);
+		const index = this.getPassIndex();
+		if ((index.rootCount.get(blockId) ?? 0) <= 1) return;
+		const indices = index.rootIndicesOf(blockId);
+		for (let i = indices.length - 2; i >= 0; i--) {
+			this.blockOrder.delete(indices[i]!, 1);
+			this.noteRootDeleted(indices[i]!, 1);
+		}
 	}
 
 	// Every id listed more than once in this block's `children` keeps its
 	// last entry, as `blockOrder` does. Concurrent moves of one block into
 	// the same parent each insert an entry. Reads only this block's array.
-	private deduplicateChildren(children: CRDTUnknownArray<string>): void {
+	private deduplicateChildren(
+		blockId: string,
+		children: CRDTUnknownArray<string>,
+	): void {
 		const indicesById = new Map<string, number[]>();
 		for (let i = 0; i < children.length; i++) {
 			const id = children.get(i);
@@ -541,19 +562,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 		for (const index of doomed) {
 			children.delete(index, 1);
 		}
-		this.invalidatePassIndex();
-	}
-
-	private deduplicateAtIndices(
-		arr: CRDTUnknownArray<string>,
-		indices: readonly number[],
-	): void {
-		if (indices.length <= 1) return;
-
-		for (let i = indices.length - 2; i >= 0; i--) {
-			arr.delete(indices[i], 1);
-		}
-		this.invalidatePassIndex();
+		this.noteBlockChanged(blockId, this.doc.blocks.get(blockId));
 	}
 
 	// ── Rule 12: No Dangling Structural Entries ─────────────
@@ -566,7 +575,11 @@ export class SchemaEngineImpl implements SchemaEngine {
 	// one Y.Array item are a no-op, so the repair converges and is idempotent.
 
 	private removeDanglingEntries(): void {
-		const { dangling } = this.getPassIndex();
+		const index = this.getPassIndex();
+		if (index.unstoredListed.size === 0) return;
+		const dangling = index.danglingEntries((blockId) =>
+			this.isDeletedBlock(blockId),
+		);
 		if (dangling.length === 0) return;
 
 		const removed = new Map<string, Set<string>>();
@@ -575,6 +588,13 @@ export class SchemaEngineImpl implements SchemaEngine {
 			const array = this.structuralArray(entry.parentId);
 			if (!array || array.get(entry.index) !== entry.blockId) continue;
 			array.delete(entry.index, 1);
+			if (entry.parentId === null) this.noteRootDeleted(entry.index, 1);
+			else {
+				this.noteBlockChanged(
+					entry.parentId,
+					this.doc.blocks.get(entry.parentId),
+				);
+			}
 			const arrayName =
 				entry.parentId === null
 					? "blockOrder"
@@ -583,7 +603,6 @@ export class SchemaEngineImpl implements SchemaEngine {
 			arrays.add(arrayName);
 			removed.set(entry.blockId, arrays);
 		}
-		this.invalidatePassIndex();
 
 		for (const [blockId, arrays] of removed) {
 			this.onDiagnostic?.({
@@ -652,7 +671,6 @@ export class SchemaEngineImpl implements SchemaEngine {
 		if (!parentId) return;
 		const viaChildren = this.readParentIdProp(childToClear) !== parentId;
 		this.clearParentEdge(childToClear, parentId);
-		this.invalidatePassIndex();
 		// A cleared `children` edge detaches the child and the subtree under
 		// it: re-home it at the end of the root order so it stays a member.
 		// Peers that repair concurrently each append one entry; Rule 9 keeps
@@ -734,6 +752,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 				children.delete(i, 1);
 			}
 		}
+		this.noteBlockChanged(parentId, parentMap);
 	}
 
 	// ── Rule 11: No Cross-Array Membership ──────────────────
@@ -752,10 +771,11 @@ export class SchemaEngineImpl implements SchemaEngine {
 	// parent's `children`. The parent whose id sorts lowest keeps it, so every
 	// peer computes the same repair from the same state (COL4).
 	private keepOneChildrenParent(blockId: string): void {
-		const parents = this.getPassIndex().multiParentsByChild.get(blockId);
+		const parents = this.getPassIndex().parentsByChild.get(blockId);
 		if (!parents || parents.length < 2) return;
-		const keep = [...parents].sort()[0]!;
-		for (const parentId of parents) {
+		// Sorted by the index, so the first is the lowest id.
+		const keep = parents[0]!;
+		for (const parentId of [...parents]) {
 			if (parentId === keep) continue;
 			const parentMap = this.getBlockMap(parentId);
 			const children = parentMap
@@ -767,48 +787,36 @@ export class SchemaEngineImpl implements SchemaEngine {
 					children.delete(i, 1);
 				}
 			}
+			this.noteBlockChanged(parentId, parentMap);
 			this.dirtyBlockIds.add(parentId);
 		}
-		this.invalidatePassIndex();
 	}
 
 	private isInBlockOrder(blockId: string): boolean {
-		return this.getPassIndex().blockOrderSet.has(blockId);
+		return this.getPassIndex().isInRootOrder(blockId);
 	}
 
+	/** The lowest-id parent whose `children` lists the block. */
 	private findParentWithChild(blockId: string): string | null {
-		return this.getPassIndex().parentByChild.get(blockId) ?? null;
+		return this.getPassIndex().parentsByChild.get(blockId)?.[0] ?? null;
 	}
 
 	// ── Block Order Helpers ─────────────────────────────────
 
 	private removeFromBlockOrder(blockId: string): void {
-		const indices = this.getPassIndex().blockOrderIndices.get(blockId);
-		if (indices && indices.length > 0) {
-			this.blockOrder.delete(indices[indices.length - 1], 1);
-			this.invalidatePassIndex();
-			return;
-		}
-		for (let i = this.blockOrder.length - 1; i >= 0; i--) {
-			if (this.blockOrder.get(i) === blockId) {
-				this.blockOrder.delete(i, 1);
-				this.invalidatePassIndex();
-				return;
-			}
-		}
+		const index = this.getPassIndex().rootIds.lastIndexOf(blockId);
+		if (index < 0) return;
+		this.blockOrder.delete(index, 1);
+		this.noteRootDeleted(index, 1);
 	}
 
 	private insertIntoBlockOrder(blockId: string, index: number): void {
 		this.blockOrder.insert(index, [blockId]);
-		this.invalidatePassIndex();
+		this.noteRootInserted(index, [blockId]);
 	}
 
 	private getBlockOrderIndex(blockId: string): number {
-		const indices = this.getPassIndex().blockOrderIndices.get(blockId);
-		if (indices && indices.length > 0) {
-			return indices[0];
-		}
-		return -1;
+		return this.getPassIndex().rootIds.indexOf(blockId);
 	}
 
 	// ── Read Helpers ────────────────────────────────────────
@@ -849,7 +857,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 
 	private deleteBlock(blockId: string): void {
 		this.blocksMap.delete?.(blockId);
-		this.invalidatePassIndex();
+		this.noteBlockChanged(blockId, undefined);
 	}
 
 	private getPassIndex(): NormalizePassIndex {
@@ -863,65 +871,9 @@ export class SchemaEngineImpl implements SchemaEngine {
 		this.passIndex = null;
 	}
 
+	/** The full read the held index must equal; the cache property calls it too. */
 	private buildPassIndex(): NormalizePassIndex {
-		const blockOrderSet = new Set<string>();
-		const blockOrderIndices = new Map<string, number[]>();
-		const parentByChild = new Map<string, string>();
-		const multiParentsByChild = new Map<string, string[]>();
-		const dangling: DanglingEntry[] = [];
-		// Liveness comes from the one `blocks` walk this build already does,
-		// never from a per-entry `blocks.has`, so Rule 12 adds no map reads
-		// (SCALE2): it only compares ids the build reads anyway.
-		const liveIds = new Set<string>();
-		const childArrays: Array<[string, CRDTUnknownArray<string>]> = [];
-
-		for (const [id, rawBlockMap] of this.doc.blocks.entries()) {
-			liveIds.add(id);
-			if (!isCRDTMap(rawBlockMap)) continue;
-			const children = getArrayProp<string>(rawBlockMap, "children");
-			if (!children) continue;
-			childArrays.push([id, children]);
-		}
-
-		for (let i = 0; i < this.blockOrder.length; i++) {
-			const id = this.blockOrder.get(i);
-			if (!liveIds.has(id) && this.isDeletedBlock(id)) {
-				dangling.push({ parentId: null, blockId: id, index: i });
-			}
-			blockOrderSet.add(id);
-			const indices = blockOrderIndices.get(id);
-			if (indices) {
-				indices.push(i);
-			} else {
-				blockOrderIndices.set(id, [i]);
-			}
-		}
-
-		for (const [id, children] of childArrays) {
-			for (let i = 0; i < children.length; i++) {
-				const childId = children.get(i);
-				if (!liveIds.has(childId) && this.isDeletedBlock(childId)) {
-					dangling.push({ parentId: id, blockId: childId, index: i });
-				}
-				const firstParent = parentByChild.get(childId);
-				if (firstParent === undefined) {
-					parentByChild.set(childId, id);
-				} else if (firstParent !== id) {
-					const parents = multiParentsByChild.get(childId) ?? [firstParent];
-					if (!parents.includes(id)) parents.push(id);
-					multiParentsByChild.set(childId, parents);
-				}
-			}
-		}
-
-		return {
-			blockOrderSet,
-			blockOrderIndices,
-			parentByChild,
-			multiParentsByChild,
-			dangling,
-			liveIds,
-		};
+		return NormalizePassIndex.build(this.doc);
 	}
 
 	/**

@@ -49,6 +49,11 @@ export interface ApplyPipelineDocumentContext {
 	readonly _crdtDoc: CRDTDocument;
 	readonly _tableGrid: TableGridExecutor;
 	readonly _emitter: EventEmitter;
+	/**
+	 * The normalizer, whose pass index the block executors resolve positions
+	 * through and advance at every structural write (SCALE2).
+	 */
+	readonly _engine: SchemaEngineImpl;
 	_doc: PenDocument;
 }
 
@@ -72,7 +77,6 @@ export interface ApplyPipelineOrchestrationContext extends ApplyPipelineDocument
 		structural?: StructuralOriginTag;
 		capture?: ApplyCapture;
 	}[];
-	readonly _engine: SchemaEngineImpl;
 	readonly _selection: SelectionAuthorityImpl;
 	_onDidApply: ((event: CRDTEvent) => void) | null;
 	_recordPhase: ((phase: PipelinePhase) => void) | null;

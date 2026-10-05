@@ -1,4 +1,3 @@
-import type { PenDocument } from "@input/pen-types";
 import type { RawCommitDelta, YArrayDelta } from "@input/pen-yjs";
 
 import { asMap, readStringArray, storedText } from "./readStored";
@@ -32,7 +31,7 @@ export interface BlockIndex {
 	 * delta that does not fit the held arrays.
 	 */
 	applyStructure(
-		doc: PenDocument,
+		readBlock: StoredBlockReader,
 		delta: RawCommitDelta,
 		named: ReadonlySet<string>,
 	): boolean;
@@ -41,6 +40,9 @@ export interface BlockIndex {
 	/** Takes ownership of a freshly built snapshot; the caller must not keep it. */
 	replace(snapshot: BlockIndexSnapshot): void;
 }
+
+/** Reads a block's stored map (`undefined` when none), once per id per commit. */
+export type StoredBlockReader = (blockId: string) => unknown;
 
 /** The clone the index holds; `snapshot()` hands it out read-only. */
 interface OwnedBlockIndexSnapshot extends BlockIndexSnapshot {
@@ -120,11 +122,11 @@ export function createBlockIndex(initial: BlockIndexSnapshot): BlockIndex {
 				);
 			}
 		},
-		applyStructure(doc, delta, named) {
+		applyStructure(readBlock, delta, named) {
 			const advanced = advanceStructure(
 				current,
 				listingsOf(),
-				doc,
+				readBlock,
 				delta,
 				named,
 			);
@@ -222,11 +224,11 @@ function rereadsBlock(keys: ReadonlySet<string>): boolean {
 function advanceStructure(
 	index: OwnedBlockIndexSnapshot,
 	listings: Listings,
-	doc: PenDocument,
+	readBlock: StoredBlockReader,
 	delta: RawCommitDelta,
 	named: ReadonlySet<string>,
 ): boolean {
-	if (listings.multiListed > 0 || !doc?.blocks) return false;
+	if (listings.multiListed > 0) return false;
 	const removed: Entry[] = [];
 	const added: Entry[] = [];
 
@@ -265,7 +267,7 @@ function advanceStructure(
 		settle.add(blockId);
 		const pre = index.childrenByParentId.get(blockId);
 		for (const childId of pre ?? []) removed.push([childId, blockId]);
-		const block = asMap(doc.blocks.get(blockId));
+		const block = asMap(readBlock(blockId));
 		if (!block) {
 			index.childrenByParentId.delete(blockId);
 			index.typeById.delete(blockId);
@@ -309,7 +311,7 @@ function advanceStructure(
 	}
 	for (const blockId of named) {
 		if (reread.has(blockId) || !index.typeById.has(blockId)) continue;
-		const block = asMap(doc.blocks.get(blockId));
+		const block = asMap(readBlock(blockId));
 		if (block) index.lengthById.set(blockId, readLength(block));
 	}
 	return true;

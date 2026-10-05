@@ -3,9 +3,9 @@
 	"rule": "SCALE2",
 	"points": {
 		"enter.100": {
-			"blockOrderReads": 281,
+			"blockOrderReads": 108,
 			"blocksMapReads": 20,
-			"blocksMapIterations": 323,
+			"blocksMapIterations": 215,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
@@ -19,9 +19,9 @@
 			"documentWalks": 0
 		},
 		"enter.1000": {
-			"blockOrderReads": 2633,
+			"blockOrderReads": 1053,
 			"blocksMapReads": 20,
-			"blocksMapIterations": 3158,
+			"blocksMapIterations": 2105,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
@@ -35,9 +35,9 @@
 			"documentWalks": 0
 		},
 		"enter.5000": {
-			"blockOrderReads": 13133,
+			"blockOrderReads": 5253,
 			"blocksMapReads": 20,
-			"blocksMapIterations": 15758,
+			"blocksMapIterations": 10505,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
@@ -67,6 +67,10 @@
 		{
 			"date": "2026-10-05",
 			"reason": "Phase 2b: the change-summary block index advances by the commit's array deltas and the block maps it names instead of re-walking the document"
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2b: the normalization pass index advances at each structural write and by external deltas instead of rebuilding, and the block executors resolve positions through it"
 		}
 	]
 }

@@ -660,15 +660,6 @@ function emitMalformedOpDiagnostic(
 	});
 }
 
-/** Ops that move `blockOrder` or a `children` array, invalidating the normalizer's pass index. */
-function isStructuralOp(op: DocumentOp): boolean {
-	return (
-		op.type === "insert-block" ||
-		op.type === "delete-block" ||
-		op.type === "move-block"
-	);
-}
-
 function executeOps(
 	pipeline: ApplyPipelineInternal,
 	ops: DocumentOp[],
@@ -786,9 +777,6 @@ function executeOps(
 						affectedBlocks.push(...affected);
 					} catch (err) {
 						emitMalformedOpDiagnostic(pipeline, op, err);
-					}
-					if (isStructuralOp(op)) {
-						pipeline._engine.notifyStructureChanged();
 					}
 				}
 

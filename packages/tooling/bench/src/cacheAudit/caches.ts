@@ -90,7 +90,7 @@ function documentIndexSwitch(editor: Editor): CacheSwitch {
 
 interface BlockIndexLike {
 	applyTextLengths(blockText: unknown): void;
-	applyStructure(doc: unknown, delta: unknown, named: unknown): boolean;
+	applyStructure(readBlock: unknown, delta: unknown, named: unknown): boolean;
 	replace(snapshot: unknown): void;
 }
 

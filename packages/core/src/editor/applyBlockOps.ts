@@ -26,7 +26,7 @@ import {
 	getOrCreateStringArrayProp,
 	getTextContent,
 	removeBlockIdFromAllChildren,
-	removeBlockIdFromArray,
+	removeBlockIdFromBlockOrder,
 	resolvePosition,
 } from "./applySharedHelpers";
 
@@ -46,6 +46,7 @@ export function insertBlock(
 		op.blockType,
 		contentType,
 	) as MutableMap;
+	pipeline._engine.noteBlockChanged(op.blockId, blockMap);
 
 	if (op.props && Object.keys(op.props).length > 0) {
 		const propsMap = getOrCreateMapProp(pipeline, blockMap, "props");
@@ -79,14 +80,16 @@ export function deleteBlock(
 ): string[] {
 	const descendants = childrenArrayDescendants(pipeline, op.blockId);
 	pipeline.mutableBlocks.delete(op.blockId);
+	pipeline._engine.noteBlockChanged(op.blockId, undefined);
 	// A `children` array lives inside its container's block map, so deleting
 	// the container drops every entry for its children: their block maps
 	// would survive in no array, rendered nowhere. They go with it. `parentId`
 	// children sit in `blockOrder` and are promoted by normalization instead.
 	for (const descendantId of descendants) {
 		pipeline.mutableBlocks.delete(descendantId);
+		pipeline._engine.noteBlockChanged(descendantId, undefined);
 	}
-	removeBlockIdFromArray(pipeline.mutableBlockOrder, op.blockId);
+	removeBlockIdFromBlockOrder(pipeline, op.blockId);
 	removeBlockIdFromAllChildren(pipeline, op.blockId);
 
 	return [op.blockId];
@@ -119,7 +122,7 @@ export function moveBlock(
 	pipeline: ApplyPipelineDocumentAccess,
 	op: MoveBlockOp,
 ): string[] {
-	removeBlockIdFromArray(pipeline.mutableBlockOrder, op.blockId, true);
+	removeBlockIdFromBlockOrder(pipeline, op.blockId, true);
 	removeBlockIdFromAllChildren(pipeline, op.blockId);
 
 	placeBlockId(pipeline, op.blockId, op.position);
@@ -143,10 +146,12 @@ function placeBlockId(
 			);
 			const idx = Math.min(position.index, children.length);
 			children.insert(idx, [blockId]);
+			pipeline._engine.noteBlockChanged(position.parent, parentMap);
 		}
 	} else {
 		const idx = resolvePosition(pipeline, position);
 		pipeline.mutableBlockOrder.insert(idx, [blockId]);
+		pipeline._engine.noteRootInserted(idx, [blockId]);
 	}
 }
 

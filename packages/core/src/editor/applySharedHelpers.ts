@@ -72,35 +72,43 @@ export function getOrCreateStringArrayProp(
 	return array;
 }
 
-export function removeBlockIdFromArray(
-	array: MutableStringArray,
+/**
+ * Deletes the block's `blockOrder` entries, last first; `lastOnly` stops
+ * after one. The entries come from the normalizer's pass index, so the order
+ * is not scanned (SCALE2).
+ */
+export function removeBlockIdFromBlockOrder(
+	pipeline: Pick<ApplyPipelineDocumentAccess, "mutableBlockOrder" | "_engine">,
 	blockId: string,
-	stopAfterFirst = false,
+	lastOnly = false,
 ): void {
-	for (let index = array.length - 1; index >= 0; index--) {
-		if (array.get(index) !== blockId) {
-			continue;
-		}
-		array.delete(index, 1);
-		if (stopAfterFirst) {
-			return;
-		}
+	const indices = pipeline._engine.structure().rootIndicesOf(blockId);
+	for (let at = indices.length - 1; at >= 0; at--) {
+		pipeline.mutableBlockOrder.delete(indices[at]!, 1);
+		pipeline._engine.noteRootDeleted(indices[at]!, 1);
+		if (lastOnly) return;
 	}
 }
 
+/** Deletes the block's entries from every `children` array the pass index says lists it. */
 export function removeBlockIdFromAllChildren(
-	pipeline: Pick<ApplyPipelineDocumentAccess, "blocks">,
+	pipeline: Pick<ApplyPipelineDocumentAccess, "blocks" | "_engine">,
 	blockId: string,
 ): void {
-	for (const [, parentMap] of pipeline.blocks.entries()) {
-		const children = getArrayProp<string>(
-			parentMap as unknown as CRDTUnknownMap,
-			"children",
-		);
-		if (!children) {
-			continue;
+	const parents =
+		pipeline._engine.structure().parentsByChild.get(blockId) ?? [];
+	for (const parentId of [...parents]) {
+		const parentMap = pipeline.blocks.get(parentId) as unknown as
+			| CRDTUnknownMap
+			| undefined;
+		const children = parentMap
+			? (getArrayProp<string>(parentMap, "children") as MutableStringArray | null)
+			: null;
+		if (!children) continue;
+		for (let index = children.length - 1; index >= 0; index--) {
+			if (children.get(index) === blockId) children.delete(index, 1);
 		}
-		removeBlockIdFromArray(children as MutableStringArray, blockId);
+		pipeline._engine.noteBlockChanged(parentId, parentMap);
 	}
 }
 
@@ -133,7 +141,7 @@ export function getInlineTextContent(
 }
 
 export function resolvePosition(
-	pipeline: Pick<ApplyPipelineDocumentAccess, "_doc" | "blocks">,
+	pipeline: Pick<ApplyPipelineDocumentAccess, "_doc" | "blocks" | "_engine">,
 	position: Position,
 ): number {
 	const blockOrder = pipeline._doc.blockOrder;
@@ -141,18 +149,15 @@ export function resolvePosition(
 	if (position === "first") return 0;
 	if (position === "last") return blockOrder.length;
 
+	// The first entry, read from the pass index rather than the order (SCALE2).
 	if (typeof position === "object" && "after" in position) {
-		for (let i = 0; i < blockOrder.length; i++) {
-			if ((blockOrder.get(i) as string) === position.after) return i + 1;
-		}
-		return blockOrder.length;
+		const at = pipeline._engine.structure().rootIds.indexOf(position.after);
+		return at < 0 ? blockOrder.length : at + 1;
 	}
 
 	if (typeof position === "object" && "before" in position) {
-		for (let i = 0; i < blockOrder.length; i++) {
-			if ((blockOrder.get(i) as string) === position.before) return i;
-		}
-		return 0;
+		const at = pipeline._engine.structure().rootIds.indexOf(position.before);
+		return at < 0 ? 0 : at;
 	}
 
 	if (typeof position === "object" && "parent" in position) {

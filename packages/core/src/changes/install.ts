@@ -5,6 +5,7 @@ import {
 	createBlockIndex,
 	emptyBlockIndexSnapshot,
 	type BlockIndex,
+	type StoredBlockReader,
 } from "./blockIndex";
 import { createBlockIndexSnapshotFromDocument } from "./fromDocument";
 import { summaryTouchedBlockIds } from "./affectedBlocks";
@@ -19,7 +20,11 @@ export interface ChangeSummaryHost {
 	_unsubSummary: (() => void) | null;
 	_deferredCRDTEvent: CRDTEvent | null;
 	_engine: {
-		notifyStructureChanged(): void;
+		observeCommit(
+			delta: RawCommitDelta,
+			localApply: boolean,
+			readBlock: StoredBlockReader,
+		): void;
 		notifyExternalCommit(blockIds: Iterable<string>): void;
 	};
 	_pipeline: { readonly suppressObserver: boolean };
@@ -40,21 +45,20 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 		host._unsubSummary = createSummarySource(
 			host._crdtDoc as never,
 			(delta) => {
-				// Normalization only runs inside a local apply, so a remote or
-				// undo transaction is the one structural change its pass index
-				// never hears about at the mutation site.
-				if (
-					delta.blockOrderDelta.length > 0 ||
-					delta.childArrayDeltas.size > 0
-				) {
-					host._engine.notifyStructureChanged();
-				}
+				const readBlock = storedBlockReader(host._doc);
+				// A local apply advanced the normalizer's pass index at each
+				// write; a remote or undo transaction advances it by its delta.
+				host._engine.observeCommit(
+					delta,
+					host._pipeline.suppressObserver,
+					readBlock,
+				);
 				const summary = buildChangeSummary(
 					delta,
 					host._blockIndex.snapshot(),
 					0,
 					{
-						blockExists: (blockId) => host._doc.blocks.has(blockId),
+						blockExists: (blockId) => readBlock(blockId) !== undefined,
 						listedMoreThanOnce: (blockId) =>
 							host._blockIndex.listedMoreThanOnce(blockId),
 					},
@@ -78,7 +82,7 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 					host._blockIndex.applyTextLengths(summary.blockText);
 				} else {
 					const named = namedBlockIds(summary);
-					if (!host._blockIndex.applyStructure(host._doc, delta, named)) {
+					if (!host._blockIndex.applyStructure(readBlock, delta, named)) {
 						host._blockIndex.replace(
 							createBlockIndexSnapshotFromDocument(host._doc, {
 								lengths: host._blockIndex.snapshot().lengthById,
@@ -100,6 +104,21 @@ export function teardownChangeSummaries(host: ChangeSummaryHost): void {
 	if (!host._unsubSummary) return;
 	host._unsubSummary();
 	host._unsubSummary = null;
+}
+
+/**
+ * One commit's reads of stored block maps, shared by the pass index, the
+ * summary and the block index so each map is read once (SCALE2). The document
+ * does not change while the commit's observers run.
+ */
+function storedBlockReader(doc: PenDocument): StoredBlockReader {
+	const reads = new Map<string, unknown>();
+	return (blockId) => {
+		if (reads.has(blockId)) return reads.get(blockId);
+		const block = doc.blocks.get(blockId);
+		reads.set(blockId, block);
+		return block;
+	};
 }
 
 function flushDeferredCRDTEvent(host: ChangeSummaryHost): void {
