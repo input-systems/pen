@@ -67,9 +67,9 @@
     {
       "name": "@input/pen-yjs",
       "path": "packages/crdt/yjs/dist/index.mjs",
-      "baselineBytes": 59734,
-      "limitBytes": 59734,
-      "note": "First baseline kept through the API2 yjs peer + singleton guard (live 55563 B). Re-recorded 2026-08-23: the createRelativePosition/resolveRelativePosition anchor primitives moved into this package and summarySource was rewritten to carry a per-block list of cell text deltas. 55563 -> 59734 B."
+      "baselineBytes": 65944,
+      "limitBytes": 65944,
+      "note": "Re-recorded 2026-10-05 (COL4, OB1): summarySource reads ahead the transactions a commit listener queues behind an observed one (cc0fc486) and reports absent and arrived child arrays for the change-summary fixes (RawCommitDelta.absentBlockIds, arrivedChildArrays). 59734 -> 65944. Previously: First baseline kept through the API2 yjs peer + singleton guard (live 55563 B). Re-recorded 2026-08-23: the createRelativePosition/resolveRelativePosition anchor primitives moved into this package and summarySource was rewritten to carry a per-block list of cell text deltas. 55563 -> 59734 B."
     },
     {
       "name": "@input/pen-tools",
