@@ -10,7 +10,7 @@ export default defineConfig({
 		"src/stream.ts",
 	],
 	format: ["esm", "cjs"],
-	dts: { compilerOptions: { stripInternal: true } },
+	dts: { compilerOptions: { stripInternal: true, ignoreDeprecations: "6.0" } },
 	outDir: "dist",
 	clean: true,
 	external: [

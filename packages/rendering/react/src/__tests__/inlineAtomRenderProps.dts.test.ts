@@ -7,7 +7,15 @@ import { describe, expect, it } from "vitest";
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const DIST_DTS = join(PACKAGE_ROOT, "dist/index.d.ts");
-const TSC = createRequire(import.meta.url).resolve("typescript/bin/tsc");
+// TS 7's exports map hides bin/, so reach it through package.json.
+const TSC = join(
+	dirname(
+		createRequire(import.meta.url).resolve(
+			"@typescript/native/package.json",
+		),
+	),
+	"bin/tsc",
+);
 
 describe("InlineAtomRenderProps declaration emit", () => {
 	it("emitted d.ts imports InlineAtomRenderInteractionProps", () => {

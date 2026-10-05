@@ -33,7 +33,7 @@ export interface EditorBlockProps extends AsChildProps {
  * One block. Memoized on `blockId`: its state comes from its own notifier
  * slices, so a keystroke or caret move elsewhere does not re-render it (SCALE6).
  */
-export const EditorBlock = memo(function EditorBlock(props: EditorBlockProps) {
+export const EditorBlock: React.NamedExoticComponent<EditorBlockProps> = memo(function EditorBlock(props: EditorBlockProps) {
 	const { blockId, ...rest } = props;
 	const { editor, readonly, renderers, blockControls } = useEditorContext();
 	const fieldEditor = useFieldEditorContext();

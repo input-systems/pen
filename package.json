@@ -69,14 +69,15 @@
     "@eslint/js": "^10.0.1",
     "@input/pen-eslint-plugin": "workspace:*",
     "@playwright/test": "^1.63.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^10.11.0",
-    "globals": "^17.12.0",
+    "globals": "^17.13.0",
     "prettier": "^3.9.9",
     "tsup": "^8.4.0",
-    "turbo": "^2.11.4",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.70.1",
-    "vitest": "^4.1.11",
+    "turbo": "^2.11.6",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.3",
     "yaml": "^2.9.1"
   }
 }
