@@ -46,7 +46,7 @@ export interface InlineContentProps extends AsChildProps {
  * selection range, decorations or completion — not for a caret move or DOM
  * sync elsewhere (SCALE6).
  */
-export const InlineContent = memo(function InlineContent(props: InlineContentProps) {
+export const InlineContent: React.NamedExoticComponent<InlineContentProps> = memo(function InlineContent(props: InlineContentProps) {
 	const {
 		blockId,
 		className,
