@@ -1,9 +1,14 @@
+import { initBlockMap, yjsAdapter } from "@input/pen-yjs";
 import type { Editor } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
+import * as Y from "yjs";
 
 import type { BlockIndex } from "../changes/blockIndex";
 import { createBlockIndexSnapshotFromDocument } from "../changes/fromDocument";
+import { createEditor as createCoreEditor } from "../index";
 import { createNestedEditor, mulberry32, randomOp } from "./fixtures/structuralEdits";
+import { createDefaultSchema } from "./fixtures/testSchema";
+import { noDefaultExtensionsPreset } from "./ops.testHelpers";
 
 function heldIndex(editor: Editor): ReturnType<BlockIndex["snapshot"]> {
 	return (editor as unknown as { _blockIndex: BlockIndex })._blockIndex.snapshot();
@@ -30,5 +35,52 @@ describe("change-summary block index on structural commits", () => {
 			}
 			editor.destroy();
 		}
+	});
+
+	it("SCALE2: a delete a commit listener makes beside a remote delete leaves the block index equal to the document", () => {
+		// Yjs merges the listener's nested delete into the remote
+		// transaction's delete set, so the nested commit reports an empty
+		// root delta; the index must still match the document. One push gives
+		// the order entries adjacent clocks, as a loaded document's are.
+		const seedDoc = new Y.Doc({ gc: false });
+		seedDoc.transact(() => {
+			const blocks = seedDoc.getMap<Y.Map<unknown>>("blocks");
+			for (const blockId of ["p0", "p1", "p2", "p3", "p4"]) {
+				initBlockMap(blocks, blockId, "paragraph", "inline");
+			}
+			seedDoc.getArray<string>("blockOrder").push(["p0", "p1", "p2", "p3", "p4"]);
+		});
+		const seed = Y.encodeStateAsUpdate(seedDoc);
+		seedDoc.destroy();
+		const peers = [1, 2].map((clientID) => {
+			const adapter = yjsAdapter({ gc: false });
+			const document = adapter.loadDocument(seed);
+			(adapter.raw<Y.Doc>(document) as unknown as { clientID: number }).clientID = clientID;
+			return createCoreEditor({
+				schema: createDefaultSchema(),
+				crdt: adapter,
+				document,
+				preset: noDefaultExtensionsPreset,
+			});
+		});
+		const [local, remote] = peers as [Editor, Editor];
+		const rawDoc = (editor: Editor) => editor.internals.adapter.raw<Y.Doc>(editor.internals.crdtDoc);
+		let armed = true;
+		local.on("commit", () => {
+			if (!armed) return;
+			armed = false;
+			local.apply([{ type: "delete-block", blockId: "p2" }], { origin: "user" });
+		});
+
+		remote.apply([{ type: "delete-block", blockId: "p1" }], { origin: "user" });
+		local.internals.adapter.applyUpdate(
+			local.internals.crdtDoc,
+			Y.encodeStateAsUpdate(rawDoc(remote), Y.encodeStateVector(rawDoc(local))),
+		);
+
+		expect(armed).toBe(false);
+		expect(local.documentState.blockOrder).toEqual(["p0", "p3", "p4"]);
+		expect(heldIndex(local).roots).toEqual(createBlockIndexSnapshotFromDocument(local.internals.doc).roots);
+		for (const editor of peers) editor.destroy();
 	});
 });

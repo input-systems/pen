@@ -97,18 +97,25 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 				// parent a peer deleted; COL4) still reshapes the index, which
 				// advances by the arrays and maps the delta names; a commit it
 				// cannot advance exactly is read back from the document.
+				// A root order whose length no longer matches the document's means
+				// the delta under-reported: Yjs merges a delete made in a commit
+				// listener during another transaction's cleanup into that
+				// transaction's delete set when the two entries' clocks are
+				// adjacent, and the nested commit's delta then omits it.
+				const named = namedBlockIds(summary);
+				let advanced = true;
 				if (summary.structural.length === 0 && !reshapesIndex(delta)) {
 					host._blockIndex.applyTextLengths(summary.blockText);
 				} else {
-					const named = namedBlockIds(summary);
-					if (!host._blockIndex.applyStructure(readBlock, delta, named)) {
-						host._blockIndex.replace(
-							createBlockIndexSnapshotFromDocument(host._doc, {
-								lengths: host._blockIndex.snapshot().lengthById,
-								named,
-							}),
-						);
-					}
+					advanced = host._blockIndex.applyStructure(readBlock, delta, named);
+				}
+				if (!advanced || host._blockIndex.snapshot().roots.length !== host._doc.blockOrder.length) {
+					host._blockIndex.replace(
+						createBlockIndexSnapshotFromDocument(host._doc, {
+							lengths: host._blockIndex.snapshot().lengthById,
+							named,
+						}),
+					);
 				}
 				flushDeferredCRDTEvent(host);
 			},
