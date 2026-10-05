@@ -50,14 +50,20 @@ interface Entry {
 	readonly subscribers: Set<() => void>;
 	domSyncVersion: number;
 	lastCommit: LastCommit | undefined;
-	/** The parent the snapshot was built under: the container a later commit's summary may not name. */
-	parentId: string | null;
 }
 
 /** Per-event scratch: ordinals and list semantics are computed once per touched run. */
 interface EventContext {
 	/** Only a structural commit can move list semantics; any other event keeps each item's slice. */
 	readonly structural: boolean;
+	/**
+	 * Whether snapshots built in it re-read their block's place in the tree
+	 * (`childIds`, the parent it renders under): a commit or a first build.
+	 * Other events keep the previous place, because an event core emits
+	 * inside a transaction, before its commit (an undo's `decorationsChange`),
+	 * already sees the new tree, and the commit must still find the old one.
+	 */
+	readonly readsTree: boolean;
 	readonly ordinals: Map<string, number>;
 	/** AX1 semantics of every item of each list run walked in this event. */
 	readonly semantics: Map<string, ListItemSemantics>;
@@ -78,8 +84,8 @@ interface ChangedSpan {
 	readonly previous: readonly string[];
 }
 
-function newContext(structural = false): EventContext {
-	return { structural, ordinals: new Map(), semantics: new Map(), types: new Map() };
+function newContext(structural = false, readsTree = false): EventContext {
+	return { structural, readsTree, ordinals: new Map(), semantics: new Map(), types: new Map() };
 }
 
 const NUMBERED = "numberedListItem";
@@ -114,12 +120,16 @@ class BlockNotifierImpl implements BlockNotifier {
 	/** The sibling list each cached segment list was computed over. */
 	private readonly _segmentBasis = new Map<string | null, readonly string[]>();
 	/**
-	 * The containers whose cached segment basis lists each child, so a
-	 * container rendered through its segment channel alone is found when a
-	 * `parentId`-route child leaves it (AX1). The root list is left out: it is
-	 * the fallback, and indexing it would cost O(n) per structural commit.
+	 * Each container the notifier holds state about — its snapshot, a child's
+	 * list slice, its segments — with core's `childrenOf` list as last seen.
+	 * Core replaces a list whenever it changes, so a structural commit finds
+	 * every container whose children moved by identity, without a summary
+	 * naming it: a `parentId`-route child's removal or re-parent names no
+	 * parent, and the container may be known only through one sibling's
+	 * slice or its segment channel (AX1). The seen list is the pre-commit
+	 * list each changed span is measured against.
 	 */
-	private readonly _segmentParents = new Map<string, Set<string>>();
+	private readonly _knownLists = new Map<string, readonly string[]>();
 	private _sources: Unsubscribe[] = [];
 	private _completion: InlineCompletionController | null = null;
 	private _completionBlockId: string | null = null;
@@ -128,6 +138,8 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _store: FieldEditorStoreSnapshot | null = null;
 	private _surface: SurfaceSnapshot = buildSurfaceSnapshot(null, undefined);
 	private _document: DocumentSnapshot | null = null;
+	/** `documentState.generation` the root ids were last read at. */
+	private _rootIdsGeneration = -1;
 	/** Core's top-level list the root ids were last read as, while no dead id was filtered out. */
 	private _coreRootIds: readonly string[] | null = null;
 	/**
@@ -141,12 +153,6 @@ class BlockNotifierImpl implements BlockNotifier {
 	 * from core. Detached, the notifier hears none, so attaching re-reads it.
 	 */
 	private _deadIdsTracked = false;
-	/**
-	 * The parents whose cached snapshot lists each child: the pre-commit
-	 * parent a commit's summary does not name. Kept as snapshots change, so
-	 * a lookup reads one entry rather than every cached snapshot.
-	 */
-	private readonly _cachedParents = new Map<string, Set<string>>();
 	private _sharedReadContext: EventContext | null = null;
 	private _deliveries = 0;
 	private readonly _fanout = emptyFanout();
@@ -178,7 +184,7 @@ class BlockNotifierImpl implements BlockNotifier {
 		return () => {
 			entry.subscribers.delete(onChange);
 			if (entry.subscribers.size === 0 && this._entries.get(blockId) === entry) {
-				this._forget(blockId, entry);
+				this._forget(blockId);
 			}
 			this._detachIfIdle();
 		};
@@ -285,7 +291,7 @@ class BlockNotifierImpl implements BlockNotifier {
 		this._segmentSubscribers.clear();
 		this._segments.clear();
 		this._segmentBasis.clear();
-		this._segmentParents.clear();
+		this._knownLists.clear();
 		this._deadIds.clear();
 		this._detach();
 	}
@@ -379,8 +385,12 @@ class BlockNotifierImpl implements BlockNotifier {
 			const entry = this._entries.get(id);
 			if (entry) entry.lastCommit = last;
 		}
-		const ids = new Set<string>([...touched, ...this._namedParents(summary)]);
-		const context = newContext(summary.structural.length > 0);
+		// Core's index can move with no structural change named: a write that
+		// only restores a block map entry under a surviving order entry (COL4).
+		const indexMoved = this._rootIdsGeneration !== this._editor.documentState.generation;
+		const movedLists = summary.structural.length > 0 || indexMoved ? this._movedLists() : EMPTY_IDS;
+		const ids = new Set<string>([...touched, ...movedLists, ...this._namedParents(summary)]);
+		const context = newContext(summary.structural.length > 0, true);
 		if (context.structural) this._sharedReadContext = null;
 		const previousRootIds = this._document?.rootIds ?? null;
 		if (summary.structural.length > 0) {
@@ -398,9 +408,9 @@ class BlockNotifierImpl implements BlockNotifier {
 			}
 		}
 		const liveness = this._trackDeadIds(summary);
-		this._updateDocument(summary.structural.length > 0 || liveness, ids);
+		this._updateDocument(summary.structural.length > 0 || liveness || indexMoved, ids);
 		// AX1: the sibling lists a structural commit touched, walked run by run.
-		const listSpans = this._collectListSemantics(summary, previousRootIds, ids, context);
+		const listSpans = this._collectListSemantics(summary, previousRootIds, movedLists, ids, context);
 		// Sibling lists re-sync before blocks hear the commit, as the document
 		// channel does: a removed block's node is gone before its slice is read.
 		if (listSpans.size > 0) this._refreshSegments(listSpans, context);
@@ -412,8 +422,9 @@ class BlockNotifierImpl implements BlockNotifier {
 	 * for liveness, so a text commit reads nothing (SCALE2).
 	 */
 	private _trackDeadIds(summary: ChangeSummary): boolean {
-		// A remote write can bring a dead block back without naming it.
-		let changed = summary.structural.length > 0 && this._reviveDeadIds();
+		// A remote write or an undo can bring a dead block back by restoring
+		// only its block map entry, which names no structural change.
+		let changed = this._deadIds.size > 0 && this._reviveDeadIds();
 		for (const change of summary.structural) {
 			if (change.type === "block-inserted" || change.type === "block-moved") {
 				if (this._deadIds.delete(change.blockId)) changed = true;
@@ -505,9 +516,7 @@ class BlockNotifierImpl implements BlockNotifier {
 					parents.push(change.fromParentId, change.toParentId);
 					break;
 				case "block-props-changed":
-					if (change.keys.includes("parentId")) {
-						parents.push(...this._cachedParentsOf(change.blockId), this._editor.documentState.parentOf(change.blockId));
-					}
+					if (change.keys.includes("parentId")) parents.push(this._editor.documentState.parentOf(change.blockId));
 					break;
 				default:
 					break;
@@ -515,15 +524,30 @@ class BlockNotifierImpl implements BlockNotifier {
 			// The parentId route: a root-order insert or removal can still change
 			// a container's children.
 			for (const id of structuralBlockIds(change)) {
-				parents.push(this._editor.documentState.parentOf(id), ...this._cachedParentsOf(id));
+				parents.push(this._editor.documentState.parentOf(id));
 			}
 		}
 		return parents.filter((id): id is string => typeof id === "string");
 	}
 
-	/** Every cached parent whose snapshot lists `blockId` (two under COL4). */
-	private _cachedParentsOf(blockId: string): Iterable<string> {
-		return this._cachedParents.get(blockId) ?? EMPTY_IDS;
+	/**
+	 * Every known container whose children core's index moved since it was
+	 * last seen. O(known containers) identity checks, no document reads.
+	 */
+	private _movedLists(): string[] {
+		const state = this._editor.documentState;
+		const moved: string[] = [];
+		for (const [parentId, seen] of this._knownLists) {
+			if (state.childrenOf(parentId) !== seen) moved.push(parentId);
+		}
+		return moved;
+	}
+
+	/** Starts following a container's children (`null`, the root, is followed by the document snapshot). */
+	private _know(parentId: string | null): void {
+		if (parentId !== null && !this._knownLists.has(parentId)) {
+			this._knownLists.set(parentId, this._editor.documentState.childrenOf(parentId));
+		}
 	}
 
 	private _updateDocument(structural: boolean, ids: Set<string>): void {
@@ -552,6 +576,7 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	private _liveRootIds(): readonly string[] {
+		this._rootIdsGeneration = this._editor.documentState.generation;
 		const rootIds = getRootBlockIds(this._editor);
 		if (this._deadIdsTracked) this._reviveDeadIds();
 		else this._readDeadIds(rootIds);
@@ -674,24 +699,12 @@ class BlockNotifierImpl implements BlockNotifier {
 
 	/** Records (or, with null, drops) the list a parent's cached segments cover. */
 	private _setSegmentBasis(parentId: string | null, basis: readonly string[] | null): void {
-		const previous = this._segmentBasis.get(parentId);
-		if (previous === basis) return;
-		if (basis === null) this._segmentBasis.delete(parentId);
-		else this._segmentBasis.set(parentId, basis);
-		if (parentId === null) return;
-		for (const childId of previous ?? EMPTY_IDS) {
-			const parents = this._segmentParents.get(childId);
-			parents?.delete(parentId);
-			if (parents?.size === 0) this._segmentParents.delete(childId);
+		if (basis === null) {
+			this._segmentBasis.delete(parentId);
+			return;
 		}
-		for (const childId of basis ?? EMPTY_IDS) {
-			let parents = this._segmentParents.get(childId);
-			if (!parents) {
-				parents = new Set();
-				this._segmentParents.set(childId, parents);
-			}
-			parents.add(parentId);
-		}
+		this._segmentBasis.set(parentId, basis);
+		this._know(parentId);
 	}
 
 	/** Widens a changed span to every position this event's run walk read, then patches it. */
@@ -795,17 +808,15 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _collectListSemantics(
 		summary: ChangeSummary,
 		previousRootIds: readonly string[] | null,
+		movedLists: readonly string[],
 		ids: Set<string>,
 		context: EventContext,
 	): ReadonlyMap<string | null, ChangedSpan | null> {
 		const spans = new Map<string | null, ChangedSpan | null>();
-		const touched = this._listTouchedParents(summary);
+		const touched = this._listTouchedParents(summary, previousRootIds, movedLists);
 		for (const [parentId, blockIds] of touched) {
 			const siblings = this._siblingsOf(parentId);
-			const previous =
-				parentId === null
-					? previousRootIds
-					: (this._entries.get(parentId)?.snapshot.childIds ?? this._segmentBasis.get(parentId) ?? null);
+			const previous = parentId === null ? previousRootIds : (this._knownLists.get(parentId) ?? null);
 			const around = (index: number) => {
 				for (const at of [index - 1, index, index + 1]) {
 					for (const runId of this._walkRun(siblings, at, context)) ids.add(runId);
@@ -824,11 +835,25 @@ class BlockNotifierImpl implements BlockNotifier {
 				if (index >= 0) around(index);
 			}
 		}
+		// Each touched container's list now is the next commit's baseline.
+		for (const parentId of touched.keys()) {
+			if (parentId !== null) this._knownLists.set(parentId, this._editor.documentState.childrenOf(parentId));
+		}
 		return spans;
 	}
 
-	/** Each sibling list a list-relevant structural change touched, with the blocks it names there. */
-	private _listTouchedParents(summary: ChangeSummary): Map<string | null, Set<string>> {
+	/**
+	 * Each sibling list a list-relevant structural change touched, with the
+	 * blocks it names there: every known container whose children core's index
+	 * moved — which covers the container a `parentId`-route child left on
+	 * removal, merge or re-parent, which no summary names — the root list when
+	 * its ids moved, and each list a change names.
+	 */
+	private _listTouchedParents(
+		summary: ChangeSummary,
+		previousRootIds: readonly string[] | null,
+		movedLists: readonly string[],
+	): Map<string | null, Set<string>> {
 		const touched = new Map<string | null, Set<string>>();
 		const state = this._editor.documentState;
 		const add = (parentId: string | null | undefined, blockId?: string) => {
@@ -841,45 +866,22 @@ class BlockNotifierImpl implements BlockNotifier {
 			if (blockId !== undefined) blockIds.add(blockId);
 		};
 		const addCurrent = (blockId: string) => add(state.parentOf(blockId), blockId);
-		// Where the block rendered before the commit, which core's index no
-		// longer knows: every cached container listing it — a container's
-		// snapshot or the basis of its segment channel — and the parent its
-		// own snapshot was built under. Known by none, it rendered in the root.
-		const addCached = (blockId: string) => {
-			let found = false;
-			for (const parentId of this._cachedParentsOf(blockId)) {
-				add(parentId);
-				found = true;
-			}
-			for (const parentId of this._segmentParents.get(blockId) ?? EMPTY_IDS) {
-				add(parentId);
-				found = true;
-			}
-			const entry = this._entries.get(blockId);
-			if (entry) add(entry.parentId);
-			else if (!found) add(null);
-		};
+		for (const parentId of movedLists) add(parentId);
+		if (previousRootIds !== null && previousRootIds !== this._document?.rootIds) add(null);
 		for (const change of summary.structural) {
 			switch (change.type) {
 				case "block-inserted":
 					addCurrent(change.blockId);
 					break;
-				// A `parentId`-route child's summary names no parent; the
-				// container that rendered it still lists it (AX1).
 				case "block-removed":
 					add(change.parentId);
-					addCached(change.blockId);
 					break;
 				// The array a move wrote into is touched even when the index
 				// resolves the block elsewhere: concurrent moves can list it in
-				// two arrays (COL4) until the next local pass repairs that. A
-				// `parentId`-route child moved into an array leaves the container
-				// that rendered it, which the summary does not name, and the index
-				// may resolve to either route.
+				// two arrays (COL4) until the next local pass repairs that.
 				case "block-moved":
 					add(change.fromParentId);
 					add(change.toParentId);
-					addCached(change.blockId);
 					addCurrent(change.blockId);
 					break;
 				case "block-split":
@@ -887,18 +889,14 @@ class BlockNotifierImpl implements BlockNotifier {
 					addCurrent(change.newBlockId);
 					break;
 				// The merge removes its source and names no `block-removed` for
-				// it: a `parentId`-route source's container still lists it.
+				// it; the recipe carries the array it left, if any.
 				case "blocks-merged":
 					addCurrent(change.targetBlockId);
 					addCurrent(change.sourceBlockId);
-					// The array the source left, when the commit removed an entry.
 					if (change.sourceParentId !== undefined) add(change.sourceParentId);
-					addCached(change.sourceBlockId);
 					break;
 				case "block-props-changed":
-					if (!change.keys.some((key) => LIST_SEMANTIC_PROPS.has(key))) break;
-					addCurrent(change.blockId);
-					if (change.keys.includes("parentId")) addCached(change.blockId);
+					if (change.keys.some((key) => LIST_SEMANTIC_PROPS.has(key))) addCurrent(change.blockId);
 					break;
 				case "table-changed":
 				case "apps-changed":
@@ -921,7 +919,7 @@ class BlockNotifierImpl implements BlockNotifier {
 	 * per item. Reads attach first, so commits invalidate it.
 	 */
 	private _readContext(): EventContext {
-		this._sharedReadContext ??= newContext();
+		this._sharedReadContext ??= newContext(false, true);
 		return this._sharedReadContext;
 	}
 
@@ -933,9 +931,9 @@ class BlockNotifierImpl implements BlockNotifier {
 				subscribers: new Set(),
 				domSyncVersion: 0,
 				lastCommit: undefined,
-				parentId: null,
 			};
-			this._setSnapshot(blockId, entry, this._buildSnapshot(blockId, entry, this._readContext()));
+			const context = this._readContext();
+			this._setSnapshot(blockId, entry, this._buildSnapshot(blockId, entry, context), context);
 			this._entries.set(blockId, entry);
 		}
 		return entry;
@@ -952,7 +950,7 @@ class BlockNotifierImpl implements BlockNotifier {
 			selection: buildSelectionSlice(editor, this._selection, this._selected, blockId, previous?.selection),
 			field: buildFieldSlice(editor, this._store, blockId, entry.domSyncVersion, previous?.field),
 			decorations: editor.getDecorations().forBlock(blockId),
-			childIds: this._childIdsFor(blockId, previous),
+			childIds: previous && !context.readsTree ? previous.childIds : this._childIdsFor(blockId, previous),
 			list: this._listFor(blockId, commit.type, context, previous?.list, document.rootIds),
 			isPlaceholderTarget: document.placeholderTargetBlockId === blockId,
 			inlineCompletion: this._completionFor(blockId, previous),
@@ -985,12 +983,12 @@ class BlockNotifierImpl implements BlockNotifier {
 			// A snapshot read without a subscriber lives until a commit names
 			// it; the next read rebuilds it (SCALE4).
 			if (kind === "commit" && entry.subscribers.size === 0) {
-				this._forget(id, entry);
+				this._forget(id);
 				continue;
 			}
 			const next = this._buildSnapshot(id, entry, context);
 			if (next === entry.snapshot) continue;
-			this._setSnapshot(id, entry, next);
+			this._setSnapshot(id, entry, next, context);
 			changed.push(id);
 		}
 		this._fanout[kind] = changed.length;
@@ -1006,40 +1004,21 @@ class BlockNotifierImpl implements BlockNotifier {
 		}
 	}
 
-	/** Stores a snapshot, moving its children in the cached parent map when they changed. */
-	private _setSnapshot(blockId: string, entry: Entry, next: BlockSnapshot): void {
-		const previous = entry.snapshot as BlockSnapshot | undefined;
+	/** Stores a snapshot; a commit or first build starts following the containers it depends on. */
+	private _setSnapshot(blockId: string, entry: Entry, next: BlockSnapshot, context: EventContext): void {
 		entry.snapshot = next;
-		entry.parentId = this._editor.documentState.parentOf(blockId);
-		if (previous?.childIds === next.childIds) return;
-		if (previous) this._unlinkChildren(blockId, previous.childIds);
-		for (const childId of next.childIds) {
-			let parents = this._cachedParents.get(childId);
-			if (!parents) {
-				parents = new Set();
-				this._cachedParents.set(childId, parents);
-			}
-			parents.add(blockId);
-		}
+		if (!context.readsTree) return;
+		this._know(this._editor.documentState.parentOf(blockId));
+		if (next.childIds.length > 0) this._know(blockId);
 	}
 
-	private _unlinkChildren(blockId: string, childIds: readonly string[]): void {
-		for (const childId of childIds) {
-			const parents = this._cachedParents.get(childId);
-			if (!parents) continue;
-			parents.delete(blockId);
-			if (parents.size === 0) this._cachedParents.delete(childId);
-		}
-	}
-
-	private _forget(blockId: string, entry: Entry): void {
+	private _forget(blockId: string): void {
 		this._entries.delete(blockId);
-		this._unlinkChildren(blockId, entry.snapshot.childIds);
 	}
 
 	private _clearEntries(): void {
 		this._entries.clear();
-		this._cachedParents.clear();
+		this._knownLists.clear();
 	}
 
 	private _notifyAll(subscribers: ReadonlySet<() => void>): void {

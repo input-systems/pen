@@ -287,6 +287,26 @@ describe("block notifier (AX1 list semantics on every child route)", () => {
 		}
 	});
 
+	it("AX1: a sibling's slice follows a parentId-route child that left unread (virtualized siblings)", () => {
+		for (const leave of ["delete", "re-parent"] as const) {
+			const editor = createRoutedEditor();
+			const notifier = createBlockNotifier(editor);
+			// Only bq-a is mounted: neither the container nor bq-b is read.
+			const unsubscribe = notifier.subscribeBlock("bq-a", () => {});
+			expect(notifier.getBlockSnapshot("bq-a").list?.setsize, leave).toBe(3);
+			editor.apply(
+				leave === "delete"
+					? [{ type: "delete-block", blockId: "bq-b" }]
+					: [{ type: "set-props", blockId: "bq-b", props: { parentId: null } }],
+				{ origin: "user" },
+			);
+			expect(editor.documentState.childrenOf("bq"), leave).toEqual(["bq-a", "bq-c"]);
+			expect(notifier.getBlockSnapshot("bq-a").list?.setsize, leave).toBe(2);
+			unsubscribe();
+			editor.destroy();
+		}
+	});
+
 	it("AX1: a numbered item's ordinal counts over the sibling list its posinset does", () => {
 		const editor = createEditor({ schema: defaultSchema });
 		const first = editor.firstBlock()!.id;
