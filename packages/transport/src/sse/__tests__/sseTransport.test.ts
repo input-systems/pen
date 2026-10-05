@@ -390,7 +390,8 @@ describe("SSE server handler", () => {
 				listTools: () => [],
 				getTool: () => null,
 				executeTool: async (_name, _input, ctx) => {
-					expect(ctx.editor).toBe(editor);
+					// The call's own view of the construction-time editor (AIB3).
+					expect(ctx.editor.internals.adapter).toBe(editor.internals.adapter);
 					ctx.editor.apply(
 						[
 							{

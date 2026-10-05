@@ -88,7 +88,7 @@ export function directTransport(options: DirectTransportOptions): PenTransport {
 						const result = toolRuntime.executeTool(
 							toolCall.name,
 							toolCall.input,
-							context,
+							opened.context,
 						);
 
 						const resolved = await result;

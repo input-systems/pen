@@ -8,14 +8,13 @@ import type {
 	Unsubscribe,
 } from "@input/pen-types";
 
-import { disableTextStreamWriter } from "../utils/disableTextStreamWriter";
-
 export interface StreamingTarget {
 	readonly generationZone: GenerationZone | null;
 	beginStreaming(zoneId: string, blockId: string, origin?: OpOrigin): void;
 	appendDelta(delta: string): void;
 	endStreaming(status: "complete" | "cancelled" | "error"): void;
-	disableActiveWriter(onReadOnlyMutation: () => void): () => void;
+	/** The writer the current stream appends through, while one is open. */
+	readonly activeWriter: TextStreamWriter | null;
 }
 
 const DEFAULT_STREAM_FLUSH_INTERVAL_MS = 50;
@@ -108,12 +107,8 @@ export class StreamingTargetImpl implements StreamingTarget {
 		this._writer?.append(delta);
 	}
 
-	disableActiveWriter(onReadOnlyMutation: () => void): () => void {
-		const writer = this._writer;
-		if (!writer) {
-			return () => {};
-		}
-		return disableTextStreamWriter(writer, onReadOnlyMutation);
+	get activeWriter(): TextStreamWriter | null {
+		return this._writer;
 	}
 
 	endStreaming(status: "complete" | "cancelled" | "error"): void {

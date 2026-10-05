@@ -34,7 +34,8 @@ describe("HB6 direct transport host integration", () => {
 		await editor.whenReady();
 
 		const executeTool = vi.fn(async (_name, input, ctx) => {
-			expect(ctx.editor).toBe(editor);
+			// The call's own view of the construction-time editor (AIB3).
+			expect(ctx.editor.internals.adapter).toBe(editor.internals.adapter);
 			expect(ctx.docId).toBe("doc-1");
 			return { echoed: input };
 		});

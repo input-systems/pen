@@ -25,8 +25,16 @@ import {
 } from "./authority";
 import { AI_TOOL_READ_ONLY_MUTATION_CODE } from "./constants";
 import type { AIToolRuntime } from "./types";
-import { disableTextStreamWriter } from "../utils/disableTextStreamWriter";
 import { layerMethod } from "../utils/methodLayers";
+import {
+	createCallView,
+	openGuardedCallRecord,
+	reportRefusedWrite,
+	resolveWriteOwner,
+	runAsCall,
+	runPastGuards,
+	type GuardedCall,
+} from "./callAttribution";
 
 /**
  * Every live generation's binding, in bind order (AIB3). Generations overlap
@@ -91,7 +99,16 @@ export function applyAIOpsForBoundMutationMode(
 
 export type OpenAIToolCall =
 	| { ok: false; denial: AIToolCallDenied }
-	| { ok: true; close: (output?: unknown) => unknown };
+	| {
+			ok: true;
+			/**
+			 * The context the call's handler runs with: its writes are attributed
+			 * to this call even while other calls overlap it (AIB3). Run the
+			 * handler with this, not the context passed in.
+			 */
+			context: ToolContext;
+			close: (output?: unknown) => unknown;
+	  };
 
 /**
  * Authorize a model-driven tool call and install the write guard without
@@ -213,7 +230,7 @@ export async function executeAITool(
 	}
 	try {
 		const output = await collectToolExecutionOutput(
-			toolRuntime.executeTool(name, input, context),
+			toolRuntime.executeTool(name, input, opened.context),
 			onPart,
 		);
 		return opened.close(output);
@@ -242,24 +259,24 @@ function openGuardedCall(
 	let closed = false;
 	let closeResult: unknown;
 	const editor = resolveToolEditor(context);
-	const restoreWrites = editor
-		? guardEditorWrites(editor, {
-				mutating,
-				turn,
-				onReadOnlyMutation: () => {
-					if (readOnlyMutation) {
-						return;
-					}
-					readOnlyMutation = true;
-					emitAuthorityDiagnostic(context, {
-						code: AI_TOOL_READ_ONLY_MUTATION_CODE,
-						message: `Read-only tool "${name}" attempted a document write and was refused.`,
-					});
-				},
-			})
-		: () => {};
+	const call: GuardedCall = {
+		mutating,
+		turn,
+		onReadOnlyMutation: () => {
+			if (readOnlyMutation) {
+				return;
+			}
+			readOnlyMutation = true;
+			emitAuthorityDiagnostic(context, {
+				code: AI_TOOL_READ_ONLY_MUTATION_CODE,
+				message: `Read-only tool "${name}" attempted a document write and was refused.`,
+			});
+		},
+	};
+	const restoreWrites = editor ? guardEditorWrites(editor, call) : () => {};
 	return {
 		ok: true,
+		context: editor ? createCallContext(editor, call, context) : context,
 		close: (output?: unknown) => {
 			if (closed) {
 				return closeResult;
@@ -312,36 +329,65 @@ type StreamingTargetHandle = {
 	) => void;
 	appendDelta?: (delta: string) => void;
 	endStreaming?: (status: "complete" | "cancelled" | "error") => void;
-	disableActiveWriter?: (onReadOnlyMutation: () => void) => () => void;
-	_writer?: TextStreamWriter;
+	readonly activeWriter?: TextStreamWriter | null;
+	_writer?: TextStreamWriter | null;
 };
 
-function guardEditorWrites(
+type WriteMethodKey = "append" | "splice" | "appendDelta" | "beginStreaming";
+
+/**
+ * The call's own view of the tool context (AIB3): its editor, the streaming
+ * target and the writers it opens all attribute their writes to this call,
+ * so overlapping calls each answer to their own guard.
+ */
+function createCallContext(
 	editor: Editor,
-	options: {
-		mutating: boolean;
-		turn?: AIToolTurn;
-		onReadOnlyMutation: () => void;
-	},
-): () => void {
-	const restoreApply = patchEditorApply(editor, options);
-	const restoreStream = patchEditorOpenTextStream(editor, options);
-	const restoreTarget = patchStreamingTarget(editor, options);
+	call: GuardedCall,
+	context: ToolContext,
+): ToolContext {
+	const editorView = createCallView(editor, call, editor, {
+		result: (key, args, value) => {
+			if (!isObject(value)) {
+				return value;
+			}
+			if (key === "openTextStream") {
+				return createCallView(editor, call, value);
+			}
+			if (key === "facet" && args[0] === streamingTargetFacet) {
+				return createCallView(editor, call, value);
+			}
+			return value;
+		},
+	});
+	return createCallView(editor, call, context, {
+		property: (key, value) => (key === "editor" ? editorView : value),
+	});
+}
+
+function isObject(value: unknown): value is object {
+	return typeof value === "object" && value !== null;
+}
+
+/**
+ * Installs the write guard for one call. Every guarded write path — `apply`,
+ * `openTextStream`, the streaming target's `beginStreaming`/`appendDelta` and
+ * its parked writer's `append`/`splice` — asks {@link resolveWriteOwner} whose
+ * write it is, so all of them follow the call that issued the write.
+ */
+function guardEditorWrites(editor: Editor, call: GuardedCall): () => void {
+	const releaseCall = openGuardedCallRecord(editor, call);
+	const restoreApply = patchEditorApply(editor);
+	const restoreStream = patchEditorOpenTextStream(editor);
+	const restoreTarget = patchStreamingTarget(editor);
 	return () => {
 		restoreTarget();
 		restoreStream();
 		restoreApply();
+		releaseCall();
 	};
 }
 
-function patchEditorApply(
-	editor: Editor,
-	options: {
-		mutating: boolean;
-		turn?: AIToolTurn;
-		onReadOnlyMutation: () => void;
-	},
-): () => void {
+function patchEditorApply(editor: Editor): () => void {
 	if (typeof editor.apply !== "function") {
 		return () => {};
 	}
@@ -349,13 +395,19 @@ function patchEditorApply(
 		editor,
 		"apply",
 		(originalApply) => (ops, applyOptions) => {
-			if (!options.mutating) {
+			const owner = resolveWriteOwner(editor);
+			if (owner.kind === "none") {
+				originalApply(ops, applyOptions);
+				return;
+			}
+			if (owner.kind === "refused" || !owner.call.mutating) {
 				if (ops.length > 0) {
-					options.onReadOnlyMutation();
+					reportRefusedWrite(owner);
 				}
 				return;
 			}
-			const turn = options.turn;
+			const { call } = owner;
+			const turn = call.turn;
 			if (turn) {
 				const rejection = turn.tryRecordOps(ops.length);
 				if (rejection) {
@@ -378,14 +430,7 @@ function patchEditorApply(
 	);
 }
 
-function patchEditorOpenTextStream(
-	editor: Editor,
-	options: {
-		mutating: boolean;
-		turn?: AIToolTurn;
-		onReadOnlyMutation: () => void;
-	},
-): () => void {
+function patchEditorOpenTextStream(editor: Editor): () => void {
 	if (typeof editor.openTextStream !== "function") {
 		return () => {};
 	}
@@ -393,32 +438,27 @@ function patchEditorOpenTextStream(
 		editor,
 		"openTextStream",
 		(originalOpen) => (target, streamOptions) => {
-			if (!options.mutating) {
-				options.onReadOnlyMutation();
+			const owner = resolveWriteOwner(editor);
+			if (owner.kind === "none") {
+				return originalOpen(target, streamOptions);
+			}
+			if (owner.kind === "refused" || !owner.call.mutating) {
+				reportRefusedWrite(owner);
 				return refuseTextStreamWriter(target.blockId);
 			}
-			const turn = options.turn;
-			if (!turn?.groupId) {
+			const groupId = owner.call.turn?.groupId;
+			if (!groupId) {
 				return originalOpen(target, streamOptions);
 			}
 			return originalOpen(target, {
 				...streamOptions,
-				origin: originWithGroupId(streamOptions.origin, turn.groupId),
+				origin: originWithGroupId(streamOptions.origin, groupId),
 			});
 		},
 	);
 }
 
-function patchStreamingTarget(
-	editor: Editor,
-	options: {
-		mutating: boolean;
-		onReadOnlyMutation: () => void;
-	},
-): () => void {
-	if (options.mutating) {
-		return () => {};
-	}
+function patchStreamingTarget(editor: Editor): () => void {
 	const streaming = editor.facet(
 		streamingTargetFacet,
 	) as StreamingTargetHandle | null;
@@ -426,23 +466,22 @@ function patchStreamingTarget(
 		return () => {};
 	}
 	const restores: Array<() => void> = [];
-	if (typeof streaming.appendDelta === "function") {
-		restores.push(
-			layerMethod(streaming, "appendDelta", () => () => {
-				options.onReadOnlyMutation();
-			}),
-		);
+	for (const key of ["appendDelta", "beginStreaming"] as const) {
+		if (typeof streaming[key] === "function") {
+			restores.push(guardWriteMethod(editor, streaming, key));
+		}
 	}
-	if (typeof streaming.beginStreaming === "function") {
-		restores.push(
-			layerMethod(streaming, "beginStreaming", () => () => {
-				options.onReadOnlyMutation();
-			}),
-		);
+	// A writer parked from an earlier stream is reachable without reopening it
+	// through `openTextStream`, so it is guarded where it stands.
+	const writer = streaming.activeWriter ?? streaming._writer;
+	if (
+		writer &&
+		typeof writer.append === "function" &&
+		typeof writer.splice === "function"
+	) {
+		restores.push(guardWriteMethod(editor, writer, "append"));
+		restores.push(guardWriteMethod(editor, writer, "splice"));
 	}
-	restores.push(
-		disableParkedStreamWriter(streaming, options.onReadOnlyMutation),
-	);
 	return () => {
 		for (const restore of restores.reverse()) {
 			restore();
@@ -450,22 +489,32 @@ function patchStreamingTarget(
 	};
 }
 
-function disableParkedStreamWriter(
-	streaming: StreamingTargetHandle,
-	onReadOnlyMutation: () => void,
+/**
+ * Guards a method that only writes: refused for a read-only owner, run as the
+ * owner for a mutating one so its nested `apply`/`openTextStream` stay its own.
+ */
+function guardWriteMethod(
+	editor: Editor,
+	target: object,
+	key: WriteMethodKey,
 ): () => void {
-	if (typeof streaming.disableActiveWriter === "function") {
-		return streaming.disableActiveWriter(onReadOnlyMutation);
-	}
-	const writer = streaming._writer;
-	if (
-		writer &&
-		typeof writer.append === "function" &&
-		typeof writer.splice === "function"
-	) {
-		return disableTextStreamWriter(writer, onReadOnlyMutation);
-	}
-	return () => {};
+	return layerMethod(
+		target as Record<WriteMethodKey, (...args: never[]) => void>,
+		key,
+		(original) =>
+			(...args: never[]) => {
+				const owner = resolveWriteOwner(editor);
+				if (owner.kind === "none") {
+					original(...args);
+					return;
+				}
+				if (owner.kind === "refused" || !owner.call.mutating) {
+					reportRefusedWrite(owner);
+					return;
+				}
+				runAsCall(editor, owner.call, () => original(...args));
+			},
+	);
 }
 
 function refuseTextStreamWriter(blockId: string): TextStreamWriter {
@@ -491,17 +540,14 @@ function applyToolOps(
 		originalApply(ops, applyOptions);
 		return;
 	}
-	// Staging writes its suggestion marks through `editor.apply`; a pass-through
-	// layer lets them reach the document past this call's guard.
-	const releaseStaging = layerMethod(editor, "apply", () => originalApply);
-	try {
+	// Staging writes its suggestion marks through `editor.apply`; this guard
+	// already accounted for them, so they pass every call's guard.
+	runPastGuards(editor, () =>
 		applySuggestedAIOperations(editor, {
 			operations: ops,
 			undoGroupId: applyOptions?.undoGroupId,
-		});
-	} finally {
-		releaseStaging();
-	}
+		}),
+	);
 }
 
 function applyOptionsWithTurn(

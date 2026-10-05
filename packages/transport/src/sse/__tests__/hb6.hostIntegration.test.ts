@@ -56,7 +56,8 @@ describe("HB6 SSE transport host integration", () => {
 		await clientEditor.whenReady();
 
 		const executeTool = vi.fn(async (_name, input, ctx) => {
-			expect(ctx.editor).toBe(serverEditor);
+			// The call's own view of the construction-time editor (AIB3).
+			expect(ctx.editor.internals.adapter).toBe(serverEditor.internals.adapter);
 			expect(ctx.docId).toBe("doc-1");
 			return { echoed: input };
 		});

@@ -107,7 +107,7 @@ export function createSSEHandler(
 								const result = toolRuntime.executeTool(
 									toolCall.name,
 									toolCall.input,
-									context,
+									opened.context,
 								);
 								const resolved = await result;
 								if (isAsyncIterable(resolved)) {
