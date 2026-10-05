@@ -132,13 +132,18 @@ function blockIndexSwitch(editor: Editor, internals: AuditInternals): CacheSwitc
 interface NotifierInternals {
 	_onCommit(event: unknown): void;
 	_onSelection(): void;
-	_listTouchedParents(summary: ChangeSummary): Map<string | null, Set<string>>;
+	_listTouchedParents(
+		summary: ChangeSummary,
+		previousRootIds: readonly string[] | null,
+		movedLists: readonly string[],
+	): Map<string | null, Set<string>>;
 	_siblingsOf(parentId: string | null): readonly string[];
 	_walkRun(siblings: readonly string[], index: number, context: unknown): readonly string[];
 	_buildSegments(parentId: string | null): readonly unknown[];
 	_storeSegments(parentId: string | null, segments: readonly unknown[], basis: readonly string[]): void;
 	_notifyAll(subscribers: ReadonlySet<() => void>): void;
 	readonly _segmentSubscribers: Map<string | null, Set<() => void>>;
+	readonly _knownLists: Map<string, readonly string[]>;
 	readonly _editor: Editor;
 }
 
@@ -159,16 +164,30 @@ function notifierSwitch(audit: AuditEditor): CacheSwitch {
 			clock.time(() => original(event)),
 		),
 		patchMethod<() => void>(notifier, "_onSelection", (original) => () => clock.time(original)),
-		patchMethod<(summary: ChangeSummary, previous: unknown, ids: Set<string>, context: unknown) => ReadonlyMap<string | null, unknown>>(
+		patchMethod<
+			(
+				summary: ChangeSummary,
+				previousRootIds: readonly string[] | null,
+				movedLists: readonly string[],
+				ids: Set<string>,
+				context: unknown,
+			) => ReadonlyMap<string | null, unknown>
+		>(
 			notifier,
 			"_collectListSemantics",
-			(original) => (summary, previous, ids, context) => {
-				if (state.mode === "incremental") return original(summary, previous, ids, context);
-				const touched = notifier._listTouchedParents(summary);
+			(original) => (summary, previousRootIds, movedLists, ids, context) => {
+				if (state.mode === "incremental") return original(summary, previousRootIds, movedLists, ids, context);
+				const touched = notifier._listTouchedParents(summary, previousRootIds, movedLists);
 				for (const parentId of touched.keys()) {
 					const siblings = notifier._siblingsOf(parentId);
 					for (let index = 0; index < siblings.length; index += 1) {
 						for (const runId of notifier._walkRun(siblings, index, context)) ids.add(runId);
+					}
+				}
+				// The baseline the next commit's moved lists are found against.
+				for (const parentId of touched.keys()) {
+					if (parentId !== null) {
+						notifier._knownLists.set(parentId, notifier._editor.documentState.childrenOf(parentId));
 					}
 				}
 				return new Map([...touched.keys()].map((parentId) => [parentId, null]));
