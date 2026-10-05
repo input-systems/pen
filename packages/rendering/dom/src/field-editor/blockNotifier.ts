@@ -13,6 +13,7 @@ import type {
 	InlineCompletionController,
 	InlineCompletionSuggestion,
 	SelectionState,
+	StructuralChange,
 	Unsubscribe,
 } from "@input/pen-types";
 
@@ -421,19 +422,22 @@ class BlockNotifierImpl implements BlockNotifier {
 		// only its block map entry, which names no structural change.
 		let changed = this._deadIds.size > 0 && this._reviveDeadIds();
 		for (const change of summary.structural) {
-			if (change.type === "block-inserted" || change.type === "block-moved") {
-				if (this._deadIds.delete(change.blockId)) changed = true;
-				continue;
-			}
-			if (change.type !== "block-removed" || this._deadIds.has(change.blockId)) continue;
-			// A delete that also removed the order entry leaves nothing to skip.
-			if (this._editor.documentState.indexOf(change.blockId) < 0) continue;
-			if (this._editor.getBlock(change.blockId) === null) {
-				this._deadIds.add(change.blockId);
-				changed = true;
-			}
+			if (this._trackDeadId(change)) changed = true;
 		}
 		return changed;
+	}
+
+	/** Whether one structural change revived a dead id or left its block dead. */
+	private _trackDeadId(change: StructuralChange): boolean {
+		if (change.type === "block-inserted" || change.type === "block-moved") {
+			return this._deadIds.delete(change.blockId);
+		}
+		if (change.type !== "block-removed" || this._deadIds.has(change.blockId)) return false;
+		// A delete that also removed the order entry leaves nothing to skip.
+		if (this._editor.documentState.indexOf(change.blockId) < 0) return false;
+		if (this._editor.getBlock(change.blockId) !== null) return false;
+		this._deadIds.add(change.blockId);
+		return true;
 	}
 
 	private _onSelection(): void {
@@ -730,11 +734,7 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _walkRun(siblings: readonly string[], index: number, context: EventContext): readonly string[] {
 		const id = siblings[index];
 		if (id === undefined || context.semantics.has(id) || !this._isListItem(id, context)) return EMPTY_IDS;
-		let start = index;
-		while (start > 0 && this._isListItem(siblings[start - 1] as string, context)) start -= 1;
-		let end = index;
-		while (end < siblings.length - 1 && this._isListItem(siblings[end + 1] as string, context)) end += 1;
-		const run = siblings.slice(start, end + 1);
+		const run = this._runAround(siblings, index, context);
 		for (const [blockId, semantics] of getListItemSemantics(this._editor, run)) {
 			context.semantics.set(blockId, semantics);
 		}
@@ -743,6 +743,15 @@ class BlockNotifierImpl implements BlockNotifier {
 			context.ordinals.set(blockId, ordinal);
 		}
 		return run;
+	}
+
+	/** The consecutive list items around the list item at `siblings[index]`. */
+	private _runAround(siblings: readonly string[], index: number, context: EventContext): readonly string[] {
+		let start = index;
+		while (start > 0 && this._isListItem(siblings[start - 1] as string, context)) start -= 1;
+		let end = index;
+		while (end < siblings.length - 1 && this._isListItem(siblings[end + 1] as string, context)) end += 1;
+		return siblings.slice(start, end + 1);
 	}
 
 	/**
@@ -799,31 +808,47 @@ class BlockNotifierImpl implements BlockNotifier {
 		const spans = new Map<string | null, ChangedSpan | null>();
 		const touched = this._listTouchedParents(summary, previousRootIds, movedLists);
 		for (const [parentId, blockIds] of touched) {
-			const siblings = this._siblingsOf(parentId);
 			const previous = parentId === null ? previousRootIds : (this._knownLists.get(parentId) ?? null);
-			const around = (index: number) => {
-				for (const at of [index - 1, index, index + 1]) {
-					for (const runId of this._walkRun(siblings, at, context)) ids.add(runId);
-				}
-			};
-			if (previous === null) {
-				for (let index = 0; index < siblings.length; index += 1) around(index);
-				spans.set(parentId, null);
-				continue;
-			}
-			const [from, to] = changedRange(previous, siblings);
-			spans.set(parentId, { from, to, shift: siblings.length - previous.length, previous });
-			for (let index = from; index <= Math.max(from, to); index += 1) around(index);
-			for (const blockId of blockIds) {
-				const index = this._positionIn(parentId, siblings, blockId);
-				if (index >= 0) around(index);
-			}
+			spans.set(parentId, this._walkTouchedList(parentId, blockIds, previous, ids, context));
 		}
 		// Each touched container's list now is the next commit's baseline.
 		for (const parentId of touched.keys()) {
 			if (parentId !== null) this._knownLists.set(parentId, this._editor.documentState.childrenOf(parentId));
 		}
 		return spans;
+	}
+
+	/**
+	 * Walks one touched sibling list's runs into `ids`: all of them when its
+	 * previous list is unknown, else those around its changed range and the
+	 * blocks the commit names there. Returns its changed span (null when unknown).
+	 */
+	private _walkTouchedList(
+		parentId: string | null,
+		blockIds: ReadonlySet<string>,
+		previous: readonly string[] | null,
+		ids: Set<string>,
+		context: EventContext,
+	): ChangedSpan | null {
+		const siblings = this._siblingsOf(parentId);
+		if (previous === null) {
+			for (let index = 0; index < siblings.length; index += 1) this._walkAround(siblings, index, ids, context);
+			return null;
+		}
+		const [from, to] = changedRange(previous, siblings);
+		for (let index = from; index <= Math.max(from, to); index += 1) this._walkAround(siblings, index, ids, context);
+		for (const blockId of blockIds) {
+			const index = this._positionIn(parentId, siblings, blockId);
+			if (index >= 0) this._walkAround(siblings, index, ids, context);
+		}
+		return { from, to, shift: siblings.length - previous.length, previous };
+	}
+
+	/** Walks the runs at and beside `siblings[index]`, naming their items in `ids`. */
+	private _walkAround(siblings: readonly string[], index: number, ids: Set<string>, context: EventContext): void {
+		for (const at of [index - 1, index, index + 1]) {
+			for (const runId of this._walkRun(siblings, at, context)) ids.add(runId);
+		}
 	}
 
 	/**
@@ -960,6 +985,21 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	private _deliver(kind: BlockNotifierEventKind, ids: Iterable<string>, context: EventContext = newContext()): void {
+		const changed = this._rebuildSnapshots(kind, ids, context);
+		this._fanout[kind] = changed.length;
+		for (const id of changed) {
+			const entry = this._entries.get(id);
+			if (entry) this._notifyAll(entry.subscribers);
+		}
+		if (changed.length === 0) return;
+		for (const subscriber of [...this._changeSubscribers]) {
+			this._deliveries += 1;
+			subscriber(changed);
+		}
+	}
+
+	/** Rebuilds each named entry's snapshot and returns the ids whose snapshot changed. */
+	private _rebuildSnapshots(kind: BlockNotifierEventKind, ids: Iterable<string>, context: EventContext): string[] {
 		const changed: string[] = [];
 		for (const id of new Set(ids)) {
 			const entry = this._entries.get(id);
@@ -975,17 +1015,7 @@ class BlockNotifierImpl implements BlockNotifier {
 			this._setSnapshot(id, entry, next, context);
 			changed.push(id);
 		}
-		this._fanout[kind] = changed.length;
-		for (const id of changed) {
-			const entry = this._entries.get(id);
-			if (entry) this._notifyAll(entry.subscribers);
-		}
-		if (changed.length > 0) {
-			for (const subscriber of [...this._changeSubscribers]) {
-				this._deliveries += 1;
-				subscriber(changed);
-			}
-		}
+		return changed;
 	}
 
 	/** Stores a snapshot; a commit or first build starts following the containers it depends on. */
