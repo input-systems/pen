@@ -18,6 +18,8 @@ const SURFACES = [
 const ATOM_SURFACES = SURFACES.filter(({ suffix }) => suffix !== " (vue)");
 
 /** Where in an atom's box a click lands, as a fraction of its width from the left edge. */
+const SHIFT_DIVIDER_ID = "shift-divider";
+
 const ATOM_LEFT_HALF = 0.25;
 const ATOM_RIGHT_HALF = 0.75;
 
@@ -148,6 +150,53 @@ for (const { suffix, url } of SURFACES) {
 			await expect
 				.poll(() => textSelection(page))
 				.toBe("two-p1:2 -> two-p2:3");
+			await expectDomMatchesAuthority(page);
+		},
+		{ url },
+	);
+
+	scenario(
+		`R1 S2 T2 T5: a shift-click on a divider extends the caret over the divider${suffix}`,
+		async (s, page) => {
+			await s.load("two-paragraph");
+			await s.apply([
+				{
+					type: "insert-block",
+					blockId: SHIFT_DIVIDER_ID,
+					blockType: "divider",
+					props: {},
+					position: { after: "two-p1" },
+				},
+			]);
+			// The vanilla tree renders a divider as a bare block element and
+			// leaves its look to the host; give it a box to click.
+			await page.addStyleTag({
+				content: `[data-block-id="${SHIFT_DIVIDER_ID}"] { min-height: 16px; }`,
+			});
+			const divider = page.locator(
+				`[data-pen-editor-block][data-block-id="${SHIFT_DIVIDER_ID}"]`,
+			);
+			await expect(divider).toBeVisible();
+			await clickAt(page, "two-p1", 2);
+			await expect
+				.poll(() => textSelection(page))
+				.toBe("two-p1:2 -> two-p1:2");
+
+			await withShift(page, true, () => divider.click());
+			await expect
+				.poll(() => textSelection(page))
+				.toBe(`two-p1:2 -> ${SHIFT_DIVIDER_ID}:1`);
+			await expectDomMatchesAuthority(page);
+
+			// And back: from the paragraph after it, the divider's start.
+			await clickAt(page, "two-p2", 3);
+			await expect
+				.poll(() => textSelection(page))
+				.toBe("two-p2:3 -> two-p2:3");
+			await withShift(page, true, () => divider.click());
+			await expect
+				.poll(() => textSelection(page))
+				.toBe(`two-p2:3 -> ${SHIFT_DIVIDER_ID}:0`);
 			await expectDomMatchesAuthority(page);
 		},
 		{ url },

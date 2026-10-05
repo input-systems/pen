@@ -90,12 +90,9 @@ export function handleFieldEditorPointerActivate(
 		return false;
 	}
 
-	const block = editor.getBlock(blockId);
-	const schema = block ? editor.schema.resolve(block.type) : null;
-	if (!usesInlineTextSelection(schema)) {
-		return false;
-	}
-
+	// A shift-click extends from the anchor whatever the clicked block is
+	// (T5): on a block with no text position of its own (a divider, an
+	// image) the focus is its edge, as the React content gestures form it.
 	if (
 		event.shiftKey &&
 		!hostFallback &&
@@ -103,6 +100,12 @@ export function handleFieldEditorPointerActivate(
 	) {
 		event.preventDefault();
 		return true;
+	}
+
+	const block = editor.getBlock(blockId);
+	const schema = block ? editor.schema.resolve(block.type) : null;
+	if (!usesInlineTextSelection(schema)) {
+		return false;
 	}
 
 	const snapshot = fieldEditor.getSnapshot();
