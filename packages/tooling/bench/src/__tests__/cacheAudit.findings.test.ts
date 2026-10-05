@@ -388,6 +388,35 @@ describe("cache property findings", () => {
 		expect(cacheProblems(local)).toEqual([]);
 	});
 
+	it("finding 9: a stored container re-entering the order brings its children back into the summary", () => {
+		const peers = fork(2, [
+			...generateMixedBlockSpecs(20),
+			{
+				id: "callout-b",
+				type: "callout",
+				content: "Box",
+				children: [{ id: "callout-b-1", type: "paragraph", content: "one fox" }],
+			},
+		]);
+		const [local, remote] = peers as [TestEditor, TestEditor];
+		// A remote client takes the container's order entry out and puts one
+		// back, each in its own update: in between the container and its
+		// child render nowhere, and its block map never changes.
+		const order = remote.ydoc.getArray<string>("blockOrder");
+		remote.ydoc.transact(() => {
+			order.delete(order.toArray().indexOf("callout-b"), 1);
+		});
+		expect(touchedProblems(local, () => harness!.deliver(1, 0))).toEqual([]);
+		expect(local.documentState.preorderBlockIds()).not.toContain("callout-b-1");
+		expect(cacheProblems(local)).toEqual([]);
+		remote.ydoc.transact(() => {
+			order.insert(3, ["callout-b"]);
+		});
+		expect(touchedProblems(local, () => harness!.deliver(1, 0))).toEqual([]);
+		expect(local.documentState.preorderBlockIds()).toContain("callout-b-1");
+		expect(cacheProblems(local)).toEqual([]);
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },

@@ -216,6 +216,32 @@ function buildStructuralChanges(
 	// removal or deleted-map paths below. Asked only for entries whose map
 	// neither arrived in the commit nor was stored, or was stored and left
 	// in it, so an ordinary insert or move reads nothing (SCALE2).
+	// A stored block whose entry an earlier commit removed without deleting
+	// it (COL4: an orphan the next pass re-homes, an out-of-order delivery
+	// whose re-insert lands late) brings its `children`-array subtree back
+	// with its new entry, and no array edit names those descendants: each
+	// one the commit does not place itself is reported inserted where the
+	// pre-commit index holds it, mirroring the removal. Bounded by the
+	// re-entering subtrees (SCALE2).
+	const reentered = new Set<string>();
+	const reportReenteredDescendants = (blockId: string) => {
+		if (!index.typeById.has(blockId) || reentered.has(blockId)) return;
+		reentered.add(blockId);
+		const children = index.childrenByParentId.get(blockId) ?? [];
+		for (let at = 0; at < children.length; at += 1) {
+			const childId = children[at]!;
+			if (insertedIds.has(childId) || removedIds.has(childId)) continue;
+			if (!index.typeById.has(childId)) continue;
+			structural.push({
+				type: "block-inserted",
+				blockId: childId,
+				parentId: blockId,
+				index: at,
+			});
+			reportReenteredDescendants(childId);
+		}
+	};
+
 	const danglingInserted: ArrayInsert[] = [];
 	const inserted: ArrayInsert[] = [];
 	for (const item of edits.inserted) {
@@ -315,6 +341,7 @@ function buildStructuralChanges(
 			parentId: item.parentId,
 			index: item.index,
 		});
+		reportReenteredDescendants(item.id);
 	}
 
 	const reported = new Set<string>();
