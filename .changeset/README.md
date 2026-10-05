@@ -21,7 +21,7 @@ Pen uses [Changesets](https://github.com/changesets/changesets) for versioning a
 3. Let the release workflow open or update the release PR on `main`.
 4. When the release PR merges, publish from a maintainer terminal: `git pull`, then `pnpm release` (`changeset publish`). Tag the train with `vX.Y.Z` and push that tag. GitHub does not publish.
 
-The first published train is **0.1.0**. Manifests stay at the unpublished placeholder `0.0.1` until `pnpm version-packages` runs; that command runs `changeset version` and then `scripts/stamp-first-train.mjs`, which rewrites a peer-promoted `1.0.0` to `0.1.0` and no-ops when `changeset version` already landed there. After `v0.1.0` exists the stamp is a no-op. A patch-only first bump would be `0.0.2` and the stamp would fail rather than publish it.
+The first published train was **0.1.0** (tag `v0.1.0`). `pnpm version-packages` still runs `scripts/stamp-first-train.mjs` after `changeset version`; it existed to rewrite a peer-promoted `1.0.0` to `0.1.0` for that first release and is a no-op now that `v0.1.0` exists.
 
 ## Notes
 
