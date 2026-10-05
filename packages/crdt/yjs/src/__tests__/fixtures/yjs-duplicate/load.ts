@@ -1,11 +1,16 @@
 import { spawnSync } from "node:child_process";
+import { rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as Y from "yjs";
 
 const fixtureDir = dirname(fileURLToPath(import.meta.url));
 
-export async function loadDuplicateYjs(): Promise<{ Doc: typeof Y.Doc }> {
+export async function loadDuplicateYjs(): Promise<{
+	Doc: typeof Y.Doc;
+	/** The whole second yjs module, for tests that drive its applyUpdate. */
+	module: typeof Y;
+}> {
 	const result = spawnSync(
 		process.execPath,
 		[join(fixtureDir, "build.mjs")],
@@ -23,9 +28,14 @@ export async function loadDuplicateYjs(): Promise<{ Doc: typeof Y.Doc }> {
 	if (!outFile) {
 		throw new Error("yjs-duplicate fixture build printed no output path");
 	}
-	const duplicate = (await import(pathToFileURL(outFile).href)) as {
-		Doc: typeof Y.Doc;
-	};
+	let duplicate: typeof Y;
+	try {
+		duplicate = (await import(
+			/* @vite-ignore */ pathToFileURL(outFile).href
+		)) as typeof Y;
+	} finally {
+		rmSync(dirname(outFile), { recursive: true, force: true });
+	}
 	if (typeof duplicate.Doc !== "function") {
 		throw new Error("yjs-duplicate bundle did not export Doc");
 	}
@@ -38,5 +48,5 @@ export async function loadDuplicateYjs(): Promise<{ Doc: typeof Y.Doc }> {
 		);
 	}
 
-	return { Doc: duplicate.Doc };
+	return { Doc: duplicate.Doc, module: duplicate };
 }

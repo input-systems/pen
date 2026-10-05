@@ -1,4 +1,4 @@
-import type { CommandResult, Editor } from "@input/pen-types";
+import type { CommandResult, Editor, SelectionState } from "@input/pen-types";
 
 import {
 	blockSelectionResult,
@@ -59,10 +59,19 @@ export function handleVerticalCaret(
 	);
 	if (measured) {
 		const measuredBlockId = measured.point.blockId;
-		if (
-			!isEditableTextBlock(editor, measuredBlockId) &&
-			getBlockInputMode(editor, measuredBlockId) !== "table"
-		) {
+		if (getBlockInputMode(editor, measuredBlockId) === "table") {
+			// T5: entering a table by a vertical arrow selects its edge cell —
+			// the first row moving down, the last moving up — as a click on a
+			// cell does. A text point on the table block has no field to
+			// project into (S2). Shift extends over the table as a block.
+			setVerticalCaretGoalX(editor, null);
+			return {
+				selection: param.extend
+					? extendSelection(editor, true, blockSelectionResult([measuredBlockId]))
+					: edgeCellSelection(editor, measuredBlockId, direction),
+			};
+		}
+		if (!isEditableTextBlock(editor, measuredBlockId)) {
 			// Block selection has no column. Drop goalX so the next
 			// geometry step does not reuse a stale horizontal target (G5).
 			setVerticalCaretGoalX(editor, null);
@@ -167,3 +176,19 @@ function measureVerticalStep(
 	}
 	return result;
 }
+
+function edgeCellSelection(
+	editor: Editor,
+	blockId: string,
+	direction: VerticalCaretDirection,
+): SelectionState {
+	const rows = editor.getBlock(blockId)?.as("table")?.tableRowCount() ?? 1;
+	const row = direction === "up" ? Math.max(0, rows - 1) : 0;
+	return {
+		type: "cell",
+		blockId,
+		anchor: { row, col: 0 },
+		head: { row, col: 0 },
+	};
+}
+

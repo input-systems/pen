@@ -136,7 +136,8 @@ export function selectionEquals(
 				left.anchor.row === right.anchor.row &&
 				left.anchor.col === right.anchor.col &&
 				left.head.row === right.head.row &&
-				left.head.col === right.head.col
+				left.head.col === right.head.col &&
+				cellTextEquals(left.text, right.text)
 			);
 		}
 		default: {
@@ -144,6 +145,17 @@ export function selectionEquals(
 			return _exhaustive;
 		}
 	}
+}
+
+/** A2: an edited cell's `text` is part of cell equality. */
+function cellTextEquals(
+	left: CellSelection["text"],
+	right: CellSelection["text"],
+): boolean {
+	if (left === undefined || right === undefined) {
+		return left === right;
+	}
+	return left.anchor === right.anchor && left.focus === right.focus;
 }
 
 /**
@@ -182,6 +194,7 @@ export function toRecordState(state: SelectionState): SelectionRecordState {
 				blockId: state.blockId,
 				anchor: { ...state.anchor },
 				head: { ...state.head },
+				...(state.text ? { text: { ...state.text } } : {}),
 			};
 		default: {
 			const _exhaustive: never = state;
@@ -226,6 +239,8 @@ export function validateSelection(
 		isNonTextBlock(blockId: string): boolean;
 		clampOffset(blockId: string, offset: number): number;
 		tableGrid(blockId: string): { rows: number; cols: number } | null;
+		cellTextLength(blockId: string, row: number, col: number): number;
+		emitInvalidCellText(blockId: string): void;
 		doc: PenDocument;
 	},
 ): SelectionState | undefined {
@@ -294,10 +309,12 @@ function validateText(
 			offset: host.clampOffset(sel.focus.blockId, sel.focus.offset),
 		},
 	};
-	const order = liveChildIds(host.doc, null);
+	// Read the order only for a mixed text/structural range: a caret move or
+	// keystroke must not read the whole document (SCALE2).
+	let order: string[] | null = null;
 	const covered = coverMixedBoundaryStructuralOffsets(clamped, {
 		isNonText: (blockId) => host.isNonTextBlock(blockId),
-		blockIndex: (blockId) => order.indexOf(blockId),
+		blockIndex: (blockId) => (order ??= liveChildIds(host.doc, null)).indexOf(blockId),
 	});
 	return createTextSelection({
 		anchor: covered.anchor,
@@ -342,30 +359,43 @@ function validateCell(
 		blockExists(blockId: string): boolean;
 		emitMissingBlock(blockId: string): void;
 		tableGrid(blockId: string): { rows: number; cols: number } | null;
+		cellTextLength(blockId: string, row: number, col: number): number;
+		emitInvalidCellText(blockId: string): void;
 	},
 ): CellSelection | undefined {
 	if (!host.blockExists(sel.blockId)) {
 		host.emitMissingBlock(sel.blockId);
 		return undefined;
 	}
-	const grid = host.tableGrid(sel.blockId);
-	if (!grid) {
-		return {
-			type: "cell",
-			blockId: sel.blockId,
-			anchor: { ...sel.anchor },
-			head: { ...sel.head },
-			...(sel.rowIds ? { rowIds: [...sel.rowIds] } : {}),
-			...(sel.columnIds ? { columnIds: [...sel.columnIds] } : {}),
-		};
+	// A1: `text` addresses one cell, so it needs a single-cell selection.
+	if (
+		sel.text &&
+		(sel.anchor.row !== sel.head.row || sel.anchor.col !== sel.head.col)
+	) {
+		host.emitInvalidCellText(sel.blockId);
+		return undefined;
 	}
+	const grid = host.tableGrid(sel.blockId);
+	const anchor = grid ? clampCellCoord(sel.anchor, grid) : { ...sel.anchor };
+	const head = grid ? clampCellCoord(sel.head, grid) : { ...sel.head };
+	const length = sel.text
+		? host.cellTextLength(sel.blockId, head.row, head.col)
+		: 0;
 	return {
 		type: "cell",
 		blockId: sel.blockId,
-		anchor: clampCellCoord(sel.anchor, grid),
-		head: clampCellCoord(sel.head, grid),
+		anchor,
+		head,
 		...(sel.rowIds ? { rowIds: [...sel.rowIds] } : {}),
 		...(sel.columnIds ? { columnIds: [...sel.columnIds] } : {}),
+		...(sel.text
+			? {
+					text: {
+						anchor: clampOffsetToLength(sel.text.anchor, length),
+						focus: clampOffsetToLength(sel.text.focus, length),
+					},
+				}
+			: {}),
 	};
 }
 

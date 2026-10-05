@@ -15,6 +15,14 @@ export type SelectionOrigin =
 	| "restore"
 	| "gc";
 
+/**
+ * Options for the editor's selection setters (S3, W3.R11). `origin`
+ * defaults to `"programmatic"`; `"gc"` is reserved for repair writes (A4).
+ */
+export interface SelectionWriteOptions {
+	readonly origin?: SelectionOrigin;
+}
+
 export interface TextSelection {
 	type: "text";
 	anchor: Point;
@@ -50,6 +58,12 @@ export interface CellSelection {
 	head: { row: number; col: number };
 	rowIds?: string[];
 	columnIds?: string[];
+	/**
+	 * The in-cell text range while one cell is being edited, in that cell's
+	 * logical offsets (A1, T6). Present only when `anchor` equals `head`;
+	 * a grid selection has none.
+	 */
+	text?: { anchor: number; focus: number };
 }
 
 export type SelectionState =
@@ -89,6 +103,7 @@ export type ReadonlySelectionState =
 			readonly head: { readonly row: number; readonly col: number };
 			readonly rowIds?: readonly string[];
 			readonly columnIds?: readonly string[];
+			readonly text?: { readonly anchor: number; readonly focus: number };
 	  }
 	| null;
 
@@ -122,9 +137,11 @@ export type SelectionRecordState =
 			readonly blockId: string;
 			readonly anchor: { readonly row: number; readonly col: number };
 			readonly head: { readonly row: number; readonly col: number };
+			readonly text?: { readonly anchor: number; readonly focus: number };
 	  }
 	| null;
 
+/** The selection authority's current record: its state, version, the write's origin, and the commit it follows. */
 export interface SelectionRecord {
 	readonly state: SelectionRecordState;
 	readonly version: number;

@@ -14,61 +14,18 @@ import type {
 	DiagnosticEvent,
 	ModelAdapter,
 } from "@input/pen-types";
-import {
-	AI_REQUEST_REFUSED_CODE,
-	FIELD_EDITOR_SLOT_KEY,
-} from "@input/pen-types";
+import { AI_REQUEST_REFUSED_CODE } from "@input/pen-types";
 import { streamThroughEgress as localStreamThroughEgress } from "../aiEgress";
 import { autocompleteExtension, getAutocompleteController } from "../index";
+import { fieldEditorSlot, waitForCondition } from "./extension.testHelpers";
 
 const SECRET = "SECRET";
-
-async function waitForCondition(
-	check: () => boolean,
-	maxTicks = 20,
-): Promise<void> {
-	for (let tick = 0; tick < maxTicks; tick += 1) {
-		if (check()) {
-			return;
-		}
-		await Promise.resolve();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-	}
-	throw new Error("Condition was not met in time.");
-}
 
 function aiEgressExtension(filter: AIRequestFilter) {
 	return defineExtension({
 		name: "test-ai-egress",
 		facets: [aiEgressFacet.of(filter)],
 	});
-}
-
-function fieldEditorSlot() {
-	let activeEditor: ReturnType<typeof createEditor> | null = null;
-	const fieldEditor = {
-		focusBlockId: null as string | null,
-		isEditing: true,
-		isFocused: true,
-		isComposing: false,
-	};
-	return {
-		fieldEditor,
-		extension: defineExtension({
-			name: "test-field-editor-slot",
-			activateClient: async ({ editor: nextEditor }) => {
-				activeEditor = nextEditor;
-				nextEditor.internals.assignSlot(
-					FIELD_EDITOR_SLOT_KEY,
-					fieldEditor,
-				);
-			},
-			deactivateClient: async () => {
-				activeEditor?.internals.assignSlot(FIELD_EDITOR_SLOT_KEY, null);
-				activeEditor = null;
-			},
-		}),
-	};
 }
 
 function countingAdapter(inner: ModelAdapter): ModelAdapter & {

@@ -18,7 +18,6 @@ import type {
 	AIRequestedOperation,
 	AISession,
 	AISessionSelectionSnapshot,
-	AISessionTarget,
 	AIStreamEvent,
 	AISurface,
 	GenerationState,

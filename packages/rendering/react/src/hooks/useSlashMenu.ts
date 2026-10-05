@@ -222,19 +222,14 @@ export function useSlashMenu(
 						],
 						{ origin: "user", undoGroup: true },
 					);
+					// W3.R8: activate in this turn; the table's mount ack
+					// attaches the cell once it renders (P4).
 					const fieldEditor = getAttachedFieldEditor(ed);
-					const activateStarterTable = () => {
-						fieldEditor?.activateCell?.(
-							insertedOrConvertedBlockId!,
-							tableActivationTarget.row,
-							tableActivationTarget.col,
-						);
-					};
-					if (typeof window !== "undefined") {
-						window.requestAnimationFrame(activateStarterTable);
-					} else {
-						activateStarterTable();
-					}
+					fieldEditor?.activateCell?.(
+						insertedOrConvertedBlockId!,
+						tableActivationTarget.row,
+						tableActivationTarget.col,
+					);
 				}
 			}
 		}

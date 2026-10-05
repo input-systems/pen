@@ -8,6 +8,7 @@ import {
 	adoptEditorChrome,
 	bindEditorDocumentKeyDown,
 	FieldEditorImpl,
+	bindEditorRootFocus,
 	handleFieldEditorRootFocus,
 	handleFieldEditorPointerActivate,
 	registerVerticalCaretMeasure,
@@ -17,6 +18,7 @@ import {
 	buildDataAttributes,
 	DATA_ATTRS,
 } from "@input/pen-dom/utils/dataAttributes";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 import type {
 	AssetProvider,
 	Editor,
@@ -29,8 +31,6 @@ import {
 	h,
 	mergeProps,
 	onBeforeUnmount,
-	onMounted,
-	onUpdated,
 	ref,
 	toRef,
 	watch,
@@ -116,6 +116,7 @@ export const PenEditor = defineComponent({
 			readonly: readonlyRef,
 			emptyPlaceholder: emptyPlaceholderRef,
 			renderers: renderersRef,
+			rootElement,
 		});
 		provideFieldEditorContext(fieldEditor);
 
@@ -137,6 +138,16 @@ export const PenEditor = defineComponent({
 				onCleanup(() => {
 					releaseChrome();
 				});
+			},
+			{ immediate: true },
+		);
+
+		// O5: the renderer `readonly` prop reaches the overlay; the
+		// pen.ariaReadOnly facet does not (AX1).
+		watch(
+			readonlyRef,
+			(readonly) => {
+				fieldEditor.setReadOnly(readonly === true);
 			},
 			{ immediate: true },
 		);
@@ -165,27 +176,21 @@ export const PenEditor = defineComponent({
 					nextElement,
 				);
 
-				const handleFocusIn = (event: FocusEvent) => {
-					focused.value = true;
-					fieldEditor.setFocused(true);
-					handleFieldEditorRootFocus({
-						event,
-						editor: props.editor,
-						fieldEditor,
-						root: nextElement,
-						readonly: props.readonly,
-					});
-				};
-
-				const handleFocusOut = () => {
-					const activeElement =
-						nextElement.ownerDocument?.activeElement;
-					const nextFocused =
-						activeElement instanceof Node &&
-						nextElement.contains(activeElement);
-					focused.value = nextFocused;
-					fieldEditor.setFocused(nextFocused);
-				};
+				const unbindRootFocus = bindEditorRootFocus(nextElement, {
+					onFocusChange(nextFocused) {
+						focused.value = nextFocused;
+						fieldEditor.setFocused(nextFocused);
+					},
+					onFocusIn(event) {
+						handleFieldEditorRootFocus({
+							event,
+							editor: props.editor,
+							fieldEditor,
+							root: nextElement,
+							readonly: props.readonly,
+						});
+					},
+				});
 
 				const unbindDocumentKeys = bindEditorDocumentKeyDown({
 					editor: props.editor,
@@ -199,7 +204,7 @@ export const PenEditor = defineComponent({
 					const blocksHost = nextElement.querySelector(
 						`[${DATA_ATTRS.editorBlocksHost}]`,
 					);
-					if (!(blocksHost instanceof HTMLElement)) {
+					if (!isDomHTMLElement(blocksHost)) {
 						return;
 					}
 					handleFieldEditorPointerActivate({
@@ -212,12 +217,9 @@ export const PenEditor = defineComponent({
 					});
 				};
 
-				nextElement.addEventListener("focusin", handleFocusIn);
-				nextElement.addEventListener("focusout", handleFocusOut);
 				nextElement.addEventListener("mousedown", handlePointerActivate);
 				onCleanup(() => {
-					nextElement.removeEventListener("focusin", handleFocusIn);
-					nextElement.removeEventListener("focusout", handleFocusOut);
+					unbindRootFocus();
 					nextElement.removeEventListener(
 						"mousedown",
 						handlePointerActivate,
@@ -244,25 +246,8 @@ export const PenEditor = defineComponent({
 			{ immediate: true },
 		);
 
-		const ackMountedBlocks = () => {
-			const root = rootElement.value;
-			if (!root) {
-				return;
-			}
-			for (const element of root.querySelectorAll(
-				`[${DATA_ATTRS.editorBlock}]`,
-			)) {
-				if (!(element instanceof HTMLElement)) {
-					continue;
-				}
-				const blockId = element.getAttribute(DATA_ATTRS.blockId);
-				if (blockId) {
-					fieldEditor.ackBlockMounted(blockId, element);
-				}
-			}
-		};
-		onMounted(ackMountedBlocks);
-		onUpdated(ackMountedBlocks);
+		// Each PenBlock acknowledges its own mount (P1, SCALE6); nothing here
+		// walks every block.
 
 		onBeforeUnmount(() => {
 			props.editor.internals.assignSlot(FIELD_EDITOR_SLOT_KEY, undefined);
@@ -282,7 +267,7 @@ export const PenEditor = defineComponent({
 						element: Element | ComponentPublicInstance | null,
 					) => {
 						rootElement.value =
-							element instanceof HTMLElement ? element : null;
+							isDomHTMLElement(element) ? element : null;
 					},
 					[DATA_ATTRS.editorRoot]: "",
 					[DATA_ATTRS.viewId]: props.editor.internals.viewId,

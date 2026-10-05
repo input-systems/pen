@@ -14,14 +14,17 @@ import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect
 import { useToolbar } from "../../hooks/useToolbar";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { composeRefs } from "../../utils/composeRefs";
-import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
-import { getAttachedFieldEditor } from "../../utils/fieldEditor";
+import { captureFocusReturn, restoreFocusReturn } from "@input/pen-dom";
+import { resolveChromeEditorRoot } from "../../utils/aiDomScope";
+import { getAttachedFieldEditorSession } from "../../utils/fieldEditor";
+import { isDomNode } from "@input/pen-dom/utils/domNodes";
 
 /**
  * AX3 detached surface: `role="toolbar"`, roving tabindex, arrow-key
- * navigation within. Escape restores focus to the editing position
- * (field editor / editor root) or the invoking control. This primitive
- * never auto-focuses itself.
+ * navigation within. Escape returns focus to the editor surface (D15).
+ * Buttons and toggles never take focus from a pointer, and keyboard
+ * activation keeps focus on the activated control. This primitive never
+ * auto-focuses itself.
  */
 export interface ToolbarRootProps extends AsChildProps {
 	editor?: Editor;
@@ -38,7 +41,6 @@ export function ToolbarRoot(props: ToolbarRootProps) {
 
 	const state = useToolbar(editor);
 	const rootRef = useRef<HTMLElement | null>(null);
-	const restoreTargetRef = useRef<HTMLElement | null>(null);
 
 	useIsomorphicLayoutEffect(() => {
 		const root = rootRef.current;
@@ -49,16 +51,11 @@ export function ToolbarRoot(props: ToolbarRootProps) {
 		syncRovingTabIndex(root);
 
 		const onFocusIn = (event: FocusEvent) => {
-			const related = event.relatedTarget;
-			if (related instanceof HTMLElement && !root.contains(related)) {
-				restoreTargetRef.current = related;
-			}
-
 			const items = collectToolbarItems(root);
 			const item = items.find(
 				(el) =>
 					el === event.target ||
-					(event.target instanceof Node && el.contains(event.target)),
+					(isDomNode(event.target) && el.contains(event.target)),
 			);
 			if (!item) {
 				return;
@@ -108,7 +105,14 @@ export function ToolbarRoot(props: ToolbarRootProps) {
 		if (event.key === "Escape") {
 			event.preventDefault();
 			event.stopPropagation();
-			restoreEditorFocus(editor, root, restoreTargetRef.current);
+			const editorRoot = resolveChromeEditorRoot(editor, root);
+			if (editorRoot) {
+				restoreFocusReturn(
+					captureFocusReturn(editorRoot),
+					getAttachedFieldEditorSession(editor),
+					"surface",
+				);
+			}
 			return;
 		}
 
@@ -197,7 +201,7 @@ function moveRovingFocus(root: HTMLElement, event: React.KeyboardEvent): void {
 	const currentIndex = items.findIndex(
 		(item) =>
 			item === event.target ||
-			(event.target instanceof Node && item.contains(event.target)),
+			(isDomNode(event.target) && item.contains(event.target)),
 	);
 	if (currentIndex === -1) {
 		return;
@@ -234,26 +238,4 @@ function moveRovingFocus(root: HTMLElement, event: React.KeyboardEvent): void {
 	event.preventDefault();
 	syncRovingTabIndex(root, nextIndex);
 	items[nextIndex]!.focus();
-}
-
-function restoreEditorFocus(
-	editor: Editor,
-	from: HTMLElement | null,
-	invoking: HTMLElement | null,
-): void {
-	const fieldEditor = getAttachedFieldEditor(editor);
-	if (fieldEditor?.focus({ reason: "keyboard", domFocus: true })) {
-		return;
-	}
-
-	if (invoking?.isConnected) {
-		invoking.focus({ preventScroll: true });
-		return;
-	}
-
-	const ownerDocument = from?.ownerDocument ?? document;
-	const root =
-		from?.closest<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`) ??
-		ownerDocument.querySelector<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`);
-	root?.focus({ preventScroll: true });
 }

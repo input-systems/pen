@@ -96,6 +96,8 @@ describe("@input/pen-react click gestures: collapsing after a triple click", () 
 
 				setNativeSelectionRange(inlineElement!, 0, inlineElement!, 11);
 
+				// Browsers fire pointerup before mouseup; the reader reads there (D19).
+				document.dispatchEvent(new Event("pointerup"));
 				document.dispatchEvent(
 					new MouseEvent("mouseup", {
 						bubbles: true,
@@ -118,6 +120,8 @@ describe("@input/pen-react click gestures: collapsing after a triple click", () 
 
 				setNativeSelectionRange(inlineElement!, 0, inlineElement!, 11);
 
+				// Browsers fire pointerup before mouseup; the reader reads there (D19).
+				document.dispatchEvent(new Event("pointerup"));
 				document.dispatchEvent(
 					new MouseEvent("mouseup", {
 						bubbles: true,
@@ -244,6 +248,8 @@ describe("@input/pen-react click gestures: collapsing after a triple click", () 
 
 				setNativeSelectionRange(inlineElement!, 0, inlineElement!, 11);
 
+				// Browsers fire pointerup before mouseup; the reader reads there (D19).
+				document.dispatchEvent(new Event("pointerup"));
 				document.dispatchEvent(
 					new MouseEvent("mouseup", {
 						bubbles: true,
@@ -273,6 +279,8 @@ describe("@input/pen-react click gestures: collapsing after a triple click", () 
 				document.getSelection()?.removeAllRanges();
 				document.getSelection()?.addRange(collapsedRange);
 
+				// Browsers fire pointerup before mouseup; the reader reads there (D19).
+				document.dispatchEvent(new Event("pointerup"));
 				document.dispatchEvent(
 					new MouseEvent("mouseup", {
 						bubbles: true,

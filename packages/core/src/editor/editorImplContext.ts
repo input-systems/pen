@@ -1,7 +1,6 @@
 import type {
 	ApplyOptions,
 	Awareness,
-	Block,
 	BlockHandle,
 	ChangeSummary,
 	CRDTAdapter,
@@ -29,10 +28,11 @@ import type {
 	UndoManager,
 	Unsubscribe,
 } from "@input/pen-types";
-import type { BlockIndex } from "../changes/blockIndex";
+import type { BlockIndex, StoredBlockReader } from "../changes/blockIndex";
 import type { SchemaEngineImpl } from "../schema/normalize";
 import type { FacetRegistry } from "../facets/registry";
 import type { ApplyPipeline } from "./apply";
+import type { DecorationCollector, DecorationRefresh, DecorationTrigger } from "./decorationCollector";
 import type { DocumentStateImpl } from "./documentState";
 import type { EventEmitter } from "./events";
 import type { ExtensionManagerImpl } from "./extensionManager";
@@ -69,10 +69,13 @@ export interface EditorApiContext {
 	_extensionLifecycle: Promise<void>;
 	readonly _extensions: ExtensionManagerImpl;
 	_decorations: DecorationSet;
+	readonly _decorationCollector: DecorationCollector;
 	_pendingSummary: ChangeSummary | null;
 	_deferredCRDTEvent: CRDTEvent | null;
 	_lastChangeSummary: ChangeSummary | null;
 	_blockIndex: BlockIndex;
+	/** The last commit's block-map reads, valid until the next transaction (SCALE2). */
+	_storedBlocks: StoredBlockReader | null;
 	readonly _documentState: DocumentStateImpl;
 	_releaseSession: Unsubscribe | null;
 	readonly _registry: SchemaRegistry;
@@ -123,7 +126,7 @@ export interface EditorLifecycleContext extends EditorApiContext {
 	_createCommitEvent(event: CRDTEvent): DocumentCommitEvent;
 	_recordPipelinePhase(phase: PipelinePhase): void;
 	_captureSelectionBeforeForCommit(): void;
-	_refreshDecorations(): DecorationSet;
+	_refreshDecorations(trigger?: DecorationTrigger): DecorationRefresh;
 	_activateExtensions(): Promise<void>;
 	_syncDocumentProfileFromStorage(): void;
 	_wireObservation(): void;

@@ -1,18 +1,33 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createEditor } from "@input/pen-core";
 import type {
 	AssetProvider,
 	AssetRef,
 	DiagnosticEvent,
+	Editor,
 } from "@input/pen-types";
 import { uploadImageFiles } from "../transferImages";
 import { defaultSchema } from "@input/pen-schema";
 
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
+const editors: Editor[] = [];
+
+afterEach(() => {
+	for (const editor of editors.splice(0)) editor.destroy();
+});
+
+/** An editor without default extensions, recording its diagnostics. */
+function diagnosingEditor() {
+	const editor = createEditor({
+		schema: defaultSchema,
+		preset: { resolve: () => ({ extensions: [] }) },
+	});
+	editors.push(editor);
+	const diagnostics: DiagnosticEvent[] = [];
+	editor.on("diagnostic", (event) => {
+		diagnostics.push(event);
+	});
+	return { editor, diagnostics };
+}
 
 function imageFile(name: string, size: number): File {
 	return new File([new Uint8Array(size)], name, { type: "image/png" });
@@ -47,28 +62,8 @@ function stubProvider(overrides: Partial<AssetProvider> = {}) {
 }
 
 describe("IOP4 asset upload lifecycle", () => {
-	it("IOP4 API10 successful upload is unchanged", async () => {
-		const { provider, upload } = stubProvider();
-		const file = imageFile("ok.png", 4);
-
-		const uploaded = await uploadImageFiles([file], provider);
-
-		expect(uploaded).toEqual([{ src: "memory://uploaded.png", alt: "ok" }]);
-		expect(upload).toHaveBeenCalledWith(
-			file,
-			expect.objectContaining({ mimeType: "image/png" }),
-		);
-	});
-
 	it("IOP4 API10 rejects oversize uploads with a diagnostic naming the limit and actual size", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			preset: noDefaultExtensionsPreset,
-		});
-		const diagnostics: DiagnosticEvent[] = [];
-		editor.on("diagnostic", (event) => {
-			diagnostics.push(event);
-		});
+		const { editor, diagnostics } = diagnosingEditor();
 		const { provider, upload } = stubProvider({ maxSize: 8 });
 		const file = imageFile("big.png", 16);
 
@@ -87,18 +82,10 @@ describe("IOP4 asset upload lifecycle", () => {
 		});
 		expect(diagnostics[0]?.message).toContain("8");
 		expect(diagnostics[0]?.message).toContain("16");
-		editor.destroy();
 	});
 
 	it("IOP4 API10 reports provider failure with a diagnostic and inserts no block", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			preset: noDefaultExtensionsPreset,
-		});
-		const diagnostics: DiagnosticEvent[] = [];
-		editor.on("diagnostic", (event) => {
-			diagnostics.push(event);
-		});
+		const { editor, diagnostics } = diagnosingEditor();
 		const { provider } = stubProvider({
 			upload: vi.fn().mockRejectedValue(new Error("storage down")),
 		});
@@ -117,10 +104,9 @@ describe("IOP4 asset upload lifecycle", () => {
 		});
 		expect(diagnostics[0]?.message).toContain("storage down");
 		expect(diagnostics[0]?.message).toContain("shot.png");
-		editor.destroy();
 	});
 
-	it("IOP4 API10 observes onProgress during upload", async () => {
+	it("IOP4 API10 successful upload is unchanged and observes onProgress during upload", async () => {
 		const progress: number[] = [];
 		const { provider, upload } = stubProvider();
 		const file = imageFile("ok.png", 4);
@@ -143,14 +129,7 @@ describe("IOP4 asset upload lifecycle", () => {
 	});
 
 	it("IOP4 inserts successful files in a mixed batch and never calls delete", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			preset: noDefaultExtensionsPreset,
-		});
-		const diagnostics: DiagnosticEvent[] = [];
-		editor.on("diagnostic", (event) => {
-			diagnostics.push(event);
-		});
+		const { editor, diagnostics } = diagnosingEditor();
 		const deleteFn = vi.fn();
 		const { provider } = stubProvider({
 			maxSize: 8,
@@ -185,6 +164,5 @@ describe("IOP4 asset upload lifecycle", () => {
 			"provider",
 		]);
 		expect(deleteFn).not.toHaveBeenCalled();
-		editor.destroy();
 	});
 });

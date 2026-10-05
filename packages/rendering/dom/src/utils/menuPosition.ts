@@ -2,6 +2,8 @@ import type { Editor } from "@input/pen-types";
 import { measureWithRoot } from "../geometry/rootGeometry";
 import type { GeometryReader, Rect } from "../geometry/types";
 import { DATA_ATTRS } from "./dataAttributes";
+import { isDomHTMLElement } from "./domNodes";
+import { resolveEditorDocument } from "./editorDocument";
 
 export type MenuPlacementSide = "top" | "bottom";
 
@@ -59,8 +61,10 @@ export function resolveAnchoredMenuPosition(options: {
 		const elementRect = element?.getBoundingClientRect();
 		const menuWidth = elementRect?.width || fallbackWidth;
 		const menuHeight = elementRect?.height || minHeight;
-		const viewportWidth = window.innerWidth;
-		const viewportHeight = window.innerHeight;
+		// the root's own viewport: an iframe's when the host mounts there
+		const view = rootElement.ownerDocument.defaultView ?? window;
+		const viewportWidth = view.innerWidth;
+		const viewportHeight = view.innerHeight;
 
 		let side = preferredSide;
 		let top =
@@ -105,7 +109,7 @@ function resolveEditorRoot(
 	editor: Editor,
 ): HTMLElement | null {
 	const fromElement = element?.closest(`[${DATA_ATTRS.editorRoot}]`);
-	if (fromElement instanceof HTMLElement) {
+	if (isDomHTMLElement(fromElement)) {
 		return fromElement;
 	}
 
@@ -114,11 +118,11 @@ function resolveEditorRoot(
 		return null;
 	}
 
-	const blockElement = document.querySelector<HTMLElement>(
+	const blockElement = resolveEditorDocument(editor)?.querySelector<HTMLElement>(
 		`[data-block-id="${escapeCssAttributeValue(blockId)}"]`,
 	);
 	const fromBlock = blockElement?.closest(`[${DATA_ATTRS.editorRoot}]`);
-	return fromBlock instanceof HTMLElement ? fromBlock : null;
+	return isDomHTMLElement(fromBlock) ? fromBlock : null;
 }
 
 function blockIdFromEditor(editor: Editor): string | null {

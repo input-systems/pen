@@ -112,41 +112,7 @@ function serializeInlineContent(
     return readResolvedText(handle, viewMode);
   }
 
-  const stored = deltas
-    .map((delta) => (typeof delta.insert === "string" ? delta.insert : ""))
-    .join("");
-  if (stored === "") {
-    return "";
-  }
-
-  let result = "";
-
-  for (const delta of deltas) {
-    let text = typeof delta.insert === "string" ? delta.insert : "";
-    if (!text) continue;
-    const suggestion = delta.attributes?.suggestion as
-      | { action?: string }
-      | undefined;
-    if (viewMode === "resolved" && suggestion?.action === DELETE_SUGGESTION_ACTION) {
-      continue;
-    }
-
-    if (delta.attributes) {
-      const ordered = sortDeltaAttributes(delta.attributes, editor.schema);
-      for (const [mark, props] of Object.entries(ordered)) {
-        const inlineSchema = editor.schema.resolveInline(mark);
-        if (!inlineSchema?.serialize?.toMarkdown) continue;
-        text = inlineSchema.serialize.toMarkdown(
-          text,
-          typeof props === "object" ? (props as Record<string, unknown>) : {},
-        );
-      }
-    }
-
-    result += text;
-  }
-
-  return result;
+  return serializeMarkdownDeltas(deltas, editor, viewMode);
 }
 
 function renderTableMarkdown(
@@ -214,18 +180,30 @@ function serializeTableCellMarkdown(
     return "";
   }
 
-  const deltas = [...cell.textDeltas()];
-  const stored = deltas.map((delta) => delta.insert).join("");
+  return serializeMarkdownDeltas(cell.textDeltas(), editor, viewMode);
+}
+
+/**
+ * Delta text wrapped by each mark's `toMarkdown`, in schema mark order.
+ * Resolved view drops suggested deletions.
+ */
+function serializeMarkdownDeltas(
+  deltas: ReturnType<BlockHandle["textDeltas"]>,
+  editor: Editor,
+  viewMode: MarkdownExportViewMode,
+): string {
+  const stored = deltas
+    .map((delta) => (typeof delta.insert === "string" ? delta.insert : ""))
+    .join("");
   if (stored === "") {
     return "";
   }
 
   let result = "";
+
   for (const delta of deltas) {
-    let text = delta.insert;
-    if (!text) {
-      continue;
-    }
+    let text = typeof delta.insert === "string" ? delta.insert : "";
+    if (!text) continue;
     const suggestion = delta.attributes?.suggestion as
       | { action?: string }
       | undefined;
@@ -237,9 +215,7 @@ function serializeTableCellMarkdown(
       const ordered = sortDeltaAttributes(delta.attributes, editor.schema);
       for (const [mark, props] of Object.entries(ordered)) {
         const inlineSchema = editor.schema.resolveInline(mark);
-        if (!inlineSchema?.serialize?.toMarkdown) {
-          continue;
-        }
+        if (!inlineSchema?.serialize?.toMarkdown) continue;
         text = inlineSchema.serialize.toMarkdown(
           text,
           typeof props === "object" ? (props as Record<string, unknown>) : {},

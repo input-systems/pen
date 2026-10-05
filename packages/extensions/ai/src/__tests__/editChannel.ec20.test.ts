@@ -12,10 +12,10 @@ import { aiExtension, getAIController } from "../index";
 import { splitCommittableMarkdown } from "../runtime/streamingBlockCommit";
 import { deltaStreamExtension } from "../stream";
 import type { AIEditStreaming } from "../types";
+import { BLOCK_ANNOTATION_PATTERN } from "./editChannel.testHelpers";
 
 const PROMPT = "Add a findings section.";
 const PAYLOAD = "## Findings\n\nRevenue grew.\n\n- One\n- Two";
-const BLOCK_ANNOTATION_PATTERN = /<!-- block:(\S+) (\S+) -->/g;
 
 function blockIds(request: { messages: unknown }): string[] {
 	const ids = [

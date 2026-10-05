@@ -1,209 +1,116 @@
-import type { Editor, InlineDecoration } from "@input/pen-types";
-import type { FieldEditorInputController } from "./controller";
-import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
+import type { PenFieldEditorFocusOptions } from "./controller";
+import { getLogicalInlineText } from "./commandsShared";
+import type { InlineDecoration } from "@input/pen-types";
+import { extractTextFromDOM } from "./selectionBridge";
+import { computeAnchoredTextDiff, type TextDiffOp } from "./textDiff";
 import {
-	buildInlineDecorationsRenderSignature,
-	inlineDecorationsForBlock,
-	inlineDecorationsRequireFullReconcile,
-} from "../utils/inlineDecorations";
-import { fullReconcileToDOM, applyDeltaToDOM } from "./reconciler";
-import {
-	computeTextDiff,
-	editorSelectionToDOM,
-	extractTextFromDOM,
-	getSelectionOffsets,
-} from "./selectionBridge";
+	writeCellTextRange,
+	writeNativeRangeFromField,
+} from "./selectionProjector";
 import { applyListInputRule } from "./commands";
-import { isHistoryTransactionOrigin } from "./historyOrigin";
-import type { InlineTextDiffOp } from "./inlineTextTransaction";
+import { isHistoryTransactionOrigin } from "./transactionOrigin";
 import {
 	applyInlineTextDiffInput,
 	applyInlineTextInput,
 } from "./textInputPipeline";
 import type {
 	FieldEditorDelta,
-	FieldEditorObserver,
 	FieldEditorTextChangeEvent,
 	FieldEditorTextLike,
 } from "./crdt";
 import { DIRECT_HANDLERS } from "./contenteditableDirectHandlers";
 import {
 	canResolveInputRange,
-	isNavigationSelectionKey,
-	rebaseTextDiffOps,
+	mapOffsetThroughRemoteDeltas,
+	rebaseOverDeferredDeltas,
 	requiresResolvedInputRange,
-	setSelectionOffsets,
 } from "./contenteditableDomHelpers";
-import {
-	resolveLiveTextSelection,
-	resolveRestoreCellEndpoints,
-	resolveRestoreTextEndpoints,
-} from "./selectionAuthority";
-import { BackendAttachment } from "./backendAttachment";
-import { bindBackendTransferEvents } from "./backendTransferEvents";
-import { bindSurfaceTabStop } from "./surfaceTabStop";
+import { FieldInputBackendBase } from "./inputBackendBase";
 import { mapBeforeInput } from "./beforeinputMap";
+import { applyBeforeInputPolicy } from "./commandDispatch";
 import { handleFieldEditorKeyDown } from "./keyHandling";
 import {
-	forwardDomSelectionToReader,
-	readNormalizedDomProposal,
-	resolveEditorRoot,
-	shouldStopEquivalentDomRead,
+	authorityOffsetsInBlock,
+	resolveEditedCellText,
+	resolveLiveTextSelection,
 } from "./selectionReader";
-import {
-	isCollapsedDomAgainstProjectedOffsets,
-	isFullBlockEchoAgainstCollapsedCaret,
-} from "./selectionProjectionController";
 
-export class ContentEditableBackend {
-	protected element: HTMLElement | null = null;
-	protected ytext: FieldEditorTextLike | null = null;
-	protected observer: FieldEditorObserver | null = null;
+export class ContentEditableBackend extends FieldInputBackendBase {
 	protected mutationObserver: MutationObserver | null = null;
 	protected isComposing = false;
-	// block-policy beforeinput: do not absorb later browser leftovers as ops
+	/**
+	 * B1 watchdog state, not selection state: after a block-policy
+	 * `beforeinput` the browser's leftovers are restored without a
+	 * `dom-divergence`, and one mismatch is reported once.
+	 */
 	protected ignoreBrowserMutations = false;
-	// watchdog must not observe its own restore writes
-	protected restoringDomFromModel = false;
 	protected lastWatchdogMismatch: string | null = null;
 	protected compositionStartText: string | null = null;
-	protected deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [];
-	protected readonly attachment = new BackendAttachment();
-	protected inlineDecorationsSignature: readonly InlineDecoration[] | null =
+	/** C2: start of the authority selection at compositionstart, a logical offset. */
+	protected compositionStartOffset = 0;
+	/** C1: the authority range at compositionstart, restored by a cancel. */
+	protected compositionStartRange: { anchor: number; focus: number } | null =
 		null;
-	protected editor: Editor;
-	protected fieldEditor: FieldEditorInputController;
+	protected deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [];
 
-	constructor(editor: Editor, fieldEditor: FieldEditorInputController) {
-		this.editor = editor;
-		this.fieldEditor = fieldEditor;
-	}
-
-	activate(element: HTMLElement, ytext: unknown): void {
-		this.element = element;
+	activate(
+		element: HTMLElement,
+		ytext: unknown,
+		focusOptions?: PenFieldEditorFocusOptions,
+	): void {
 		const activeYText = ytext as FieldEditorTextLike;
 		this.ytext = activeYText;
+		this.attachEditableHost(element);
+		this.resetInputState();
 
-		element.contentEditable = "true";
-		bindSurfaceTabStop(this.attachment, element);
-		this.fieldEditor.resetBackendSelectionAuthority();
-		this.fieldEditor.withBackendSelectionWrite(() => {
-			this.isComposing = false;
-			this.ignoreBrowserMutations = false;
-			this.restoringDomFromModel = false;
-			this.lastWatchdogMismatch = null;
-			this.compositionStartText = null;
-			this.fieldEditor.setComposing(false);
+		this.bindInputEvents(element);
+		this.attachment.listen(element, "pointerdown", this.handlePointerDown);
 
-			this.attachment.listen(
-				element,
-				"beforeinput",
-				this.handleBeforeInput,
-			);
-			this.attachment.listen(
-				element,
-				"compositionstart",
-				this.handleCompositionStart,
-			);
-			this.attachment.listen(
-				element,
-				"compositionend",
-				this.handleCompositionEnd,
-			);
-			this.attachment.listen(element, "keydown", this.handleKeyDown);
-			bindBackendTransferEvents(
-				this.attachment,
-				element,
-				this.editor,
-				this.fieldEditor,
-			);
-			this.attachment.listen(
-				element,
-				"pointerdown",
-				this.handlePointerDown,
-			);
-			this.attachment.listen(
-				element,
-				"contextmenu",
-				this.handleContextMenu,
-			);
-			if (element.ownerDocument) {
-				this.attachment.listenDocument(
-					element.ownerDocument,
-					"selectionchange",
-					this.handleSelectionChange,
-				);
-			}
+		this.mutationObserver = this.attachment.observeMutations(
+			element,
+			this.handleMutations,
+			{
+				childList: true,
+				subtree: true,
+				characterData: true,
+				characterDataOldValue: true,
+			},
+		);
 
-			this.mutationObserver = this.attachment.observeMutations(
-				element,
-				this.handleMutations,
-				{
-					childList: true,
-					subtree: true,
-					characterData: true,
-					characterDataOldValue: true,
-				},
-			);
-
-			this.observer = (event) => this.handleYTextChange(event);
-			this.attachment.observeText(activeYText, this.observer);
-			this.attachment.subscribe(
-				this.editor.on(
-					"decorationsChange",
-					this.handleDecorationsChange,
-				),
-			);
-			this.inlineDecorationsSignature =
-				this.getInlineDecorationsSignature();
-
-			fullReconcileToDOM(activeYText, element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.fieldEditor.notifyDomReconciled(
-				this.fieldEditor.focusBlockId ?? undefined,
-			);
-			this.restoreDOMSelectionFromEditor();
-			this.discardObservedMutations();
-		});
+		this.observeField(activeYText);
+		this.rebuildField();
+		// HOST9: a passive attach leaves focus where it is; a native range
+		// written into an unfocused field would move focus with it. The next
+		// projection that finds focus in the editor writes it.
+		if (!focusOptions?.passive) {
+			this.updateSelection();
+		}
+		this.discardObservedMutations();
 	}
 
-	protected discardObservedMutations(): void {
+	protected override discardObservedMutations(): void {
 		this.mutationObserver?.takeRecords();
 	}
 
 	deactivate(): void {
-		if (this.element) {
-			// remove, never `contentEditable = "false"`. When the surface
-			// expands, the blocks host becomes the editing host and this
-			// element stays inside it; an explicit `false` would leave a
-			// read-only island there. WebKit refuses to extend a selection
-			// out of such an island and clamps at its boundary, so a
-			// cross-block pointer drag that starts in this field can never
-			// reach the next block. Absent is equivalent while the parent is
-			// not editable, which is the single-field case.
-			this.element.removeAttribute("contenteditable");
-			this.element.removeAttribute("tabindex");
-		}
-		this.attachment.release();
+		this.releaseEditableHost();
+		this.detach();
 		this.mutationObserver = null;
-		this.element = null;
-		this.ytext = null;
-		this.observer = null;
-		this.inlineDecorationsSignature = null;
+		this.resetInputState();
+	}
+
+	private resetInputState(): void {
 		this.deferredRemoteDeltas = [];
-		this.fieldEditor.resetBackendSelectionAuthority();
 		this.isComposing = false;
 		this.ignoreBrowserMutations = false;
-		this.restoringDomFromModel = false;
 		this.lastWatchdogMismatch = null;
 		this.compositionStartText = null;
+		this.compositionStartRange = null;
 		this.fieldEditor.setComposing(false);
 	}
 
-	updateSelection(_relPos: unknown): void {
-		this.restoreDOMSelectionFromEditor();
+	protected holdsComposition(): boolean {
+		return this.isComposing;
 	}
 
 	protected _getActiveCellCoord(blockId: string): {
@@ -236,8 +143,7 @@ export class ContentEditableBackend {
 			cellCoord,
 		});
 		this.ensureActiveDOMMatchesYText();
-		this.restoreDOMSelectionFromEditor();
-		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
+		this.updateSelection();
 	}
 
 	commitDispatchedEdit(): void {
@@ -249,11 +155,6 @@ export class ContentEditableBackend {
 			selection.anchor.blockId === blockId &&
 			selection.focus.blockId === blockId
 		) {
-			this.fieldEditor.setBackendSelectionAuthority("programmatic", {
-				blockId,
-				anchorOffset: selection.anchor.offset,
-				focusOffset: selection.focus.offset,
-			});
 			this.fieldEditor.syncTextSelection(
 				blockId,
 				selection.anchor.offset,
@@ -261,8 +162,7 @@ export class ContentEditableBackend {
 			);
 		}
 		this.ensureActiveDOMMatchesYText();
-		this.restoreDOMSelectionFromEditor();
-		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
+		this.updateSelection();
 	}
 
 	applyListInputRule(options: {
@@ -273,113 +173,57 @@ export class ContentEditableBackend {
 		const target = applyListInputRule(this.editor, options);
 		if (!target) return false;
 
-		this.fieldEditor.setBackendSelectionAuthority("programmatic", {
-			blockId: target.blockId,
-			anchorOffset: target.anchorOffset,
-			focusOffset: target.focusOffset,
-		});
-
 		this.fieldEditor.syncTextSelection(
 			target.blockId,
 			target.anchorOffset,
 			target.focusOffset,
 		);
-		this.restoreDOMSelectionFromEditor();
-		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
+		this.updateSelection();
 		return true;
 	}
 
-	restoreDOMSelectionFromEditor(): void {
+	/**
+	 * Writes the authority's record into this field: the edited cell's
+	 * `CellSelection.text`, else a text selection inside the focused block.
+	 * The projector calls it; so do this backend's own rebuilds.
+	 */
+	updateSelection(): void {
 		const element = this.element;
 		if (!element) return;
 
 		const blockId = this.fieldEditor.focusBlockId;
 		if (!blockId) return;
-		const selection = this.editor.selection;
-
-		const pendingSelection = this.fieldEditor.getBackendSelectionAuthority(
-			"programmatic",
-			blockId,
-		);
 		const activeCell = this._getActiveCellCoord(blockId);
 		if (activeCell) {
-			const activeSelection = resolveRestoreCellEndpoints(
-				pendingSelection,
-				this.fieldEditor.getBackendSelectionAuthority("cell", blockId),
+			const text = resolveEditedCellText(
+				this.editor.selection,
+				blockId,
 				activeCell,
 			);
-			if (!activeSelection) return;
-			const start = activeSelection.anchorOffset;
-			const end = activeSelection.focusOffset;
-			this.fieldEditor.withBackendSelectionWrite(() => {
-				setSelectionOffsets(element, start, end);
-			});
+			if (!text) return;
+			writeCellTextRange(element, text);
 			return;
 		}
-		const restored = resolveRestoreTextEndpoints(
+		const restored = resolveLiveTextSelection(
+			this.editor.selection,
 			blockId,
-			resolveLiveTextSelection(selection, blockId, activeCell),
-			pendingSelection,
+			activeCell,
 		);
-		const anchor = restored?.anchor ?? null;
-		const focus = restored?.focus ?? null;
-
-		if (!anchor || !focus) return;
-		if (anchor.blockId !== blockId || focus.blockId !== blockId) {
-			return;
-		}
-		this.fieldEditor.setBackendSelectionAuthority("programmatic", {
-			blockId,
-			anchorOffset: anchor.offset,
-			focusOffset: focus.offset,
-		});
-
-		const root = element.closest(
-			"[data-pen-editor-root]",
-		) as HTMLElement | null;
-		if (!root) return;
-
-		this.fieldEditor.withBackendSelectionWrite(() => {
-			editorSelectionToDOM(root, anchor, focus);
-		});
+		if (!restored) return;
+		writeNativeRangeFromField(element, restored.anchor, restored.focus);
 	}
 
-	protected handleContextMenu = (): void => {
-		this.fieldEditor.notifyGestureEvent?.("contextmenu");
-	};
 	protected handleBeforeInput = (event: InputEvent): void => {
 		if (this.isComposing) return;
 		if (!this.ytext || !this.element) return;
-
-		const blockId = this.fieldEditor.focusBlockId;
-		if (!blockId || !this.editor.getBlock(blockId)) {
-			this.fieldEditor.deactivate();
-			return;
-		}
+		if (!this.liveFocusBlockId()) return;
 
 		// map decides preventDefault / allow / block; DIRECT_HANDLERS only implement commands
 		const mapping = mapBeforeInput(event.inputType);
 		if ("policy" in mapping) {
-			switch (mapping.policy) {
-				case "allow":
-					this.ignoreBrowserMutations = false;
-					return;
-				case "block":
-					event.preventDefault();
-					this.ignoreBrowserMutations = true;
-					this.editor.internals.emit("diagnostic", {
-						code: mapping.code,
-						level: "warn",
-						source: "beforeinput",
-						message: `unhandled beforeinput inputType: ${event.inputType}`,
-						inputType: event.inputType,
-					});
-					return;
-				default: {
-					const _exhaustive: never = mapping;
-					return _exhaustive;
-				}
-			}
+			this.ignoreBrowserMutations = mapping.policy === "block";
+			applyBeforeInputPolicy(this.editor, event, mapping);
+			return;
 		}
 
 		event.preventDefault();
@@ -410,13 +254,14 @@ export class ContentEditableBackend {
 		if (!this.element) {
 			return false;
 		}
-		if (canResolveInputRange(event, this.element)) {
+		const resolve = () => this.resolveCurrentInputRange();
+		if (canResolveInputRange(event, this.element, resolve)) {
 			return true;
 		}
 
-		this.restoreDOMSelectionFromEditor();
+		this.updateSelection();
 
-		return canResolveInputRange(event, this.element);
+		return canResolveInputRange(event, this.element, resolve);
 	}
 
 	// ── Composition handling ──────────────────────────────────
@@ -424,14 +269,16 @@ export class ContentEditableBackend {
 	protected handleCompositionStart = (): void => {
 		if (this.compositionStartText != null) {
 			this.reconcileAfterComposition();
-			this.fieldEditor.notifyGestureEvent?.("compositionend-completed");
+			this.fieldEditor.reader?.notifyGesture("compositionend-completed");
 		}
 		this.isComposing = true;
 		this.ignoreBrowserMutations = false;
-		this.compositionStartText = this.ytext?.toString() ?? "";
+		this.compositionStartText = this.ytext ? getLogicalInlineText(this.ytext) : "";
+		this.compositionStartOffset = this.readCompositionStartOffset();
+		this.compositionStartRange = this.readCompositionStartRange();
 		this.deferredRemoteDeltas = [];
 		this.fieldEditor.setComposing(true);
-		this.fieldEditor.notifyGestureEvent?.("compositionstart");
+		this.fieldEditor.reader?.notifyGesture("compositionstart");
 	};
 
 	protected handleCompositionEnd = (event?: CompositionEvent): void => {
@@ -450,7 +297,7 @@ export class ContentEditableBackend {
 
 		if (fieldIsQuiescent) {
 			this.reconcileAfterComposition();
-			this.fieldEditor.notifyGestureEvent?.("compositionend-completed");
+			this.fieldEditor.reader?.notifyGesture("compositionend-completed");
 		}
 	};
 
@@ -460,40 +307,92 @@ export class ContentEditableBackend {
 		if (!blockId) return;
 
 		const domText = extractTextFromDOM(this.element);
-		const baseText = this.compositionStartText ?? this.ytext.toString();
+		const baseText =
+			this.compositionStartText ?? getLogicalInlineText(this.ytext);
 
 		if (domText !== baseText) {
-			const diff = rebaseTextDiffOps(
-				computeTextDiff(baseText, domText),
+			// With deferred remote text the DOM caret predates it; the caret
+			// goes to the end of the composed text as rebased (C2).
+			const { diff, caret } = rebaseOverDeferredDeltas(
+				computeAnchoredTextDiff(baseText, domText, this.compositionStartOffset),
 				this.deferredRemoteDeltas,
+				baseText.length,
 			);
-			this.applyTextDiffAsOps(blockId, diff);
+			this.applyTextDiffAsOps(blockId, diff, caret);
+		} else {
+			this.restoreCompositionStartRange(blockId);
 		}
 
-		if (this.deferredRemoteDeltas.length > 0) {
+		// Deferred remote text, or a decoration change the composition
+		// deferred, reaches the field now, whether or not it changed text.
+		if (
+			this.deferredRemoteDeltas.length > 0 ||
+			this.decorationsChangedSinceBuild()
+		) {
 			this.deferredRemoteDeltas = [];
-			fullReconcileToDOM(this.ytext, this.element!, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.discardObservedMutations();
-			this.fieldEditor.notifyDomReconciled(
-				this.fieldEditor.focusBlockId ?? undefined,
-			);
+			this.inlineDecorationsSignature = this.getInlineDecorationsSignature();
+			this.rebuildField();
 		}
 
 		this.compositionStartText = null;
-		this.restoreDOMSelectionFromEditor();
+		this.compositionStartRange = null;
+		this.updateSelection();
 		this.discardObservedMutations();
+	}
+
+	protected readCompositionStartRange(): { anchor: number; focus: number } | null {
+		const blockId = this.fieldEditor.focusBlockId;
+		if (!blockId) return null;
+		return authorityOffsetsInBlock(
+			this.editor,
+			blockId,
+			this._getActiveCellCoord(blockId),
+		);
+	}
+
+	/**
+	 * C1: a composition that changed nothing (cancelled, or committed empty)
+	 * leaves the authority where it started. The reader followed the browser
+	 * caret through the composed run (`ime` window), so the record holds a
+	 * caret inside text that no longer exists.
+	 */
+	protected restoreCompositionStartRange(blockId: string): void {
+		const range = this.compositionStartRange;
+		if (!range) return;
+		const anchor = mapOffsetThroughRemoteDeltas(
+			range.anchor,
+			this.deferredRemoteDeltas,
+		);
+		const focus = mapOffsetThroughRemoteDeltas(
+			range.focus,
+			this.deferredRemoteDeltas,
+		);
+		const cell = this._getActiveCellCoord(blockId);
+		if (cell) {
+			this.fieldEditor.syncCellTextSelection(cell, anchor, focus);
+		} else {
+			this.fieldEditor.syncTextSelection(blockId, anchor, focus);
+		}
+	}
+
+	/** The start of the authority's text selection in this field, else the DOM caret. */
+	protected readCompositionStartOffset(): number {
+		const selection = this.editor.selection;
+		const blockId = this.fieldEditor.focusBlockId;
+		if (selection?.type === "text" && selection.focus.blockId === blockId) {
+			return selection.anchor.blockId === blockId
+				? Math.min(selection.anchor.offset, selection.focus.offset)
+				: selection.focus.offset;
+		}
+		return this.liveFieldOffsets()?.start ?? 0;
 	}
 
 	// ── Mutation observer watchdog ────────────────────────────
 
 	protected handleMutations = (_mutations: MutationRecord[]): void => {
-		if (this.restoringDomFromModel) return;
 		if (!this.isComposing && this.compositionStartText != null) {
 			this.reconcileAfterComposition();
-			this.fieldEditor.notifyGestureEvent?.("compositionend-completed");
+			this.fieldEditor.reader?.notifyGesture("compositionend-completed");
 			return;
 		}
 		if (this.isComposing) return;
@@ -502,7 +401,7 @@ export class ContentEditableBackend {
 		if (!blockId) return;
 
 		const domText = extractTextFromDOM(this.element);
-		const crdtText = this.ytext.toString();
+		const crdtText = getLogicalInlineText(this.ytext);
 		if (domText === crdtText) {
 			this.lastWatchdogMismatch = null;
 			return;
@@ -524,130 +423,79 @@ export class ContentEditableBackend {
 		}
 
 		// do not put a foreign caret back — that re-dirties WebKit/Firefox
-		// contenteditable and the observer re-enters on its own write.
-		this.restoringDomFromModel = true;
-		try {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: false,
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.discardObservedMutations();
-		} finally {
-			this.restoringDomFromModel = false;
-		}
-		this.fieldEditor.notifyDomReconciled(blockId);
+		// contenteditable. The rebuild's own records are taken here, so the
+		// observer never sees them.
+		this.rebuildField(undefined, blockId);
 	};
 
 	// ── CRDT→DOM reconciliation ───────────────────────────────
 
 	protected handleYTextChange = (event: FieldEditorTextChangeEvent): void => {
 		if (this.isComposing) {
-			if (
-				event.transaction?.origin === "remote" ||
-				event.transaction?.origin === "collaborator"
-			) {
-				this.deferredRemoteDeltas.push({ delta: event.delta });
-			}
+			// C2: nothing the composition produces reaches `Y.Text` before
+			// compositionend, so every delta now is someone else's edit.
+			this.deferredRemoteDeltas.push({ delta: event.delta });
 			return;
 		}
-
 		if (!this.element || !this.ytext) return;
-		const isHistory = isHistoryTransactionOrigin(event.transaction?.origin);
-		if (isHistory) {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: true,
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.fieldEditor.notifyDomReconciled(
-				this.fieldEditor.focusBlockId ?? undefined,
-			);
-			this.restoreDOMSelectionFromEditor();
-			this.discardObservedMutations();
-			return;
-		}
-
 		const blockId = this.fieldEditor.focusBlockId;
-		const isActiveCell = blockId
-			? !!this._getActiveCellCoord(blockId)
-			: false;
-		if (isActiveCell) {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: true,
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
-			if (
-				this.fieldEditor.hasBackendSelectionAuthority("programmatic") ||
-				event.transaction?.origin === "remote" ||
-				event.transaction?.origin === "collaborator"
-			) {
-				this.restoreDOMSelectionFromEditor();
-			}
-			this.discardObservedMutations();
-			return;
-		}
-
-		const inlineDecorations = this.getInlineDecorationsForBlock();
-		if (inlineDecorationsRequireFullReconcile(inlineDecorations)) {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: true,
-				inlineDecorations,
-			});
-			this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
-			if (
-				this.fieldEditor.hasBackendSelectionAuthority("programmatic") ||
-				event.transaction?.origin === "remote" ||
-				event.transaction?.origin === "collaborator"
-			) {
-				this.restoreDOMSelectionFromEditor();
-			}
-			this.discardObservedMutations();
-			return;
-		}
-
-		const applied = applyDeltaToDOM(
-			event.delta,
-			this.element,
-			this.editor.schema,
-			urlPolicyFromEditor(this.editor),
-		);
-		if (!applied) {
-			fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-				urlPolicy: urlPolicyFromEditor(this.editor),
-				preserveSelection: true,
-				inlineDecorations: this.getInlineDecorationsForBlock(),
-			});
-			this.fieldEditor.notifyDomReconciled(blockId ?? undefined);
-		}
-
-		if (
-			this.fieldEditor.hasBackendSelectionAuthority("programmatic") ||
-			event.transaction?.origin === "remote" ||
-			event.transaction?.origin === "collaborator"
-		) {
-			this.restoreDOMSelectionFromEditor();
+		if (isHistoryTransactionOrigin(event.transaction?.origin)) {
+			this.rebuildField();
+			this.projectRebuiltField();
+		} else {
+			this.reconcileDeltaAndProject(blockId, event.delta);
 		}
 		this.discardObservedMutations();
 	};
+
+	/** A full rebuild projects the record (P3). */
+	protected reconcileDeltaAndProject(
+		blockId: string | null,
+		delta: FieldEditorDelta[],
+	): void {
+		const rebuilt = this.reconcileDelta(blockId, delta);
+		if (!rebuilt || !blockId) {
+			return;
+		}
+		this.fieldEditor.projectAfterRebuild?.([blockId]);
+	}
+
+	/** Table cells cannot take a delta patch either. */
+	protected override requiresFullReconcile(
+		blockId: string | null,
+		inlineDecorations: readonly InlineDecoration[],
+	): boolean {
+		return (
+			(blockId ? !!this._getActiveCellCoord(blockId) : false) ||
+			super.requiresFullReconcile(blockId, inlineDecorations)
+		);
+	}
+
+	/**
+	 * Applies the composition's diff. The caret is `caretOverride` when the
+	 * diff was rebased over deferred remote deltas (C2), else the caret the
+	 * browser left after its own edit, which the authority cannot answer
+	 * before the diff reaches the model.
+	 */
 	protected applyTextDiffAsOps(
 		blockId: string,
-		diff: InlineTextDiffOp[],
+		diff: TextDiffOp[],
+		caretOverride: number | null = null,
 	): void {
 		if (diff.length === 0) return;
 		const ytext = this.ytext;
 		if (!ytext) return;
 
 		const cellCoord = this._getActiveCellCoord(blockId);
-		const range = this.element ? getSelectionOffsets(this.element) : null;
-		const selection = range
+		const caret =
+			caretOverride !== null
+				? { start: caretOverride, end: caretOverride }
+				: this.liveFieldOffsets();
+		const selection = caret
 			? {
 					blockId,
-					anchorOffset: range.start,
-					focusOffset: range.end,
+					anchorOffset: caret.start,
+					focusOffset: caret.end,
 					cell: cellCoord
 						? { row: cellCoord.row, col: cellCoord.col }
 						: undefined,
@@ -664,85 +512,37 @@ export class ContentEditableBackend {
 		});
 		if (!result.applied) return;
 		this.ensureActiveDOMMatchesYText();
-		this.restoreDOMSelectionFromEditor();
-		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
+		this.updateSelection();
 	}
 
-	protected ensureActiveDOMMatchesYText(preserveSelection = true): boolean {
+	protected ensureActiveDOMMatchesYText(): boolean {
 		if (!this.element || !this.ytext) return false;
 		const nextInlineDecorationsSignature =
 			this.getInlineDecorationsSignature();
 		if (
-			extractTextFromDOM(this.element) === this.ytext.toString() &&
+			extractTextFromDOM(this.element) === getLogicalInlineText(this.ytext) &&
 			nextInlineDecorationsSignature === this.inlineDecorationsSignature
 		) {
 			return false;
 		}
 
-		fullReconcileToDOM(this.ytext, this.element, this.editor.schema, {
-			urlPolicy: urlPolicyFromEditor(this.editor),
-			preserveSelection,
-			inlineDecorations: this.getInlineDecorationsForBlock(),
-		});
-		this.discardObservedMutations();
-		this.fieldEditor.notifyDomReconciled(
-			this.fieldEditor.focusBlockId ?? undefined,
-		);
+		this.rebuildField();
 		this.inlineDecorationsSignature = nextInlineDecorationsSignature;
 		return true;
-	}
-
-	protected handleDecorationsChange = (): void => {
-		if (this.isComposing) {
-			return;
-		}
-		if (
-			this.getInlineDecorationsSignature() ===
-			this.inlineDecorationsSignature
-		) {
-			return;
-		}
-		// a decoration can change while another control owns focus; writing
-		// the selection back into this field would drag focus along with it
-		const projectSelection =
-			this.fieldEditor.shouldProjectSelectionAfterReconcile?.() ?? true;
-		if (
-			this.ensureActiveDOMMatchesYText(projectSelection) &&
-			projectSelection
-		) {
-			this.restoreDOMSelectionFromEditor();
-		}
-	};
-
-	protected getInlineDecorationsForBlock(): readonly InlineDecoration[] {
-		return inlineDecorationsForBlock(
-			this.editor,
-			this.fieldEditor.focusBlockId,
-		);
-	}
-
-	protected getInlineDecorationsSignature(): readonly InlineDecoration[] {
-		return buildInlineDecorationsRenderSignature(
-			this.getInlineDecorationsForBlock(),
-			this.inlineDecorationsSignature,
-		);
 	}
 
 	// ── Keyboard shortcuts ────────────────────────────────────
 
 	protected handleKeyDown = (event: KeyboardEvent): void => {
 		if (!this.ytext) return;
-		if (isNavigationSelectionKey(event)) {
-			this.fieldEditor.clearBackendSelectionAuthority("programmatic");
-			this.fieldEditor.clearBackendSelectionAuthority("user-dom");
-		}
 
 		const handled = handleFieldEditorKeyDown({
 			event,
 			editor: this.editor,
 			fieldEditor: this.fieldEditor,
 			ytext: this.ytext,
-			range: this.element ? getSelectionOffsets(this.element) : null,
+			// The authority after a reader sync, not the live DOM range (W35.R18).
+			range: this.resolveCurrentInputRange(),
 		});
 		if (handled) {
 			event.preventDefault();
@@ -750,159 +550,42 @@ export class ContentEditableBackend {
 		}
 	};
 
-	resolveLiveInputRange(): {
-		start: number;
-		end: number;
-	} | null {
-		return this.element ? getSelectionOffsets(this.element) : null;
-	}
-
+	/**
+	 * The range an input edits: the authority after a reader sync (W3.R5),
+	 * the edited cell's `CellSelection.text` in a cell (W3.R18). A field
+	 * activated without a caret in the authority still reads the field,
+	 * where the browser's caret is the only one.
+	 */
 	resolveCurrentInputRange(): {
 		start: number;
 		end: number;
 	} | null {
-		return this.resolveLiveInputRange();
+		const blockId = this.fieldEditor.focusBlockId;
+		if (!this.element || !blockId) return null;
+		this.fieldEditor.syncDomSelectionRead?.();
+		// A field activated with no caret in the record takes the browser's.
+		return (
+			authorityOffsetsInBlock(
+				this.editor,
+				blockId,
+				this._getActiveCellCoord(blockId),
+			) ?? this.liveFieldOffsets()
+		);
 	}
 
-	protected handleSelectionChange = (): void => {
-		if (!this.element) return;
-		const isApplyingSelection =
-			this.fieldEditor.getBackendSelectionApplicationDepth();
-		if (
-			!this.fieldEditor.shouldHandleDomSelectionChange(
-				isApplyingSelection,
-			)
-		) {
-			const suppressed = this.readAttachedNormalizedSelection();
-			if (
-				suppressed &&
-				isFullBlockEchoAgainstCollapsedCaret(
-					suppressed,
-					this.fieldEditor.selection,
-					(blockId) =>
-						this.editor.getBlock(blockId)?.length() ?? null,
-				)
-			) {
-				this.restoreDOMSelectionFromEditor();
-			} else if (
-				isApplyingSelection > 0 &&
-				suppressed &&
-				isCollapsedDomAgainstProjectedOffsets(
-					suppressed,
-					(blockId) =>
-						this.fieldEditor.getBackendSelectionAuthority(
-							"programmatic",
-							blockId,
-						) ??
-						this.fieldEditor.getBackendSelectionAuthority(
-							"user-dom",
-							blockId,
-						),
-				)
-			) {
-				this.restoreDOMSelectionFromEditor();
-			}
-			return;
-		}
-
-		const root = resolveEditorRoot(this.element);
-		if (!root) return;
-
-		const normalizedSelection = readNormalizedDomProposal(
-			root,
-			this.editor,
-		);
-		if (!normalizedSelection) return;
-
-		if (shouldStopEquivalentDomRead(this.editor, normalizedSelection)) {
-			return;
-		}
-
-		if (
-			isFullBlockEchoAgainstCollapsedCaret(
-				normalizedSelection,
-				this.fieldEditor.selection,
-				(blockId) => this.editor.getBlock(blockId)?.length() ?? null,
-			)
-		) {
-			this.restoreDOMSelectionFromEditor();
-			return;
-		}
-
-		if (
-			isCollapsedDomAgainstProjectedOffsets(
-				normalizedSelection,
-				(blockId) =>
-					this.fieldEditor.getBackendSelectionAuthority(
-						"programmatic",
-						blockId,
-					) ??
-					this.fieldEditor.getBackendSelectionAuthority(
-						"user-dom",
-						blockId,
-					),
-			)
-		) {
-			this.restoreDOMSelectionFromEditor();
-			return;
-		}
-
-		if (
-			forwardDomSelectionToReader(this.fieldEditor, normalizedSelection)
-		) {
-			return;
-		}
-
-		if (normalizedSelection.type === "block") {
-			this.fieldEditor.deactivate();
-			this.editor.setSelection({
-				type: "block",
-				blockIds: normalizedSelection.blockIds,
-			});
-			return;
-		}
-
-		this.fieldEditor.setBackendSelectionAuthority("user-dom", {
-			blockId: normalizedSelection.anchor.blockId,
-			anchorOffset: normalizedSelection.anchor.offset,
-			focusOffset: normalizedSelection.focus.offset,
-		});
-		const projectedSelection =
-			this.fieldEditor.getBackendSelectionAuthority(
-				"programmatic",
-				normalizedSelection.anchor.blockId,
-			);
-		if (
-			!projectedSelection ||
-			projectedSelection.anchorOffset !==
-				normalizedSelection.anchor.offset ||
-			projectedSelection.focusOffset !== normalizedSelection.focus.offset
-		) {
-			this.fieldEditor.clearBackendSelectionAuthority("programmatic");
-		}
-		this.fieldEditor.applyDomTextSelection(
-			normalizedSelection.anchor,
-			normalizedSelection.focus,
-		);
-	};
-
-	private readAttachedNormalizedSelection(): ReturnType<
-		typeof readNormalizedDomProposal
-	> {
-		if (!this.element) {
-			return null;
-		}
-		const root = resolveEditorRoot(this.element);
-		if (!root) {
-			return null;
-		}
-		return readNormalizedDomProposal(root, this.editor);
+	/** The reader's live range inside this field (S1). */
+	private liveFieldOffsets(): { start: number; end: number } | null {
+		const element = this.element;
+		return element
+			? (this.fieldEditor.reader?.fieldOffsets(element) ?? null)
+			: null;
 	}
 
 	// ── Clipboard events ──────────────────────────────────────
 
+	// R1: an active table cell carries `ignorePointerGesture`, so the root's
+	// capture listener skips it; this is the cell's only pointerdown notify.
 	protected handlePointerDown = (): void => {
-		this.fieldEditor.notifyGestureEvent?.("pointerdown");
-		this.fieldEditor.clearBackendSelectionAuthority("programmatic");
+		this.fieldEditor.reader?.notifyGesture("pointerdown");
 	};
 }

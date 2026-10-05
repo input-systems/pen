@@ -3,15 +3,10 @@ import {
 	emptyDecorationSet,
 	getOpOriginType,
 } from "@input/pen-core";
-import type {
-	DecorationSet,
-	Editor,
-	InlineDecoration,
-	OpOrigin,
-} from "@input/pen-types";
-import { urlPolicyFromEditor } from "../security/resolveEditorUrl";
+import type { DecorationSet, Editor, OpOrigin } from "@input/pen-types";
 import type { DomScheduler } from "../scheduler";
-import { fullReconcileToDOM } from "./reconciler";
+import { inlineDecorationsForBlock } from "../utils/inlineDecorations";
+import { renderFieldFromModel } from "./fieldDomRebuild";
 import type { FieldEditorTextLike } from "./crdt";
 
 interface SessionSnapshot {
@@ -26,7 +21,8 @@ interface SessionReconcilerOptions {
 	getAttachedElement: () => HTMLElement | null;
 	getInlineElement: (blockId: string) => HTMLElement | null;
 	getYText: (blockId: string) => FieldEditorTextLike | null;
-	shouldPreserveSelection: () => boolean;
+	/** P3, after this flush's rebuilds. */
+	projectAfterRebuild: (blockIds: readonly string[]) => void;
 	shouldProjectSelection: () => boolean;
 	projectSelection: () => void;
 	notifyDomReconciled?: (blockId: string) => void;
@@ -41,13 +37,23 @@ export class SessionReconciler {
 	private scheduledWrite = false;
 	private destroyed = false;
 	private shouldProjectSelection = false;
-	private readonly unsubscribeCommit: () => void;
-	private readonly unsubscribeDecorationsChange: () => void;
+	private unsubscribeCommit: (() => void) | null = null;
+	private unsubscribeDecorationsChange: (() => void) | null = null;
 
 	constructor(editor: Editor, options: SessionReconcilerOptions) {
 		this.editor = editor;
 		this.options = options;
 		this.seenDecorations = editor.getDecorations();
+		this.connect();
+	}
+
+	/** (Re)subscribes after `destroy()`; a no-op while connected. */
+	connect(): void {
+		if (this.unsubscribeCommit) {
+			return;
+		}
+		this.destroyed = false;
+		this.seenDecorations = this.editor.getDecorations();
 		this.unsubscribeCommit = this.editor.on("commit", (event) => {
 			this.handleCommit(
 				event.origin,
@@ -64,8 +70,10 @@ export class SessionReconciler {
 
 	destroy(): void {
 		this.destroyed = true;
-		this.unsubscribeCommit();
-		this.unsubscribeDecorationsChange();
+		this.unsubscribeCommit?.();
+		this.unsubscribeCommit = null;
+		this.unsubscribeDecorationsChange?.();
+		this.unsubscribeDecorationsChange = null;
 		this.scheduledWrite = false;
 		this.pendingBlockIds.clear();
 		this.seenDecorations = emptyDecorationSet();
@@ -146,7 +154,8 @@ export class SessionReconciler {
 			return;
 		}
 		if (snapshot.mode === "expanded") {
-			const changedBlockIds = snapshot.activeBlockIds.filter(hasBlockChanged);
+			const changedBlockIds =
+				snapshot.activeBlockIds.filter(hasBlockChanged);
 			for (const blockId of changedBlockIds) {
 				this.pendingBlockIds.add(blockId);
 			}
@@ -202,22 +211,17 @@ export class SessionReconciler {
 			return;
 		}
 
-		const preserveSelection = this.options.shouldPreserveSelection();
-
+		const rebuilt: string[] = [];
 		if (snapshot.mode === "expanded") {
 			const activeBlockIdSet = new Set(snapshot.activeBlockIds);
 			for (const blockId of blockIds) {
 				if (!activeBlockIdSet.has(blockId)) {
 					continue;
 				}
-				this.reconcileBlock(blockId, preserveSelection);
+				this.reconcileBlock(blockId);
+				rebuilt.push(blockId);
 			}
-			if (
-				shouldProjectSelection &&
-				this.options.shouldProjectSelection()
-			) {
-				this.options.projectSelection();
-			}
+			this.projectAfterFlush(shouldProjectSelection, rebuilt);
 			return;
 		}
 
@@ -227,49 +231,51 @@ export class SessionReconciler {
 
 		for (const blockId of blockIds) {
 			if (blockId === snapshot.focusBlockId) {
+				// The focused field is rebuilt only where it is mounted.
 				const element =
 					this.options.getAttachedElement() ??
-					this.options.getInlineElement(snapshot.focusBlockId);
-				const ytext = this.options.getYText(snapshot.focusBlockId);
-				if (!element || !ytext) {
-					continue;
+					this.options.getInlineElement(blockId);
+				if (this.reconcileBlock(blockId, element)) {
+					rebuilt.push(blockId);
 				}
-				fullReconcileToDOM(ytext, element, this.editor.schema, {
-					preserveSelection,
-					inlineDecorations: this.getInlineDecorations(blockId),
-					urlPolicy: urlPolicyFromEditor(this.editor),
-				});
-				this.options.notifyDomReconciled?.(blockId);
 				continue;
 			}
-			this.reconcileBlock(blockId, preserveSelection);
+			this.reconcileBlock(blockId);
+			rebuilt.push(blockId);
 		}
+		this.projectAfterFlush(shouldProjectSelection, rebuilt);
+	}
+
+	/** A requested projection covers the rebuilt target; otherwise P3 decides. */
+	private projectAfterFlush(
+		shouldProjectSelection: boolean,
+		rebuilt: readonly string[],
+	): void {
 		if (shouldProjectSelection && this.options.shouldProjectSelection()) {
 			this.options.projectSelection();
-		}
-	}
-
-	private reconcileBlock(blockId: string, preserveSelection = true): void {
-		const inlineElement = this.options.getInlineElement(blockId);
-		const ytext = this.options.getYText(blockId);
-		if (!inlineElement || !ytext) {
 			return;
 		}
-		fullReconcileToDOM(ytext, inlineElement, this.editor.schema, {
-			preserveSelection,
-			inlineDecorations: this.getInlineDecorations(blockId),
-			urlPolicy: urlPolicyFromEditor(this.editor),
-		});
-		this.options.notifyDomReconciled?.(blockId);
+		if (rebuilt.length > 0) {
+			this.options.projectAfterRebuild(rebuilt);
+		}
 	}
 
-	private getInlineDecorations(blockId: string): readonly InlineDecoration[] {
-		return this.editor
-			.getDecorations()
-			.forBlock(blockId)
-			.filter(
-				(decoration): decoration is InlineDecoration =>
-					decoration.type === "inline",
-			);
+	/** Rebuilds the block's field from the model; false when it is not mounted. */
+	private reconcileBlock(
+		blockId: string,
+		element = this.options.getInlineElement(blockId),
+	): boolean {
+		const ytext = this.options.getYText(blockId);
+		if (!element || !ytext) {
+			return false;
+		}
+		renderFieldFromModel(
+			this.editor,
+			ytext,
+			element,
+			inlineDecorationsForBlock(this.editor, blockId),
+		);
+		this.options.notifyDomReconciled?.(blockId);
+		return true;
 	}
 }

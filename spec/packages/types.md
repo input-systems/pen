@@ -25,6 +25,7 @@ This is the contract package for the monorepo. It is the place where packages ag
 - Document format stamp `PEN_DOCUMENT_FORMAT` (`3`)
 - Shared AI operation contracts such as selection targets, scoped-range targets, requested-operation provenance, and low-level range helpers
 - Review-surface vocabulary: `REVIEW_SURFACE_CLASSES`, `REVIEW_SURFACE_BLOCK_SUGGESTION_CLASSES`, `REVIEW_SURFACE_CUSTOM_PROPERTIES`, and `BlockSuggestion` / `BlockSuggestionAction` / `BlockSuggestionPreviousState`. The action union is the host-reachable set (`split-block` and `format-text` included, RS7). `@input/pen-ai` re-exports the class tokens and `BlockSuggestion`; the default sheet stays on `@input/pen-dom` (RS4).
+- Tool contracts: `ToolDefinition`, whose `destructive` is `boolean | ToolDestructiveResolver`, and `ToolAuthorityContext` (`{ staged }`), the per-call facts a resolver reads (AIB3).
 - Wire stream contract `PenStreamRequest`: serializable context only (`docId`, `selection`, `blockId`). A live `Editor` is not a request field — `context.editor` was removed. Both AI transports take the editor at construction.
 - Workspace scripts: `build`, `clean`, `dev`, `test`, `typecheck`
 
@@ -94,9 +95,9 @@ A `ChangeSummary` answers what a commit touched: `commitId`, `blockText`, `struc
 
 `blockText` is per-block splices (pre-commit offsets, `insertLength`) plus attribute-only `formatRanges`. The live `BlockTextChange` has no `cell` field.
 
-`structural` is nine variants: `block-inserted`, `block-removed`, `block-moved`, `block-props-changed`, `block-split`, `blocks-merged`, `table-changed`, `apps-changed`, `metadata-changed`. There is no `block-converted` variant; a conversion is `block-props-changed` with `"type"` in `keys`. `metadata-changed` carries `namespaces`, not `keys`.
+`structural` is nine variants: `block-inserted`, `block-removed`, `block-moved`, `block-props-changed`, `block-split`, `blocks-merged`, `table-changed`, `apps-changed`, `metadata-changed`. There is no `block-converted` variant; a conversion is `block-props-changed` with `"type"` in `keys`. `table-changed` names a grid structure change (the table's row, cell, or column arrays); a props or meta change on a table block is `block-props-changed`, as on any other block. `metadata-changed` carries `namespaces`, not `keys`.
 
-`block-split` and `blocks-merged` are the local content-move recipes (source, dest, cut/join offsets), stamped by the executor onto the transaction and copied onto the summary. Remote commits without those tags fall back to same-length delete/insert pairing.
+`block-split` and `blocks-merged` are the local content-move recipes (source, dest, cut/join offsets), stamped by the executor onto the transaction and copied onto the summary. `blocks-merged` also carries `sourceParentId` / `sourceIndex`, the array and pre-commit index the source vacated, because the recipe replaces the source's `block-removed`; they are absent when the commit removed no array entry for the source. Remote commits without those tags fall back to same-length delete/insert pairing.
 
 `mapOffsetThroughSplices(splices, offset, assoc)` is a clamp helper for shifting a per-block result inside one summary. It ships from `@input/pen-core`, not this package — v4 DL12 moved it there under API3, which bounds this package's runtime to the recorded allowlist. There is no compose, no multi-summary form, and no cross-commit mapping API. A position that must survive more than one commit is an `editor.anchors` mint.
 

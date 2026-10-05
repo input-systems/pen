@@ -1,15 +1,9 @@
-import { useSyncExternalStore } from "react";
-import { getNumberedListItemValue as getOrderedListValue } from "@input/pen-core";
-import type { BlockHandle } from "@input/pen-types";
-import { useEditorContext } from "../context/editorContext";
+import { useBlockSlice } from "./useBlockNotifier";
 
-export function useNumberedListItemValue(block: BlockHandle): number {
-	const { editor } = useEditorContext();
-	const fallbackValue = getOrderedListValue(block) ?? 1;
-
-	return useSyncExternalStore(
-		(callback) => editor.on("commit", () => callback()),
-		() => getOrderedListValue(editor.getBlock(block.id)) ?? fallbackValue,
-		() => fallbackValue,
-	);
+/**
+ * The item's number, from the notifier's `list` slice: recomputed once per
+ * touched run, so an item re-renders only when its own ordinal moves (SCALE6).
+ */
+export function useNumberedListItemValue(blockId: string): number {
+	return useBlockSlice(blockId, "list")?.ordinal ?? 1;
 }

@@ -18,10 +18,10 @@ import {
   assertXmlSourceWithinCap,
   boundPenDocument,
   capRawXmlSource,
-  INGEST_MAX_TEXT_SIZE,
   XmlIngestDropCounts,
   type XmlDroppedByReason,
 } from "./ingestBounds";
+import { INGEST_MAX_TEXT_SIZE } from "../ingestBounds";
 
 export interface XmlImportResult extends ImportResult {
   readonly droppedByReason?: readonly XmlDroppedByReason[];

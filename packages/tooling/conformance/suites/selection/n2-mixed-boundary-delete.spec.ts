@@ -1,9 +1,13 @@
-import { expect, test, type Page } from "@playwright/test";
-import { loadavg } from "node:os";
+import { expect, type Page } from "@playwright/test";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
-import type { ScenarioApi, SerializedSelection } from "../../src/types";
+import type { ScenarioApi } from "../../src/types";
+import {
+	attachLoadavg,
+	clickOffset,
+	readSelection,
+} from "../specHelpers";
 
 const P1_ID = "two-p1";
 const P2_ID = "two-p2";
@@ -13,37 +17,8 @@ const P2_TEXT = "Delta echo foxtrot";
 const CUT = 2;
 const PREFIX = P1_TEXT.slice(0, CUT);
 
-/**
- * Pointer drag onto a divider must stay a text selection (T2 / N2).
- * Backspace then keeps the paragraph prefix and deletes the divider.
- * The structural end is a full 0..1 cover; the mid-paragraph start
- * is not snapped to the block boundary.
- */
-
-async function clickOffset(
-	page: Page,
-	blockId: string,
-	offset: number,
-): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId, offset });
-	await page.mouse.click(point.x, point.y);
-}
-
-async function readSelection(page: Page): Promise<SerializedSelection> {
-	return page.evaluate(() => window.__penConformance.selection);
-}
-
 async function readSnapshot(page: Page) {
 	return page.evaluate(() => window.__penConformance.documentSnapshot());
-}
-
-function attachLoadavg(label: string, payload: unknown): Promise<void> {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return test.info().attach(label, {
-		body: JSON.stringify({ loadavg: loads, payload }, null, 2),
-		contentType: "application/json",
-	});
 }
 
 async function dragFromParagraphOntoDivider(page: Page): Promise<void> {

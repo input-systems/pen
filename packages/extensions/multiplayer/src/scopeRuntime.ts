@@ -1,3 +1,5 @@
+import { isYjsCRDTDocument, type YjsCRDTDocument } from "@input/pen-yjs";
+import { createYjsAwareness } from "@input/pen-yjs/awareness";
 import type {
 	Awareness,
 	Editor,
@@ -26,6 +28,23 @@ export interface MultiplayerScopeRuntimeHandle {
 	dispose(): void;
 }
 
+/**
+ * API2: the adapter creates no awareness unless the host asks for one, so
+ * multiplayer ensures its scope's awareness on activation when the scope is
+ * a Yjs document. A scope that already has one (the host passed
+ * `yjsAdapter({ awareness })`) keeps it.
+ */
+function ensureScopeAwareness(editor: Editor): void {
+	const { awareness, crdtDoc, documentSession, documentScope } =
+		editor.internals;
+	if (awareness || !isYjsCRDTDocument(crdtDoc)) {
+		return;
+	}
+	documentSession?.ensureAwareness?.(documentScope.id, (doc) =>
+		createYjsAwareness(doc as YjsCRDTDocument),
+	);
+}
+
 export function attachMultiplayerScopeRuntime(
 	editor: Editor,
 	config: MultiplayerConfig,
@@ -46,6 +65,7 @@ export function attachMultiplayerScopeRuntime(
 
 	let runtime = runtimeMap.get(scopeId);
 	if (!runtime) {
+		ensureScopeAwareness(editor);
 		runtime = new MultiplayerScopeRuntime({
 			editor,
 			config,
@@ -103,7 +123,9 @@ class MultiplayerScopeRuntime {
 		const { editor, config, user, buildLocalAwarenessState } = options;
 		const awareness = editor.internals.awareness;
 		if (!awareness) {
-			throw new Error("Multiplayer extension requires CRDT awareness");
+			throw new Error(
+				"Multiplayer extension requires CRDT awareness: pass an adapter that creates awareness, for Yjs yjsAdapter({ awareness: createYjsAwareness }) from @input/pen-yjs/awareness",
+			);
 		}
 
 		this.awareness = awareness;

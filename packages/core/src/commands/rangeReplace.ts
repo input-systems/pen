@@ -69,9 +69,8 @@ function replaceMultiBlockRange(
 	text: string,
 	marks?: Record<string, unknown | null>,
 ): { ops: DocumentOp[]; caret: Point } | null {
-	const order = documentPreorderBlockIds(editor);
-	const startIndex = order.indexOf(start.blockId);
-	const endIndex = order.indexOf(end.blockId);
+	const startIndex = editor.documentState.preorderIndexOf(start.blockId);
+	const endIndex = editor.documentState.preorderIndexOf(end.blockId);
 	if (startIndex < 0 || endIndex < 0 || startIndex >= endIndex) {
 		return null;
 	}

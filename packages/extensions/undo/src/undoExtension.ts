@@ -8,6 +8,7 @@ import type {
 	OpOrigin,
 	SelectionRecordState,
 	SelectionState,
+	SelectionWriteOptions,
 	UndoHistoryMetadataController,
 	UndoHistoryMetadataEntry,
 	UndoHistoryMetadataRestoreContext,
@@ -134,7 +135,7 @@ export function undoExtension(options?: UndoExtensionOptions): Extension {
 			let afterCaptureVersion = 0;
 			const driftById = new Map<string, CursorDrift>();
 			let driftSeq = 0;
-			let liveCaret: DriftPair | null = mintDrift(
+			let liveCaret: DriftPair | null = heldDrift(
 				ctx.editor,
 				ctx.editor.selection,
 			);
@@ -142,7 +143,7 @@ export function undoExtension(options?: UndoExtensionOptions): Extension {
 				if (manager?._isHistoryOperation) {
 					return;
 				}
-				liveCaret = mintDrift(ctx.editor, record.state);
+				liveCaret = heldDrift(ctx.editor, record.state);
 			});
 			function driftIdOf(stackItem: CRDTUndoStackItem): string | null {
 				return stackItem.getMeta<string>(DRIFT_ID_KEY) ?? null;
@@ -225,7 +226,7 @@ export function undoExtension(options?: UndoExtensionOptions): Extension {
 					const existing = driftById.get(id) ?? emptyDrift();
 					driftById.set(id, {
 						...existing,
-						after: mintDrift(ctx.editor, ctx.editor.selection),
+						after: heldDrift(ctx.editor, ctx.editor.selection),
 					});
 				});
 			}
@@ -366,10 +367,11 @@ export function undoExtension(options?: UndoExtensionOptions): Extension {
 				if (moves.length === 0) {
 					return;
 				}
+				const { commitId } = event.summary;
 				for (const [id, drift] of driftById) {
 					driftById.set(id, {
-						before: repairDrift(ctx.editor, drift.before, moves),
-						after: repairDrift(ctx.editor, drift.after, moves),
+						before: repairDrift(ctx.editor, drift.before, moves, commitId),
+						after: repairDrift(ctx.editor, drift.after, moves, commitId),
 					});
 				}
 			});
@@ -482,39 +484,60 @@ function emptyDrift(): CursorDrift {
 	return { before: null, after: null };
 }
 
-function mintDrift(
+/**
+ * The selection authority's own anchors for a text selection (AS1), held as
+ * drift. They carry the assoc undo needs, and the authority already declines
+ * an endpoint with no text to anchor, such as a divider or table, so undo
+ * mints nothing per selection change.
+ */
+function heldDrift(
 	editor: Editor,
 	selection: SelectionState | SelectionRecordState,
 ): DriftPair | null {
 	if (selection?.type !== "text") {
 		return null;
 	}
-	const collapsed =
-		selection.anchor.blockId === selection.focus.blockId &&
-		selection.anchor.offset === selection.focus.offset;
-	const anchor = editor.anchors.create(
-		selection.anchor,
-		collapsed ? 1 : -1,
-	);
-	const focus = editor.anchors.create(selection.focus, 1);
-	if (!anchor || !focus) {
+	const held = editor.internals.selectionAnchors?.();
+	const from = held?.from;
+	const to = held?.to;
+	if (!from || !to) {
 		return null;
 	}
-	return { anchor, focus };
+	return { anchor: from, focus: to };
 }
 
 function repairDrift(
 	editor: Editor,
 	pair: DriftPair | null,
 	moves: ReturnType<typeof deriveContentMoves>,
+	commitId: number,
 ): DriftPair | null {
 	if (!pair || moves.length === 0) {
 		return pair;
 	}
 	return {
-		anchor: repairAnchor(editor, pair.anchor, moves),
-		focus: repairAnchor(editor, pair.focus, moves),
+		anchor: repairDriftAnchor(editor, pair.anchor, moves, commitId),
+		focus: repairDriftAnchor(editor, pair.focus, moves, commitId),
 	};
+}
+
+/**
+ * AN14 for one drift anchor. An anchor the authority held going into the
+ * commit was already repaired by it from the pre-commit target and then
+ * resolved, which overwrote that target; repairing it again here would read
+ * the after-commit position against the move's pre-commit range, so undo
+ * takes the authority's result. Any other anchor still carries its own target.
+ */
+function repairDriftAnchor(
+	editor: Editor,
+	anchor: Anchor,
+	moves: ReturnType<typeof deriveContentMoves>,
+	commitId: number,
+): Anchor {
+	return (
+		editor.internals.selectionAnchorRepair?.(anchor, commitId) ??
+		repairAnchor(editor, anchor, moves)
+	);
 }
 
 function captureCursor(editor: Editor): CursorSnapshot {
@@ -589,30 +612,37 @@ function captureFocusBlockId(editor: {
 	return null;
 }
 
+/** Undo and redo restore the selection with origin `restore` (S3, D17). */
+const RESTORE = { origin: "restore" } as const;
+
 function restoreSelection(
 	editor: {
-		setSelection(selection: SelectionState): void;
-		selectBlocks(blockIds: string[]): void;
+		setSelection(
+			selection: SelectionState,
+			options?: SelectionWriteOptions,
+		): void;
+		selectBlocks(blockIds: string[], options?: SelectionWriteOptions): void;
 		selectTextRange(
 			anchor: { blockId: string; offset: number },
 			focus: { blockId: string; offset: number },
+			options?: SelectionWriteOptions,
 		): void;
 	},
 	selection: StoredSelection | undefined,
 ): void {
 	if (selection == null) {
-		editor.setSelection(null);
+		editor.setSelection(null, RESTORE);
 		return;
 	}
 	if (selection.type === "text") {
-		editor.selectTextRange(selection.anchor, selection.focus);
+		editor.selectTextRange(selection.anchor, selection.focus, RESTORE);
 		return;
 	}
 	if (selection.type === "block") {
-		editor.selectBlocks(selection.blockIds);
+		editor.selectBlocks(selection.blockIds, RESTORE);
 		return;
 	}
-	editor.setSelection(selection);
+	editor.setSelection(selection, RESTORE);
 }
 
 function readCursorMeta(stackItem: {

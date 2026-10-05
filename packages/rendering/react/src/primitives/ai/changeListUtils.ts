@@ -1,6 +1,7 @@
 import React from "react";
 import { resolveEditorMessage } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
+import type { PersistentSuggestion } from "@input/pen-ai";
 
 export function preventEditorBlur(event: React.MouseEvent<HTMLButtonElement>) {
 	event.preventDefault();
@@ -21,6 +22,23 @@ export function formatSuggestionAction(editor: Editor, action: string): string {
 		default:
 			return resolveEditorMessage(editor, "pen.ai.review.action.change");
 	}
+}
+
+/**
+ * The text a suggestion covers, or a sentence naming the block change for
+ * a structural suggestion.
+ */
+export function describeSuggestionText(
+	editor: Editor,
+	suggestion: PersistentSuggestion,
+): string {
+	const block = editor.getBlock(suggestion.blockId);
+	return suggestion.kind === "text"
+		? (block
+				?.textContent()
+				.slice(suggestion.offset, suggestion.offset + suggestion.length) ??
+				"")
+		: describeBlockSuggestion(editor, suggestion.action, block?.type ?? null);
 }
 
 export function describeBlockSuggestion(

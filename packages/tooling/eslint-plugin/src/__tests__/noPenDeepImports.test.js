@@ -60,35 +60,19 @@ describe("no-pen-deep-imports (API4)", () => {
 				{
 					code: 'import { createEditor } from "@input/pen-core";\n',
 					filename: "packages/extensions/snapshots/src/index.ts",
-					options: [{ allowlist: [], packages }],
+					options: [{ packages }],
 				},
 				{
 					code: 'export { isDevelopmentEnvironment } from "@input/pen-dom/utils/environment";\n',
 					filename: "packages/rendering/react/src/utils/environment.ts",
-					options: [{ allowlist: [], packages }],
-				},
-				{
-					code: 'import { createEditor } from "@input/pen-core/src/editor";\n',
-					filename: "packages/extensions/snapshots/src/index.ts",
-					options: [
-						{
-							packages,
-							allowlist: [
-								{
-									file: "packages/extensions/snapshots/src/index.ts",
-									specifier: "@input/pen-core/src/editor",
-									reason: "temporary",
-								},
-							],
-						},
-					],
+					options: [{ packages }],
 				},
 			],
 			invalid: [
 				{
 					code: 'import { createEditor } from "@input/pen-core/src/editor";\n',
 					filename: "packages/extensions/snapshots/src/index.ts",
-					options: [{ allowlist: [], packages }],
+					options: [{ packages }],
 					errors: [
 						{
 							messageId: "deep",
@@ -101,7 +85,7 @@ describe("no-pen-deep-imports (API4)", () => {
 				{
 					code: 'const core = require("@input/pen-core/dist/index.js");\n',
 					filename: "packages/extensions/snapshots/src/index.ts",
-					options: [{ allowlist: [], packages }],
+					options: [{ packages }],
 					errors: [
 						{
 							messageId: "deep",

@@ -9,16 +9,8 @@ export type EditContextRange = {
 	end: number;
 };
 
-export type DirectionalSelectionOffsets = {
-	anchor: number;
-	focus: number;
-	start: number;
-	end: number;
-};
-
 export type KeyDownRangeResolution = {
 	range: EditContextRange;
-	nextSelection: EditContextSelection | null;
 	shouldSyncEditContextSelection: boolean;
 };
 
@@ -27,6 +19,17 @@ export type TextUpdateRangeResolution = {
 	selection: EditContextSelection | null;
 };
 
+/**
+ * FE9: the range a `textupdate` replaces. `authority` is the record's
+ * selection in the field and `trustedCaret` the last collapsed caret a
+ * `textupdate` resolved there; the event's own range is the buffer's.
+ *
+ * - A collapsed update while the authority holds a range replaces that range.
+ * - An empty field with no trusted caret inserts at 0.
+ * - A collapsed insert away from the trusted caret — else the authority's
+ *   caret, 0 in an empty field — goes to that caret.
+ * - Otherwise the buffer's range stands.
+ */
 export function resolveEditContextTextUpdateRange(input: {
 	blockId: string;
 	updateRangeStart: number;
@@ -35,61 +38,35 @@ export function resolveEditContextTextUpdateRange(input: {
 	selectionStart?: number;
 	selectionEnd?: number;
 	isLogicallyEmpty: boolean;
-	editorSelectionRange: EditContextRange | null;
-	editContextSelection: EditContextSelection | null;
-	authoritativeTextInputSelection: EditContextSelection | null;
-	editorCaret: number | null;
+	authority: EditContextRange | null;
+	trustedCaret: number | null;
 }): TextUpdateRangeResolution {
-	const isCollapsedInsert =
-		input.text.length > 0 &&
-		input.updateRangeStart === input.updateRangeEnd;
-	const editContextCaret = collapsedSelectionOffset(
-		input.editContextSelection,
-		input.blockId,
-	);
-	const authoritativeInputCaret = collapsedSelectionOffset(
-		input.authoritativeTextInputSelection,
-		input.blockId,
-	);
-	const trustedCaret =
-		authoritativeInputCaret ??
-		(input.isLogicallyEmpty ? 0 : (editContextCaret ?? input.editorCaret));
-	const shouldUseTrustedCaret =
-		isCollapsedInsert &&
-		trustedCaret != null &&
-		trustedCaret !== input.updateRangeStart;
-	const editorSelectionRange = input.editorSelectionRange;
-	const shouldUseEditorSelectionRange =
-		editorSelectionRange != null &&
-		input.updateRangeStart === input.updateRangeEnd &&
-		(input.updateRangeStart !== editorSelectionRange.start ||
-			input.updateRangeEnd !== editorSelectionRange.end);
-	const shouldClampEmptyRange =
-		input.isLogicallyEmpty && authoritativeInputCaret == null;
-	const selectedEditorRange = shouldUseEditorSelectionRange
-		? editorSelectionRange
-		: null;
-	const rangeStart = selectedEditorRange
-		? selectedEditorRange.start
-		: shouldClampEmptyRange
-			? 0
-			: shouldUseTrustedCaret
-				? trustedCaret
-				: input.updateRangeStart;
-	const rangeEnd = selectedEditorRange
-		? selectedEditorRange.end
-		: shouldClampEmptyRange
-			? 0
-			: shouldUseTrustedCaret
-				? trustedCaret
-				: input.updateRangeEnd;
+	const { authority, trustedCaret } = input;
+	const isCollapsedUpdate = input.updateRangeStart === input.updateRangeEnd;
+	const authorityCaret =
+		authority && authority.start === authority.end ? authority.start : null;
+	const caret = trustedCaret ?? (input.isLogicallyEmpty ? 0 : authorityCaret);
+	const range: EditContextRange =
+		authority && authorityCaret === null && isCollapsedUpdate
+			? authority
+			: input.isLogicallyEmpty && trustedCaret === null
+				? { start: 0, end: 0 }
+				: input.text.length > 0 &&
+					  isCollapsedUpdate &&
+					  caret !== null &&
+					  caret !== input.updateRangeStart
+					? { start: caret, end: caret }
+					: {
+							start: input.updateRangeStart,
+							end: input.updateRangeEnd,
+						};
 	const hasCollapsedEventSelection =
 		typeof input.selectionStart !== "number" ||
 		typeof input.selectionEnd !== "number" ||
 		input.selectionStart === input.selectionEnd;
 	const nextSelectionOffset =
 		input.text.length > 0 && hasCollapsedEventSelection
-			? rangeStart + input.text.length
+			? range.start + input.text.length
 			: null;
 	const anchorOffset =
 		nextSelectionOffset ??
@@ -101,10 +78,7 @@ export function resolveEditContextTextUpdateRange(input: {
 		(typeof input.selectionEnd === "number" ? input.selectionEnd : null);
 
 	return {
-		range: {
-			start: rangeStart,
-			end: rangeEnd,
-		},
+		range,
 		selection:
 			anchorOffset != null && focusOffset != null
 				? {
@@ -116,171 +90,39 @@ export function resolveEditContextTextUpdateRange(input: {
 	};
 }
 
+/**
+ * W3.R5, FE9: the range a key edits — the authority after the reader sync,
+ * else the trusted typing caret, else the buffer's selection. A
+ * text-editing key at a collapsed authority takes the trusted caret over
+ * it. The buffer takes the range unless the range is the buffer's own or a
+ * collapsed authority the trusted caret disagrees with.
+ */
 export function resolveEditContextKeyDownRange(input: {
-	blockId: string | null;
+	authority: EditContextRange | null;
+	trustedCaret: number | null;
 	isTextEditingKey: boolean;
-	liveDomOffsets: DirectionalSelectionOffsets | null;
-	editContextRange: EditContextRange;
-	editorSelectionRange: EditContextRange | null;
-	authoritativeTextInputSelection: EditContextSelection | null;
-	collapsedEditorSelectionRange: EditContextRange | null;
-	projectedTextSelection: EditContextSelection | null;
-	synchronizedEditContextRange: EditContextRange | null;
+	bufferRange: EditContextRange;
 }): KeyDownRangeResolution {
-	if (!input.blockId) {
+	const { authority, trustedCaret } = input;
+	const authorityCollapsed =
+		authority === null || authority.start === authority.end;
+	if (trustedCaret !== null && input.isTextEditingKey && authorityCollapsed) {
 		return {
-			range: input.liveDomOffsets
-				? directionalSelectionToRange(input.liveDomOffsets)
-				: input.editContextRange,
-			nextSelection: null,
+			range: { start: trustedCaret, end: trustedCaret },
+			shouldSyncEditContextSelection: true,
+		};
+	}
+	if (!authority) {
+		return {
+			range: input.bufferRange,
 			shouldSyncEditContextSelection: false,
 		};
 	}
-
-	const trustedKeyRange = resolveTrustedKeyDownRange(input);
-	if (trustedKeyRange) {
-		return {
-			range: trustedKeyRange,
-			nextSelection: rangeToSelection(input.blockId, trustedKeyRange),
-			shouldSyncEditContextSelection: true,
-		};
-	}
-
-	if (
-		input.editorSelectionRange &&
-		(!input.liveDomOffsets ||
-			(input.liveDomOffsets.start === input.liveDomOffsets.end &&
-				!rangesEqual(input.liveDomOffsets, input.editorSelectionRange)))
-	) {
-		return {
-			range: input.editorSelectionRange,
-			nextSelection: rangeToSelection(
-				input.blockId,
-				input.editorSelectionRange,
-			),
-			shouldSyncEditContextSelection: true,
-		};
-	}
-
-	if (
-		input.liveDomOffsets &&
-		shouldUseLiveDomSelection(
-			input.liveDomOffsets,
-			input.authoritativeTextInputSelection,
-		)
-	) {
-		return {
-			range: directionalSelectionToRange(input.liveDomOffsets),
-			nextSelection: {
-				blockId: input.blockId,
-				anchorOffset: input.liveDomOffsets.anchor,
-				focusOffset: input.liveDomOffsets.focus,
-			},
-			shouldSyncEditContextSelection: true,
-		};
-	}
-
 	return {
-		range: input.liveDomOffsets
-			? directionalSelectionToRange(input.liveDomOffsets)
-			: input.editContextRange,
-		nextSelection: null,
-		shouldSyncEditContextSelection: false,
+		range: authority,
+		shouldSyncEditContextSelection:
+			trustedCaret === null ||
+			!authorityCollapsed ||
+			authority.start === trustedCaret,
 	};
-}
-
-function collapsedSelectionOffset(
-	selection: EditContextSelection | null,
-	blockId: string,
-): number | null {
-	if (
-		selection?.blockId !== blockId ||
-		selection.anchorOffset !== selection.focusOffset
-	) {
-		return null;
-	}
-	return selection.focusOffset;
-}
-
-function selectionToRange(
-	selection: EditContextSelection,
-): EditContextRange {
-	return {
-		start: Math.min(selection.anchorOffset, selection.focusOffset),
-		end: Math.max(selection.anchorOffset, selection.focusOffset),
-	};
-}
-
-function directionalSelectionToRange(
-	selection: DirectionalSelectionOffsets,
-): EditContextRange {
-	return {
-		start: selection.start,
-		end: selection.end,
-	};
-}
-
-function rangeToSelection(
-	blockId: string,
-	range: EditContextRange,
-): EditContextSelection {
-	return {
-		blockId,
-		anchorOffset: range.start,
-		focusOffset: range.end,
-	};
-}
-
-export function rangesEqual(
-	left: EditContextRange,
-	right: EditContextRange,
-): boolean {
-	return left.start === right.start && left.end === right.end;
-}
-
-function resolveTrustedKeyDownRange(input: {
-	isTextEditingKey: boolean;
-	editorSelectionRange: EditContextRange | null;
-	authoritativeTextInputSelection: EditContextSelection | null;
-	collapsedEditorSelectionRange: EditContextRange | null;
-	projectedTextSelection: EditContextSelection | null;
-	synchronizedEditContextRange: EditContextRange | null;
-}): EditContextRange | null {
-	if (!input.isTextEditingKey) {
-		return null;
-	}
-
-	if (input.editorSelectionRange) {
-		return input.editorSelectionRange;
-	}
-
-	if (input.authoritativeTextInputSelection) {
-		return selectionToRange(input.authoritativeTextInputSelection);
-	}
-
-	if (input.collapsedEditorSelectionRange) {
-		return input.collapsedEditorSelectionRange;
-	}
-
-	if (input.projectedTextSelection) {
-		return selectionToRange(input.projectedTextSelection);
-	}
-
-	if (input.synchronizedEditContextRange) {
-		return input.synchronizedEditContextRange;
-	}
-
-	return null;
-}
-
-function shouldUseLiveDomSelection(
-	liveDomOffsets: DirectionalSelectionOffsets,
-	authoritativeSelection: EditContextSelection | null,
-): boolean {
-	return !(
-		authoritativeSelection &&
-		liveDomOffsets.anchor === liveDomOffsets.focus &&
-		(liveDomOffsets.anchor !== authoritativeSelection.anchorOffset ||
-			liveDomOffsets.focus !== authoritativeSelection.focusOffset)
-	);
 }

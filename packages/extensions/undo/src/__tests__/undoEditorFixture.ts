@@ -1,7 +1,7 @@
 import { createEditor } from "@input/pen-core";
 import { yjsAdapter, type YjsCRDTDocument } from "@input/pen-yjs";
 import { defaultSchema } from "@input/pen-schema";
-import type { Editor } from "@input/pen-types";
+import type { DocumentOp, Editor } from "@input/pen-types";
 import * as Y from "yjs";
 
 import { undoExtension } from "../undoExtension";
@@ -65,4 +65,13 @@ export function createEditorWithUndo(
 		...options,
 		extensions: [undoExtension(), ...(options.extensions ?? [])],
 	});
+}
+
+export function splice(
+	blockId: string,
+	from: number,
+	to: number,
+	insert: string,
+): DocumentOp {
+	return { type: "splice-text", blockId, from, to, insert };
 }

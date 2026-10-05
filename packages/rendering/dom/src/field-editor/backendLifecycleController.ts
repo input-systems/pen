@@ -1,5 +1,8 @@
 import type { Editor } from "@input/pen-types";
-import type { FieldEditorInputController } from "./controller";
+import type {
+	FieldEditorInputController,
+	PenFieldEditorFocusOptions,
+} from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
 import type { InputBackend } from "../internal/inputBackend";
 
@@ -26,29 +29,21 @@ export class BackendLifecycleController {
 		return this.backend?.constructor === BackendClass;
 	}
 
-	create(BackendClass: InputBackendConstructor): InputBackend {
-		return new BackendClass(this.editor, this.fieldEditor);
-	}
-
-	replace(BackendClass: InputBackendConstructor): InputBackend {
+	replace(BackendClass: InputBackendConstructor): void {
 		this.deactivate();
-		this.backend = this.create(BackendClass);
-		return this.backend;
+		this.backend = new BackendClass(this.editor, this.fieldEditor);
 	}
 
-	ensure(BackendClass: InputBackendConstructor): InputBackend {
-		if (this.backend?.constructor === BackendClass) {
-			return this.backend;
-		}
-		return this.replace(BackendClass);
+	activate(
+		element: HTMLElement,
+		ytext: FieldEditorTextLike,
+		focusOptions?: PenFieldEditorFocusOptions,
+	): void {
+		this.backend?.activate(element, ytext, focusOptions);
 	}
 
-	activate(element: HTMLElement, ytext: FieldEditorTextLike): void {
-		this.backend?.activate(element, ytext);
-	}
-
-	updateSelection(relPos: unknown): void {
-		this.backend?.updateSelection(relPos);
+	updateSelection(): void {
+		this.backend?.updateSelection();
 	}
 
 	deactivate(): void {

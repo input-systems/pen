@@ -20,9 +20,14 @@
     "description": "TSDoc coverage ratchet: the undocumented count may only decrease. Switch to --strict once it reaches zero."
   },
   {
+    "id": "rule-coverage",
+    "command": "pnpm coverage:rules",
+    "description": "CH11: claimed rule IDs keep a claiming test; scope entries name live rules; new claims are recorded."
+  },
+  {
     "id": "capability-matrix",
     "command": "pnpm capability-matrix",
-    "description": "Every capability-matrix cell that claims a surface must name a path that exists outside the playground."
+    "description": "Every capability-matrix cell that claims a surface must name a path that exists outside the playground, at least one a test, conformance spec, or example (HB5); the self-test proves a document-only cell fails."
   },
   {
     "id": "positioning-check",
@@ -42,7 +47,7 @@
   {
     "id": "catalog-check",
     "command": "node scripts/catalog-check.mjs",
-    "description": "Every diagnostic code has a message catalog entry."
+    "description": "LOC1: referenced `pen.<area>.*` message keys exist in the default catalogs, and every catalog key is referenced or reserved. Diagnostic codes are DOC3's generated table, not this gate."
   },
   {
     "id": "package-metadata",
@@ -53,7 +58,7 @@
     "id": "bench-envelope-drift",
     "command": "node scripts/bench-envelope-drift.mjs",
     "needsBuild": true,
-    "description": "Generated envelope table must match baselines/envelope.json. Table diff only; timing lives in bench.yml."
+    "description": "SCALE1: both generated envelope tables (packages/tooling/bench/ENVELOPE.md with its renderer rows, and the packages/tooling/test/ENVELOPE.md size grades) match their sources. Table diff only; timing lives in bench.yml."
   },
   {
     "id": "version-sync",
@@ -63,7 +68,7 @@
   {
     "id": "stamp-first-train",
     "command": "node scripts/stamp-first-train.mjs --self-test",
-    "description": "The first-train stamp (peer-promoted 1.0.0 → 0.1.0) fails closed on mixed or surprise versions."
+    "description": "The first-train stamp (peer-promoted 1.0.0 \u2192 0.1.0) fails closed on mixed or surprise versions."
   },
   {
     "id": "provenance-preconditions",
@@ -75,6 +80,12 @@
     "command": "pnpm doc-refs",
     "needsBuild": true,
     "description": "Docs reference real packages and their samples typecheck."
+  },
+  {
+    "id": "size-limit",
+    "command": "node scripts/size-limit.mjs",
+    "needsBuild": true,
+    "description": "API7 bundle budgets: +10% per package against .size-limit.baseline.json; every re-record attributes its bytes."
   },
   {
     "id": "dag-check",
@@ -100,11 +111,6 @@
     "id": "readme-sections",
     "command": "node scripts/readme-sections.mjs",
     "description": "Each published package README carries the required sections."
-  },
-  {
-    "id": "envelope-table",
-    "command": "node scripts/envelope-table.mjs && git diff --exit-code -- packages/tooling/test/ENVELOPE.md",
-    "description": "The generated envelope table must match its fixture metadata."
   },
   {
     "id": "dev-ports",

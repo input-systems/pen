@@ -271,7 +271,11 @@ function compareProviders(
 	return a.arrayIndex - b.arrayIndex;
 }
 
-function sortExtensions(extensions: readonly Extension[]): Extension[] {
+/**
+ * Orders extensions so each follows its dependencies. Throws on a duplicate
+ * name, a dependency that is not registered, or a cycle.
+ */
+export function sortExtensions(extensions: readonly Extension[]): Extension[] {
 	const byName = new Map<string, Extension>();
 	for (const ext of extensions) {
 		if (byName.has(ext.name)) {

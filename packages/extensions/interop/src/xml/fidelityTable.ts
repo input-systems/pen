@@ -1,11 +1,8 @@
-export type ExportFidelity = "full" | "degraded" | "dropped";
-
-export interface ExportFidelityRow {
-  kind: "block" | "mark" | "inline-node";
-  type: string;
-  fidelity: ExportFidelity;
-  notes: string;
-}
+import {
+  renderFidelityTable,
+  type ExportFidelity,
+  type ExportFidelityRow,
+} from "../fidelityTable";
 
 const FULL: ExportFidelity = "full";
 
@@ -36,34 +33,11 @@ export const XML_EXPORT_FIDELITY: readonly ExportFidelityRow[] = [
   { kind: "inline-node", type: "inlineApp", fidelity: FULL, notes: "" },
 ];
 
-function renderFidelityTable(
-  title: string,
-  intro: string,
-  rows: readonly ExportFidelityRow[],
-): string {
-  const lines = [
-    `# ${title}`,
-    "",
-    intro,
-    "",
-    "Generated from `src/xml/fidelityTable.ts` and asserted by `src/xml/__tests__/iop3Fidelity.test.ts`. Do not edit by hand.",
-    "",
-    "| Kind | Type | Fidelity | Notes |",
-    "| --- | --- | --- | --- |",
-  ];
-
-  for (const row of rows) {
-    lines.push(`| ${row.kind} | ${row.type} | ${row.fidelity} | ${row.notes} |`);
-  }
-
-  lines.push("");
-  return lines.join("\n");
-}
-
 export function renderXmlFidelityTable(): string {
   return renderFidelityTable(
     "XML export fidelity (IOP3)",
     "XML is a lossless interchange format layered on the JSON document model. Schema-known blocks, props, marks, inline nodes, and structured table payloads round-trip.",
+    "src/xml",
     XML_EXPORT_FIDELITY,
   );
 }

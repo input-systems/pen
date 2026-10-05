@@ -22,15 +22,19 @@
 - applySplitBlock
 - blockLogicalText
 - blocksToOps
+- buildLazyNormalPositionSnapshot
 - buildMergeBlocksRecipe
 - buildNormalPositionSnapshot
 - buildSplitBlockRecipe
 - buildTableChildren
+- buildTransitionSnapshot
 - builtinCommandHandlers
+- clickSelectableBlock
 - collectEditorKeyBindings
 - collectToolExecutionOutput
 - commandHandler
 - convertBlockOps
+- convertPointerDrag
 - createAppHandle
 - createBlockHandle
 - createCommandRegistry
@@ -62,12 +66,13 @@
 - getBlockContentRole
 - getBlockSelectionRoleFromSchema
 - getBlockSelectionRoleFromType
-- getCellCaretFocus
 - getCommandRegistry
 - getEditorSelectionRecord
 - getFlowCapabilityFromSchema
 - getFlowCapabilityFromType
 - getInlineCompletionController
+- getListItemSemantics
+- getListSegments
 - getNumberedListItemValue
 - getOpOriginGroupId
 - getOpOriginType
@@ -85,6 +90,7 @@
 - isContainerBlock
 - isContainerBlockType
 - isContinuousTextFlowCapability
+- isListItemType
 - isMultiBlock
 - isPseudoLocaleText
 - keyBindingPriorityToPrecedence
@@ -124,9 +130,9 @@
 - resolveSelectionTargetBlockIds
 - resolveSuggestionMenuTarget
 - runMigrations
+- scopedDecorationSource
 - selectAdjacentInlineAtom
 - selectionToRange
-- setCellCaretFocus
 - setVerticalCaretGoalX
 - setVerticalCaretMeasure
 - shouldAllowDirectBlockPaste
@@ -142,11 +148,17 @@
 - spliceDeleteOp
 - spliceInsertOp
 - streamThroughEgress
+- summaryRemovedBlockIds
+- summaryTouchedBlockIds
 - supportsInlineInputRules
 - supportsInlineMarks
 - toPseudoLocaleText
 - usesInlineTextSelection
 - wordRangeAt
+
+### guard
+
+- isSafeCssColor
 
 ### value
 
@@ -237,8 +249,6 @@
 - BlockDirectionResolver
 - BlockDirectionSetting
 - CaretMotionParam
-- CellCaretFocus
-- CellCaretWrite
 - ClipboardHandler
 - CommandDispatchContext
 - CommandHandlerTable
@@ -248,6 +258,7 @@
 - CreateCommandRegistryOptions
 - CreateFacetRegistryOptions
 - CreateHeadlessEditorOptions
+- DecorationInterest
 - DecorationSource
 - DefaultKeymapBinding
 - DefaultKeymapContext
@@ -261,6 +272,8 @@
 - InsertTextParam
 - Keymap
 - KeymapPlatform
+- ListItemSemantics
+- ListSegment
 - MigrationReport
 - NormalPositionSnapshot
 - PendingBlock
@@ -270,12 +283,16 @@
 - SchemaA11yAttrs
 - SchemaA11yKind
 - SchemaRegistryConfig
+- ScopedDecorationSource
+- ScopedDecorationSourceSpec
 - SelectBlockParam
 - StructureBlockParam
 - SuggestionMenuBoundary
 - SuggestionMenuTarget
 - SuggestionMenuTrigger
 - ToggleMarkParam
+- TransitionBlock
+- TransitionSnapshot
 - UrlContext
 - UrlPolicy
 - VerticalCaretDirection

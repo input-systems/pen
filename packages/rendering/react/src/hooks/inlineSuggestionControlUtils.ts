@@ -5,7 +5,9 @@ import type {
 } from "@input/pen-ai";
 import type { useAIActions } from "./useAIActions";
 import type { InlineSuggestionControlPosition } from "./useInlineSuggestionControls";
+import { areAdjacentSiblingBlocks } from "@input/pen-dom/utils/parentIdTree";
 import { querySuggestionAnchorElements } from "../utils/aiDomScope";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 
 const SUGGESTION_CONTROL_VIEWPORT_PADDING = 8;
 const SUGGESTION_CONTROL_WIDTH_ESTIMATE = 268;
@@ -49,7 +51,7 @@ export function resolveSuggestionControlPositions(
 		const previousAnchor = currentGroup[currentGroup.length - 1];
 		if (
 			!previousAnchor ||
-			shouldGroupSuggestionAnchors(previousAnchor, anchor)
+			shouldGroupSuggestionAnchors(editor, previousAnchor, anchor)
 		) {
 			currentGroup.push(anchor);
 			continue;
@@ -167,7 +169,7 @@ function resolveSuggestionControlHost(
 	scrollContainer: HTMLElement,
 ): HTMLElement {
 	const editorContent = element.closest("[data-pen-editor-content]");
-	if (editorContent instanceof HTMLElement) {
+	if (isDomHTMLElement(editorContent)) {
 		return editorContent;
 	}
 	return scrollContainer;
@@ -177,7 +179,6 @@ interface SuggestionAnchor {
 	suggestionId: string;
 	action: "insert" | "delete";
 	blockId: string | null;
-	blockElement: HTMLElement | null;
 	element: HTMLElement;
 	rect: DOMRect;
 }
@@ -213,7 +214,6 @@ function resolveVisibleSuggestionAnchors(
 					element
 						.closest("[data-block-id]")
 						?.getAttribute("data-block-id") ?? null,
-				blockElement: element.closest("[data-pen-editor-block]"),
 				element,
 				rect,
 			},
@@ -226,37 +226,32 @@ function isRenderableSuggestionAnchor(element: HTMLElement): boolean {
 }
 
 function shouldGroupSuggestionAnchors(
+	editor: Editor,
 	previousAnchor: SuggestionAnchor,
 	nextAnchor: SuggestionAnchor,
 ): boolean {
 	return (
 		previousAnchor.blockId === nextAnchor.blockId ||
-		areAdjacentSuggestionBlocks(previousAnchor, nextAnchor)
+		areAdjacentSuggestionBlocks(editor, previousAnchor, nextAnchor)
 	);
 }
 
+/**
+ * Adjacent sibling blocks in model order: an AX1 list group wraps some
+ * siblings and not others, so a shared `parentElement` no longer means
+ * "neighbours" (W6.R6).
+ */
 function areAdjacentSuggestionBlocks(
+	editor: Editor,
 	previousAnchor: SuggestionAnchor,
 	nextAnchor: SuggestionAnchor,
 ): boolean {
-	const previousBlock = previousAnchor.blockElement;
-	const nextBlock = nextAnchor.blockElement;
-	if (!previousBlock || !nextBlock || previousBlock === nextBlock) {
+	const { blockId: previousId } = previousAnchor;
+	const { blockId: nextId } = nextAnchor;
+	if (!previousId || !nextId) {
 		return false;
 	}
-	const blocksHost = previousBlock.parentElement;
-	if (!blocksHost || blocksHost !== nextBlock.parentElement) {
-		return false;
-	}
-	const blockElements = [
-		...blocksHost.querySelectorAll<HTMLElement>("[data-pen-editor-block]"),
-	];
-	const previousIndex = blockElements.indexOf(previousBlock);
-	const nextIndex = blockElements.indexOf(nextBlock);
-	if (previousIndex < 0 || nextIndex < 0) {
-		return false;
-	}
-	return nextIndex === previousIndex + 1;
+	return areAdjacentSiblingBlocks(editor, previousId, nextId);
 }
 
 function toSuggestionControlPosition(

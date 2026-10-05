@@ -10,7 +10,6 @@ import {
 	normalizeDomSelectionProposal,
 	originForGestureWindows,
 	decideDomSelectionRead,
-	shouldStopEquivalentDomRead,
 	type GestureWindowState,
 	type ReaderSelection,
 	type ReaderSnapshot,
@@ -34,6 +33,31 @@ function blockSelection(
 }
 
 describe("isLogicallyEquivalent", () => {
+	it("S2 N2: a text range ending on a structural block's 0..1 extent is equivalent to itself", () => {
+		const snapshot: ReaderSnapshot = {
+			blockOrder: ["p1", "image"],
+			blocks: {
+				p1: { kind: "text", text: "Before" },
+				image: { kind: "structural", text: "" },
+			},
+		};
+		const range = textSelection(
+			{ blockId: "p1", offset: 3 },
+			{ blockId: "image", offset: 1 },
+		);
+		expect(isLogicallyEquivalent(range, range, snapshot)).toBe(true);
+		expect(
+			isLogicallyEquivalent(
+				range,
+				textSelection(
+					{ blockId: "p1", offset: 3 },
+					{ blockId: "image", offset: 0 },
+				),
+				snapshot,
+			),
+		).toBe(false);
+	});
+
 	describe("empty block", () => {
 		const snapshot: ReaderSnapshot = {
 			blockOrder: ["empty"],
@@ -260,7 +284,7 @@ describe("isLogicallyEquivalent", () => {
 	});
 });
 
-describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
+describe("classifyDomSelectionRead §4.2 steps 2–5", () => {
 	const snapshot: ReaderSnapshot = {
 		blockOrder: ["p1"],
 		blocks: { p1: { kind: "text", text: "hello" } },
@@ -268,22 +292,9 @@ describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
 	const caret = textSelection({ blockId: "p1", offset: 0 });
 	const moved = textSelection({ blockId: "p1", offset: 2 });
 
-	it("step 1: an in-flight projection is ignored before mapping", () => {
-		expect(
-			classifyDomSelectionRead({
-				projectionInFlight: true,
-				proposal: moved,
-				authorityState: caret,
-				snapshot,
-				gestureWindows: CLOSED_GESTURE_WINDOWS,
-			}),
-		).toBe("ignore-inflight");
-	});
-
 	it("step 2: an unresolvable DOM read produces no proposal", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: null,
 				authorityState: caret,
 				snapshot,
@@ -295,7 +306,6 @@ describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
 	it("step 3: an equivalent proposal stops", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: caret,
 				authorityState: caret,
 				snapshot,
@@ -307,7 +317,6 @@ describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
 	it("step 3: a real move is not equivalent", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -329,7 +338,6 @@ describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
 		};
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: textSelection({ blockId: "embed", offset: 2 }),
 				authorityState: textSelection({ blockId: "embed", offset: 1 }),
 				snapshot: atomSnapshot,
@@ -348,7 +356,6 @@ describe("classifyDomSelectionRead §4.2 steps 1–5", () => {
 		};
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: blockSelection(["p1", "p2"], "p1"),
 				authorityState: blockSelection(["p1", "p2"], "p2"),
 				snapshot: blockSnapshot,
@@ -372,7 +379,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 	it("step 4: a closed window rejects the proposal and requests P2", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -381,65 +387,27 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 		).toBe("diverge");
 	});
 
-	it("step 5: an open pointer window accepts the proposal", () => {
-		expect(
-			classifyDomSelectionRead({
-				projectionInFlight: false,
-				proposal: moved,
-				authorityState: caret,
-				snapshot,
-				gestureWindows: nextGestureWindowState(
-					"pointerdown",
-					CLOSED_GESTURE_WINDOWS,
-				),
-			}),
-		).toBe("accept");
-	});
-
-	it("step 5: an open ime window accepts the proposal", () => {
-		expect(
-			classifyDomSelectionRead({
-				projectionInFlight: false,
-				proposal: moved,
-				authorityState: caret,
-				snapshot,
-				gestureWindows: nextGestureWindowState(
-					"compositionstart",
-					CLOSED_GESTURE_WINDOWS,
-				),
-			}),
-		).toBe("accept");
-	});
-
-	it("step 5: an open context-menu window accepts the proposal", () => {
-		expect(
-			classifyDomSelectionRead({
-				projectionInFlight: false,
-				proposal: moved,
-				authorityState: caret,
-				snapshot,
-				gestureWindows: nextGestureWindowState(
-					"contextmenu",
-					CLOSED_GESTURE_WINDOWS,
-				),
-			}),
-		).toBe("accept");
-	});
-
-	it("step 5: an open drag window accepts the proposal", () => {
-		expect(
-			classifyDomSelectionRead({
-				projectionInFlight: false,
-				proposal: moved,
-				authorityState: caret,
-				snapshot,
-				gestureWindows: nextGestureWindowState(
-					"dragstart",
-					CLOSED_GESTURE_WINDOWS,
-				),
-			}),
-		).toBe("accept");
-	});
+	it.each([
+		["pointer", "pointerdown"],
+		["ime", "compositionstart"],
+		["context-menu", "contextmenu"],
+		["drag", "dragstart"],
+	] as const)(
+		"step 5: an open %s window accepts the proposal",
+		(_window, event) => {
+			expect(
+				classifyDomSelectionRead({
+					proposal: moved,
+					authorityState: caret,
+					snapshot,
+					gestureWindows: nextGestureWindowState(
+						event,
+						CLOSED_GESTURE_WINDOWS,
+					),
+				}),
+			).toBe("accept");
+		},
+	);
 
 	it("step 4: keyboard events do not make a later selectionchange admissible", () => {
 		const afterKeys = nextGestureWindowState(
@@ -448,7 +416,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 		);
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -460,7 +427,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 	it("step 3 still wins over an open window", () => {
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: caret,
 				authorityState: caret,
 				snapshot,
@@ -481,7 +447,6 @@ describe("classifyDomSelectionRead §4.2 steps 4–5", () => {
 		expect(overlapping.pointer).toBe(true);
 		expect(
 			classifyDomSelectionRead({
-				projectionInFlight: false,
 				proposal: moved,
 				authorityState: caret,
 				snapshot,
@@ -560,7 +525,8 @@ describe("normalizeDomSelectionProposal", () => {
 });
 
 describe("decideDomSelectionRead §4.2 steps 4–5", () => {
-	it("step 4: a closed window does not normalize or accept", () => {
+	/** An editor whose first block reads "hello", caret at 0. */
+	function helloEditor() {
 		const editor = createEditor({ schema: defaultSchema });
 		const id = editor.firstBlock()!.id;
 		editor.apply([
@@ -573,11 +539,15 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 			},
 		]);
 		editor.selectText(id, 0, 0);
+		return { editor, id };
+	}
+
+	it("step 4: a closed window does not normalize or accept", () => {
+		const { editor, id } = helloEditor();
 		const decided = decideDomSelectionRead({
 			editor,
 			proposal: textSelection({ blockId: id, offset: 2 }),
 			gestureWindows: CLOSED_GESTURE_WINDOWS,
-			projectionInFlight: false,
 		});
 		expect(decided.decision).toBe("diverge");
 		expect(decided.normalized).toBeNull();
@@ -585,18 +555,7 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 	});
 
 	it("step 5: an open pointer window normalizes and accepts with origin pointer", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: id,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		]);
-		editor.selectText(id, 0, 0);
+		const { editor, id } = helloEditor();
 		const decided = decideDomSelectionRead({
 			editor,
 			proposal: textSelection({ blockId: id, offset: 2 }),
@@ -604,7 +563,6 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 				"pointerdown",
 				CLOSED_GESTURE_WINDOWS,
 			),
-			projectionInFlight: false,
 		});
 		expect(decided.decision).toBe("accept");
 		expect(decided.origin).toBe("pointer");
@@ -615,18 +573,7 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 	});
 
 	it("step 5: overlapping ime+pointer accepts with origin ime", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: id,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		]);
-		editor.selectText(id, 0, 0);
+		const { editor, id } = helloEditor();
 		const overlapping = nextGestureWindowState(
 			"pointerdown",
 			nextGestureWindowState("compositionstart", CLOSED_GESTURE_WINDOWS),
@@ -635,7 +582,6 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 			editor,
 			proposal: textSelection({ blockId: id, offset: 2 }),
 			gestureWindows: overlapping,
-			projectionInFlight: false,
 		});
 		expect(decided.decision).toBe("accept");
 		expect(decided.origin).toBe("ime");
@@ -666,151 +612,11 @@ describe("decideDomSelectionRead §4.2 steps 4–5", () => {
 				"pointerdown",
 				CLOSED_GESTURE_WINDOWS,
 			),
-			projectionInFlight: false,
 		});
 		expect(decided.decision).toBe("accept");
 		expect(decided.normalized).toEqual(
 			blockSelection([first, "second"], first),
 		);
-		void editor.destroy();
-	});
-});
-
-describe("decideDomSelectionRead §4.2 steps 4–5", () => {
-	it("step 5: an open pointer window returns a normalized accept with pointer origin", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: id,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		]);
-		editor.selectText(id, 0, 0);
-		const result = decideDomSelectionRead({
-			editor,
-			proposal: textSelection({ blockId: id, offset: 2 }),
-			gestureWindows: nextGestureWindowState(
-				"pointerdown",
-				CLOSED_GESTURE_WINDOWS,
-			),
-			projectionInFlight: false,
-		});
-		expect(result.decision).toBe("accept");
-		expect(result.origin).toBe("pointer");
-		expect(result.normalized).toEqual(
-			textSelection({ blockId: id, offset: 2 }),
-		);
-		void editor.destroy();
-	});
-
-	it("step 4: a closed window returns diverge and does not normalize", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: id,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		]);
-		editor.selectText(id, 0, 0);
-		const result = decideDomSelectionRead({
-			editor,
-			proposal: textSelection({ blockId: id, offset: 2 }),
-			gestureWindows: CLOSED_GESTURE_WINDOWS,
-			projectionInFlight: false,
-		});
-		expect(result.decision).toBe("diverge");
-		expect(result.normalized).toBeNull();
-		void editor.destroy();
-	});
-
-	it("step 5: a same-ids block proposal without head keeps the authority head", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const first = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "insert-block",
-				blockId: "second",
-				blockType: "paragraph",
-				props: {},
-				position: "last",
-			},
-		]);
-		editor.setSelection({
-			type: "block",
-			blockIds: [first, "second"],
-			head: first,
-		});
-		const result = decideDomSelectionRead({
-			editor,
-			proposal: blockSelection([first, "second"]),
-			gestureWindows: nextGestureWindowState(
-				"pointerdown",
-				CLOSED_GESTURE_WINDOWS,
-			),
-			projectionInFlight: false,
-		});
-		expect(result.decision).toBe("accept");
-		expect(result.normalized).toEqual(
-			blockSelection([first, "second"], first),
-		);
-		void editor.destroy();
-	});
-});
-
-describe("shouldStopEquivalentDomRead", () => {
-	it("stops when the mapped proposal snaps to the record", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.selectText(id, 0, 0);
-		expect(
-			shouldStopEquivalentDomRead(
-				editor,
-				textSelection({ blockId: id, offset: 0 }),
-			),
-		).toBe(true);
-		void editor.destroy();
-	});
-
-	it("falls through when the proposal is a real caret move", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: id,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		]);
-		editor.selectText(id, 0, 0);
-		expect(
-			shouldStopEquivalentDomRead(
-				editor,
-				textSelection({ blockId: id, offset: 2 }),
-			),
-		).toBe(false);
-		void editor.destroy();
-	});
-
-	it("stops an empty-block sentinel DOM offset against logical 0", () => {
-		const editor = createEditor({ schema: defaultSchema });
-		const id = editor.firstBlock()!.id;
-		editor.selectText(id, 0, 0);
-		expect(
-			shouldStopEquivalentDomRead(
-				editor,
-				textSelection({ blockId: id, offset: 1 }),
-			),
-		).toBe(true);
 		void editor.destroy();
 	});
 });

@@ -3,47 +3,13 @@ import { createEditor } from "@input/pen-core";
 import { undoExtension } from "@input/pen-undo";
 import { deltaStreamExtension } from "../stream";
 import { toolsExtension } from "@input/pen-tools";
-import {
-	acceptAllSuggestions,
-	acceptSuggestion,
-	aiExtension,
-	getAIInlineHistoryController,
-	getAIController,
-	rejectSuggestion,
-} from "../index";
-import {
-	readAllSuggestions,
-	readBlockSuggestionMeta,
-	readSuggestionsFromBlock,
-} from "../suggestions/persistent";
+import { aiExtension, getAIController } from "../index";
 import { defaultSchema } from "@input/pen-schema";
-import {
-	createDeferred,
-	testStreamingToolExtension,
-	waitForPreview,
-} from "./extension.testUtils";
+import { createSingleDeltaEditor } from "./extension.testUtils";
 
 describe("aiExtension: inline session targeting", () => {
 	it("creates a fresh inline session when the selection target changes", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "planet",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("planet");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[
@@ -169,25 +135,7 @@ describe("aiExtension: inline session targeting", () => {
 	});
 
 	it("keeps inline session prompts selection-scoped for follow-up edits", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "planet",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("planet");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[
@@ -222,25 +170,7 @@ describe("aiExtension: inline session targeting", () => {
 
 	it("closes the inline composer when resolving a session", async () => {
 		const createInlineSessionEditor = () =>
-			createEditor({
-				schema: defaultSchema,
-				extensions: [
-					undoExtension(),
-					deltaStreamExtension(),
-					toolsExtension(),
-					aiExtension({
-						model: {
-							async *stream() {
-								yield {
-									type: "text-delta" as const,
-									delta: "planet",
-								};
-								yield { type: "done" as const };
-							},
-						},
-					}),
-				],
-			});
+			createSingleDeltaEditor("planet");
 
 		const acceptEditor = createInlineSessionEditor();
 		const acceptBlockId = acceptEditor.firstBlock()!.id;
@@ -317,25 +247,7 @@ describe("aiExtension: inline session targeting", () => {
 
 	it("closes the inline composer when resolving a session turn", async () => {
 		const createInlineSessionEditor = () =>
-			createEditor({
-				schema: defaultSchema,
-				extensions: [
-					undoExtension(),
-					deltaStreamExtension(),
-					toolsExtension(),
-					aiExtension({
-						model: {
-							async *stream() {
-								yield {
-									type: "text-delta" as const,
-									delta: "planet",
-								};
-								yield { type: "done" as const };
-							},
-						},
-					}),
-				],
-			});
+			createSingleDeltaEditor("planet");
 
 		const acceptEditor = createInlineSessionEditor();
 		const acceptBlockId = acceptEditor.firstBlock()!.id;
@@ -423,25 +335,7 @@ describe("aiExtension: inline session targeting", () => {
 	});
 
 	it("uses the captured inline session selection even if the editor selection changes", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "planet",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("planet");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[
@@ -477,25 +371,7 @@ describe("aiExtension: inline session targeting", () => {
 	});
 
 	it("routes inline session continue prompts to block streaming suggestions", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: " More detail",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor(" More detail");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[

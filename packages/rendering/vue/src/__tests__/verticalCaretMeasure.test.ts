@@ -37,20 +37,7 @@ function createParagraphEditor() {
  * (`conformance/suites/geometry/g5-arrow-keystroke.spec.ts`).
  */
 describe("PenEditor vertical caret measure", () => {
-	it("registers a vertical caret measure while mounted", () => {
-		const editor = createParagraphEditor();
-		const wrapper = mount(PenEditor, {
-			props: { editor },
-			attachTo: document.body,
-		});
-
-		expect(getVerticalCaretMeasure(editor)).toEqual(expect.any(Function));
-
-		wrapper.unmount();
-		editor.destroy();
-	});
-
-	it("clears the measure when the editor unmounts", () => {
+	it("registers a vertical caret measure while mounted and clears it on unmount", () => {
 		const editor = createParagraphEditor();
 		const wrapper = mount(PenEditor, {
 			props: { editor },

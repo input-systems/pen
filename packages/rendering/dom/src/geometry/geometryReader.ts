@@ -1,17 +1,31 @@
 import {
-	attachBidiRunsToLines,
 	caretRectAtBidiBoundary,
 	rangeRectsFromLineBoxes,
 } from "./bidiRunGeometry";
+import { DATA_ATTRS } from "../utils/dataAttributes";
 import {
+	isPointBesideAtom,
+	measureBlockElementRect,
 	measureBlockRect,
 	measureCaretRect,
 	measureRangeRects,
 	measureRangeSlice,
 } from "./geometryMeasure";
-import { listDomBlockIds, measurePointAt } from "./geometryHitTest";
+import {
+	listDomBlockElements,
+	listDomBlockIds,
+	measurePointAt,
+} from "./geometryHitTest";
 import { measureLineBoxes } from "./lineBoxMeasure";
-import type { Affinity, GeometryReader, LineBox, Point, Rect } from "./types";
+import type {
+	Affinity,
+	BlockRectEntry,
+	GeometryReader,
+	LineBox,
+	Point,
+	Rect,
+} from "./types";
+import { isDomNode } from "../utils/domNodes";
 
 export type { Affinity, GeometryReader, LineBox, Point, Rect } from "./types";
 export { verticalCaretTarget } from "./verticalCaretTarget";
@@ -49,6 +63,12 @@ export type GeometryReaderHost = GeometryReader & {
 	bumpResizeGeneration(): void;
 	bumpFontGeneration(): void;
 	bumpScrollGeneration(): void;
+	/**
+	 * Fires after bumpResizeGeneration, bumpFontGeneration or
+	 * bumpScrollGeneration. Never from invalidateBlocks. The overlay
+	 * requests a paint from it (OV1).
+	 */
+	onGenerationBump(listener: () => void): () => void;
 	blockIds(): readonly string[];
 	dispose(): void;
 };
@@ -84,6 +104,7 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	private readonly measure?: GeometryMeasureAdapter;
 	private readonly cache = new Map<string, BlockCacheEntry>();
 	private readonly blockCommitIds = new Map<string, number>();
+	private readonly bumpListeners = new Set<() => void>();
 	private readonly resizeObserver: ResizeObserver | null = null;
 	private readonly detachScroll: (() => void) | null = null;
 	private commitId: number;
@@ -140,12 +161,15 @@ class GeometryReaderImpl implements GeometryReaderHost {
 			entry.caretRects.set(cacheKey, rect);
 			return rect;
 		}
-		const fromRuns = caretRectAtBidiBoundary(
-			this.lineBoxes(point.blockId),
-			point.offset,
-			affinity,
-		);
-		const rect = fromRuns ?? measureCaretRect(this.root, point, affinity);
+		const lines = this.lineBoxes(point.blockId);
+		const fromRuns = caretRectAtBidiBoundary(lines, point.offset, affinity);
+		const measured = fromRuns ?? measureCaretRect(this.root, point, affinity);
+		// G1: beside a chip the caret is as tall as the text line, not the
+		// chip's own box, which host CSS styles (padding, borders).
+		const rect =
+			measured && isPointBesideAtom(this.root, point)
+				? onLineBox(measured, lines, point.offset)
+				: measured;
 		entry.caretRects.set(cacheKey, rect);
 		return rect;
 	}
@@ -208,6 +232,24 @@ class GeometryReaderImpl implements GeometryReaderHost {
 		return listDomBlockIds(this.root);
 	}
 
+	/**
+	 * Every mounted block's live box, in DOM order, from one walk of the root.
+	 * `blockRect` per id looks each block up again, which is quadratic over a
+	 * whole document (G5, SCALE6).
+	 */
+	blockRects(): readonly BlockRectEntry[] {
+		if (this.measure?.blockIds || this.measure?.blockRect) {
+			return this.blockIds().flatMap((id) => {
+				const rect = this.blockRect(id);
+				return rect ? [{ id, rect }] : [];
+			});
+		}
+		return listDomBlockElements(this.root).flatMap((element) => {
+			const id = element.getAttribute(DATA_ATTRS.blockId);
+			return id ? [{ id, rect: measureBlockElementRect(element) }] : [];
+		});
+	}
+
 	setCommitId(commitId: number): void {
 		if (this.commitId === commitId) {
 			return;
@@ -226,19 +268,14 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	}
 
 	invalidateBlocks(blockIds: readonly string[], commitId?: number): void {
-		// Drop named blocks always, and any other cached block whose live
-		// box no longer matches the one recorded at last measure.
-		const named = new Set(blockIds);
-		for (const blockId of named) {
+		// Drop the named blocks only. A block that moved without being named is
+		// caught by the live-box check on the read that finds it (`entryFor`),
+		// so a flush costs no getBoundingClientRect for a block nobody reads (G2).
+		for (const blockId of new Set(blockIds)) {
 			if (commitId !== undefined) {
 				this.blockCommitIds.set(blockId, commitId);
 			}
 			this.cache.delete(blockId);
-		}
-		for (const [blockId, entry] of this.cache) {
-			if (!boxStillValid(entry.blockRect, this.liveBlockRect(blockId))) {
-				this.cache.delete(blockId);
-			}
 		}
 		this._generation += 1;
 	}
@@ -250,20 +287,31 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	bumpResizeGeneration(): void {
 		this.resizeGeneration += 1;
 		this.clearCache();
+		this.notifyBump();
 	}
 
 	bumpFontGeneration(): void {
 		this.fontGeneration += 1;
 		this.clearCache();
+		this.notifyBump();
 	}
 
 	bumpScrollGeneration(): void {
 		this.scrollGeneration += 1;
 		this.clearCache();
+		this.notifyBump();
+	}
+
+	onGenerationBump(listener: () => void): () => void {
+		this.bumpListeners.add(listener);
+		return () => {
+			this.bumpListeners.delete(listener);
+		};
 	}
 
 	dispose(): void {
 		this.disposed = true;
+		this.bumpListeners.clear();
 		this.resizeObserver?.disconnect();
 		this.detachScroll?.();
 		this.cache.clear();
@@ -274,9 +322,10 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	 * invalidates them (G2). `scroll` does not bubble; capture on the document
 	 * is the only listener that sees every scroller, including nested ones.
 	 *
-	 * The document outlives the root and nothing calls `dispose()` in
-	 * production (FIELD-EDITOR-TEARDOWN.md), so the listener drops itself once
-	 * the root leaves the tree rather than pinning it here forever. A root that
+	 * The document outlives the root. The last `holdRootGeometry` release
+	 * disposes the reader (FIELD-EDITOR-TEARDOWN.md); a reader created by a
+	 * stray read after that has no holder, so the listener also drops itself
+	 * once the root leaves the tree rather than pinning it here forever. A root that
 	 * came back would be re-measured off the ResizeObserver anyway.
 	 */
 	private listenForScroll(): () => void {
@@ -298,7 +347,7 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	}
 
 	private movesRoot(target: EventTarget | null): boolean {
-		if (!(target instanceof Node)) {
+		if (!isDomNode(target)) {
 			return true;
 		}
 		return target.contains(this.root) || this.root.contains(target);
@@ -310,7 +359,8 @@ class GeometryReaderImpl implements GeometryReaderHost {
 	 * the root that moves it without resizing it — a re-centred max-width
 	 * column on window resize, a sidebar collapsing, a banner above — bumps
 	 * nothing, so a hit is checked against the block's live box before it is
-	 * trusted. Every read costs one block `getBoundingClientRect`; the text
+	 * trusted. Painted overlay items need no bump for such a move: the root is
+	 * the overlay layer's containing block (OV2), so they move with it. Every read costs one block `getBoundingClientRect`; the text
 	 * range measurements the cache exists for stay cached.
 	 */
 	private entryFor(blockId: string): BlockCacheEntry {
@@ -355,6 +405,12 @@ class GeometryReaderImpl implements GeometryReaderHost {
 		};
 	}
 
+	private notifyBump(): void {
+		for (const listener of [...this.bumpListeners]) {
+			listener();
+		}
+	}
+
 	private clearCache(): void {
 		this.cache.clear();
 		this._generation += 1;
@@ -380,4 +436,22 @@ function boxStillValid(cached: Rect | null, live: Rect | null): boolean {
 		cached.width === live.width &&
 		cached.height === live.height
 	);
+}
+
+/** `rect` with the top and height of the line box that contains it and `offset`. */
+function onLineBox(rect: Rect, lines: readonly LineBox[], offset: number): Rect {
+	const centre = rect.top + rect.height / 2;
+	const line =
+		lines.find(
+			(entry) =>
+				entry.startOffset <= offset &&
+				offset <= entry.endOffset &&
+				entry.top <= centre &&
+				centre <= entry.bottom,
+		) ?? lines.find((entry) => entry.top <= centre && centre <= entry.bottom);
+	if (!line) {
+		return rect;
+	}
+	const height = line.bottom - line.top;
+	return { ...rect, y: line.top, top: line.top, height, bottom: line.top + height };
 }

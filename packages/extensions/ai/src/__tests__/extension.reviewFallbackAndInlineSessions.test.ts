@@ -3,25 +3,9 @@ import { createEditor } from "@input/pen-core";
 import { undoExtension } from "@input/pen-undo";
 import { deltaStreamExtension } from "../stream";
 import { toolsExtension } from "@input/pen-tools";
-import {
-	acceptAllSuggestions,
-	acceptSuggestion,
-	aiExtension,
-	getAIInlineHistoryController,
-	getAIController,
-	rejectSuggestion,
-} from "../index";
-import {
-	readAllSuggestions,
-	readBlockSuggestionMeta,
-	readSuggestionsFromBlock,
-} from "../suggestions/persistent";
+import { aiExtension, getAIController } from "../index";
 import { defaultSchema } from "@input/pen-schema";
-import {
-	createDeferred,
-	testStreamingToolExtension,
-	waitForPreview,
-} from "./extension.testUtils";
+import { createDeferred, createSingleDeltaEditor } from "./extension.testUtils";
 
 describe("aiExtension: review fallback and inline sessions", () => {
 	it("falls back to document review mode for bottom-chat rewrites on non-text blocks", async () => {
@@ -258,25 +242,7 @@ describe("aiExtension: review fallback and inline sessions", () => {
 	});
 
 	it("tracks session prompts and accepts session suggestions together", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "planet",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("planet");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[

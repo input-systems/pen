@@ -29,6 +29,8 @@ export type MessageValue = string | PluralMessage;
 export type MessageParamsByKey = {
 	[K in A11yMessageKey as `pen.a11y.${K}`]: A11yMessageParams[K];
 } & {
+	/** AX1: the focus sink's label for a text range in a D5 substitute state; `count` blocks. */
+	"pen.a11y.textRangeSelected": { count: number };
 	"pen.selection.blocksSelected": { count: number };
 	"pen.ai.review.accept": NoMessageParams;
 	"pen.schema.paragraph.title": NoMessageParams;
@@ -225,6 +227,10 @@ export const DEFAULT_MESSAGE_CATALOG: MessageCatalog = {
 	"pen.a11y.atomSelected": "{atomType} selected",
 	"pen.a11y.collaboratorJoined": "{name} joined",
 	"pen.a11y.collaboratorEditing": "{name} is editing",
+	"pen.a11y.textRangeSelected": {
+		one: "Text selected in {count} block",
+		other: "Text selected across {count} blocks",
+	},
 	"pen.selection.blocksSelected": {
 		one: "{count} block selected",
 		other: "{count} blocks selected",

@@ -4,17 +4,21 @@ import {
 	type DocumentOp,
 	type Editor,
 	type FieldEditor,
-	type InlineDelta,
 	type InlineNodeDeltaInsert,
+	type SelectionOrigin,
 } from "@input/pen-types";
 import {
 	pointToEditorSelectionPoint,
 	type SelectionPoint,
 } from "./selectionBridge";
 
-export const INLINE_ATOM_LOGICAL_LENGTH = 1;
+import {
+	getInlineDeltaLength,
+	INLINE_ATOM_LOGICAL_LENGTH,
+} from "./inlineAtomModel";
 
-const OBJECT_REPLACEMENT_CHARACTER = "\uFFFC";
+export { INLINE_ATOM_LOGICAL_LENGTH };
+
 const DEFAULT_APPLY_OPTIONS: ApplyOptions = { origin: "user", undoGroup: true };
 
 export interface InlineAtomSource {
@@ -155,6 +159,8 @@ export interface ReplaceInlineAtomWithTextOptions {
 	text: string;
 	selection?: "all" | "end" | "none";
 	apply?: ApplyOptions;
+	/** The selection write's origin (S3); `"programmatic"` when omitted. */
+	origin?: SelectionOrigin;
 }
 
 export function getInlineAtomAtOffset(
@@ -260,6 +266,7 @@ export function replaceInlineAtomWithText({
 	text,
 	selection = "end",
 	apply,
+	origin = "programmatic",
 }: ReplaceInlineAtomWithTextOptions): boolean {
 	const sourceAtom = getInlineAtomAtOffset(source.editor, source);
 	if (!sourceAtom) {
@@ -290,35 +297,28 @@ export function replaceInlineAtomWithText({
 	const endOffset = source.offset + text.length;
 
 	if (selection === "all") {
-		source.editor.selectText(source.blockId, source.offset, endOffset);
+		source.editor.selectText(source.blockId, source.offset, endOffset, {
+			origin,
+		});
 	} else if (selection === "end") {
-		source.editor.selectText(source.blockId, endOffset, endOffset);
+		source.editor.selectText(source.blockId, endOffset, endOffset, {
+			origin,
+		});
 	}
 
 	const fieldEditor = source.editor.facet(
 		fieldEditorHostFacet,
 	) as FieldEditor | null;
 	if (fieldEditor && selection !== "none") {
-		if (selection === "all") {
-			if (typeof fieldEditor.activateTextSelection === "function") {
-				fieldEditor.activateTextSelection(
-					source.blockId,
-					source.offset,
-					endOffset,
-				);
-			} else {
-				fieldEditor.activate(source.blockId);
-			}
-		} else if (selection === "end") {
-			if (typeof fieldEditor.activateTextSelection === "function") {
-				fieldEditor.activateTextSelection(
-					source.blockId,
-					endOffset,
-					endOffset,
-				);
-			} else {
-				fieldEditor.activate(source.blockId);
-			}
+		if (typeof fieldEditor.activateTextSelection === "function") {
+			fieldEditor.activateTextSelection(
+				source.blockId,
+				selection === "all" ? source.offset : endOffset,
+				endOffset,
+				{ origin },
+			);
+		} else {
+			fieldEditor.activate(source.blockId);
 		}
 		fieldEditor.focus();
 	}
@@ -385,10 +385,12 @@ function moveInlineAtomWithinEditor({
 
 	const targetOffset = getAdjustedTargetOffset(source, target);
 	source.editor.apply(ops, apply ?? DEFAULT_APPLY_OPTIONS);
+	// S3: an atom move is a drag and drop.
 	source.editor.selectText(
 		target.blockId,
 		targetOffset + INLINE_ATOM_LOGICAL_LENGTH,
 		targetOffset + INLINE_ATOM_LOGICAL_LENGTH,
+		{ origin: "pointer" },
 	);
 	return true;
 }
@@ -439,6 +441,7 @@ function moveInlineAtomBetweenEditors({
 		target.blockId,
 		target.offset + INLINE_ATOM_LOGICAL_LENGTH,
 		target.offset + INLINE_ATOM_LOGICAL_LENGTH,
+		{ origin: "pointer" },
 	);
 	return true;
 }
@@ -469,12 +472,6 @@ function getAdjustedTargetOffset(
 	return target.blockId === source.blockId && target.offset > source.offset
 		? target.offset - INLINE_ATOM_LOGICAL_LENGTH
 		: target.offset;
-}
-
-function getInlineDeltaLength(delta: InlineDelta): number {
-	return typeof delta.insert === "string"
-		? delta.insert.replaceAll(OBJECT_REPLACEMENT_CHARACTER, "").length
-		: INLINE_ATOM_LOGICAL_LENGTH;
 }
 
 function getInlineAtomText(

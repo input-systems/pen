@@ -5,7 +5,6 @@ export {
 	emitCommandDiagnostic,
 	getAdjacentEditableBlock,
 	getAdjacentVisibleBlockId,
-	getAtomRangeAtOffset,
 	getBlockInputMode,
 	getEditorFlowCapability,
 	getEditorLocale,
@@ -31,6 +30,7 @@ export {
 	textSelectionResult,
 } from "./commandSelection";
 export {
+	buildLazyNormalPositionSnapshot,
 	buildNormalPositionSnapshot,
 	buildTransitionSnapshot,
 	fromTransitionSelection,

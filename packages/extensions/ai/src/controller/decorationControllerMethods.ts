@@ -1,6 +1,7 @@
 import type { Decoration } from "@input/pen-types";
 import { buildGenerationZoneDecorations } from "../decorations/generationZone";
 import { buildAIReviewPresentationDecorations } from "../review/reviewPresentation";
+import type { SuggestionDecorationIndex } from "../review/suggestionIndex";
 import type {
 	AIStreamingReviewPreview,
 	AIStreamingReviewPreviewInput,
@@ -11,6 +12,24 @@ import type {
 	AIControllerImpl,
 	StreamingPreviewStatePatch,
 } from "./aiController";
+
+function buildControllerDecorations(
+	host: AIControllerImpl,
+	suggestions: SuggestionDecorationIndex,
+): Decoration[] {
+	return [
+		...buildAIReviewPresentationDecorations({
+			activeGeneration: host._state.activeGeneration,
+			activeSessionId: host._state.activeSessionId,
+			editor: host._editor,
+			sessions: host._state.sessions,
+			suggestionPresentation: host._suggestionPresentation,
+			streamingReviewPreviews: host._state.streamingReviewPreviews,
+			suggestions,
+		}),
+		...buildGenerationZoneDecorations(host._state.activeGeneration),
+	];
+}
 
 export const decorationControllerMethods = {
 	// `extra` lands in the same `_setState` as the preview so a token does
@@ -39,19 +58,16 @@ export const decorationControllerMethods = {
 		applyClearStreamingReviewPreview(this, sessionId, extra);
 	},
 
-	buildDecorations(this: AIControllerImpl): Decoration[] {
-		const decorations = [
-			...buildAIReviewPresentationDecorations({
-				activeGeneration: this._state.activeGeneration,
-				activeSessionId: this._state.activeSessionId,
-				editor: this._editor,
-				sessions: this._state.sessions,
-				suggestionPresentation: this._suggestionPresentation,
-				streamingReviewPreviews: this._state.streamingReviewPreviews,
-			}),
-			...buildGenerationZoneDecorations(this._state.activeGeneration),
-		];
-		return decorations;
+	/**
+	 * Everything but suggestion decorations, which the scoped review source
+	 * owns: selection context, streaming previews and the generation zone.
+	 * Cost follows the active session, previews and generation (SCALE2).
+	 */
+	buildPresentationDecorations(
+		this: AIControllerImpl,
+		suggestions: SuggestionDecorationIndex,
+	): Decoration[] {
+		return buildControllerDecorations(this, suggestions);
 	},
 };
 
@@ -133,34 +149,25 @@ function mergeStreamingReviewPreview(
 	);
 	// An operation with nothing in it yet withdraws its own preview and only
 	// its own: the operations beside it in the same call are still proposing
-	// text that has not been written.
-	if (text.length === 0) {
-		const remaining = ownsTurn
-			? previews.filter(
-					(preview) => previewOperation(preview) !== operationIndex,
-				)
-			: [];
-		return remaining.length === previews.length ? previews : remaining;
+	// text that has not been written. A delete never has text; its blocks are
+	// the proposal. A finished operation with empty text is a proposal too:
+	// it replaces its target with nothing, so the preview shows the clear.
+	if (
+		text.length === 0 &&
+		input.deletesBlocks !== true &&
+		input.complete !== true
+	) {
+		return withdrawOperationPreview(previews, operationIndex, ownsTurn);
 	}
 	const previous = ownsTurn
 		? (previews.find(
 				(preview) => previewOperation(preview) === operationIndex,
 			) ?? null)
 		: null;
-	const isSamePreview =
-		previous != null &&
-		areStreamingReviewPreviewTargetsEqual(previous.target, input.target);
-	if (isSamePreview && previous.text === text) {
+	const merged = mergeOperationPreview(previous, input, operationIndex);
+	if (merged == null) {
 		return previews;
 	}
-	const merged: AIStreamingReviewPreview = {
-		sessionId: input.sessionId,
-		turnId: input.turnId,
-		operationIndex,
-		target: input.target,
-		text,
-		previousTextLength: isSamePreview ? previous.text.length : 0,
-	};
 	if (!ownsTurn) {
 		return [merged];
 	}
@@ -170,6 +177,51 @@ function mergeStreamingReviewPreview(
 	return previews.map((preview) =>
 		previewOperation(preview) === operationIndex ? merged : preview,
 	);
+}
+
+function withdrawOperationPreview(
+	previews: readonly AIStreamingReviewPreview[],
+	operationIndex: number,
+	ownsTurn: boolean,
+): readonly AIStreamingReviewPreview[] {
+	const remaining = ownsTurn
+		? previews.filter(
+				(preview) => previewOperation(preview) !== operationIndex,
+			)
+		: [];
+	return remaining.length === previews.length ? previews : remaining;
+}
+
+/** The operation's next preview, or `null` when nothing on screen would change. */
+function mergeOperationPreview(
+	previous: AIStreamingReviewPreview | null,
+	input: AIStreamingReviewPreviewInput,
+	operationIndex: number,
+): AIStreamingReviewPreview | null {
+	const text = input.text ?? "";
+	const isSamePreview =
+		previous != null &&
+		areStreamingReviewPreviewTargetsEqual(previous.target, input.target);
+	if (
+		isSamePreview &&
+		previous.text === text &&
+		previous.complete === input.complete &&
+		previous.deletesBlocks === input.deletesBlocks &&
+		previous.replacesBlocks === input.replacesBlocks
+	) {
+		return null;
+	}
+	return {
+		sessionId: input.sessionId,
+		turnId: input.turnId,
+		operationIndex,
+		target: input.target,
+		text,
+		previousTextLength: isSamePreview ? previous.text.length : 0,
+		complete: input.complete,
+		deletesBlocks: input.deletesBlocks,
+		replacesBlocks: input.replacesBlocks,
+	};
 }
 
 /** A preview with no stated operation is the call's first and only one. */

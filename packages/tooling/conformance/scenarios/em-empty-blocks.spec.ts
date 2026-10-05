@@ -87,5 +87,5 @@ scenario(
 			`keep${zwsp}me`,
 		);
 	},
-	{ url: "/?ax6=1" },
+	{ url: "/?customCaret=1" },
 );

@@ -15,9 +15,10 @@ description: pnpm, Node, a frozen workspace install, and the Turborepo cache.
 inputs:
   node-version:
     description: >-
-      Node major to run on. Defaults to the version every published
-      package declares in engines.node. node-matrix.yml overrides it to
-      prove the tree still builds on the next Node.
+      Node version to run on. Defaults to the newest release of the 22
+      line, the lowest major engines.node accepts (^22.22.2 || ^24.15.0 ||
+      >=26.0.0). node-matrix.yml overrides it to run each line's exact
+      floor and the current major.
     required: false
     default: "22"
   turbo-cache-scope:

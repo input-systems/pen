@@ -15,6 +15,7 @@ import { computeDocumentEmpty } from "../utils/editorEmptyState";
 import { createDocumentTree } from "./documentTree";
 import { handleFieldEditorPointerActivate } from "./pointerActivation";
 import { handleFieldEditorRootFocus } from "./rootFocus";
+import { bindEditorRootFocus } from "./rootFocusTracking";
 import { adoptEditorChrome } from "../styles/editorChrome";
 
 export interface MountEditorOptions {
@@ -58,36 +59,30 @@ export function mountEditor(
 	});
 
 	const tree = createDocumentTree(editor, fieldEditor, root);
+	fieldEditor.setReadOnly(readonly);
 	fieldEditor.setRootElement(root);
 	const unregisterVerticalCaret = registerVerticalCaretMeasure(editor, root);
 
 	const unsubscribers: Unsubscribe[] = [];
 
-	const handleFocusIn = (event: FocusEvent): void => {
-		fieldEditor.setFocused(true);
-		applyEditorRootAttrs(root, editor, {
-			readonly,
-			focused: true,
-		});
-		handleFieldEditorRootFocus({
-			event,
-			editor,
-			fieldEditor,
-			root,
-			readonly,
-		});
-	};
-
-	const handleFocusOut = (): void => {
-		const activeElement = root.ownerDocument?.activeElement;
-		const nextFocused =
-			activeElement instanceof Node && root.contains(activeElement);
-		fieldEditor.setFocused(nextFocused);
-		applyEditorRootAttrs(root, editor, {
-			readonly,
-			focused: nextFocused,
-		});
-	};
+	const unbindRootFocus = bindEditorRootFocus(root, {
+		onFocusChange(focused) {
+			fieldEditor.setFocused(focused);
+			applyEditorRootAttrs(root, editor, {
+				readonly,
+				focused,
+			});
+		},
+		onFocusIn(event) {
+			handleFieldEditorRootFocus({
+				event,
+				editor,
+				fieldEditor,
+				root,
+				readonly,
+			});
+		},
+	});
 
 	const handlePointerActivate = (event: MouseEvent): void => {
 		handleFieldEditorPointerActivate({
@@ -100,12 +95,8 @@ export function mountEditor(
 		});
 	};
 
-	root.addEventListener("focusin", handleFocusIn);
-	root.addEventListener("focusout", handleFocusOut);
 	root.addEventListener("mousedown", handlePointerActivate);
 
-	unsubscribers.push(editor.on("commit", () => tree.sync()));
-	unsubscribers.push(fieldEditor.subscribe(() => tree.sync()));
 	unsubscribers.push(
 		bindEditorDocumentKeyDown({
 			editor,
@@ -119,12 +110,12 @@ export function mountEditor(
 		for (const unsubscribe of unsubscribers) {
 			unsubscribe();
 		}
-		root.removeEventListener("focusin", handleFocusIn);
-		root.removeEventListener("focusout", handleFocusOut);
+		unbindRootFocus();
 		root.removeEventListener("mousedown", handlePointerActivate);
 		unregisterVerticalCaret();
 		editor.internals.assignSlot(FIELD_EDITOR_SLOT_KEY, undefined);
 		fieldEditor.setRootElement(null);
+		tree.destroy();
 		fieldEditor.destroy();
 		tree.content.remove();
 		clearEditorRootAttrs(root);

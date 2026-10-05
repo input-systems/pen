@@ -111,6 +111,13 @@ export const MESSAGE_CATALOG_ROWS: readonly MessageCatalogRow[] = [
 		plural: false,
 	},
 	{
+		key: "pen.a11y.textRangeSelected",
+		group: "pen.a11y",
+		defaultEnglish: "one: Text selected in {count} block; other: Text selected across {count} blocks",
+		params: [],
+		plural: true,
+	},
+	{
 		key: "pen.a11y.undoApplied",
 		group: "pen.a11y",
 		defaultEnglish: "Undid {hint}",

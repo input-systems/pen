@@ -184,15 +184,36 @@ describe("SEC1 documentTree render path", () => {
 						attributes: { link: { href: args.href } },
 					},
 				],
+				// The document tree renders `inlineDeltas` (atoms included).
+				inlineDeltas: () => [
+					{
+						insert: text,
+						attributes: { link: { href: args.href } },
+					},
+				],
 			}),
 		} as unknown as Editor;
+		// The tree reads per-block state from the field editor's notifier.
+		const blockSnapshot = {
+			blockId: "p1",
+			commit: { exists: true, type: "paragraph", props: {}, revision: 1, lastOrigin: null, lastCommitId: 0 },
+			field: { isFieldFocus: false, isEditing: false, isComposing: false, expandedRole: null, domSyncVersion: 0, activeCell: null },
+			childIds: [],
+			list: null,
+		};
+		const rootSegments = [{ kind: "block", blockId: "p1" }];
 		const fieldEditor = {
-			getSnapshot: () => ({
-				isEditing: false,
-				focusBlockId: null,
-				mode: "inline",
-				activeBlockIds: [],
-			}),
+			blockNotifier: {
+				// The root list arrives as AX1 list segments (W6.R5).
+				subscribeListSegments: () => () => {},
+				getListSegments: () => rootSegments,
+				subscribeBlock: () => () => {},
+				getBlockSnapshot: () => blockSnapshot,
+				subscribeSurface: () => () => {},
+				getSurfaceSnapshot: () => ({ mode: "inactive", activeBlockIds: [] }),
+			},
+			// P4: the tree acks every block element it mounts.
+			ackBlockMounted: () => {},
 		};
 		const tree = createDocumentTree(editor, fieldEditor as never, root);
 		cleanups.push(() => {

@@ -1,20 +1,22 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { isCollapsed, isMultiBlock } from "@input/pen-core";
+import React, { useContext, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
-	createReducedMotionSignal,
-	measureWithRoot,
-	type Rect,
+	getRootOverlay,
+	overlayItemStyle,
+	type Affinity,
+	type OverlayPaintItem,
 } from "@input/pen-dom";
 import type { Editor, TextSelection } from "@input/pen-types";
 import { EditorContext } from "../../context/editorContext";
-import { useFieldEditorContext } from "../../context/fieldEditorContext";
-import { useFieldEditorState } from "../../hooks/useFieldEditorState";
-import { useOverlayLayout } from "../../hooks/useOverlayLayout";
-import { useSelection } from "../../hooks/useSelection";
+import { useOverlayPaintPlan } from "../../hooks/useOverlayPaintPlan";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
-import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
-type CaretStyle = React.CSSProperties & Record<string, string | number>;
-const CARET_BLINK_RESUME_DELAY_MS = 500;
+import {
+	toOverlayReactStyle,
+	type OverlayReactStyle,
+} from "../../utils/overlayStyle";
+import { EditorRegionSelectionContext } from "./regionSelectionState";
+
+type CaretStyle = OverlayReactStyle;
 
 export const CARET = {
 	DEFAULT: "default",
@@ -29,6 +31,13 @@ export interface EditorCaretRenderProps {
 		blockId: string;
 		offset: number;
 	};
+	/** The record's affinity the caret was measured with (G3). */
+	affinity: Affinity;
+	/**
+	 * Positioned with `transform: translate3d(...)` relative to the overlay
+	 * layer, with `left: 0` and `top: 0` so an RTL host does not move it to
+	 * its static position (OV2).
+	 */
 	caretStyle: CaretStyle;
 	attributes: Record<string, string | undefined>;
 }
@@ -40,6 +49,14 @@ export interface EditorCaretOverlayProps extends AsChildProps {
 	ref?: React.Ref<HTMLElement>;
 }
 
+/**
+ * `customCaret` mode as a binding over `@input/pen-dom`'s root overlay (OV3).
+ * While mounted, every collapsed caret the field allows is overlay-drawn
+ * (`holdCaretMode("all")`) in `variant`. pen-dom measures and paints it; this
+ * component measures nothing. With `renderCaret`, pen-dom leaves the local
+ * caret to this binding, which portals the host's node into the overlay
+ * layer at the plan's position. Without it, it renders nothing.
+ */
 export function EditorCaretOverlay(props: EditorCaretOverlayProps) {
 	const {
 		editor: editorProp,
@@ -48,309 +65,120 @@ export function EditorCaretOverlay(props: EditorCaretOverlayProps) {
 		...rest
 	} = props;
 	const editorContext = useContext(EditorContext);
+	const regionSelection = useContext(EditorRegionSelectionContext);
 	const editor = editorProp ?? editorContext?.editor;
-	const fieldEditor = useFieldEditorContext();
 
 	if (!editor) {
 		throw new Error("Missing editor for Pen.Editor.CaretOverlay");
 	}
 
-	const selection = useSelection(editor);
-	const fieldEditorState = useFieldEditorState(fieldEditor);
-	const { elementRef, rootElement, layoutVersion } =
-		useOverlayLayout<HTMLElement>([
-			selection,
-			fieldEditorState.focusBlockId,
-			fieldEditorState.isEditing,
-			fieldEditorState.isFocused,
-			fieldEditorState.isComposing,
-			fieldEditorState.mode,
-		]);
+	const rootElement = regionSelection?.rootElement ?? null;
+	const overlay = rootElement ? getRootOverlay(rootElement) : null;
+	const paintsCaret = renderCaret != null;
+	const plan = useOverlayPaintPlan(paintsCaret ? overlay : null);
 
-	const caretSelection = resolveCaretSelection(selection, fieldEditorState);
-	const overlayElement = elementRef.current;
-	const placement =
-		rootElement && overlayElement && caretSelection
-			? readCaretRect(rootElement, overlayElement, caretSelection.focus)
-			: null;
-	const rect = placement?.caret ?? null;
-	const overlayOrigin = placement?.origin ?? null;
-	const isCaretVisible = caretSelection != null && rect != null;
-	const blinkPaused = useCaretBlinkPauseState({
-		rootElement,
-		layoutVersion,
-		caretSelection,
-		isCaretVisible,
-	});
-	const reducedMotion = useReducedMotion(rootElement);
+	const caretItem = plan?.items.find(isBindingLocalCaret) ?? null;
 
 	useEffect(() => {
-		if (!rootElement || !isCaretVisible) {
+		return overlay?.holdCaretMode("all");
+	}, [overlay]);
+
+	useEffect(() => {
+		if (!overlay) {
 			return;
 		}
-
-		const activeSurfaces = Array.from(
-			rootElement.querySelectorAll<HTMLElement>(
-				`[${DATA_ATTRS.fieldEditorActiveSurface}]`,
-			),
-		);
-		if (activeSurfaces.length === 0) {
-			return;
-		}
-
-		const previousCaretColors = activeSurfaces.map((surface) => ({
-			surface,
-			caretColor: surface.style.caretColor,
-		}));
-		for (const { surface } of previousCaretColors) {
-			surface.style.caretColor = "transparent";
-		}
-
+		overlay.setCaretVariant(variant);
 		return () => {
-			for (const entry of previousCaretColors) {
-				entry.surface.style.caretColor = entry.caretColor;
-			}
+			overlay.setCaretVariant(CARET.DEFAULT);
 		};
-	}, [
-		rootElement,
-		layoutVersion,
-		isCaretVisible,
-		caretSelection?.focus.blockId,
-		caretSelection?.focus.offset,
-	]);
+	}, [overlay, variant]);
 
-	let caretNode: React.ReactNode = null;
-	if (caretSelection && rect && overlayOrigin) {
-		const renderProps = createCaretRenderProps(
-			caretSelection,
-			rect,
-			overlayOrigin,
-			blinkPaused || reducedMotion,
-			variant,
-		);
-		caretNode = renderCaret ? (
-			renderCaret(renderProps)
-		) : (
-			<div {...renderProps.attributes} style={renderProps.caretStyle} />
-		);
+	useEffect(() => {
+		if (!overlay || !paintsCaret) {
+			return;
+		}
+		return overlay.holdCaretPaint("binding");
+	}, [overlay, paintsCaret]);
+
+	if (!overlay || !renderCaret || !plan || !caretItem) {
+		return null;
 	}
 
-	return renderAsChild(
+	const renderProps = createCaretRenderProps(
+		caretItem,
+		plan.solidCaret,
+		variant,
+	);
+	// The blink epoch is part of the caret's identity: a new epoch mounts a
+	// new node, so the host's CSS animation restarts with no timer (D9).
+	const caretNode = (
+		<React.Fragment key={caretItem.epoch}>
+			{renderCaret(renderProps)}
+		</React.Fragment>
+	);
+	const host = renderAsChild(
 		{
 			...rest,
-			ref: elementRef,
 			children: rest.children ?? caretNode,
 		},
 		"div",
 		{
 			"data-pen-editor-caret-overlay": "",
-			"data-caret-visible": isCaretVisible ? "" : undefined,
 			// AX7 overlay — library caret is presentation
 			"aria-hidden": "true",
 			style: {
-				position: "relative",
+				position: "absolute",
+				top: 0,
+				left: 0,
 				pointerEvents: "none",
 			},
 		},
 	);
+	return createPortal(host, overlay.layer);
 }
 
-function resolveCaretSelection(
-	selection: ReturnType<typeof useSelection>,
-	fieldEditorState: ReturnType<typeof useFieldEditorState>,
-): TextSelection | null {
-	if (selection?.type !== "text") {
-		return null;
-	}
-	if (!isCollapsed(selection) || isMultiBlock(selection)) {
-		return null;
-	}
-	if (
-		!fieldEditorState.isEditing ||
-		!fieldEditorState.isFocused ||
-		fieldEditorState.isComposing
-	) {
-		return null;
-	}
-	return selection;
+type LocalCaretItem = OverlayPaintItem & {
+	readonly blockId: string;
+	readonly offset: number;
+	readonly affinity: Affinity;
+};
+
+function isBindingLocalCaret(item: OverlayPaintItem): item is LocalCaretItem {
+	return (
+		item.kind === "caret" &&
+		item.role === "local" &&
+		item.paint === "binding" &&
+		item.blockId !== undefined &&
+		item.offset !== undefined &&
+		item.affinity !== undefined
+	);
 }
 
-function useReducedMotion(rootElement: HTMLElement | null): boolean {
-	const [reduced, setReduced] = useState(false);
-
-	useEffect(() => {
-		const signal = createReducedMotionSignal(rootElement ?? undefined);
-		setReduced(signal.reduced);
-		const unsubscribe = signal.subscribe(() => setReduced(signal.reduced));
-		return () => {
-			unsubscribe();
-			signal.dispose();
-		};
-	}, [rootElement]);
-
-	return reduced;
-}
-
-function readCaretRect(
-	root: HTMLElement,
-	overlay: HTMLElement,
-	point: { blockId: string; offset: number },
-): { caret: Rect; origin: DOMRect } | null {
-	return measureWithRoot(root, ({ reader }) => {
-		const caret = reader.caretRect(point, "downstream");
-		if (!caret) {
-			return null;
-		}
-		return { caret, origin: overlay.getBoundingClientRect() };
-	});
-}
-
-// AX6: `solidCaret` covers both the type-pause and reduced motion. A host that
-// supplies --pen-editor-caret-animation must not get it back under reduced
-// motion, so this is the only place the token may be written.
+// AX6: `solidCaret` is the root's reduced-motion signal; under it the host's
+// --pen-editor-caret-animation never applies.
 function createCaretRenderProps(
-	selection: TextSelection,
-	rect: Rect,
-	overlayOrigin: DOMRectReadOnly,
+	item: LocalCaretItem,
 	solidCaret: boolean,
 	variant: EditorCaretVariant,
 ): EditorCaretRenderProps {
-	const height = Math.max(rect.height, 16);
-	const point = selection.focus;
-	const isMacOS = variant === CARET.MACOS;
-	const defaultCaretColor = isMacOS
-		? "var(--palette-blue, #0a84ff)"
-		: "var(--palette-b100, currentColor)";
-	const defaultCaretWidth = isMacOS ? "2px" : "1px";
-	const defaultCaretRadius = isMacOS ? "999px" : "0px";
-	const caretStyle: CaretStyle = {
-		position: "absolute",
-		left: `${rect.left - overlayOrigin.left}px`,
-		top: `${rect.top - overlayOrigin.top}px`,
-		height: `${height}px`,
-		width: `var(--pen-editor-caret-width, var(--pen-caret-width, ${defaultCaretWidth}))`,
-		borderRadius: `var(--pen-editor-caret-radius, var(--pen-caret-radius, ${defaultCaretRadius}))`,
-		background: `var(--pen-editor-caret-color, var(--pen-caret-color, ${defaultCaretColor}))`,
-		boxShadow: "var(--pen-editor-caret-shadow, none)",
-		animation: solidCaret
-			? "none"
-			: "var(--pen-editor-caret-animation, none)",
-		opacity: "var(--pen-editor-caret-opacity, 1)",
-		pointerEvents: "none",
-		zIndex: 20,
-		"--pen-editor-caret-height": `${height}px`,
-	};
+	const point = { blockId: item.blockId, offset: item.offset };
+	const affinity = item.affinity;
+	const caretStyle = toOverlayReactStyle(
+		overlayItemStyle(item, { variant, solidCaret }),
+	);
 	const attributes = {
 		"data-pen-editor-caret": "",
 		"data-block-id": point.blockId,
 		"data-offset": String(point.offset),
+		"data-affinity": affinity,
+		"data-pen-caret-epoch": String(item.epoch),
 	};
 
 	return {
-		selection,
+		selection: { type: "text", anchor: point, focus: point, affinity },
 		point,
+		affinity,
 		caretStyle,
 		attributes,
 	};
-}
-
-function useCaretBlinkPauseState(options: {
-	rootElement: HTMLElement | null;
-	layoutVersion: number;
-	caretSelection: TextSelection | null;
-	isCaretVisible: boolean;
-}): boolean {
-	const { rootElement, layoutVersion, caretSelection, isCaretVisible } =
-		options;
-	const [blinkPaused, setBlinkPaused] = useState(false);
-	const resumeTimeoutRef = useRef<number | null>(null);
-
-	useEffect(() => {
-		return () => {
-			if (resumeTimeoutRef.current == null) {
-				return;
-			}
-			window.clearTimeout(resumeTimeoutRef.current);
-		};
-	}, []);
-
-	useEffect(() => {
-		if (!isCaretVisible) {
-			if (resumeTimeoutRef.current != null) {
-				window.clearTimeout(resumeTimeoutRef.current);
-				resumeTimeoutRef.current = null;
-			}
-			setBlinkPaused(false);
-			return;
-		}
-
-		setBlinkPaused(true);
-		if (resumeTimeoutRef.current != null) {
-			window.clearTimeout(resumeTimeoutRef.current);
-		}
-		resumeTimeoutRef.current = window.setTimeout(() => {
-			resumeTimeoutRef.current = null;
-			setBlinkPaused(false);
-		}, CARET_BLINK_RESUME_DELAY_MS);
-	}, [
-		isCaretVisible,
-		caretSelection?.focus.blockId,
-		caretSelection?.focus.offset,
-	]);
-
-	useEffect(() => {
-		if (!rootElement || !isCaretVisible) {
-			return;
-		}
-
-		const activeSurface = rootElement.querySelector<HTMLElement>(
-			`[${DATA_ATTRS.fieldEditorActiveSurface}]`,
-		);
-		if (!activeSurface) {
-			return;
-		}
-
-		const pauseBlink = () => {
-			setBlinkPaused(true);
-			if (resumeTimeoutRef.current != null) {
-				window.clearTimeout(resumeTimeoutRef.current);
-			}
-			resumeTimeoutRef.current = window.setTimeout(() => {
-				resumeTimeoutRef.current = null;
-				setBlinkPaused(false);
-			}, CARET_BLINK_RESUME_DELAY_MS);
-		};
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (isModifierOnlyKey(event)) {
-				return;
-			}
-			pauseBlink();
-		};
-
-		activeSurface.addEventListener("beforeinput", pauseBlink);
-		activeSurface.addEventListener("compositionend", pauseBlink);
-		activeSurface.addEventListener("pointerdown", pauseBlink);
-		activeSurface.addEventListener("focus", pauseBlink);
-		activeSurface.addEventListener("keydown", handleKeyDown);
-
-		return () => {
-			activeSurface.removeEventListener("beforeinput", pauseBlink);
-			activeSurface.removeEventListener("compositionend", pauseBlink);
-			activeSurface.removeEventListener("pointerdown", pauseBlink);
-			activeSurface.removeEventListener("focus", pauseBlink);
-			activeSurface.removeEventListener("keydown", handleKeyDown);
-		};
-	}, [rootElement, layoutVersion, isCaretVisible]);
-
-	return blinkPaused;
-}
-
-function isModifierOnlyKey(event: KeyboardEvent): boolean {
-	return (
-		event.key === "Shift" ||
-		event.key === "Control" ||
-		event.key === "Alt" ||
-		event.key === "Meta" ||
-		event.key === "CapsLock"
-	);
 }

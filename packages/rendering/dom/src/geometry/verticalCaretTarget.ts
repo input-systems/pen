@@ -1,4 +1,11 @@
-import type { Affinity, GeometryReader, LineBox, Point, Rect } from "./types";
+import type {
+	Affinity,
+	BlockRectEntry,
+	GeometryReader,
+	LineBox,
+	Point,
+	Rect,
+} from "./types";
 import { rectCenterX, rectCenterY } from "./types";
 
 export type VerticalDirection = "up" | "down";
@@ -10,6 +17,10 @@ export type VerticalCaretTarget = {
 
 type GeometryReaderWithBlocks = GeometryReader & {
 	blockIds(): readonly string[];
+};
+
+type GeometryReaderWithBlockRects = GeometryReader & {
+	blockRects(): readonly BlockRectEntry[];
 };
 
 /**
@@ -73,33 +84,12 @@ function adjacentBlockLine(
 	blockId: string,
 	direction: VerticalDirection,
 ): LineBox | null {
-	const ids = listBlockIds(reader);
-	if (ids.length === 0) {
+	const neighborId = adjacentBlockId(listBlockRects(reader), blockId, direction);
+	if (neighborId === null) {
 		return null;
 	}
 
-	const ranked = ids
-		.map((id) => ({ id, rect: reader.blockRect(id) }))
-		.filter(
-			(entry): entry is { id: string; rect: Rect } => entry.rect != null,
-		)
-		.sort((left, right) => {
-			const top = left.rect.top - right.rect.top;
-			return top !== 0 ? top : left.rect.left - right.rect.left;
-		});
-
-	const index = ranked.findIndex((entry) => entry.id === blockId);
-	if (index < 0) {
-		return null;
-	}
-
-	const neighbor =
-		direction === "down" ? ranked[index + 1] : ranked[index - 1];
-	if (!neighbor) {
-		return null;
-	}
-
-	const lines = reader.lineBoxes(neighbor.id);
+	const lines = reader.lineBoxes(neighborId);
 	if (lines.length === 0) {
 		return null;
 	}
@@ -116,11 +106,67 @@ function adjacentBlockLine(
 	}
 }
 
-function listBlockIds(reader: GeometryReader): readonly string[] {
-	if (hasBlockIds(reader)) {
-		return reader.blockIds();
+/**
+ * The block next to `blockId` in visual order — by top, then left, then DOM
+ * order — found in one pass rather than by sorting every block (SCALE6).
+ */
+function adjacentBlockId(
+	entries: readonly BlockRectEntry[],
+	blockId: string,
+	direction: VerticalDirection,
+): string | null {
+	const currentIndex = entries.findIndex((entry) => entry.id === blockId);
+	const current = entries[currentIndex];
+	if (!current) {
+		return null;
 	}
-	return [];
+	const sign = direction === "down" ? 1 : -1;
+	let best: { entry: BlockRectEntry; index: number } | null = null;
+	for (let index = 0; index < entries.length; index += 1) {
+		const entry = entries[index];
+		if (!entry || index === currentIndex) continue;
+		// Only blocks past the current one in the motion direction.
+		if (sign * compareVisual(entry, index, current, currentIndex) <= 0) continue;
+		// The closest of those.
+		if (best && sign * compareVisual(entry, index, best.entry, best.index) >= 0) continue;
+		best = { entry, index };
+	}
+	return best?.entry.id ?? null;
+}
+
+function compareVisual(
+	left: BlockRectEntry,
+	leftIndex: number,
+	right: BlockRectEntry,
+	rightIndex: number,
+): number {
+	return (
+		left.rect.top - right.rect.top ||
+		left.rect.left - right.rect.left ||
+		leftIndex - rightIndex
+	);
+}
+
+function listBlockRects(reader: GeometryReader): readonly BlockRectEntry[] {
+	if (hasBlockRects(reader)) {
+		return reader.blockRects();
+	}
+	if (!hasBlockIds(reader)) {
+		return [];
+	}
+	return reader.blockIds().flatMap((id) => {
+		const rect = reader.blockRect(id);
+		return rect ? [{ id, rect }] : [];
+	});
+}
+
+function hasBlockRects(
+	reader: GeometryReader,
+): reader is GeometryReaderWithBlockRects {
+	return (
+		"blockRects" in reader &&
+		typeof (reader as GeometryReaderWithBlockRects).blockRects === "function"
+	);
 }
 
 function hasBlockIds(

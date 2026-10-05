@@ -2,13 +2,18 @@ import { isCollapsed } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
 import type { FieldEditorEscapeController } from "../field-editor/controller";
 
+/**
+ * Escape walks the selection outward (W3.R16): an editing cell or a text
+ * caret becomes a cell or block selection, a block selection becomes `null`.
+ * It writes the authority with origin `keyboard`, and the projection of that
+ * record places focus: the sink for block and cell, the root for `null`.
+ */
 export function handleEscapeSelectionTransition(options: {
 	event: KeyboardEvent;
 	editor: Editor;
 	fieldEditor: FieldEditorEscapeController;
-	root: HTMLElement;
 }): boolean {
-	const { event, editor, fieldEditor, root } = options;
+	const { event, editor, fieldEditor } = options;
 
 	if (
 		event.defaultPrevented ||
@@ -28,8 +33,9 @@ export function handleEscapeSelectionTransition(options: {
 	if (fieldEditor.activeCellCoord && fieldEditor.isEditing) {
 		const coord = fieldEditor.activeCellCoord;
 		fieldEditor.deactivate();
-		editor.selectCell(coord.blockId, coord.row, coord.col);
-		focusBlockContainer(root, coord.blockId);
+		editor.selectCell(coord.blockId, coord.row, coord.col, {
+			origin: "keyboard",
+		});
 		return true;
 	}
 
@@ -41,8 +47,7 @@ export function handleEscapeSelectionTransition(options: {
 	if (selection?.type === "text") {
 		const blockId = selection.focus.blockId;
 		fieldEditor.deactivate();
-		editor.selectBlock(blockId);
-		focusBlockContainer(root, blockId);
+		editor.selectBlock(blockId, { origin: "keyboard" });
 		return true;
 	}
 
@@ -51,34 +56,20 @@ export function handleEscapeSelectionTransition(options: {
 		const isMultiCell = anchor.row !== head.row || anchor.col !== head.col;
 
 		if (isMultiCell) {
-			editor.selectCell(blockId, anchor.row, anchor.col);
+			editor.selectCell(blockId, anchor.row, anchor.col, {
+				origin: "keyboard",
+			});
 			return true;
 		}
 
-		editor.selectBlock(blockId);
-		focusBlockContainer(root, blockId);
+		editor.selectBlock(blockId, { origin: "keyboard" });
 		return true;
 	}
 
 	if (selection?.type === "block" && selection.blockIds.length > 0) {
-		const focusedBlockId =
-			selection.blockIds[0] ?? fieldEditor.focusBlockId;
-		editor.setSelection(null);
-		focusBlockContainer(root, focusedBlockId);
+		editor.setSelection(null, { origin: "keyboard" });
 		return true;
 	}
 
 	return false;
-}
-
-function focusBlockContainer(root: HTMLElement, blockId: string | null): void {
-	if (blockId) {
-		const blockElement = root.querySelector(`[data-block-id="${blockId}"]`);
-		if (blockElement instanceof HTMLElement) {
-			blockElement.focus({ preventScroll: true });
-			return;
-		}
-	}
-
-	root.focus({ preventScroll: true });
 }

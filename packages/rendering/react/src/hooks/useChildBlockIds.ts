@@ -1,29 +1,6 @@
-import type { Editor } from "@input/pen-types";
-import { useSyncExternalStoreWithSelector } from "../utils/useSyncExternalStoreWithSelector";
-import { getChildBlockIds } from "../utils/parentIdTree";
+import { useBlockSlice } from "./useBlockNotifier";
 
-const SSR_BLOCK_ORDER: readonly string[] = [];
-
-export function useChildBlockIds(
-	editor: Editor,
-	parentBlockId: string,
-): readonly string[] {
-	return useSyncExternalStoreWithSelector(
-		(callback) => editor.on("commit", () => callback()),
-		() => editor.documentState.blockOrder,
-		() => SSR_BLOCK_ORDER,
-		() => getChildBlockIds(editor, parentBlockId),
-		areBlockListsEqual,
-	);
-}
-
-function areBlockListsEqual(
-	previous: readonly string[],
-	next: readonly string[],
-): boolean {
-	if (previous.length !== next.length) return false;
-	for (let index = 0; index < previous.length; index += 1) {
-		if (previous[index] !== next[index]) return false;
-	}
-	return true;
+/** A container's child ids, identity-stable while unchanged (SCALE6). */
+export function useChildBlockIds(parentBlockId: string): readonly string[] {
+	return useBlockSlice(parentBlockId, "childIds");
 }

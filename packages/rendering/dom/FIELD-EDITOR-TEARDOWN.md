@@ -23,16 +23,18 @@ Shipped hosts already do it on unmount:
 - React `EditorRoot` — `packages/rendering/react/src/primitives/editor/root.tsx`
 - Vue `PenEditor` — `packages/rendering/vue/src/components/PenEditor.ts`
 
+`destroy()` is not terminal: `FieldEditorImpl.connect()` re-attaches the editor subscriptions it released (P1, the commit feed, the history listener, the session reconciler). React `EditorRoot` calls it in the same effect whose cleanup calls `destroy()`, because StrictMode runs that cleanup and the effect again on one instance.
+
 Those hosts also clear the field-editor slots and their own `focusin` / `focusout` / document `keydown` listeners. `FieldEditorImpl.destroy()` does not clear slots or host listeners. A headless or custom host that constructs `FieldEditorImpl` and never calls `destroy()` leaks the editor subscriptions below.
 
 ## `destroy()` sequence today
 
 `FieldEditorImpl.destroy()`:
 
-1. Unbind the scheduler projector, focus sink, announcer, and root pointer gesture.
+1. Detach the selection reader (the root's one `selectionchange` listener), then unbind the overlay, focus sink, announcer, and root pointer gesture.
 2. Unsubscribe editor `onSelectionChange`, `commit`, and `onHistoryApplied`.
 3. `SessionReconciler.destroy()`.
-4. `_deactivate({ restoreFocus: false })` — backend `deactivate()` (which releases its attachment), cell coord clear, session flags, `HistorySelectionCoordinator.reset()`, `FieldEditorSelectionCoordinator.reset()`, pending-mark reset, deactivate listeners, store notify.
+4. `_deactivate({ restoreFocus: false })` — backend `deactivate()` (which releases its attachment), cell coord clear, session flags, `SelectionProjector.reset()` (drops a projection withheld for composition), `SelectionReader.resetGestures()` (closes every gesture window), pending-mark reset, deactivate listeners, store notify. There is no selection write depth, stamp store or deferred history projection to reset: the projector is synchronous and writes only the authority's record (W3.R10).
 5. Clear activate / deactivate / store listener sets.
 6. `FocusController.destroy()`.
 
@@ -58,8 +60,7 @@ Status:
 | `SessionReconciler` `decorationsChange` | Released |
 | Activate / deactivate / store listener sets | Released |
 | Focus-lifecycle listeners (`FocusController`) | Released |
-| `waitForAttachment` waiter set (promises resolve `false`) | Released |
-| Scheduler projector (`_unbindSchedulerProjector`) | Released — the projector is cleared and the scheduler reference dropped |
+| Selection reader `selectionchange` listener (root document) | Released (`detach`) |
 | Field-editor slots (`FIELD_EDITOR_SLOT_KEY` / core slot) | Open — host must clear. React and Vue do. |
 | `_rootElement` | Open — left pointing at the last root. |
 | `_editor` reference | Open — retained after destroy. |
@@ -82,11 +83,13 @@ Every entry here is bound through the backend's attachment, so `release()` is wh
 
 Released by the attachment's `release()`, which `deactivate()` calls and `destroy()` reaches through `_deactivate`.
 
-ContentEditable (`contenteditableBackend.ts`): `beforeinput`, `compositionstart`, `compositionend`, `keydown`, `pointerdown`, `contextmenu`, the shared transfer set, document `selectionchange`. The `contenteditable` attribute is **removed**, never set to `"false"` — an explicit `false` would leave a read-only island inside a wider editing host, and WebKit clamps a selection at such a boundary.
+ContentEditable (`contenteditableBackend.ts`): `beforeinput`, `compositionstart`, `compositionend`, `keydown`, `pointerdown`, the shared transfer set. The `contenteditable` attribute is **removed**, never set to `"false"` — an explicit `false` would leave a read-only island inside a wider editing host, and WebKit clamps a selection at such a boundary.
 
-EditContext (`editContextBackend.ts`): element `keydown`, `paste`, `pointerdown`, `contextmenu`, `compositionstart`, `compositionend`, the shared transfer set, document `selectionchange`; EditContext `textupdate`, `textformatupdate`, `characterboundsupdate`. `element.editContext` is nulled after those listeners are released, so the browser cannot deliver a `textupdate` against a context the backend no longer owns. The `EditContext` object is dropped; it has no separate destroy API.
+EditContext (`editContextBackend.ts`): element `keydown`, `paste`, `pointerdown`, `compositionstart`, `compositionend`, the shared transfer set; EditContext `textupdate`, `textformatupdate`, `characterboundsupdate`. `element.editContext` is nulled after those listeners are released, so the browser cannot deliver a `textupdate` against a context the backend no longer owns. The `EditContext` object is dropped; it has no separate destroy API.
 
-Expanded (`expandedContentEditableBackend.ts`): `beforeinput`, `keydown`, the shared transfer set, document `selectionchange`. `contenteditable` and `tabindex` removed.
+Expanded (`expandedContentEditableBackend.ts`): `beforeinput`, `keydown`, the shared transfer set.
+
+No backend listens for `selectionchange` or `contextmenu`: the selection reader owns the one `selectionchange` listener per root and the field editor binds the root `contextmenu` and capture `pointerdown` gesture inputs (S1, W3.R4). `contenteditable` and `tabindex` removed.
 
 The shared transfer set is `copy`, `cut`, `dragstart`, `drop`, bound for all three by `bindBackendTransferEvents` (`backendTransferEvents.ts`, FE2).
 
@@ -96,15 +99,14 @@ Host `focusin` / `focusout` / document `keydown` (React root, Vue `PenEditor`): 
 
 `DomScheduler` is the only owner of `requestAnimationFrame` in production DOM code (FE3), held by a `no-restricted-syntax` rule in `eslint.config.mjs` that excepts `scheduler.ts` and bans the member forms (`window.` / `globalThis.`) as well as the bare call. The frames below are the scheduler's own, reached through `read` / `write`.
 
-The field editor does not construct the scheduler: `_ensureScheduler()` resolves the one that belongs to the editor root through `getRootGeometry(root)`, sets itself as its projector, and feeds it every commit (FE4). The root owns the scheduler and reader; `destroy()` releases the field editor's hold on them (projector cleared, commit feed unsubscribed) but does not dispose them, because a second field editor on the same root still needs them.
+The field editor does not construct the scheduler: `_ensureScheduler()` resolves the one that belongs to the editor root through `getRootGeometry(root)` and feeds it every commit (FE4). The root owns the scheduler and geometry reader. Each root attach holds them through `holdRootGeometry(root)` (taken by the root overlay), and `destroy()` / `setRootElement(null)` releases that hold with the commit feed; the last release disposes the reader and drops the root's entry, so a second field editor on the same root keeps them alive and a re-attach (React Strict Mode) starts a fresh pair.
 
 | Resource | Status |
 | --- | --- |
 | Session reconciler flush | Released — queued on `scheduler.write`; `destroy()` unsubscribes the reconciler |
-| `FocusController.waitForAttachment` frames | Guarded leftover — waiters marked `done`; frames not cancelled. |
-| `FieldEditorSelectionAuthority.withSelectionWrite` | Same-turn — raises apply-depth, runs the write, releases in `finally`. No frame. |
-| `SelectionProjectionController.syncDomSelectionOnce` (up to 4 retries + follow-up) | Guarded leftover — callback bails when `!isEditing()`. `reset()` does not cancel the queued work. |
-| `CellEditingController.trySyncBackend` (up to 3 retries) | Guarded leftover — `clear()` nulls the coord so the callback returns. Not cancelled. |
+| `FocusController.waitForAttachment` | Same-turn — answers whether the field is attached now; no waiter, no frame. |
+| Selection projection | Same-turn — `SelectionProjector.project` writes and reads back synchronously. Only its scroll (one `scheduler.read` + one `scheduler.write`, keyed by record version) and the parked-target check (one `scheduler.write`) are queued; each no-ops once superseded. |
+| `CellEditingController.trySyncBackend` | Same-turn — no retries; a cell not mounted yet attaches on its mount ack. |
 | `DomScheduler` pending frame | Not owned — the scheduler has no `destroy()`; a pending frame is never cancelled. |
 
 `_deactivate({ restoreFocus: false })` skips restore focus. Destroy does not leave a programmatic focus call queued.
@@ -126,9 +128,9 @@ The field editor does not construct the scheduler: `_ensureScheduler()` resolves
 
 `dispose()` exists. It does **not** cancel `document.fonts.ready` (the promise has no abort; the callback is only guarded). `blockCommitIds` is not cleared (harmless once disposed).
 
-Because nothing in production calls `dispose()`, the `scroll` listener also removes itself the first time it fires with a disconnected root. The document outlives the root, so a listener that only waited for `dispose()` would keep an unmounted root and its cache alive.
+The last `holdRootGeometry` release calls `dispose()`; as a backstop for a reader created by a stray read after that, the `scroll` listener also removes itself the first time it fires with a disconnected root. The document outlives the root, so a listener that only waited for `dispose()` would keep an unmounted root and its cache alive.
 
-The reader belongs to the editor root, not to the field editor: `getRootGeometry(root)` creates one reader and one scheduler per root and caches them against the root element. Whoever owns the root disposes them. The field editor's commit feed keeps the reader's caches honest while it is attached (FE4) and stops feeding on `destroy()`.
+The reader belongs to the editor root, not to the field editor: `getRootGeometry(root)` creates one reader and one scheduler per root and caches them against the root element. The last released root hold disposes them. The field editor's commit feed keeps the reader's caches honest while it is attached (FE4) and stops feeding on `destroy()`.
 
 ### Adjacent modules (not field-editor owned)
 
@@ -145,6 +147,6 @@ Listed so this file does not imply they ride along:
 
 - Core `editor.destroy()` still does not call field-editor `destroy()` (F21). Hosts must.
 - Slots, `_rootElement`, and the editor reference survive field-editor `destroy()`.
-- Queued scheduler work is not cancelled on teardown. The retry paths above are guarded but still run.
+- Queued scheduler work is not cancelled on teardown. The projection scroll and parked-target jobs above are guarded but still run.
 - The root's geometry reader and scheduler have no owner that disposes them when the root goes away.
 - `destroy()` is not documented as idempotent. A second call runs `SessionReconciler.destroy()` again.

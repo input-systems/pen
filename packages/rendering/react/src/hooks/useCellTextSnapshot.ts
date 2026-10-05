@@ -1,6 +1,8 @@
 import { affectedBlockIdsFromSummary } from "@input/pen-core";
-import { useRef, useSyncExternalStore } from "react";
+import { useCallback, useRef, useSyncExternalStore } from "react";
 import type { Editor, TableCellHandle } from "@input/pen-types";
+
+import { useBlockNotifier } from "./useBlockNotifier";
 
 interface CellTextDelta {
 	insert: string;
@@ -23,40 +25,40 @@ const SSR_SNAPSHOT: CellTextSnapshot = {
 	deltas: EMPTY_DELTAS,
 };
 
+/**
+ * One cell's text. Inside a root it is notified through the table block's
+ * notifier subscription; outside one it falls back to a commit listener.
+ */
 export function useCellTextSnapshot(
 	editor: Editor,
 	tableBlockId: string,
 	row: number,
 	col: number,
 ): CellTextSnapshot {
+	const notifier = useBlockNotifier();
 	const snapshotRef = useRef<CellTextSnapshot>(createMissingSnapshot());
-
-	return useSyncExternalStore(
-		(callback) =>
-			editor.on("commit", (event) => {
-				if (
-					affectedBlockIdsFromSummary(event.summary).includes(
-						tableBlockId,
-					)
-				) {
-					callback();
-				}
-			}),
-		() => {
-			const nextSnapshot = getCellTextSnapshot(
-				editor,
-				tableBlockId,
-				row,
-				col,
-			);
-			if (cellSnapshotEqual(snapshotRef.current, nextSnapshot)) {
-				return snapshotRef.current;
-			}
-			snapshotRef.current = nextSnapshot;
-			return nextSnapshot;
-		},
-		() => SSR_SNAPSHOT,
+	const subscribe = useCallback(
+		(onChange: () => void) =>
+			notifier
+				? notifier.subscribeBlock(tableBlockId, onChange)
+				: editor.on("commit", (event) => {
+						if (affectedBlockIdsFromSummary(event.summary).includes(tableBlockId)) onChange();
+					}),
+		[editor, notifier, tableBlockId],
 	);
+	const getSnapshot = useCallback(() => {
+		const nextSnapshot = getCellTextSnapshot(editor, tableBlockId, row, col);
+		if (cellSnapshotEqual(snapshotRef.current, nextSnapshot)) {
+			return snapshotRef.current;
+		}
+		snapshotRef.current = nextSnapshot;
+		return nextSnapshot;
+	}, [editor, tableBlockId, row, col]);
+	return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+function getServerSnapshot(): CellTextSnapshot {
+	return SSR_SNAPSHOT;
 }
 
 function getCellTextSnapshot(

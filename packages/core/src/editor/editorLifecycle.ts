@@ -1,65 +1,34 @@
 import type {
-	EditorInternals,
 	CreateEditorOptions,
-	PenEventMap,
-	CRDTAdapter,
 	CRDTDocument,
 	CRDTEvent,
 	DiagnosticEvent,
 	PenDocument,
 	PipelinePhase,
 	DocumentSession,
-	DocumentScope,
 	DocumentScopeReplacementEvent,
 	DocumentProfile,
 	Extension,
 	DocumentOp,
-	ApplyOptions,
-	OpOrigin,
-	MutationGroupMetadata,
-	SelectionState,
-	TextSelection,
-	DocumentRange,
-	BlockHandle,
-	Block,
-	DocumentState,
 	UndoManager,
-	Unsubscribe,
 	CRDTMap,
 	CRDTArray,
-	Position,
-	DecorationSet,
-	EditorViewMode,
 	ChangeSummary,
 } from "@input/pen-types";
-import {
-	MUTATION_GROUP_METADATA_KEY,
-	UNDO_HISTORY_METADATA_CONTROLLER_SLOT_KEY,
-	generateId,
-} from "@input/pen-types";
+import { generateId } from "@input/pen-types";
 import { SchemaEngineImpl } from "../schema/normalize";
-import { createBlockHandle } from "../schema/handles";
-import { resolveCellSelectionMatrix } from "./cellSelection";
 import { filterOpsForDocumentProfile } from "./profilePolicy";
-import type { CRDTUnknownMap } from "./crdtShapes";
-import {
-	getTextProp,
-	getTableContent,
-	getCellText as getCellTextFromRow,
-	isCRDTMap,
-} from "./crdtShapes";
-import { DocumentStateImpl } from "./documentState";
 import {
 	installChangeSummaries,
 	teardownChangeSummaries,
 } from "../changes/install";
 import { createEmptySummary } from "../changes/summaryBuilder";
+import { summaryTouchedBlockIds } from "../changes/affectedBlocks";
 import {
 	buildCommitEvent,
 	resolveCommitSource,
 	snapshotSelectionRecord,
 } from "./commitEvent";
-import { createDocumentSession } from "./documentSession";
 import { runPendingEmptyBlockMigrations } from "../migrations/runPendingEmptyBlockMigrations";
 
 import type { Editor } from "@input/pen-types";
@@ -69,7 +38,6 @@ import type {
 } from "./editorImplContext";
 
 type EditorImplRuntime = EditorImplInternal;
-type CRDTBlockMap = CRDTMap<CRDTMap<unknown>>;
 type RawPenDocumentLike = {
 	getArray?(name: "blockOrder"): CRDTArray<string>;
 	getMap?(name: "blocks" | "apps" | "metadata"): CRDTMap<unknown>;
@@ -81,13 +49,14 @@ type RawPenDocumentLike = {
 function missingPenDocumentRoot(name: string): never {
 	throw new Error(`CRDT document is missing required Pen root "${name}".`);
 }
-const NOOP_UNDO: UndoManager = {
+/** Inert undo manager used when @input/pen-undo is not installed. */
+export const NOOP_UNDO: UndoManager = {
 	undo: () => false,
 	redo: () => false,
 	canUndo: () => false,
 	canRedo: () => false,
 	stopCapturing: () => {},
-	syncExplicitUndoGroup: () => {},
+	withCapture: (_origin, _groupId, run) => run(),
 	setGroupTimeout: () => {},
 	registerTrackedOrigins: () => () => {},
 	onStackChange: () => () => {},
@@ -393,6 +362,26 @@ export function createCommitEvent(
 	};
 }
 
+/**
+ * A local apply names the blocks its ops wrote; the normalization pass inside
+ * it can re-home or remove others (COL4 repairs), which only the summary
+ * names. The document index follows both, so a repair that keeps the root
+ * order's length is never invisible to it. The same array when the summary
+ * names nothing new, which is every keystroke.
+ */
+function indexAffectedBlocks(
+	affectedBlocks: readonly string[],
+	summary: ChangeSummary | null,
+): readonly string[] {
+	if (!summary) return affectedBlocks;
+	const touched = summaryTouchedBlockIds(summary);
+	if (touched.length === 0) return affectedBlocks;
+	const known = new Set(affectedBlocks);
+	const extra = touched.filter((blockId) => !known.has(blockId));
+	if (extra.length === 0) return affectedBlocks;
+	return [...affectedBlocks, ...new Set(extra)];
+}
+
 export function dispatchCRDTEvent(
 	editor: EditorImplRuntime,
 	event: CRDTEvent,
@@ -401,7 +390,13 @@ export function dispatchCRDTEvent(
 	self._syncDocumentProfileFromStorage();
 	self._recordPipelinePhase("summarize");
 	const documentCommit = self._createCommitEvent(event);
-	self._documentState.incrementalUpdate(event.affectedBlocks);
+	self._documentState.incrementalUpdate(
+		indexAffectedBlocks(
+			event.affectedBlocks,
+			self._pendingSummary as ChangeSummary | null,
+		),
+		self._storedBlocks,
+	);
 	const selectionBefore =
 		self._selectionBeforeRecord ??
 		snapshotSelectionRecord(self._selection.record);
@@ -425,10 +420,17 @@ export function dispatchCRDTEvent(
 			summary.blockText.length === 0 && summary.structural.length === 0,
 		selectionVersion: self._selection.record.version,
 	});
-	const previousDecorationGeneration = self._decorations.generation;
-	const nextDecorations = self._refreshDecorations();
-	if (nextDecorations.generation !== previousDecorationGeneration) {
-		self._emitter.emit("decorationsChange", nextDecorations.generation);
+	const decorations = self._refreshDecorations({
+		kind: "commit",
+		summary,
+		origin: event.origin,
+	});
+	if (decorations.changedBlockIds.length > 0) {
+		self._emitter.emit(
+			"decorationsChange",
+			decorations.set.generation,
+			decorations.changedBlockIds,
+		);
 	}
 	self._recordPipelinePhase("emit");
 	const commit = buildCommitEvent({

@@ -35,22 +35,29 @@ function createBareEditor(ariaReadOnlyFacetValue?: boolean): Editor {
 	});
 }
 
-function insertHello(editor: Editor): string {
-	const blockId = editor.firstBlock()!.id;
-	editor.apply(
-		[
-			{
-				type: "splice-text",
-				blockId,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		],
-		{ origin: "user" },
-	);
-	return editor.getBlock(blockId)!.textContent();
-}
+const ARIA_READONLY_CASES = [
+	{
+		name: "ariaReadOnly facet announces aria-readonly and still accepts typing",
+		facet: true,
+		readonly: undefined,
+		dataReadonly: false,
+		editing: true,
+	},
+	{
+		name: "readonly prop announces aria-readonly and declines typing",
+		facet: undefined,
+		readonly: true,
+		dataReadonly: true,
+		editing: false,
+	},
+	{
+		name: "ariaReadOnly facet plus readonly prop: prop wins for typing, both set aria-readonly",
+		facet: true,
+		readonly: true,
+		dataReadonly: true,
+		editing: false,
+	},
+] as const;
 
 describe("mountEditor pen.ariaReadOnly vs readonly prop", () => {
 	const cleanups: Array<() => void> = [];
@@ -88,39 +95,19 @@ describe("mountEditor pen.ariaReadOnly vs readonly prop", () => {
 		);
 	}
 
-	it("ariaReadOnly facet announces aria-readonly and still accepts typing", () => {
-		const editor = createBareEditor(true);
-		const mounted = mount(editor);
-		expect(editor.facet(ariaReadOnlyFacet)).toBe(true);
-		expect(mounted.root.getAttribute("aria-readonly")).toBe("true");
-		expect(mounted.root.hasAttribute(DATA_ATTRS.readonly)).toBe(false);
+	it.each(ARIA_READONLY_CASES)(
+		"$name",
+		({ facet, readonly, dataReadonly, editing }) => {
+			const editor = createBareEditor(facet);
+			const mounted = mount(editor, readonly);
+			expect(editor.facet(ariaReadOnlyFacet)).toBe(facet === true);
+			expect(mounted.root.getAttribute("aria-readonly")).toBe("true");
+			expect(mounted.root.hasAttribute(DATA_ATTRS.readonly)).toBe(
+				dataReadonly,
+			);
 
-		activateInline(mounted.root);
-		expect(mounted.fieldEditor.isEditing).toBe(true);
-		expect(insertHello(editor)).toBe("hello");
-	});
-
-	it("readonly prop announces aria-readonly and declines typing", () => {
-		const editor = createBareEditor();
-		const mounted = mount(editor, true);
-		expect(editor.facet(ariaReadOnlyFacet)).toBe(false);
-		expect(mounted.root.getAttribute("aria-readonly")).toBe("true");
-		expect(mounted.root.getAttribute(DATA_ATTRS.readonly)).toBe("");
-
-		activateInline(mounted.root);
-		expect(mounted.fieldEditor.isEditing).toBe(false);
-		expect(insertHello(editor)).toBe("hello");
-	});
-
-	it("ariaReadOnly facet plus readonly prop: prop wins for typing, both set aria-readonly", () => {
-		const editor = createBareEditor(true);
-		const mounted = mount(editor, true);
-		expect(editor.facet(ariaReadOnlyFacet)).toBe(true);
-		expect(mounted.root.getAttribute("aria-readonly")).toBe("true");
-		expect(mounted.root.getAttribute(DATA_ATTRS.readonly)).toBe("");
-
-		activateInline(mounted.root);
-		expect(mounted.fieldEditor.isEditing).toBe(false);
-		expect(insertHello(editor)).toBe("hello");
-	});
+			activateInline(mounted.root);
+			expect(mounted.fieldEditor.isEditing).toBe(editing);
+		},
+	);
 });

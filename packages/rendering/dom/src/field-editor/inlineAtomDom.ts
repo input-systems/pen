@@ -7,6 +7,7 @@ import {
 	resolveInlineAtomInsert,
 	type InlineAtomInsert,
 } from "./inlineAtomModel";
+import { isDomHTMLElement } from "../utils/domNodes";
 export {
 	INLINE_ATOM_REPLACEMENT_TEXT,
 	resolveInlineAtomInsert,
@@ -22,20 +23,28 @@ const inlineAtomElementData = new WeakMap<HTMLElement, InlineAtomElementData>();
 
 export function createInlineAtomCaretBoundaryElement(
 	side: InlineAtomCaretBoundarySide,
+	doc: Document = document,
 ): HTMLElement {
-	const element = document.createElement("span");
+	const element = doc.createElement("span");
 	element.setAttribute(DATA_ATTRS.inlineAtomCaretBoundary, "");
 	element.setAttribute(DATA_ATTRS.inlineAtomCaretSide, side);
-	element.appendChild(document.createElement("br"));
+	// The `<br>` keeps `(boundary, 0)` a selectable DOM position beside the
+	// chip, but a rendered `<br>` inside an inline span is a forced line
+	// break: every atom sat on its own line (G1, D12). Hidden, it adds no
+	// line box, and the overlay draws the visible caret (O1).
+	const lineBreak = doc.createElement("br");
+	lineBreak.style.display = "none";
+	element.appendChild(lineBreak);
 	return element;
 }
 
 function createInlineAtomChipElement(
 	insert: unknown,
 	registry: SchemaRegistry,
+	doc: Document,
 ): HTMLElement {
 	const atom = resolveInlineAtomInsert(insert);
-	const element = document.createElement("span");
+	const element = doc.createElement("span");
 	element.setAttribute(DATA_ATTRS.inlineAtom, "");
 	element.contentEditable = "false";
 
@@ -63,15 +72,17 @@ function createInlineAtomChipElement(
 	return element;
 }
 
+/** Created in `doc`, the field's own document (an iframe's when mounted there). */
 export function createInlineAtomElement(
 	insert: unknown,
 	registry: SchemaRegistry,
+	doc: Document = document,
 ): HTMLElement {
-	const host = document.createElement("span");
+	const host = doc.createElement("span");
 	host.setAttribute(DATA_ATTRS.inlineAtomHost, "");
-	host.appendChild(createInlineAtomCaretBoundaryElement("before"));
-	host.appendChild(createInlineAtomChipElement(insert, registry));
-	host.appendChild(createInlineAtomCaretBoundaryElement("after"));
+	host.appendChild(createInlineAtomCaretBoundaryElement("before", doc));
+	host.appendChild(createInlineAtomChipElement(insert, registry, doc));
+	host.appendChild(createInlineAtomCaretBoundaryElement("after", doc));
 	return host;
 }
 
@@ -171,21 +182,21 @@ export function isInlineAtomCaretBoundaryNode(
 	node: Node | null,
 ): node is HTMLElement {
 	return (
-		node instanceof HTMLElement &&
+		isDomHTMLElement(node) &&
 		node.hasAttribute(DATA_ATTRS.inlineAtomCaretBoundary)
 	);
 }
 
 export function isInlineAtomHostNode(node: Node | null): node is HTMLElement {
 	return (
-		node instanceof HTMLElement &&
+		isDomHTMLElement(node) &&
 		node.hasAttribute(DATA_ATTRS.inlineAtomHost)
 	);
 }
 
 export function isInlineAtomChipNode(node: Node | null): node is HTMLElement {
 	return (
-		node instanceof HTMLElement &&
+		isDomHTMLElement(node) &&
 		node.hasAttribute(DATA_ATTRS.inlineAtom) &&
 		!isInlineAtomHostNode(node)
 	);
@@ -229,11 +240,11 @@ function definedRecordKeys(record: Record<string, unknown>): string[] {
 }
 
 function getInlineAtomChipElement(element: Element): HTMLElement | null {
-	if (element instanceof HTMLElement && isInlineAtomChipNode(element)) {
+	if (isInlineAtomChipNode(element)) {
 		return element;
 	}
 
-	if (element instanceof HTMLElement && isInlineAtomHostNode(element)) {
+	if (isInlineAtomHostNode(element)) {
 		for (const child of Array.from(element.childNodes)) {
 			if (isInlineAtomChipNode(child)) {
 				return child;

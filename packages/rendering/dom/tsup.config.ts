@@ -31,6 +31,7 @@ export default defineConfig({
 		"src/utils/cellSelection.ts",
 		"src/utils/clipboardPayload.ts",
 		"src/utils/dataAttributes.ts",
+		"src/utils/domNodes.ts",
 		"src/utils/editorEmptyState.ts",
 		"src/utils/editorInteractionModel.ts",
 		"src/utils/environment.ts",

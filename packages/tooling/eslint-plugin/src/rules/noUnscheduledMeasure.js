@@ -1,9 +1,12 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import {
+	allowlistLifecycleListeners,
+	allowlistSlots,
+	consumeAllowlistSlot,
+	loadAllowlistEntries,
+	missingAllowlistField as missingRequiredField,
+} from "./allowlistLint.js";
 import {
 	enclosingSymbol,
-	posixFilename,
 	propertyName,
 	repoRelativeFilename,
 } from "./lintPaths.js";
@@ -12,12 +15,18 @@ import {
  * SCH1 (`spec/rules/dom.md`): geometry reads stay inside a scheduled
  * measure. Allowlisted symbols are the GeometryReader and justified
  * pre-scheduler sites.
+ *
+ * HB2 (`spec/rules/host.md`): the `extraNames` option adds layout metrics a
+ * binding would need to rebuild a window or a height map. An extra name is
+ * flagged as a property read (`el.scrollTop`, `window.getComputedStyle`), a
+ * bare call (`getComputedStyle(el)`), or a construction
+ * (`new ResizeObserver(…)`); a property write (`el.scrollTop = 0`) and a
+ * type or feature-test mention are not measures. eslint.config.mjs turns it
+ * on for the React and Vue bindings only, where layout belongs to pen-dom.
  */
 
-const DEFAULT_ALLOWLIST_PATH = path.join(
-	path.dirname(fileURLToPath(import.meta.url)),
-	"../../../../../scripts/unscheduled-measure-allowlist.json",
-);
+const ALLOWLIST_PATH = "scripts/unscheduled-measure-allowlist.json";
+const REQUIRED_FIELDS = ["file", "symbol", "reason"];
 
 const MEASURE_NAMES = new Set([
 	"getBoundingClientRect",
@@ -27,31 +36,30 @@ const MEASURE_NAMES = new Set([
 	"caretRangeFromPoint",
 ]);
 
-function loadAllowlist(filePath) {
-	try {
-		const parsed = JSON.parse(readFileSync(filePath, "utf8"));
-		return Array.isArray(parsed.entries) ? parsed.entries : [];
-	} catch {
-		return [];
-	}
-}
-
-const committedAllowlist = loadAllowlist(DEFAULT_ALLOWLIST_PATH);
+const committedAllowlist = loadAllowlistEntries(ALLOWLIST_PATH);
 
 export function missingAllowlistField(entry) {
-	if (!entry || typeof entry !== "object") {
-		return "file";
+	return missingRequiredField(entry, REQUIRED_FIELDS);
+}
+
+function isAssignmentTarget(node) {
+	return (
+		node.parent?.type === "AssignmentExpression" &&
+		node.parent.operator === "=" &&
+		node.parent.left === node
+	);
+}
+
+/** The extra name `node` measures through, or null (HB2 `extraNames`). */
+function extraMeasureName(node, extraNames) {
+	if (node.type === "MemberExpression") {
+		const name = propertyName(node.property);
+		return extraNames.has(name) && !isAssignmentTarget(node) ? name : null;
 	}
-	if (typeof entry.file !== "string" || entry.file.trim().length === 0) {
-		return "file";
-	}
-	if (typeof entry.symbol !== "string" || entry.symbol.trim().length === 0) {
-		return "symbol";
-	}
-	if (typeof entry.reason !== "string" || entry.reason.trim().length === 0) {
-		return "reason";
-	}
-	return null;
+	const callee = node.callee;
+	return callee?.type === "Identifier" && extraNames.has(callee.name)
+		? callee.name
+		: null;
 }
 
 function isMemberProperty(node) {
@@ -75,7 +83,10 @@ export const noUnscheduledMeasure = {
 		schema: [
 			{
 				type: "object",
-				properties: { allowlist: { type: "array" } },
+				properties: {
+					allowlist: { type: "array" },
+					extraNames: { type: "array", items: { type: "string" } },
+				},
 				additionalProperties: false,
 			},
 		],
@@ -92,23 +103,12 @@ export const noUnscheduledMeasure = {
 		const filename = context.filename ?? context.getFilename();
 		const relative = repoRelativeFilename(filename);
 		const allowlist = context.options[0]?.allowlist ?? committedAllowlist;
-		const slots = allowlist
-			.filter((entry) => !missingAllowlistField(entry))
-			.filter((entry) => posixFilename(entry.file) === relative)
-			.map((entry) => ({ ...entry, used: false }));
-
-		function consume(symbol) {
-			const slot = slots.find((entry) => entry.symbol === symbol);
-			if (!slot) {
-				return false;
-			}
-			slot.used = true;
-			return true;
-		}
+		const extraNames = new Set(context.options[0]?.extraNames ?? []);
+		const slots = allowlistSlots(allowlist, relative, missingAllowlistField);
 
 		function reportMeasure(node, kind) {
 			const symbol = enclosingSymbol(node);
-			if (consume(symbol)) {
+			if (consumeAllowlistSlot(slots, symbol)) {
 				return;
 			}
 			context.report({
@@ -118,43 +118,31 @@ export const noUnscheduledMeasure = {
 			});
 		}
 
+		function reportExtra(node) {
+			const name = extraMeasureName(node, extraNames);
+			if (name) {
+				reportMeasure(node, name);
+			}
+		}
+
 		return {
-			Program() {
-				for (const entry of allowlist) {
-					const field = missingAllowlistField(entry);
-					if (!field) {
-						continue;
-					}
-					if (
-						typeof entry?.file === "string" &&
-						posixFilename(entry.file) !== relative
-					) {
-						continue;
-					}
-					context.report({
-						loc: { line: 1, column: 0 },
-						messageId: "incompleteAllowlist",
-						data: { field },
-					});
-				}
-			},
-			"Program:exit"() {
-				for (const slot of slots) {
-					if (!slot.used) {
-						context.report({
-							loc: { line: 1, column: 0 },
-							messageId: "unusedAllowlist",
-							data: { file: slot.file, symbol: slot.symbol },
-						});
-					}
-				}
-			},
+			...allowlistLifecycleListeners(context, {
+				allowlist,
+				relative,
+				slots,
+				missingField: missingAllowlistField,
+				orphanMessageId: "unusedAllowlist",
+			}),
 			MemberExpression(node) {
 				const kind = propertyName(node.property);
 				if (MEASURE_NAMES.has(kind)) {
 					reportMeasure(node, kind);
+					return;
 				}
+				reportExtra(node);
 			},
+			CallExpression: reportExtra,
+			NewExpression: reportExtra,
 			Identifier(node) {
 				if (
 					MEASURE_NAMES.has(node.name) &&

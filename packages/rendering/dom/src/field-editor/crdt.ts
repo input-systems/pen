@@ -21,6 +21,8 @@ export type FieldEditorTextChangeEvent = {
 	delta: FieldEditorDelta[];
 	transaction?: {
 		origin?: unknown;
+		/** Yjs `Transaction.local`: `false` when the change arrived through `applyUpdate`. */
+		local?: boolean;
 	};
 };
 

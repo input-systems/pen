@@ -9,7 +9,7 @@ import type { Editor, TextSelection } from "@input/pen-types";
 import type { FieldEditorTransferController } from "./controller";
 import type { PasteImporters } from "../types/paste";
 import { executeTransfer } from "./transfer";
-import { type Delta, type PenBlock } from "../utils/clipboardPayload";
+import { type PenBlock } from "../utils/clipboardPayload";
 import {
 	serializeDeltasToFormat,
 	sliceDeltas,

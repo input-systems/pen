@@ -257,17 +257,19 @@ export class MultiplayerControllerImpl implements MultiplayerController {
 					(clientId) => this.identityMap.resolve(clientId),
 				)
 			: this.mappedStreaming;
-		this.mappedCursors = reuseIfSame(this.mappedCursors, nextCursors);
-		this.mappedSelections = reuseIfSame(
+		// A commit re-resolves every peer, but most leave a peer where it was:
+		// keep the previous objects then, so subscribers see no change.
+		this.mappedCursors = reuseEqual(this.mappedCursors, nextCursors);
+		this.mappedSelections = reuseEqual(
 			this.mappedSelections,
 			nextSelections,
 		);
-		this.mappedStreaming = reuseIfSame(this.mappedStreaming, nextStreaming);
+		this.mappedStreaming = reuseEqual(this.mappedStreaming, nextStreaming);
 
 		const nextPeers = this.lastAccepted
 			? this.buildPeers(this.lastAccepted)
 			: this.peers;
-		this.mappedPeers = reuseIfSame(this.mappedPeers, nextPeers);
+		this.mappedPeers = reuseEqual(this.mappedPeers, nextPeers);
 		this.resolvedGeneration = this.resolveGeneration;
 		this.mappedAccepted = this.lastAccepted;
 	}
@@ -316,17 +318,66 @@ export class MultiplayerControllerImpl implements MultiplayerController {
 	}
 }
 
-function reuseIfSame<T>(prev: readonly T[], next: readonly T[]): readonly T[] {
+/**
+ * `next`, with each entry swapped for its predecessor (same `clientId`)
+ * when the two hold equal values, and `prev` itself when every entry was
+ * kept in order.
+ */
+function reuseEqual<T extends { readonly clientId: number }>(
+	prev: readonly T[],
+	next: readonly T[],
+): readonly T[] {
 	if (prev === next) {
 		return prev;
 	}
-	if (prev.length !== next.length) {
-		return next;
-	}
-	for (let i = 0; i < prev.length; i++) {
-		if (prev[i] !== next[i]) {
-			return next;
+	const previous = new Map(prev.map((item) => [item.clientId, item]));
+	let unchanged = prev.length === next.length;
+	const reused = next.map((item, index) => {
+		const before = previous.get(item.clientId);
+		const kept =
+			before !== undefined && presenceValueEqual(before, item) ? before : item;
+		if (kept !== prev[index]) {
+			unchanged = false;
 		}
+		return kept;
+	});
+	return unchanged ? prev : reused;
+}
+
+/**
+ * Structural equality over presence values: plain objects, arrays and
+ * primitives, a handful of fields deep. Nested entries that were already
+ * reused compare by identity first.
+ */
+function presenceValueEqual(left: unknown, right: unknown): boolean {
+	if (left === right) {
+		return true;
 	}
-	return prev;
+	if (
+		typeof left !== "object" ||
+		typeof right !== "object" ||
+		left === null ||
+		right === null
+	) {
+		return false;
+	}
+	if (Array.isArray(left) || Array.isArray(right)) {
+		return (
+			Array.isArray(left) &&
+			Array.isArray(right) &&
+			left.length === right.length &&
+			left.every((item, index) => presenceValueEqual(item, right[index]))
+		);
+	}
+	const leftRecord = left as Record<string, unknown>;
+	const rightRecord = right as Record<string, unknown>;
+	const keys = Object.keys(leftRecord);
+	if (keys.length !== Object.keys(rightRecord).length) {
+		return false;
+	}
+	return keys.every(
+		(key) =>
+			Object.prototype.hasOwnProperty.call(rightRecord, key) &&
+			presenceValueEqual(leftRecord[key], rightRecord[key]),
+	);
 }

@@ -2,12 +2,6 @@ import type { FacetProvider } from "@input/pen-types";
 
 import { commandHandler } from "./define";
 import {
-	getCellCaretFocus,
-	setCellCaretFocus,
-	type CellCaretFocus,
-	type CellCaretWrite,
-} from "./caretCellEditing";
-import {
 	caretBlockEnd,
 	caretBlockStart,
 	caretDocEnd,
@@ -34,7 +28,6 @@ import {
 import { handleVerticalCaret } from "./caretVerticalMotion";
 
 export type { CaretMotionParam, SelectBlockParam } from "./caretParams";
-export type { CellCaretFocus, CellCaretWrite } from "./caretCellEditing";
 export {
 	caretBlockEnd,
 	caretBlockStart,
@@ -51,7 +44,6 @@ export {
 	selectAll,
 	selectBlock,
 } from "./caretCommands";
-export { getCellCaretFocus, setCellCaretFocus };
 export { setLineEdgeMeasure } from "./caretMotion";
 
 export function caretCommandHandlers(): FacetProvider[] {

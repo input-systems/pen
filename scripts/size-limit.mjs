@@ -28,6 +28,17 @@ const BASELINE_NAME = ".size-limit.baseline.json";
 const ATTRIBUTED_NOTE_RE = /→|->|\bbaseline\b/i;
 
 /**
+ * Re-records dated on or after this day must cite the shipped rule that moved
+ * the bytes: `Re-recorded baseline <YYYY-MM-DD> (<rule IDs>; …)`. Older notes
+ * predate the convention and stay as written.
+ */
+export const RULE_CITED_SINCE = "2026-10-02";
+const RE_RECORD_RE = /Re-recorded baseline (\d{4}-\d{2}-\d{2})(?: \(([^)]*)\))?/;
+const RULE_ID_RE = /\b[A-Z]{1,6}\d+\b/;
+/** Program requirement IDs (`W35.R3`, `W8`) are not shipped rule IDs. */
+const PROGRAM_ID_RE = /\bW\d+(?:\.[A-Z]\d+)?\b/g;
+
+/**
  * A code-split package ships content-hashed chunk names, so no single file
  * is the package and a hashed name cannot be written into the baseline. An
  * entry path may therefore carry one `*` (`dist/*.mjs`), and the weight is
@@ -71,6 +82,24 @@ export function noteAttributesBytes(note) {
 	return typeof note === "string" && ATTRIBUTED_NOTE_RE.test(note);
 }
 
+/**
+ * API7 / SF6: a re-record dated on or after `RULE_CITED_SINCE` names at least
+ * one shipped rule ID in the parenthetical after its date, so the baseline
+ * says which rule moved it. The program requirement half (`Wn.Rk`) is checked
+ * by review, so this stays valid once those IDs are gone.
+ */
+export function noteCitesRule(note) {
+	const match = RE_RECORD_RE.exec(String(note));
+	if (!match || match[1] < RULE_CITED_SINCE) {
+		return true;
+	}
+	return parentheticalNamesRule(match[2]);
+}
+
+function parentheticalNamesRule(parenthetical = "") {
+	return RULE_ID_RE.test(parenthetical.replace(PROGRAM_ID_RE, ""));
+}
+
 export function evaluateSizeLimit({ baseline, stats }) {
 	const regressionPercent = baseline.regressionPercent ?? 10;
 	const entries = baseline.entries ?? [];
@@ -101,7 +130,8 @@ export function evaluateSizeLimit({ baseline, stats }) {
 		const bytes = stats[entry.path];
 		const limitBytes = resolveLimitBytes(entry);
 		const ceiling = Math.floor(limitBytes * (1 + regressionPercent / 100));
-		const attributed = noteAttributesBytes(entry.note);
+		const attributed =
+			noteAttributesBytes(entry.note) && noteCitesRule(entry.note);
 		const row = {
 			name: entry.name,
 			path: entry.path,
@@ -173,7 +203,7 @@ export function formatSizeLimit(result) {
 	if (result.unattributed.length > 0) {
 		lines.push("");
 		lines.push(
-			"FAIL size-limit: note does not account for the bytes it records (a re-record without attribution is a waiver):",
+			`FAIL size-limit: note does not account for the bytes it records, or a re-record dated ${RULE_CITED_SINCE} or later cites no shipped rule ID (a re-record without attribution is a waiver):`,
 		);
 		for (const row of result.unattributed) {
 			lines.push(`  ${row.name}`);
@@ -195,6 +225,48 @@ export function formatSizeLimit(result) {
 		);
 	}
 	return lines.join("\n");
+}
+
+const UNCITED_NOTE = "Re-recorded baseline 2026-10-02. Overlay painter moved in. 90 → 100.";
+
+/** Each case: [expectation, passes]. */
+const RULE_CITATION_CASES = [
+	[
+		"API7: a re-record dated 2026-10-02 or later without a rule ID fails",
+		() => {
+			const result = evaluateSizeLimit({
+				baseline: {
+					regressionPercent: 10,
+					entries: [
+						{ name: "@input/pen-dom", path: "dom/*.mjs", baselineBytes: 100, note: UNCITED_NOTE },
+					],
+				},
+				stats: { "dom/*.mjs": 100 },
+			});
+			return !result.ok && result.unattributed[0]?.name === "@input/pen-dom";
+		},
+	],
+	[
+		"a dated re-record citing a rule ID, an older re-record, and a first baseline pass",
+		() =>
+			[
+				"Re-recorded baseline 2026-10-02 (O1, OV1; W35.R3). Overlay painter moved in. 90 → 100.",
+				"Re-recorded baseline 2026-09-22. Predates the convention. 90 → 100.",
+				"First baseline.",
+			].every(noteCitesRule),
+	],
+	[
+		"a program requirement alone is not a shipped rule ID",
+		() => !noteCitesRule("Re-recorded baseline 2026-11-03 (W35.R3). Moved. 1 → 2."),
+	],
+];
+
+function runRuleCitationSelfTests() {
+	for (const [expectation, passes] of RULE_CITATION_CASES) {
+		if (!passes()) {
+			throw new Error(`self-test: ${expectation}`);
+		}
+	}
 }
 
 export function runSelfTests() {
@@ -318,6 +390,7 @@ export function runSelfTests() {
 	if (noteAttributesBytes("Measured from dist.") !== false) {
 		throw new Error("self-test: unattributed measured-from note fails");
 	}
+	runRuleCitationSelfTests();
 }
 
 function parseArgs(argv) {
@@ -390,7 +463,7 @@ async function main() {
 	runSelfTests();
 	console.log("API7 size-limit self-test ok");
 	console.log(
-		"  red-proof: missing artifact, over-ceiling, empty entries, and unattributed note fail closed",
+		"  red-proof: missing artifact, over-ceiling, empty entries, unattributed note, and a dated re-record without a rule ID fail closed",
 	);
 
 	const args = parseArgs(process.argv.slice(2));

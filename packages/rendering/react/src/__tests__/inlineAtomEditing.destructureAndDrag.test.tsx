@@ -3,120 +3,18 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
-import { createEditor } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
-import { createDefaultSchema } from "@input/pen-schema";
-import {
-	moveInlineAtom,
-	replaceInlineAtomWithText,
-} from "@input/pen-dom/field-editor/inlineAtomInteraction";
-import {
-	getInlineAtomElementData,
-	getLogicalTextContent,
-	getLogicalNodeLength,
-	INLINE_ATOM_REPLACEMENT_TEXT,
-	findLogicalDOMPoint,
-	isInlineAtomCaretBoundaryNode,
-	isInlineAtomHostNode,
-} from "@input/pen-dom/field-editor/inlineAtomDom";
-import {
-	applyDeltaToDOM,
-	fullReconcileDeltasToDOM,
-} from "@input/pen-dom/field-editor/reconciler";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
-import { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
-import {
-	domPointToOffset,
-	domSelectionToEditor,
-	editorSelectionToDOM,
-	getSelectionOffsets,
-	pointToEditorSelectionPoint,
-} from "@input/pen-dom/field-editor/selectionBridge";
-import { handleFieldEditorKeyDown } from "@input/pen-dom/field-editor/keyHandling";
 import { Pen } from "../primitives/index";
+import {
+	createPresetEditor,
+	dispatchPointerEvent,
+	flushAnimationFrames,
+	seedInlineAtomDocument,
+} from "./utils/inlineAtomTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-async function flushAnimationFrames(count = 1): Promise<void> {
-	for (let i = 0; i < count; i++) {
-		await new Promise<void>((resolve) => {
-			requestAnimationFrame(() => resolve());
-		});
-	}
-}
-
-function createPresetEditor() {
-	return createEditor({
-		schema: createDefaultSchema(),
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
-
-function seedInlineAtomDocument(editor: ReturnType<typeof createPresetEditor>) {
-	const blockId = editor.firstBlock()!.id;
-	editor.apply([
-		{ type: "splice-text", blockId, from: 0, to: 0, insert: "A" },
-		{
-			type: "splice-text",
-			blockId,
-			from: 1,
-			to: 1,
-			insert: {
-				nodeType: "mention",
-				props: { id: "user-1", label: "Ada" },
-			},
-		},
-		{ type: "splice-text", blockId, from: 2, to: 2, insert: "B" },
-	]);
-	return blockId;
-}
-
-function dispatchPointerEvent(
-	target: EventTarget,
-	type: string,
-	options: MouseEventInit & { pointerId?: number } = {},
-) {
-	const PointerEventCtor = window.PointerEvent ?? MouseEvent;
-	target.dispatchEvent(
-		new PointerEventCtor(type, {
-			bubbles: true,
-			cancelable: true,
-			...options,
-		}) as PointerEvent,
-	);
-}
-
-function createRect({
-	left,
-	right,
-	top,
-	bottom,
-}: {
-	left: number;
-	right: number;
-	top: number;
-	bottom: number;
-}): DOMRect {
-	return {
-		x: left,
-		y: top,
-		left,
-		right,
-		top,
-		bottom,
-		width: right - left,
-		height: bottom - top,
-		toJSON() {
-			return {};
-		},
-	} as DOMRect;
-}
 
 describe("Pen inline atom editing: destructure and drag", () => {
 	it("fires onAfterDestructure once after a successful wrapper double-click destructure", async () => {

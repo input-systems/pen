@@ -21,7 +21,9 @@ Release-blocking:
 
 - [ ] macOS Kotoeri: multi-segment convert, Escape cancel (C1)
 - [ ] macOS Kotoeri: remote edit mid-composition leaves the field
-      DOM untouched, then one splice at the mapped start (C2)
+      DOM untouched; after commit a remote insert at the composition
+      start, or inside a reconverted word, reads before the composed
+      text, as two converged `Y.Doc`s would (C2)
 - [ ] macOS Pinyin: candidate commit lands as one apply
 - [ ] Windows IME (MS-IME Japanese / Pinyin): same C1 / C2 / commit
 - [ ] iOS Safari: composition underline, cancel, commit

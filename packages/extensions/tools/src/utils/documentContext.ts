@@ -280,26 +280,6 @@ function resolveActiveBlockId(selection: SelectionState): string | null {
 	return null;
 }
 
-function resolveSurroundingBlocks(
-	blocks: DocumentBlockSnapshot[],
-	activeBlockIndex: number,
-): SummaryBlockSnapshot[] {
-	if (blocks.length === 0) {
-		return [];
-	}
-
-	if (activeBlockIndex < 0) {
-		return summarizeBlocks(blocks.slice(0, SURROUNDING_BLOCK_RADIUS + 1));
-	}
-
-	const startIndex = Math.max(0, activeBlockIndex - SURROUNDING_BLOCK_RADIUS);
-	const endIndex = Math.min(
-		blocks.length,
-		activeBlockIndex + SURROUNDING_BLOCK_RADIUS + 1,
-	);
-	return summarizeBlocks(blocks.slice(startIndex, endIndex));
-}
-
 function normalizeHeadingLevel(value: unknown): number {
 	if (typeof value !== "number" || !Number.isFinite(value)) {
 		return 1;

@@ -4,7 +4,7 @@ import type {
   CommitEvent,
   CommitEventSource,
   SelectionRecord,
-} from "../types/commit";
+} from "../types/editor";
 
 function emptySummary(commitId: number): ChangeSummary {
   return {

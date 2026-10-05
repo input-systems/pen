@@ -2,23 +2,10 @@ import { describe, expect, it } from "vitest";
 import { createEditor } from "@input/pen-core";
 import { htmlExporter } from "../exporter";
 import { defaultSchema } from "@input/pen-schema";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
-
-function editorWithBlocks(
-	ops: Parameters<ReturnType<typeof createEditor>["apply"]>[0],
-) {
-	const editor = createEditor({
-		schema: defaultSchema,
-		preset: noDefaultExtensionsPreset,
-	});
-	editor.apply(ops);
-	return editor;
-}
+import {
+	editorWithBlocks,
+	noDefaultExtensionsPreset,
+} from "./exportHtml.testHelpers";
 
 describe("@input/pen-interop/html SEC1 urlPolicy", () => {
 	it("SEC1: javascript: link href omitted with data-pen-blocked-url", () => {

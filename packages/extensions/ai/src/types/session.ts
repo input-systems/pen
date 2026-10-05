@@ -7,7 +7,7 @@ import type {
 	ModelOperationSelectionTarget,
 	TextSelection,
 } from "@input/pen-types";
-import type { AIToolConfirmFn } from "../tools";
+import type { AIToolConfirmFn, AIUnconfirmedDestructivePolicy } from "../tools";
 import type { EditDocumentPreviewUpdate } from "../runtime/editDocumentPreview";
 import type {
 	AIMutationMode,
@@ -32,6 +32,13 @@ export interface AIExtensionConfig {
 	maxAgenticSteps?: number;
 	allowedMutatingTools?: readonly string[];
 	confirm?: AIToolConfirmFn;
+	/**
+	 * What happens to a destructive tool call when no `confirm` resolver is
+	 * installed (AIB3). `"allow"` (default) runs it and emits
+	 * `ai-tool-unconfirmed`; `"refuse"` blocks it with the document unchanged —
+	 * the setting for a production host that exposes the external tools.
+	 */
+	unconfirmedDestructive?: AIUnconfirmedDestructivePolicy;
 	author?: string;
 	contentFormat?: AIContentFormatOptions;
 	/**
@@ -235,6 +242,24 @@ export interface AIStreamingReviewPreviewInput {
 	operationIndex?: number;
 	target: AIStreamingReviewPreviewTarget;
 	text: string;
+	/**
+	 * The replacement text has finished arriving. Without it a replacement
+	 * shorter than the text it covers previews as still streaming and keeps
+	 * the old tail on screen; with it the preview hides everything accept
+	 * removes (RS6).
+	 */
+	complete?: boolean;
+	/**
+	 * The edit removes every block in the target. The preview hides them whole
+	 * even though no replacement text ever arrives (RS6).
+	 */
+	deletesBlocks?: boolean;
+	/**
+	 * The edit replaces every block in the target whole. An empty block at
+	 * the range edge has no text to strike, so the preview hides it unless the
+	 * replacement text is shown in it (RS6).
+	 */
+	replacesBlocks?: boolean;
 }
 
 export interface AIStreamingReviewPreview extends AIStreamingReviewPreviewInput {

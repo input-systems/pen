@@ -44,6 +44,24 @@ export interface EnvelopePointRecord {
 	gateP50Ms: number | null;
 }
 
+/** One renderer row (W1.R9): a conformance `scale-render` clock, Pen-removed floor beside it. */
+export interface EnvelopeRendererRow {
+	readonly id: `renderer.${"react" | "vue" | "vanilla"}.${"1k" | "5k" | "10k" | "50k"}`;
+	readonly surface: "react" | "vue" | "vanilla";
+	readonly rootBlocks: number;
+	readonly totalBlocks: number;
+	readonly grade: "measured";
+	/** `null` when the row timed out or is not recorded yet. */
+	readonly mountP50Ms: number | null;
+	readonly mountFloorP50Ms: number | null;
+	readonly keystrokeToFrameP50Ms: number | null;
+	readonly caretDownToFrameP50Ms: number | null;
+	readonly mountTimedOut: boolean;
+	readonly machineClass: string;
+	readonly recordedAt: string;
+	readonly source: `@input/pen-conformance baselines/scale-render.${string}.chromium.json`;
+}
+
 export interface EnvelopeRecord {
 	ruleId: "SCALE1";
 	spec: string;
@@ -64,6 +82,8 @@ export interface EnvelopeRecord {
 		crossClass: string;
 	};
 	points: EnvelopePointRecord[];
+	/** Generated from the conformance baselines by `importRenderer.ts`; never hand-edited. */
+	renderer: readonly EnvelopeRendererRow[];
 }
 
 export interface EnvelopeDriftFailure {
@@ -84,13 +104,13 @@ export interface EnvelopeDriftResult {
 	failures: EnvelopeDriftFailure[];
 }
 
-export const ENVELOPE_TOLERANCE_JUSTIFICATION =
+const ENVELOPE_TOLERANCE_JUSTIFICATION =
 	"Same-run p95/p50 on the committed macos-arm64 sample (n=21) peaked at 2.38× (100-block). The same-class gate is 3× attributed median for rungs whose attributed p50 is at least 0.5ms. Below that the clock is inside timer noise and a ratio cannot be attributed to Pen. The +1ms term applies only above that signal. P95 and Max are trend-only (CH8).";
 
-export const ENVELOPE_CROSS_CLASS_POLICY =
+const ENVELOPE_CROSS_CLASS_POLICY =
 	"Timing is not compared across machine classes. macos-arm64 medians are not a ubuntu-latest budget; a ratio picked to absorb that gap cannot catch a regression.";
 
-export function envelopeBaselinePath(): string {
+function envelopeBaselinePath(): string {
 	return resolve(
 		dirname(fileURLToPath(import.meta.url)),
 		"../../baselines/envelope.json",
@@ -111,6 +131,8 @@ export interface BuildEnvelopeRecordOptions {
 	machineClass?: string;
 	status?: EnvelopeStatus;
 	caveat?: string;
+	/** The committed renderer rows, carried across a headless re-record. */
+	renderer?: readonly EnvelopeRendererRow[];
 }
 
 export function buildEnvelopeRecord(
@@ -191,6 +213,7 @@ export function buildEnvelopeRecord(
 			crossClass: ENVELOPE_CROSS_CLASS_POLICY,
 		},
 		points,
+		renderer: options.renderer ?? [],
 	};
 }
 
@@ -314,7 +337,7 @@ export async function loadCommittedEnvelope(
 	}
 	const parsed = JSON.parse(raw) as EnvelopeRecord;
 	assertEnvelopeRecord(parsed);
-	return parsed;
+	return { ...parsed, renderer: parsed.renderer ?? [] };
 }
 
 export async function writeEnvelopeRecord(

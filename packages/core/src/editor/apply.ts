@@ -13,6 +13,7 @@ import type {
 } from "@input/pen-types";
 import type { SchemaEngineImpl } from "../schema/normalize";
 import {
+	type ApplyCapture,
 	type ApplyPipelineCRDTBlockMap,
 	type ApplyPipelineInternal,
 	type ApplyPipelineMutableAppStore,
@@ -40,11 +41,13 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 	_applyStormEmitted = false;
 	_suppressObserver = false;
 	_unknownBlockTypesReported: Set<string> | undefined;
-	_unknownScanBlockCount: number | undefined;
+	_unknownScanPending = true;
+	readonly _unknownTypeCandidates = new Set<string>();
 	readonly _queue: {
 		ops: DocumentOp[];
 		origin: OpOrigin;
 		structural?: StructuralOriginTag;
+		capture?: ApplyCapture;
 	}[] = [];
 	readonly _applyBoundaryHooks: Array<
 		(event: {
@@ -201,8 +204,9 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 		ops: DocumentOp[],
 		origin: OpOrigin,
 		structural?: StructuralOriginTag,
+		capture?: ApplyCapture,
 	): void {
-		applyInternal(this, ops, origin, structural);
+		applyInternal(this, ops, origin, structural, capture);
 	}
 
 	runBeforeApplyHooks(ops: DocumentOp[], origin: OpOrigin): DocumentOp[] {
@@ -217,6 +221,15 @@ export class ApplyPipeline implements ApplyPipelineInternal {
 		this._doc = doc;
 		this._crdtDoc = crdtDoc;
 		this._engine = engine;
-		this._unknownScanBlockCount = undefined;
+		this._unknownScanPending = true;
+		this._unknownTypeCandidates.clear();
+	}
+
+	/**
+	 * Blocks a commit this pipeline did not apply stored whole or retyped (a
+	 * remote insert, an undo): the next apply checks their types (DUR3).
+	 */
+	noteExternalBlocks(blockIds: Iterable<string>): void {
+		for (const blockId of blockIds) this._unknownTypeCandidates.add(blockId);
 	}
 }

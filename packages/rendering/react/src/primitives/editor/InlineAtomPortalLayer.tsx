@@ -1,7 +1,8 @@
 import React, { createElement, useSyncExternalStore } from "react";
 import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
 import { createPortal } from "react-dom";
-import type { Editor, SelectionState } from "@input/pen-types";
+import type { BlockSelectionSlice } from "@input/pen-dom/field-editor/store";
+import type { Editor } from "@input/pen-types";
 import type {
 	InlineAtomRenderers,
 	ResolvedInlineAtomInteractions,
@@ -15,7 +16,7 @@ import {
 	subscribeInlineAtomDragSnapshot,
 } from "@input/pen-dom";
 import {
-	isInlineAtomSelected,
+	isInlineAtomSelectedInSlice,
 	type InlineAtomRenderTarget,
 } from "./inlineAtomTargets";
 
@@ -24,7 +25,8 @@ export function InlineAtomPortalLayer(props: {
 	blockId: string;
 	targets: InlineAtomRenderTarget[];
 	renderers?: InlineAtomRenderers;
-	selection: SelectionState;
+	/** This block's selection slice (SCALE6), not the editor selection. */
+	selection: BlockSelectionSlice;
 	interactions: ResolvedInlineAtomInteractions;
 	readonly: boolean;
 }) {
@@ -49,11 +51,7 @@ export function InlineAtomPortalLayer(props: {
 			return [];
 		}
 
-		const selected = isInlineAtomSelected(
-			selection,
-			blockId,
-			target.offset,
-		);
+		const selected = isInlineAtomSelectedInSlice(selection, target.offset);
 		const dragging = isInlineAtomDragSource(
 			inlineAtomDragSnapshot,
 			editor,
@@ -95,7 +93,7 @@ export function InlineAtomPortalLayer(props: {
 		targets.forEach((target) => {
 			target.element.toggleAttribute(
 				DATA_ATTRS.selected,
-				isInlineAtomSelected(selection, blockId, target.offset),
+				isInlineAtomSelectedInSlice(selection, target.offset),
 			);
 			target.element.toggleAttribute(
 				DATA_ATTRS.inlineAtomDragging,
@@ -119,11 +117,7 @@ export function InlineAtomPortalLayer(props: {
 				type: target.type,
 				text: target.text,
 				props: target.props,
-				selected: isInlineAtomSelected(
-					selection,
-					blockId,
-					target.offset,
-				),
+				selected: isInlineAtomSelectedInSlice(selection, target.offset),
 				interactions,
 				readonly,
 			}),

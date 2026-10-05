@@ -1,5 +1,6 @@
 import { cpus, loadavg, platform, release } from "node:os";
 
+/** Machine load when a clock was recorded; `busy` makes the clock unpublishable. */
 export interface EnvelopeLoadSnapshot {
 	load1: number;
 	ncpu: number;
@@ -14,6 +15,7 @@ export type EnvelopeGateClass = "macos-arm64" | "linux" | "other";
  */
 const BUSY_LOAD_FRACTION = 0.35;
 
+/** The machine class a recorded clock is stamped with (CH8). */
 export function detectMachineClass(): string {
 	const arch = process.arch;
 	const os = platform();
@@ -29,6 +31,7 @@ export function detectMachineClass(): string {
 	return `${os}-${arch}`;
 }
 
+/** The 1-minute load against logical CPUs, and whether it is too busy to record. */
 export function detectLoadSnapshot(): EnvelopeLoadSnapshot {
 	const ncpu = Math.max(1, cpus().length);
 	const load1 = loadavg()[0] ?? 0;

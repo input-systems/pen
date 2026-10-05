@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	ariaReadOnlyFacet,
 	clipboardFacet,
@@ -30,11 +30,11 @@ import {
 	adoptEditorChrome,
 	bindEditorDocumentKeyDown,
 	FieldEditorImpl,
+	bindEditorRootFocus,
 	handleFieldEditorRootFocus,
 	RegionSelectionStore,
 	registerInlineAtomInteractionRoot,
 	registerVerticalCaretMeasure,
-	type FieldEditorSession,
 	type PenFocusLifecycleListener,
 	type PenFocusPolicy,
 } from "@input/pen-dom";
@@ -92,22 +92,61 @@ export function EditorRoot(props: EditorRootProps) {
 		ref,
 		...rest
 	} = props;
-	const resolvedBlockDragAndDrop = resolveBlockDragAndDrop(
-		editorViewMode,
-		blockDragAndDrop,
+	// Memoized on their inputs so the EditorContext value below stays stable
+	// across a focus change; a fresh value re-renders every block (SCALE6).
+	const resolvedBlockDragAndDrop = useMemo(
+		() => resolveBlockDragAndDrop(editorViewMode, blockDragAndDrop),
+		[editorViewMode, blockDragAndDrop],
 	);
-	const resolvedInteractionModel = resolveInteractionModel(
-		editorViewMode,
-		interactionModel,
+	const resolvedInteractionModel = useMemo(
+		() => resolveInteractionModel(editorViewMode, interactionModel),
+		[editorViewMode, interactionModel],
 	);
-	const resolvedBlockSelection = resolveBlockSelection(blockSelection);
-	const resolvedInlineAtomInteractions = resolveInlineAtomInteractions(
-		inlineAtomInteractions,
+	const resolvedBlockSelection = useMemo(
+		() => resolveBlockSelection(blockSelection),
+		[blockSelection],
+	);
+	const resolvedInlineAtomInteractions = useMemo(
+		() => resolveInlineAtomInteractions(inlineAtomInteractions),
+		[inlineAtomInteractions],
+	);
+	const documentProfile = editor.documentProfile;
+	const editorContextValue = useMemo(
+		() => ({
+			editor,
+			readonly,
+			documentProfile,
+			editorViewMode,
+			interactionModel: resolvedInteractionModel,
+			blockDragAndDrop: resolvedBlockDragAndDrop,
+			blockSelection: resolvedBlockSelection,
+			blockControls,
+			importers,
+			assets: assets ?? importers?.assets,
+			renderers,
+			inlineAtomRenderers,
+			inlineAtomInteractions: resolvedInlineAtomInteractions,
+		}),
+		[
+			editor,
+			readonly,
+			documentProfile,
+			editorViewMode,
+			resolvedInteractionModel,
+			resolvedBlockDragAndDrop,
+			resolvedBlockSelection,
+			blockControls,
+			importers,
+			assets,
+			renderers,
+			inlineAtomRenderers,
+			resolvedInlineAtomInteractions,
+		],
 	);
 	const [focused, setFocused] = useState(false);
 	const [rootElement, setRootElement] = useState<HTMLElement | null>(null);
 	const isEmpty = useDocumentEmptyState(editor);
-	const fieldEditorRef = useRef<FieldEditorSession | null>(null);
+	const fieldEditorRef = useRef<FieldEditorImpl | null>(null);
 	const regionSelectionStoreRef = useRef<RegionSelectionStore | null>(null);
 	const rootRef = useRef<HTMLElement | null>(null);
 	const mountedEditorRef = useRef<Editor>(editor);
@@ -126,6 +165,11 @@ export function EditorRoot(props: EditorRootProps) {
 	if (!regionSelectionStoreRef.current) {
 		regionSelectionStoreRef.current = new RegionSelectionStore();
 	}
+	const regionSelectionStore = regionSelectionStoreRef.current;
+	const regionSelectionContextValue = useMemo(
+		() => ({ rootElement, setRootElement, store: regionSelectionStore }),
+		[rootElement, regionSelectionStore],
+	);
 
 	useIsomorphicLayoutEffect(() => {
 		if (chrome === false) {
@@ -148,6 +192,11 @@ export function EditorRoot(props: EditorRootProps) {
 		fieldEditorRef.current?.setFocusPolicy(focusPolicy);
 	}, [focusPolicy]);
 
+	// O5: the renderer `readonly` prop, not the pen.ariaReadOnly facet (AX1).
+	useEffect(() => {
+		fieldEditorRef.current?.setReadOnly(readonly);
+	}, [readonly]);
+
 	useEffect(() => {
 		if (!onFocusLifecycle) {
 			return;
@@ -162,34 +211,21 @@ export function EditorRoot(props: EditorRootProps) {
 			return;
 		}
 
-		const handleFocusIn = (event: FocusEvent) => {
-			setFocused(true);
-			fieldEditor.setFocused(true);
-			handleFieldEditorRootFocus({
-				event,
-				editor,
-				fieldEditor,
-				root,
-				readonly,
-			});
-		};
-
-		const handleFocusOut = () => {
-			const ownerDocument = root.ownerDocument;
-			const activeElement = ownerDocument?.activeElement;
-			const nextFocused =
-				activeElement instanceof Node && root.contains(activeElement);
-			setFocused(nextFocused);
-			fieldEditor.setFocused(nextFocused);
-		};
-
-		root.addEventListener("focusin", handleFocusIn);
-		root.addEventListener("focusout", handleFocusOut);
-
-		return () => {
-			root.removeEventListener("focusin", handleFocusIn);
-			root.removeEventListener("focusout", handleFocusOut);
-		};
+		return bindEditorRootFocus(root, {
+			onFocusChange(nextFocused) {
+				setFocused(nextFocused);
+				fieldEditor.setFocused(nextFocused);
+			},
+			onFocusIn(event) {
+				handleFieldEditorRootFocus({
+					event,
+					editor,
+					fieldEditor,
+					root,
+					readonly,
+				});
+			},
+		});
 	}, [editor, readonly, rootElement]);
 
 	useEffect(() => {
@@ -224,6 +260,9 @@ export function EditorRoot(props: EditorRootProps) {
 	}, [editor, importers, resolvedAssets]);
 
 	useEffect(() => {
+		// Strict Mode runs this cleanup and then this effect again on the same
+		// instance; connect re-attaches what destroy released (HB2).
+		fieldEditorRef.current?.connect();
 		editor.internals.assignSlot(
 			FIELD_EDITOR_SLOT_KEY,
 			fieldEditorRef.current,
@@ -320,30 +359,10 @@ export function EditorRoot(props: EditorRootProps) {
 	};
 
 	return (
-		<EditorContext.Provider
-			value={{
-				editor,
-				readonly,
-				documentProfile: editor.documentProfile,
-				editorViewMode,
-				interactionModel: resolvedInteractionModel,
-				blockDragAndDrop: resolvedBlockDragAndDrop,
-				blockSelection: resolvedBlockSelection,
-				blockControls,
-				importers,
-				assets: resolvedAssets,
-				renderers,
-				inlineAtomRenderers,
-				inlineAtomInteractions: resolvedInlineAtomInteractions,
-			}}
-		>
+		<EditorContext.Provider value={editorContextValue}>
 			<BlockDragSessionProvider viewId={editor.internals.viewId}>
 				<EditorRegionSelectionContext.Provider
-					value={{
-						rootElement,
-						setRootElement,
-						store: regionSelectionStoreRef.current,
-					}}
+					value={regionSelectionContextValue}
 				>
 					<FieldEditorContext.Provider value={fieldEditorRef.current}>
 						{renderAsChild(

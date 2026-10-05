@@ -1,6 +1,11 @@
 #!/usr/bin/env node
+/**
+ * Writes packages/tooling/test/ENVELOPE.md from the fixture metadata.
+ * `--check` compares instead and exits 1 on drift; the bench-envelope-drift gate
+ * (scripts/bench-envelope-drift.mjs) runs it next to the bench table check.
+ */
 import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -72,11 +77,23 @@ function formatGrade(cell) {
 	return `${cell.display} (${cell.suite})`;
 }
 
-const metadata = JSON.parse(readFileSync(METADATA_PATH, "utf8"));
-const markdown = renderEnvelopeMarkdown(metadata);
+function main() {
+	const metadata = JSON.parse(readFileSync(METADATA_PATH, "utf8"));
+	const markdown = renderEnvelopeMarkdown(metadata);
+	if (process.argv.includes("--stdout")) {
+		process.stdout.write(markdown);
+	} else if (process.argv.includes("--check")) {
+		if (readFileSync(OUTPUT_PATH, "utf8") !== markdown) {
+			console.error(
+				"packages/tooling/test/ENVELOPE.md drifted from its fixture metadata. Regenerate with `node scripts/envelope-table.mjs`.",
+			);
+			process.exit(1);
+		}
+	} else {
+		writeFileSync(OUTPUT_PATH, markdown);
+	}
+}
 
-if (process.argv.includes("--stdout")) {
-	process.stdout.write(markdown);
-} else {
-	writeFileSync(OUTPUT_PATH, markdown);
+if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
+	main();
 }

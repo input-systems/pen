@@ -1,3 +1,4 @@
+import { withGatedRung } from "./envelopeRecordFixtures";
 import { assertPeerEditsSurvive, createTestEditor } from "@input/pen-test";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
@@ -49,6 +50,7 @@ import {
 	measurePeerTokenSurvival,
 	measureNestingDepth,
 	measurePublishedCount,
+	measureSharedSeedPeerCount,
 } from "../fixtures/envelope";
 import { parseBenchCLIArgs } from "../run";
 import {
@@ -346,7 +348,9 @@ describe("SCALE1 envelope ladder", () => {
 		expect(peers?.actualSubject).toMatch(/Peer B does not write/);
 		expect(peers?.floorKind).toBe("empty-sync");
 		expect(peers?.countTrust).toBe("trusted");
-		expect(peers?.clockTrust).toBe("untrustworthy");
+		// The 2026-10-02 quiet record reproduced the isolated run, so the row
+		// takes its clock trust from the record like the ladder rungs.
+		expect(peers?.clockTrust).toBe("record");
 		expect(peers?.howMeasured).toMatch(/B observation asserted before the clock/);
 	});
 
@@ -406,7 +410,13 @@ describe("SCALE1 envelope ladder", () => {
 	});
 
 	it("SCALE1: a 3x attributed median on a gated rung stays at the gate", async () => {
-		const committed = await loadCommittedEnvelope();
+		// A quiet record can leave every rung under the 0.5ms signal, so the
+		// gated rung is built here rather than borrowed from the baseline.
+		const committed = withGatedRung(
+			await loadCommittedEnvelope(),
+			"blocks-1000",
+			2,
+		);
 		const gated = committed.points.find((point) => point.id === "blocks-1000");
 		expect(gated?.gated).toBe(true);
 		expect(gated?.gateP50Ms).toBe(envelopeGateP50Ms(gated!.attributedP50Ms));
@@ -444,6 +454,28 @@ describe("SCALE1 envelope ladder", () => {
 		expect(formatEnvelopeDrift(drift)).toMatch(
 			/blocks-1000 count 10 !== committed 1000/,
 		);
+	});
+
+	it("SCALE1: the concurrent-peer count is measured, not the constant", () => {
+		expect(measureSharedSeedPeerCount()).toBe(2);
+		expect(measureSharedSeedPeerCount(5)).toBe(5);
+	});
+
+	it("SCALE1: a dropped delivery moves concurrentPeers-2 below 2 and fails drift by name", async () => {
+		// Peer a's update reaches b, but b's never reaches a.
+		const measured = measureSharedSeedPeerCount(2, (harness) =>
+			harness.deliver(0, 1),
+		);
+		expect(measured).toBeLessThan(2);
+
+		const committed = await loadCommittedEnvelope();
+		const fresh = withCount(committed, "concurrentPeers-2", measured);
+		const drift = compareEnvelopeDrift(fresh, committed);
+		expect(drift.ok).toBe(false);
+		expect(drift.failures.map((failure) => failure.id)).toEqual([
+			"concurrentPeers-2",
+		]);
+		expect(drift.failures[0]?.reason).toBe("count");
 	});
 
 	it("SCALE1: a median past the committed same-class gate fails drift", () => {

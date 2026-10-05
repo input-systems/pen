@@ -1,3 +1,8 @@
+import type { RawCommitDelta, YArrayDelta } from "@input/pen-yjs";
+
+import { PositionedList } from "../editor/positionedList";
+import { asMap, readStringArray, storedText } from "./readStored";
+import { logicalLengthFromStored } from "./summaryBuilder";
 import type { BlockTextChange, TextSplice } from "./types";
 
 export interface BlockIndexSnapshot {
@@ -5,7 +10,6 @@ export interface BlockIndexSnapshot {
 	readonly typeById: ReadonlyMap<string, string>;
 	readonly parentById: ReadonlyMap<string, string | null>;
 	readonly childrenByParentId: ReadonlyMap<string | null, readonly string[]>;
-	readonly order: readonly string[];
 	readonly roots: readonly string[];
 }
 
@@ -13,16 +17,43 @@ export interface BlockIndex {
 	snapshot(): BlockIndexSnapshot;
 	/**
 	 * Advance block lengths for a commit that changed text only. Structural
-	 * commits re-read the document through `replace` instead, so the index
-	 * still resolves its shape from storage rather than from summary replay.
+	 * commits go through `applyStructure`, so the index still resolves its
+	 * shape from storage rather than from summary replay.
 	 */
 	applyTextLengths(blockText: readonly BlockTextChange[]): void;
+	/**
+	 * Advance the index in place for a structural commit, in proportion to
+	 * what it touched (SCALE2): the root order's delta is applied to the held
+	 * roots, each touched `children` array is advanced by its delta or re-read
+	 * with its owner, and `named` blocks have their text length re-read.
+	 * Returns false, leaving the index to be replaced from the document, for a
+	 * commit it cannot advance exactly: an id listed in more than one array
+	 * entry (COL4), whose parent the full build resolves by visit order, or a
+	 * delta that does not fit the held arrays.
+	 */
+	applyStructure(
+		readBlock: StoredBlockReader,
+		delta: RawCommitDelta,
+		named: ReadonlySet<string>,
+	): boolean;
+	/** Whether the index lists the id in more than one array entry (COL4). */
+	listedMoreThanOnce(blockId: string): boolean;
+	/** The id's position in the held root order, or -1; O(1) while no id is listed twice. */
+	rootIndexOf(blockId: string): number;
+	/** Takes ownership of a freshly built snapshot; the caller must not keep it. */
 	replace(snapshot: BlockIndexSnapshot): void;
 }
+
+/** Reads a block's stored map (`undefined` when none), once per id per commit. */
+export type StoredBlockReader = (blockId: string) => unknown;
 
 /** The clone the index holds; `snapshot()` hands it out read-only. */
 interface OwnedBlockIndexSnapshot extends BlockIndexSnapshot {
 	readonly lengthById: Map<string, number>;
+	readonly typeById: Map<string, string>;
+	readonly parentById: Map<string, string | null>;
+	readonly childrenByParentId: Map<string | null, readonly string[]>;
+	roots: readonly string[];
 }
 
 export function emptyBlockIndexSnapshot(): BlockIndexSnapshot {
@@ -31,7 +62,6 @@ export function emptyBlockIndexSnapshot(): BlockIndexSnapshot {
 		typeById: new Map(),
 		parentById: new Map(),
 		childrenByParentId: new Map([[null, []]]),
-		order: [],
 		roots: [],
 	};
 }
@@ -66,7 +96,6 @@ export function createBlockIndexSnapshot(input: {
 		typeById,
 		parentById,
 		childrenByParentId,
-		order: flattenOrder(roots, childrenByParentId),
 		roots,
 	};
 }
@@ -77,6 +106,17 @@ export function createEmptyBlockIndex(): BlockIndex {
 
 export function createBlockIndex(initial: BlockIndexSnapshot): BlockIndex {
 	let current = cloneSnapshot(initial);
+	/** Array entries per id, built on the first structural read after a replace. */
+	let listings: Listings | null = null;
+	const listingsOf = (): Listings => {
+		listings ??= countListings(current);
+		return listings;
+	};
+	/**
+	 * Positions over the held root order itself, built on first lookup while
+	 * no id is listed twice; the advance splices the order through it.
+	 */
+	let rootPositions: PositionedList | null = null;
 	return {
 		snapshot() {
 			return current;
@@ -90,10 +130,268 @@ export function createBlockIndex(initial: BlockIndexSnapshot): BlockIndex {
 				);
 			}
 		},
+		applyStructure(readBlock, delta, named) {
+			const advanced = advanceStructure(
+				current,
+				listingsOf(),
+				readBlock,
+				delta,
+				named,
+				rootPositions,
+			);
+			// A refused advance may have moved some entries; the caller
+			// replaces the whole index, and the counts are rebuilt from it.
+			if (!advanced) {
+				listings = null;
+				rootPositions = null;
+			}
+			return advanced;
+		},
+		listedMoreThanOnce(blockId) {
+			return (listingsOf().count.get(blockId) ?? 0) > 1;
+		},
+		rootIndexOf(blockId) {
+			if (listingsOf().multiListed > 0) return current.roots.indexOf(blockId);
+			rootPositions ??= PositionedList.of(current.roots as string[]);
+			return rootPositions
+				? rootPositions.indexOf(blockId)
+				: current.roots.indexOf(blockId);
+		},
 		replace(snapshot) {
-			current = cloneSnapshot(snapshot);
+			// Fresh from createBlockIndexSnapshot, which already built new maps;
+			// cloning again would copy every entry a second time.
+			current = snapshot as OwnedBlockIndexSnapshot;
+			listings = null;
+			rootPositions = null;
 		},
 	};
+}
+
+interface Listings {
+	/** Entries naming each id across the root order and every stored `children` array. */
+	readonly count: Map<string, number>;
+	/** Ids with more than one entry; the incremental advance refuses while any exists. */
+	multiListed: number;
+}
+
+function countListings(snapshot: BlockIndexSnapshot): Listings {
+	const count = new Map<string, number>();
+	let multiListed = 0;
+	for (const children of snapshot.childrenByParentId.values()) {
+		for (const childId of children) {
+			const next = (count.get(childId) ?? 0) + 1;
+			count.set(childId, next);
+			if (next === 2) multiListed += 1;
+		}
+	}
+	return { count, multiListed };
+}
+
+type Entry = readonly [childId: string, parentId: string | null];
+
+/**
+ * The commit's array edits as entries removed and added, applied to a copy
+ * of `pre`, or to `pre` itself when `inPlace` — through `positions` when it
+ * holds `pre`. Null when an op runs past the held array, inserts a non-id,
+ * or would list an id twice in `positions`.
+ */
+function applyArrayDelta(
+	pre: readonly string[],
+	delta: YArrayDelta,
+	parentId: string | null,
+	removed: Entry[],
+	added: Entry[],
+	inPlace = false,
+	positions: PositionedList | null = null,
+): string[] | null {
+	const next = inPlace ? (pre as string[]) : pre.slice();
+	if (positions) return applyThroughPositions(positions, delta, parentId, removed, added) ? next : null;
+	let at = 0;
+	for (const op of delta) {
+		if (op.retain != null) {
+			at += op.retain;
+			if (at > next.length) return null;
+		} else if (op.delete != null) {
+			if (at + op.delete > next.length) return null;
+			for (const childId of next.splice(at, op.delete)) {
+				removed.push([childId, parentId]);
+			}
+		} else if (op.insert) {
+			const ids: string[] = [];
+			for (const value of op.insert) {
+				if (typeof value !== "string") return null;
+				ids.push(value);
+				added.push([value, parentId]);
+			}
+			next.splice(at, 0, ...ids);
+			at += ids.length;
+		}
+	}
+	return next;
+}
+
+/**
+ * The same edits through a positions list: every delete first, in
+ * pre-commit indexes from the back, then the inserts in post-commit indexes,
+ * so a move within the array never lists its block twice.
+ */
+function applyThroughPositions(
+	positions: PositionedList,
+	delta: YArrayDelta,
+	parentId: string | null,
+	removed: Entry[],
+	added: Entry[],
+): boolean {
+	const deletes: [at: number, count: number][] = [];
+	const inserts: [at: number, ids: string[]][] = [];
+	let before = 0;
+	let after = 0;
+	for (const op of delta) {
+		if (op.retain != null) {
+			before += op.retain;
+			after += op.retain;
+			if (before > positions.length) return false;
+		} else if (op.delete != null) {
+			deletes.push([before, op.delete]);
+			before += op.delete;
+		} else if (op.insert) {
+			const ids: string[] = [];
+			for (const value of op.insert) {
+				if (typeof value !== "string") return false;
+				ids.push(value);
+				added.push([value, parentId]);
+			}
+			inserts.push([after, ids]);
+			after += ids.length;
+		}
+	}
+	for (let k = deletes.length - 1; k >= 0; k -= 1) {
+		const gone = positions.splice(deletes[k]![0], deletes[k]![1]);
+		if (!gone) return false;
+		for (const childId of gone) removed.push([childId, parentId]);
+	}
+	for (const [at, ids] of inserts) {
+		if (!positions.splice(at, 0, ids)) return false;
+	}
+	return true;
+}
+
+function readLength(block: { get(key: string): unknown }): number {
+	return logicalLengthFromStored(storedText(block.get("content")));
+}
+
+/** Block-map keys that change the block's type or replace its `children` array. */
+function rereadsBlock(keys: ReadonlySet<string>): boolean {
+	return keys.size === 0 || keys.has("type") || keys.has("children");
+}
+
+/**
+ * The advance `applyStructure` documents. Every structure the full build
+ * derives without regard to visit order — the type and length of each stored
+ * block, each stored block's `children`, the length-0 entry of a listed id
+ * with no block map, and each singly listed id's parent — is a function of the
+ * arrays and maps the delta names, so only those are read.
+ */
+function advanceStructure(
+	index: OwnedBlockIndexSnapshot,
+	listings: Listings,
+	readBlock: StoredBlockReader,
+	delta: RawCommitDelta,
+	named: ReadonlySet<string>,
+	rootPositions: PositionedList | null,
+): boolean {
+	if (listings.multiListed > 0) return false;
+	const removed: Entry[] = [];
+	const added: Entry[] = [];
+
+	if (delta.blockOrderDelta.length > 0) {
+		// In place: the index owns its root order, and a refused advance
+		// replaces the whole index, so a partly applied delta is never read.
+		// A copy would cost the whole order on every root edit (SCALE2).
+		const roots = applyArrayDelta(
+			index.roots,
+			delta.blockOrderDelta,
+			null,
+			removed,
+			added,
+			true,
+			rootPositions,
+		);
+		if (!roots) return false;
+		index.roots = roots;
+		index.childrenByParentId.set(null, roots);
+	}
+
+	const reread = new Map<string, ReadonlySet<string>>();
+	for (const [blockId, keys] of delta.blockMapChanges) {
+		if (rereadsBlock(keys)) reread.set(blockId, keys);
+	}
+	for (const blockId of delta.arrivedChildArrays?.keys() ?? []) {
+		if (!reread.has(blockId)) reread.set(blockId, new Set(["children"]));
+	}
+	for (const [parentId, arrayDelta] of delta.childArrayDeltas) {
+		if (reread.has(parentId)) continue;
+		const pre = index.childrenByParentId.get(parentId);
+		const next = pre
+			? applyArrayDelta(pre, arrayDelta, parentId, removed, added)
+			: null;
+		if (next) index.childrenByParentId.set(parentId, next);
+		else reread.set(parentId, new Set(["children"]));
+	}
+
+	const settle = new Set<string>();
+	for (const [blockId, keys] of reread) {
+		settle.add(blockId);
+		const pre = index.childrenByParentId.get(blockId);
+		for (const childId of pre ?? []) removed.push([childId, blockId]);
+		const block = asMap(readBlock(blockId));
+		if (!block) {
+			index.childrenByParentId.delete(blockId);
+			index.typeById.delete(blockId);
+			continue;
+		}
+		const wasStored = index.typeById.has(blockId);
+		const type = block.get("type");
+		index.typeById.set(blockId, typeof type === "string" ? type : "");
+		if (!wasStored || keys.size === 0 || named.has(blockId)) {
+			index.lengthById.set(blockId, readLength(block));
+		}
+		const children = readStringArray(block.get("children"));
+		index.childrenByParentId.set(blockId, children);
+		for (const childId of children) added.push([childId, blockId]);
+	}
+
+	// Every removal first, so a move within the commit never counts its
+	// block twice.
+	for (const [childId, parentId] of removed) {
+		settle.add(childId);
+		const count = listings.count.get(childId) ?? 0;
+		if (count !== 1 || index.parentById.get(childId) !== parentId) {
+			return false;
+		}
+		listings.count.delete(childId);
+		index.parentById.delete(childId);
+	}
+	for (const [childId, parentId] of added) {
+		settle.add(childId);
+		if (listings.count.has(childId)) return false;
+		listings.count.set(childId, 1);
+		index.parentById.set(childId, parentId);
+	}
+
+	// A listed id without a block map holds length 0; an id neither listed
+	// nor stored leaves the index.
+	for (const blockId of settle) {
+		if (index.typeById.has(blockId)) continue;
+		if (listings.count.has(blockId)) index.lengthById.set(blockId, 0);
+		else index.lengthById.delete(blockId);
+	}
+	for (const blockId of named) {
+		if (reread.has(blockId) || !index.typeById.has(blockId)) continue;
+		const block = asMap(readBlock(blockId));
+		if (block) index.lengthById.set(blockId, readLength(block));
+	}
+	return true;
 }
 
 function lengthAfterSplices(
@@ -107,32 +405,15 @@ function lengthAfterSplices(
 	return Math.max(0, next);
 }
 
-function cloneSnapshot(
-	snapshot: BlockIndexSnapshot,
-): OwnedBlockIndexSnapshot {
+function cloneSnapshot(snapshot: BlockIndexSnapshot): OwnedBlockIndexSnapshot {
+	const childrenByParentId = cloneChildren(snapshot.childrenByParentId);
 	return {
 		lengthById: new Map(snapshot.lengthById),
 		typeById: new Map(snapshot.typeById),
 		parentById: new Map(snapshot.parentById),
-		childrenByParentId: cloneChildren(snapshot.childrenByParentId),
-		order: [...snapshot.order],
+		childrenByParentId,
 		roots: [...snapshot.roots],
 	};
-}
-
-function flattenOrder(
-	roots: readonly string[],
-	childrenByParentId: ReadonlyMap<string | null, readonly string[]>,
-): string[] {
-	const order: string[] = [];
-	const visit = (id: string) => {
-		order.push(id);
-		for (const child of childrenByParentId.get(id) ?? []) {
-			visit(child);
-		}
-	};
-	for (const root of roots) visit(root);
-	return order;
 }
 
 function cloneChildren(

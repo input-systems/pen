@@ -1,4 +1,5 @@
 import {
+	insertText,
 	isCollapsed,
 	isMultiBlock,
 	usesInlineTextSelection,
@@ -8,8 +9,10 @@ import {
 	type Editor,
 	type InteractionModel,
 } from "@input/pen-types";
+import { FOCUS_SINK_ATTR } from "../a11y/focusSink";
 import {
 	activateFieldEditorFromSelection,
+	dispatchAndActivate,
 	keymapContextFromSelection,
 } from "../field-editor/commandDispatch";
 import type { FieldEditorSession } from "../field-editor/controller";
@@ -18,8 +21,12 @@ import {
 	handleSelectAllShortcut,
 } from "../field-editor/keyHandling";
 import { dispatchKeymapEvent } from "../field-editor/keymap";
-import { domSelectionToEditor } from "../field-editor/selectionBridge";
+import {
+	isCompositionKeyDown,
+	isUndecidedCompositionKeyDown,
+} from "./compositionKeyDown";
 import { DATA_ATTRS } from "./dataAttributes";
+import { isDomHTMLElement } from "./domNodes";
 import { handleEscapeSelectionTransition } from "./escapeSelection";
 import { handleTableCellSelectionKeyDown } from "./tableCellNavigation";
 import { shouldHandleEditorKeyboardEvent } from "./textEntryTarget";
@@ -58,9 +65,13 @@ export function bindEditorDocumentKeyDown(
 				event,
 				selection: editor.selection,
 				hasMappedDomSelection: () =>
-					domSelectionToEditor(root) !== null,
+					fieldEditor.reader?.hasSelectionInRoot() ?? false,
 			})
 		) {
+			return;
+		}
+		// D20: not prevented, so the composition starts in the field.
+		if (handleSubstituteCompositionKeyDown(event, editor, fieldEditor)) {
 			return;
 		}
 		if (
@@ -109,7 +120,7 @@ export function handleEditorDocumentKeyDown(options: {
 	const { event, editor, fieldEditor, interactionModel, root } = options;
 
 	return (
-		handleEscapeSelectionTransition({ event, editor, fieldEditor, root }) ||
+		handleEscapeSelectionTransition({ event, editor, fieldEditor }) ||
 		handleDeleteSelectionShortcut(event, editor, fieldEditor, root) ||
 		handleTableCellSelectionKeyDown({ event, editor, fieldEditor, root }) ||
 		handleSelectAllShortcut(editor, event, fieldEditor) ||
@@ -120,8 +131,118 @@ export function handleEditorDocumentKeyDown(options: {
 			interactionModel,
 		) ||
 		handleBlockSelectionArrow(event, editor, fieldEditor) ||
-		handleHistoryShortcut(editor, event)
+		handleHistoryShortcut(editor, event) ||
+		handleSubstituteRangeKeyDown(event, editor, fieldEditor)
 	);
+}
+
+/**
+ * D5: a text range in a substitute state keeps focus on the sink, which is
+ * not editable, so the sink's keys reach the authority here.
+ */
+function isSubstituteSinkKey(
+	event: KeyboardEvent,
+	editor: Editor,
+	fieldEditor: FieldEditorSession,
+): boolean {
+	const target = event.target as { hasAttribute?: unknown } | null;
+	return (
+		typeof target?.hasAttribute === "function" &&
+		(target as Element).hasAttribute(FOCUS_SINK_ATTR) &&
+		editor.selection?.type === "text" &&
+		fieldEditor.getSubstituteState() !== null
+	);
+}
+
+function isPrintableKey(event: KeyboardEvent): boolean {
+	return (
+		!event.metaKey &&
+		!event.ctrlKey &&
+		!event.altKey &&
+		[...event.key].length === 1
+	);
+}
+
+/**
+ * D20: a composition keystroke over a D5 range deletes the range and
+ * projects the caret into its field, focused in this `keydown` turn, so the
+ * composition starts there. An undecided keystroke (an Android keyboard's
+ * keyCode 229, which may be Backspace) is left alone: the sink is not
+ * editable, so the input that would decide it never reaches the sink, and
+ * deleting on the keydown would let that input delete again.
+ */
+function handleSubstituteCompositionKeyDown(
+	event: KeyboardEvent,
+	editor: Editor,
+	fieldEditor: FieldEditorSession,
+): boolean {
+	const undecided = isUndecidedCompositionKeyDown(event);
+	if (
+		(!undecided && !isCompositionKeyDown(event)) ||
+		!isSubstituteSinkKey(event, editor, fieldEditor)
+	) {
+		return false;
+	}
+	if (!undecided) {
+		deleteTextRangeAndActivate(editor, fieldEditor);
+	}
+	return true;
+}
+
+/**
+ * D5: the sink routes the text keymap against the authority, as a field
+ * does with no DOM range. A printable key replaces the range with one
+ * `pen.insertText`, mirroring the cell printable path.
+ */
+function handleSubstituteRangeKeyDown(
+	event: KeyboardEvent,
+	editor: Editor,
+	fieldEditor: FieldEditorSession,
+): boolean {
+	if (!isSubstituteSinkKey(event, editor, fieldEditor)) {
+		return false;
+	}
+	if (isPrintableKey(event)) {
+		return dispatchAndActivate(
+			editor,
+			fieldEditor,
+			insertText,
+			{ text: event.key },
+			{ fromKeymap: true },
+		);
+	}
+	if (
+		!dispatchKeymapEvent(editor, event, {
+			composing: false,
+			context: keymapContextFromSelection(editor.selection, false),
+		})
+	) {
+		return false;
+	}
+	activateFieldEditorFromSelection(editor, fieldEditor);
+	return true;
+}
+
+/** Deletes a non-collapsed text range and projects the resulting caret into its field. */
+function deleteTextRangeAndActivate(
+	editor: Editor,
+	fieldEditor: FieldEditorSession,
+): void {
+	if (editor.selection?.type === "text" && isMultiBlock(editor.selection)) {
+		fieldEditor.deactivate();
+	}
+	editor.deleteSelection({ origin: "user" });
+	const nextSelection = editor.selection;
+	if (nextSelection?.type === "text") {
+		fieldEditor.activateTextSelection(
+			nextSelection.focus.blockId,
+			nextSelection.focus.offset,
+			nextSelection.focus.offset,
+			{ origin: "keyboard" },
+		);
+	} else {
+		fieldEditor.deactivate();
+	}
 }
 
 function handleBlockSelectionArrow(
@@ -193,7 +314,9 @@ function handleBlockSelectionEnter(
 		usesInlineTextSelection(anchorSchema)
 	) {
 		const offset = anchorBlock.length();
-		fieldEditor.activateTextSelection(anchorBlockId, offset, offset);
+		fieldEditor.activateTextSelection(anchorBlockId, offset, offset, {
+			origin: "keyboard",
+		});
 		return true;
 	}
 
@@ -212,7 +335,7 @@ function handleBlockSelectionEnter(
 		{ origin: "user" },
 	);
 
-	fieldEditor.activateTextSelection(newBlockId, 0, 0);
+	fieldEditor.activateTextSelection(newBlockId, 0, 0, { origin: "keyboard" });
 	return true;
 }
 
@@ -247,20 +370,7 @@ function handleDeleteSelectionShortcut(
 		) {
 			return false;
 		}
-		if (isMultiBlock(selection)) {
-			fieldEditor.deactivate();
-		}
-		editor.deleteSelection({ origin: "user" });
-		const nextSelection = editor.selection;
-		if (nextSelection?.type === "text") {
-			fieldEditor.activateTextSelection(
-				nextSelection.focus.blockId,
-				nextSelection.focus.offset,
-				nextSelection.focus.offset,
-			);
-		} else {
-			fieldEditor.deactivate();
-		}
+		deleteTextRangeAndActivate(editor, fieldEditor);
 		return true;
 	}
 
@@ -271,7 +381,9 @@ function handleDeleteSelectionShortcut(
 		if (firstBlock) {
 			const schema = editor.schema.resolve(firstBlock.type);
 			if (usesInlineTextSelection(schema)) {
-				fieldEditor.activateTextSelection(firstBlock.id, 0, 0);
+				fieldEditor.activateTextSelection(firstBlock.id, 0, 0, {
+					origin: "keyboard",
+				});
 			}
 		}
 		return true;
@@ -338,7 +450,7 @@ function shouldUseDocumentTextDeletionFallback(
 
 	const activeElement = root.ownerDocument?.activeElement;
 	if (
-		!(activeElement instanceof HTMLElement) ||
+		!isDomHTMLElement(activeElement) ||
 		!root.contains(activeElement)
 	) {
 		return true;

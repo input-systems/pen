@@ -1,20 +1,22 @@
 import type {
 	AttributionRange,
+	Awareness,
 	CRDTAdapter,
 	CRDTDocument,
 	LoadDocumentOptions,
 } from "@input/pen-types";
 import * as Y from "yjs";
 
-import { createYjsAwareness } from "./awareness";
 import {
+	BLOCKS,
+	isMapKeyDeleted,
 	asYjsDoc,
 	createYjsDocument,
 	getDocumentProfile as getPersistedDocumentProfile,
 	initBlockMap,
 	setDocumentProfile as setPersistedDocumentProfile,
 } from "./document";
-import type { BlockContentType } from "./document";
+import type { BlockContentType, YjsCRDTDocument } from "./document";
 import {
 	createObserver,
 	createRemoteUpdateOrigin,
@@ -46,7 +48,17 @@ export interface YjsAdapterOptions {
 	gc?: boolean;
 	onDiagnostic?: (diagnostic: CRDTDiagnostic) => void;
 	onRecovered?: (method: RecoveredMethod) => void;
+	/**
+	 * Awareness factory, normally `createYjsAwareness` from
+	 * `@input/pen-yjs/awareness`. Absent: the adapter creates no awareness and
+	 * `editor.internals.awareness` stays `null` until an extension (the
+	 * multiplayer extension) ensures one for its scope (API2).
+	 */
+	awareness?: YjsAwarenessFactory;
 }
+
+/** Builds a scope's awareness from its Yjs document. */
+export type YjsAwarenessFactory = (doc: YjsCRDTDocument) => Awareness;
 
 interface YTextItem {
 	id: { client: number };
@@ -134,6 +146,10 @@ export function yjsAdapter(options?: YjsAdapterOptions): CRDTAdapter {
 			return asYjsDoc(doc).ydoc.clientID;
 		},
 
+		isBlockDeleted(doc, blockId) {
+			return isMapKeyDeleted(asYjsDoc(doc).ydoc.getMap(BLOCKS), blockId);
+		},
+
 		getDocumentProfile(doc) {
 			return getPersistedDocumentProfile(doc);
 		},
@@ -173,9 +189,6 @@ export function yjsAdapter(options?: YjsAdapterOptions): CRDTAdapter {
 			return createYjsUndoManager(asYjsDoc(doc), undoOptions);
 		},
 
-		createAwareness(doc) {
-			return createYjsAwareness(asYjsDoc(doc));
-		},
 
 		createSnapshot(doc) {
 			return createYjsSnapshot(asYjsDoc(doc));
@@ -247,6 +260,11 @@ export function yjsAdapter(options?: YjsAdapterOptions): CRDTAdapter {
 			return resolveRelativePosition(doc, encoded, options);
 		},
 	};
+
+	const awarenessFactory = options?.awareness;
+	if (awarenessFactory) {
+		adapter.createAwareness = (doc) => awarenessFactory(asYjsDoc(doc));
+	}
 
 	return adapter;
 }

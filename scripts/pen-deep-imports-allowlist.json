@@ -1,4 +1,0 @@
-{
-  "_comment": "API4 (spec/rules/api.md): known @input/pen-* /src/, /dist/, or unpublished-subpath imports in packages, examples, and playground. Each entry needs file, a positive integer line, specifier, and a non-empty reason. Remove an entry in the same PR that deletes the import.",
-  "entries": []
-}

@@ -1,5 +1,5 @@
 {
-  "_comment": "API6 (spec/rules/api.md): renderer modules that import neither their framework nor a framework type. Re-export stubs are not listed — they are the P.6 end state. Each entry needs file and reason. Remove an entry in the same PR that relocates the module or adds a framework import.",
+  "_comment": "API6 (spec/rules/api.md): renderer modules that import neither their framework nor a framework type. Re-export stubs are not listed \u2014 they are the P.6 end state. Each entry needs file and reason. Remove an entry in the same PR that relocates the module or adds a framework import.",
   "modules": [
     {
       "file": "packages/rendering/react/src/hooks/inlineSuggestionControlUtils.ts",
@@ -68,6 +68,10 @@
     {
       "file": "packages/rendering/react/src/hooks/useInlineCompletionState.ts",
       "reason": "React hook; framework coupling is through a local store wrapper, not a react import"
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/useNumberedListItemValue.ts",
+      "reason": "React hook; framework coupling is through useBlockSlice (useSyncExternalStore over the block notifier), not a react import"
     },
     {
       "file": "packages/rendering/react/src/hooks/useSuggestMode.ts",

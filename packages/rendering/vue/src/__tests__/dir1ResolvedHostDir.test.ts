@@ -2,7 +2,6 @@
 
 import {
 	blockDirectionFacet,
-	defaultDirectionFacet,
 	defineExtension,
 	resolveBlockDirection,
 } from "@input/pen-core";
@@ -30,137 +29,77 @@ function hostDir(
 	return wrapper.get(`[data-block-id="${blockId}"]`).attributes("dir");
 }
 
+// First-strong text and pen.defaultDirection are core's resolution, covered in
+// core/src/direction/__tests__/resolve.dir1.test.ts; these cases pin what the
+// binding renders: no dir for resolved LTR, the resolved or explicit dir otherwise.
+const DIR1_CASES: Array<{
+	name: string;
+	extensions: NonNullable<
+		Parameters<typeof createTestEditor>[0]
+	>["extensions"];
+	text: string;
+	direction?: "ltr" | "rtl";
+	expected: "ltr" | "rtl";
+}> = [
+	{
+		name: "LTR text with no facet and no prop omits dir",
+		extensions: [],
+		text: "Hello",
+		expected: "ltr",
+	},
+	{
+		name: "pen.blockDirection resolver changes rendered dir",
+		extensions: [
+			defineExtension({
+				name: "dir-facet",
+				facets: [blockDirectionFacet.of(() => "rtl")],
+			}),
+		],
+		text: "Hello",
+		expected: "rtl",
+	},
+	{
+		name: "explicit props.direction wins over pen.blockDirection",
+		extensions: [
+			defineExtension({
+				name: "dir-facet",
+				facets: [blockDirectionFacet.of(() => "rtl")],
+			}),
+		],
+		text: "Hello",
+		direction: "ltr",
+		expected: "ltr",
+	},
+];
+
 describe("Vue DIR1 resolved host dir", () => {
-	it("DIR1: LTR text with no facet and no prop omits dir", () => {
-		const editor = createTestEditor({
-			blocks: [
-				{
-					id: "paragraph-ltr",
-					type: "paragraph",
-					props: {},
-					content: "Hello",
-				},
-			],
-		});
-		const wrapper = mountEditor(editor);
-		const block = editor.getBlock("paragraph-ltr");
+	it.each(DIR1_CASES)(
+		"DIR1: $name",
+		({ extensions, text, direction, expected }) => {
+			const editor = createTestEditor({
+				blocks: [
+					{
+						id: "paragraph",
+						type: "paragraph",
+						props: direction ? { direction } : {},
+						content: text,
+					},
+				],
+				extensions,
+			});
+			const wrapper = mountEditor(editor);
+			const block = editor.getBlock("paragraph");
 
-		expect(resolveBlockDirection(editor, block)).toBe("ltr");
-		expect(hostDir(wrapper, "paragraph-ltr")).toBeUndefined();
-		expect(wrapper.html()).not.toContain('dir="auto"');
+			expect(resolveBlockDirection(editor, block)).toBe(expected);
+			expect(hostDir(wrapper, "paragraph")).toBe(
+				expected === "ltr" && !direction ? undefined : expected,
+			);
+			expect(wrapper.html()).not.toContain('dir="auto"');
 
-		wrapper.unmount();
-		editor.destroy();
-	});
-
-	it("DIR1: pen.blockDirection resolver changes rendered dir", () => {
-		const editor = createTestEditor({
-			blocks: [
-				{
-					id: "paragraph-latin",
-					type: "paragraph",
-					props: {},
-					content: "Hello",
-				},
-			],
-			extensions: [
-				defineExtension({
-					name: "dir-facet",
-					facets: [blockDirectionFacet.of(() => "rtl")],
-				}),
-			],
-		});
-		const wrapper = mountEditor(editor);
-		const block = editor.getBlock("paragraph-latin");
-
-		expect(resolveBlockDirection(editor, block)).toBe("rtl");
-		expect(hostDir(wrapper, "paragraph-latin")).toBe("rtl");
-
-		wrapper.unmount();
-		editor.destroy();
-	});
-
-	it("DIR1: explicit props.direction wins over pen.blockDirection", () => {
-		const editor = createTestEditor({
-			blocks: [
-				{
-					id: "paragraph-explicit",
-					type: "paragraph",
-					props: { direction: "ltr" },
-					content: "Hello",
-				},
-			],
-			extensions: [
-				defineExtension({
-					name: "dir-facet",
-					facets: [blockDirectionFacet.of(() => "rtl")],
-				}),
-			],
-		});
-		const wrapper = mountEditor(editor);
-		const block = editor.getBlock("paragraph-explicit");
-
-		expect(resolveBlockDirection(editor, block)).toBe("ltr");
-		expect(hostDir(wrapper, "paragraph-explicit")).toBe("ltr");
-
-		wrapper.unmount();
-		editor.destroy();
-	});
-
-	it("DIR1: first-strong RTL text with no prop and no resolver renders RTL", () => {
-		const editor = createTestEditor({
-			blocks: [
-				{
-					id: "paragraph-arabic",
-					type: "paragraph",
-					props: {},
-					content: "مرحبا",
-				},
-			],
-		});
-		const wrapper = mountEditor(editor);
-		const block = editor.getBlock("paragraph-arabic");
-
-		expect(resolveBlockDirection(editor, block)).toBe("rtl");
-		expect(hostDir(wrapper, "paragraph-arabic")).toBe("rtl");
-		expect(
-			wrapper
-				.get(
-					'[data-block-id="paragraph-arabic"] [data-pen-inline-content]',
-				)
-				.attributes("dir"),
-		).toBeUndefined();
-
-		wrapper.unmount();
-		editor.destroy();
-	});
-
-	it("DIR1: pen.defaultDirection applies when nothing else does", () => {
-		const editor = createTestEditor({
-			blocks: [
-				{
-					id: "paragraph-digits",
-					type: "paragraph",
-					props: {},
-					content: "12345",
-				},
-			],
-			extensions: [
-				defineExtension({
-					name: "dir-default",
-					facets: [defaultDirectionFacet.of("rtl")],
-				}),
-			],
-		});
-		const wrapper = mountEditor(editor);
-		const block = editor.getBlock("paragraph-digits");
-
-		expect(resolveBlockDirection(editor, block)).toBe("rtl");
-		expect(hostDir(wrapper, "paragraph-digits")).toBe("rtl");
-
-		wrapper.unmount();
-		editor.destroy();
-	});
+			wrapper.unmount();
+			editor.destroy();
+		},
+	);
 
 	it("RI1: block and inline content hosts are unicode-bidi isolate", () => {
 		const editor = createTestEditor({
@@ -183,6 +122,9 @@ describe("Vue DIR1 resolved host dir", () => {
 		expect((inline.element as HTMLElement).style.unicodeBidi).toBe(
 			"isolate",
 		);
+		// Resolved RTL lands on the block host only, not the inline host.
+		expect(host.attributes("dir")).toBe("rtl");
+		expect(inline.attributes("dir")).toBeUndefined();
 
 		wrapper.unmount();
 		editor.destroy();

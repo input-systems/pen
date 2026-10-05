@@ -1,13 +1,12 @@
 import { createContext, useContext } from "react";
 
+/** Kept to what blocks cannot read from their notifier slices (SCALE6). */
 export interface EditorContentContextValue {
 	emptyPlaceholder?: string;
-	documentPlaceholderTargetBlockId: string | null;
 }
 
 const EMPTY_EDITOR_CONTENT_CONTEXT: EditorContentContextValue = {
 	emptyPlaceholder: undefined,
-	documentPlaceholderTargetBlockId: null,
 };
 
 export const EditorContentContext =

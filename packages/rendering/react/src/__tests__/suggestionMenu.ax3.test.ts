@@ -7,6 +7,7 @@ import { createEditor } from "@input/pen-core";
 import { defaultPreset } from "@input/pen";
 import { Pen } from "../primitives/index";
 import { defaultSchema } from "@input/pen-schema";
+import { dispatchKey } from "./utils/suggestionMenuTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -24,16 +25,6 @@ function createSuggestionMenuEditor(
 			undo: false,
 		}),
 	});
-}
-
-function dispatchKey(key: string, target: EventTarget = document) {
-	target.dispatchEvent(
-		new KeyboardEvent("keydown", {
-			key,
-			bubbles: true,
-			cancelable: true,
-		}),
-	);
 }
 
 function createOpenController() {

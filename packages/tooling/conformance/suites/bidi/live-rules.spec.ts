@@ -1,5 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
-import { loadavg } from "node:os";
+import { expect } from "@playwright/test";
 import {
 	BIDI_LTR_EMBED_ID,
 	BIDI_LTR_EMBED_TEXT,
@@ -8,23 +7,17 @@ import {
 	BIDI_RTL_LATIN_MID,
 } from "../../fixtures/bidi";
 import { formatCheckReport } from "../../src/checkReport";
-import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
 import { authorityCheckKind } from "../../src/standingAssertions";
 import type { DomAuthorityCheck } from "../../src/types";
-
-type TextCaret = {
-	blockId: string;
-	offset: number;
-	isCollapsed: boolean;
-};
-
-type DirSnapshot = {
-	blockId: string;
-	dir: string | null;
-	text: string;
-	unicodeBidi: string;
-};
+import { attachJson, clickOffsetAndAwaitCaret, logLoad } from "../specHelpers";
+import {
+	expectMixedBlockDir,
+	expectS2Matched,
+	readCaret,
+	readDir,
+	readS2,
+} from "./helpers";
 
 type OffsetProbe = {
 	offset: number;
@@ -48,74 +41,13 @@ type VisualHomeReport = {
 const M3_BLOCK_ID = "m3-hello-arabic";
 const M3_TEXT = "Hello مرحبا";
 
-function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
-
-async function attachJson(name: string, payload: unknown): Promise<void> {
-	await test.info().attach(name, {
-		body: JSON.stringify({ loadavg: loadavg(), payload }, null, 2),
-		contentType: "application/json",
-	});
-}
-
-async function readCaret(page: Page): Promise<TextCaret | null> {
-	return page.evaluate(() => {
-		const selection = window.__penConformance.selection;
-		if (selection?.type !== "text") {
-			return null;
-		}
-		return {
-			blockId: selection.focus.blockId,
-			offset: selection.focus.offset,
-			isCollapsed: window.__penConformance.isCollapsed(),
-		};
-	});
-}
-
-async function clickOffset(
-	page: Page,
-	blockId: string,
-	offset: number,
-): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId, offset });
-	await page.mouse.click(point.x, point.y);
-	await expect
-		.poll(async () => {
-			const caret = await readCaret(page);
-			if (!caret) {
-				return "not-text";
-			}
-			return `${caret.blockId}:${caret.offset}:${caret.isCollapsed}`;
-		})
-		.toBe(`${blockId}:${offset}:true`);
-}
-
-async function readDir(page: Page, blockId: string): Promise<DirSnapshot | null> {
-	return page.evaluate((id) => {
-		const block = document.querySelector(`[data-block-id="${id}"]`);
-		if (!(block instanceof HTMLElement)) {
-			return null;
-		}
-		const inline = block.querySelector("[data-pen-inline-content]");
-		const host = inline instanceof HTMLElement ? inline : block;
-		return {
-			blockId: id,
-			dir: block.getAttribute("dir"),
-			text: inline?.textContent ?? "",
-			unicodeBidi: getComputedStyle(host).unicodeBidi,
-		};
-	}, blockId);
-}
-
 scenario(
 	"M2: ArrowLeft in an RTL mixed block advances logical offset (playground keymap-swap)",
 	async (s, page) => {
 		const loads = logLoad("M2-left");
 		await s.load("bidi-mixed");
-		await clickOffset(page, BIDI_RTL_EMBED_ID, BIDI_RTL_LATIN_MID);
+		await expectMixedBlockDir(page, BIDI_RTL_EMBED_ID, "rtl");
+		await clickOffsetAndAwaitCaret(page, BIDI_RTL_EMBED_ID, BIDI_RTL_LATIN_MID);
 		await page.keyboard.press("ArrowLeft");
 		const caret = await readCaret(page);
 		const s2 = await page.evaluate(() =>
@@ -161,7 +93,8 @@ scenario(
 	async (s, page) => {
 		const loads = logLoad("M2-right");
 		await s.load("bidi-mixed");
-		await clickOffset(page, BIDI_RTL_EMBED_ID, BIDI_RTL_LATIN_MID);
+		await expectMixedBlockDir(page, BIDI_RTL_EMBED_ID, "rtl");
+		await clickOffsetAndAwaitCaret(page, BIDI_RTL_EMBED_ID, BIDI_RTL_LATIN_MID);
 		await page.keyboard.press("ArrowRight");
 		const caret = await readCaret(page);
 		const s2 = await page.evaluate(() =>
@@ -198,12 +131,13 @@ scenario(
 );
 
 scenario(
-	"M2: LTR mixed-direction control does not swap ArrowLeft",
+	"M2: LTR mixed-direction control does not swap ArrowLeft/Right",
 	async (s, page) => {
 		const loads = logLoad("M2-ltr-control");
 		await s.load("bidi-mixed");
+		await expectMixedBlockDir(page, BIDI_LTR_EMBED_ID, "ltr");
 		const mid = 3;
-		await clickOffset(page, BIDI_LTR_EMBED_ID, mid);
+		await clickOffsetAndAwaitCaret(page, BIDI_LTR_EMBED_ID, mid);
 		await page.keyboard.press("ArrowLeft");
 		const caret = await readCaret(page);
 		const s2 = await page.evaluate(() =>
@@ -228,6 +162,18 @@ scenario(
 				`offset ${caret?.offset ?? "null"} expected ${mid - 1} text=${BIDI_LTR_EMBED_TEXT}`,
 			),
 		).toBe(mid - 1);
+
+		await page.keyboard.press("ArrowRight");
+		const afterRight = await readCaret(page);
+		expectS2Matched(await readS2(page), "M2 ltr control: S2 after ArrowRight");
+		expect(
+			afterRight?.offset,
+			formatCheckReport(
+				"M2 ltr control: ArrowRight stays pen.caretRight",
+				afterRight?.offset === mid ? "passed" : "failed",
+				`offset ${afterRight?.offset ?? "null"} expected ${mid}`,
+			),
+		).toBe(mid);
 	},
 );
 
@@ -268,7 +214,7 @@ scenario(
 				return "ok";
 			})
 			.toBe("ok");
-		await clickOffset(page, M3_BLOCK_ID, 2);
+		await clickOffsetAndAwaitCaret(page, M3_BLOCK_ID, 2);
 		await page.keyboard.press("Home");
 
 		const report = await page.evaluate(

@@ -65,6 +65,61 @@ function getBlockHost(root: HTMLElement, blockId: string): HTMLElement {
 	return host;
 }
 
+const DIR1_CASES: Array<{
+	name: string;
+	extensions: NonNullable<Parameters<typeof createEditor>[0]>["extensions"];
+	text: string;
+	direction?: "ltr" | "rtl";
+	expected: "ltr" | "rtl";
+}> = [
+	{
+		name: "LTR text with no facet and no prop omits dir",
+		extensions: [],
+		text: "Hello",
+		expected: "ltr",
+	},
+	{
+		name: "pen.blockDirection resolver changes rendered dir",
+		extensions: [
+			defineExtension({
+				name: "dir-facet",
+				facets: [blockDirectionFacet.of(() => "rtl")],
+			}),
+		],
+		text: "Hello",
+		expected: "rtl",
+	},
+	{
+		name: "explicit props.direction wins over pen.blockDirection",
+		extensions: [
+			defineExtension({
+				name: "dir-facet",
+				facets: [blockDirectionFacet.of(() => "rtl")],
+			}),
+		],
+		text: "Hello",
+		direction: "ltr",
+		expected: "ltr",
+	},
+	{
+		name: "first-strong RTL text with no prop and no resolver renders RTL",
+		extensions: [],
+		text: "مرحبا",
+		expected: "rtl",
+	},
+	{
+		name: "pen.defaultDirection applies when nothing else does",
+		extensions: [
+			defineExtension({
+				name: "dir-default",
+				facets: [defaultDirectionFacet.of("rtl")],
+			}),
+		],
+		text: "12345",
+		expected: "rtl",
+	},
+];
+
 describe("DOM host DIR1 resolved host dir", () => {
 	const cleanups: Array<() => void> = [];
 
@@ -86,82 +141,22 @@ describe("DOM host DIR1 resolved host dir", () => {
 		return root;
 	}
 
-	it("DIR1: LTR text with no facet and no prop omits dir", () => {
-		const editor = createBareEditor();
-		const blockId = editor.firstBlock()!.id;
-		setBlockText(editor, blockId, "Hello");
-		const root = mount(editor);
-		const block = editor.getBlock(blockId)!;
+	it.each(DIR1_CASES)(
+		"DIR1: $name",
+		({ extensions, text, direction, expected }) => {
+			const editor = createBareEditor({ extensions });
+			const blockId = editor.firstBlock()!.id;
+			setBlockText(editor, blockId, text, direction);
+			const root = mount(editor);
+			const block = editor.getBlock(blockId)!;
 
-		expect(resolveBlockDirection(editor, block)).toBe("ltr");
-		expect(getBlockHost(root, blockId).hasAttribute("dir")).toBe(false);
-		expect(root.innerHTML).not.toContain('dir="auto"');
-	});
-
-	it("DIR1: pen.blockDirection resolver changes rendered dir", () => {
-		const editor = createBareEditor({
-			extensions: [
-				defineExtension({
-					name: "dir-facet",
-					facets: [blockDirectionFacet.of(() => "rtl")],
-				}),
-			],
-		});
-		const blockId = editor.firstBlock()!.id;
-		setBlockText(editor, blockId, "Hello");
-		const root = mount(editor);
-		const block = editor.getBlock(blockId)!;
-
-		expect(resolveBlockDirection(editor, block)).toBe("rtl");
-		expect(getBlockHost(root, blockId).getAttribute("dir")).toBe("rtl");
-	});
-
-	it("DIR1: explicit props.direction wins over pen.blockDirection", () => {
-		const editor = createBareEditor({
-			extensions: [
-				defineExtension({
-					name: "dir-facet",
-					facets: [blockDirectionFacet.of(() => "rtl")],
-				}),
-			],
-		});
-		const blockId = editor.firstBlock()!.id;
-		setBlockText(editor, blockId, "Hello", "ltr");
-		const root = mount(editor);
-		const block = editor.getBlock(blockId)!;
-
-		expect(resolveBlockDirection(editor, block)).toBe("ltr");
-		expect(getBlockHost(root, blockId).getAttribute("dir")).toBe("ltr");
-	});
-
-	it("DIR1: first-strong RTL text with no prop and no resolver renders RTL", () => {
-		const editor = createBareEditor();
-		const blockId = editor.firstBlock()!.id;
-		setBlockText(editor, blockId, "مرحبا");
-		const root = mount(editor);
-		const block = editor.getBlock(blockId)!;
-
-		expect(resolveBlockDirection(editor, block)).toBe("rtl");
-		expect(getBlockHost(root, blockId).getAttribute("dir")).toBe("rtl");
-	});
-
-	it("DIR1: pen.defaultDirection applies when nothing else does", () => {
-		const editor = createBareEditor({
-			extensions: [
-				defineExtension({
-					name: "dir-default",
-					facets: [defaultDirectionFacet.of("rtl")],
-				}),
-			],
-		});
-		const blockId = editor.firstBlock()!.id;
-		setBlockText(editor, blockId, "12345");
-		const root = mount(editor);
-		const block = editor.getBlock(blockId)!;
-
-		expect(resolveBlockDirection(editor, block)).toBe("rtl");
-		expect(getBlockHost(root, blockId).getAttribute("dir")).toBe("rtl");
-	});
+			expect(resolveBlockDirection(editor, block)).toBe(expected);
+			expect(getBlockHost(root, blockId).getAttribute("dir")).toBe(
+				expected === "ltr" && !direction ? null : expected,
+			);
+			expect(root.innerHTML).not.toContain('dir="auto"');
+		},
+	);
 
 	it("RI1: block and inline content hosts are unicode-bidi isolate", () => {
 		const editor = createBareEditor();

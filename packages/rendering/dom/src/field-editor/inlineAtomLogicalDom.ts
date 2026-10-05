@@ -1,3 +1,4 @@
+import { computeBidiRuns, type BlockDirection } from "../bidi";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 import { isEmptyBlockPlaceholder } from "./emptyBlockPlaceholder";
 import { INLINE_ATOM_REPLACEMENT_TEXT } from "./inlineAtomModel";
@@ -8,24 +9,18 @@ import {
 	isInlineAtomNode,
 	type InlineAtomCaretBoundarySide,
 } from "./inlineAtomDom";
+import { isDomHTMLElement } from "../utils/domNodes";
 
 const VIRTUAL_INLINE_DECORATION_ATTRIBUTE = "data-pen-virtual-inline";
 
 function getInlineAtomHostElement(node: Node): HTMLElement | null {
-	if (node instanceof HTMLElement && isInlineAtomHostNode(node)) {
+	if (isInlineAtomHostNode(node)) {
 		return node;
 	}
-
-	if (node instanceof HTMLElement && isInlineAtomChipNode(node)) {
+	if (isInlineAtomChipNode(node) || isInlineAtomCaretBoundaryNode(node)) {
 		const parent = node.parentElement;
-		return parent && isInlineAtomHostNode(parent) ? parent : null;
+		return isInlineAtomHostNode(parent) ? parent : null;
 	}
-
-	if (isInlineAtomCaretBoundaryNode(node)) {
-		const parent = node.parentElement;
-		return parent && isInlineAtomHostNode(parent) ? parent : null;
-	}
-
 	return null;
 }
 
@@ -49,22 +44,11 @@ function getInlineAtomCaretBoundaryTextPoint(
 	side: InlineAtomCaretBoundarySide,
 ): { node: Node; offset: number } | null {
 	const boundary = getInlineAtomCaretBoundaryElement(host, side);
-	if (!boundary) {
-		return null;
-	}
-
-	return {
-		node: boundary,
-		offset: 0,
-	};
+	return boundary ? { node: boundary, offset: 0 } : null;
 }
 
 function resolveLogicalInlineAtomUnit(node: HTMLElement): HTMLElement {
-	const host = getInlineAtomHostElement(node);
-	if (host) {
-		return host;
-	}
-	return node;
+	return getInlineAtomHostElement(node) ?? node;
 }
 
 export function getLogicalNodeLength(node: Node): number {
@@ -113,7 +97,7 @@ export function getInlineAtomPointerOffset(
 	const atomElements = Array.from(
 		container.querySelectorAll(`[${DATA_ATTRS.inlineAtom}]`),
 	).filter(
-		(element): element is HTMLElement => element instanceof HTMLElement,
+		isDomHTMLElement,
 	);
 	if (atomElements.length === 0) {
 		return null;
@@ -121,6 +105,12 @@ export function getInlineAtomPointerOffset(
 
 	let bestOffset: number | null = null;
 	let bestScore = Number.POSITIVE_INFINITY;
+	// The half a click lands on is the side it takes (O1, T5): the visual
+	// left half is the atom's logical start in a left-to-right run, its end
+	// in a right-to-left run. The run is the atom's own, resolved over the
+	// block's text (BR2), so a mention among Latin words in a right-to-left
+	// block reads left to right, as the overlay draws its caret.
+	let runLevels: AtomRunLevels | null = null;
 
 	for (const atomElement of atomElements) {
 		const rect = atomElement.getBoundingClientRect();
@@ -143,12 +133,37 @@ export function getInlineAtomPointerOffset(
 
 		const logicalAtom = resolveLogicalInlineAtomUnit(atomElement);
 		const atomOffset = getOffsetBeforeNode(container, logicalAtom);
-		bestOffset =
-			clientX <= rect.left + rect.width / 2 ? atomOffset : atomOffset + 1;
+		runLevels ??= readAtomRunLevels(container);
+		const rtl = runLevels.isRightToLeftAt(atomOffset);
+		const inLeftHalf = clientX <= rect.left + rect.width / 2;
+		bestOffset = inLeftHalf !== rtl ? atomOffset : atomOffset + 1;
 		bestScore = score;
 	}
 
 	return bestOffset;
+}
+
+type AtomRunLevels = {
+	isRightToLeftAt(offset: number): boolean;
+};
+
+/** BR2: the bidi runs of `container`'s logical text, atoms as U+FFFC. */
+function readAtomRunLevels(container: HTMLElement): AtomRunLevels {
+	const base: BlockDirection =
+		container.ownerDocument.defaultView?.getComputedStyle(container)
+			.direction === "rtl"
+			? "rtl"
+			: "ltr";
+	const runs = computeBidiRuns(getLogicalTextContent(container), base);
+	return {
+		isRightToLeftAt(offset) {
+			const run = runs.find(
+				(candidate) => candidate.from <= offset && offset < candidate.to,
+			);
+			const level = run?.level ?? (base === "rtl" ? 1 : 0);
+			return level % 2 === 1;
+		},
+	};
 }
 
 export function domPointToLogicalOffset(
@@ -156,9 +171,10 @@ export function domPointToLogicalOffset(
 	targetNode: Node,
 	targetOffset: number,
 ): number {
-	const boundaryAncestor = findInlineAtomCaretBoundaryAncestor(
+	const boundaryAncestor = findAncestorWithin(
 		targetNode,
 		container,
+		isInlineAtomCaretBoundaryNode,
 	);
 	if (boundaryAncestor) {
 		const side = boundaryAncestor.getAttribute(
@@ -171,7 +187,7 @@ export function domPointToLogicalOffset(
 		}
 	}
 
-	const atomAncestor = findInlineAtomAncestor(targetNode, container);
+	const atomAncestor = findAncestorWithin(targetNode, container, isInlineAtomNode);
 	if (atomAncestor) {
 		const logicalAtom = resolveLogicalInlineAtomUnit(atomAncestor);
 		const atomOffset = getOffsetBeforeNode(container, logicalAtom);
@@ -226,18 +242,20 @@ export function getLogicalNodeText(node: Node): string {
 
 function isVirtualInlineDecorationNode(node: Node | null): node is HTMLElement {
 	return (
-		node instanceof HTMLElement &&
+		isDomHTMLElement(node) &&
 		node.hasAttribute(VIRTUAL_INLINE_DECORATION_ATTRIBUTE)
 	);
 }
 
-function findInlineAtomCaretBoundaryAncestor(
+/** `node` or its nearest ancestor below `container` that `matches`. */
+function findAncestorWithin(
 	node: Node,
 	container: HTMLElement,
+	matches: (node: Node) => node is HTMLElement,
 ): HTMLElement | null {
 	let current: Node | null = node;
 	while (current && current !== container) {
-		if (isInlineAtomCaretBoundaryNode(current)) {
+		if (matches(current)) {
 			return current;
 		}
 		current = current.parentNode;
@@ -257,20 +275,6 @@ function hasInlineAtomCaretBoundaryAncestor(node: Node): boolean {
 		current = current.parentNode;
 	}
 	return false;
-}
-
-function findInlineAtomAncestor(
-	node: Node,
-	container: HTMLElement,
-): HTMLElement | null {
-	let current: Node | null = node;
-	while (current && current !== container) {
-		if (isInlineAtomNode(current)) {
-			return current;
-		}
-		current = current.parentNode;
-	}
-	return null;
 }
 
 function getOffsetBeforeNode(container: HTMLElement, target: Node): number {
@@ -394,9 +398,6 @@ function findLogicalDOMPointInElement(
 					return boundaryPoint;
 				}
 			}
-			if (isEmptyBlockPlaceholder(child)) {
-				return { node: element, offset: index };
-			}
 			if (child.nodeType === Node.TEXT_NODE) {
 				return { node: child, offset: 0 };
 			}
@@ -441,7 +442,7 @@ function findLogicalDOMPointInElement(
 			continue;
 		}
 
-		if (remaining <= length && child instanceof HTMLElement) {
+		if (remaining <= length && isDomHTMLElement(child)) {
 			return findLogicalDOMPointInElement(child, remaining);
 		}
 

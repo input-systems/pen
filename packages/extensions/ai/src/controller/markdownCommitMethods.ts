@@ -1,7 +1,6 @@
 import type { DocumentOp } from "@input/pen-types";
 import { buildDocumentWriteOps } from "@input/pen-tools";
-import { buildMutationReceipt } from "../runtime/mutationReceipt";
-import type { AIMutationReceipt, GenerationState } from "../types";
+import type { GenerationState } from "../types";
 import {
 	resolveReplacementDeleteBlockIds,
 	shouldReplaceEmptyMarkdownTarget,

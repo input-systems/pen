@@ -23,6 +23,7 @@ import {
 } from "./geometryMeasure";
 import type { BidiRun, LineBox, Rect } from "./types";
 import { isUsefulRect, rectFromDOMRect, unionRects } from "./types";
+import { isDomText } from "../utils/domNodes";
 
 export function measureLineBoxes(
 	root: HTMLElement,
@@ -100,6 +101,8 @@ type LineFragment = {
 	rect: Rect;
 	start: number;
 	end: number;
+	/** An inline atom's host box: joins a text line without growing it. */
+	atom?: boolean;
 };
 
 function collectLineFragments(
@@ -129,7 +132,7 @@ function collectLineFragments(
 				: (findAtomHost(node) ?? node);
 			const rect = elementRect(host as HTMLElement);
 			if (rect) {
-				fragments.push({ rect, start: offset, end: offset + length });
+				fragments.push({ rect, start: offset, end: offset + length, atom: true });
 			}
 			offset += length;
 			return;
@@ -137,7 +140,7 @@ function collectLineFragments(
 
 		if (node.nodeType === Node.TEXT_NODE) {
 			const length = getLogicalNodeLength(node);
-			if (length > 0 && node instanceof Text) {
+			if (length > 0 && isDomText(node)) {
 				fragments.push(
 					...fragmentsForTextNode(
 						root,
@@ -243,10 +246,17 @@ function groupFragmentsIntoLineBoxes(
 	base: BlockDirection,
 	measureRun: (run: BidiRun) => Rect | null,
 ): LineBox[] {
-	const sorted = [...fragments].sort((left, right) => {
+	// Text decides a line's top and bottom; a chip's own box (host padding,
+	// borders) does not grow the line (G1). An atom joins the line its centre
+	// falls on, and only a line with no text takes its extent from atoms.
+	const byTop = (left: LineFragment, right: LineFragment) => {
 		const top = left.rect.top - right.rect.top;
 		return top !== 0 ? top : left.start - right.start;
-	});
+	};
+	const sorted = [
+		...fragments.filter((fragment) => !fragment.atom).sort(byTop),
+		...fragments.filter((fragment) => fragment.atom).sort(byTop),
+	];
 
 	const lines: {
 		top: number;
@@ -257,7 +267,19 @@ function groupFragmentsIntoLineBoxes(
 	}[] = [];
 
 	for (const fragment of sorted) {
-		const last = lines[lines.length - 1];
+		if (fragment.atom) {
+			const centre = fragment.rect.top + fragment.rect.height / 2;
+			const host = lines.find(
+				(line) => line.top <= centre && centre <= line.bottom,
+			);
+			if (host) {
+				host.start = Math.min(host.start, fragment.start);
+				host.end = Math.max(host.end, fragment.end);
+				host.rects.push(fragment.rect);
+				continue;
+			}
+		}
+		const last = fragment.atom ? undefined : lines[lines.length - 1];
 		if (
 			last &&
 			Math.abs(fragment.rect.top - last.top) <= LINE_TOP_EPSILON
@@ -276,6 +298,8 @@ function groupFragmentsIntoLineBoxes(
 			rects: [fragment.rect],
 		});
 	}
+
+	lines.sort((left, right) => left.top - right.top || left.start - right.start);
 
 	return attachBidiRunsToLines(
 		lines.map((line) => ({

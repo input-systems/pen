@@ -1,35 +1,14 @@
 import type {
 	EditorInternals,
-	CreateEditorOptions,
-	PenEventMap,
-	CRDTAdapter,
 	CRDTDocument,
-	CRDTEvent,
-	PenDocument,
-	SchemaRegistry,
-	Awareness,
-	DocumentSession,
-	DocumentScope,
-	DocumentScopeReplacementEvent,
-	DocumentProfile,
-	Extension,
 	DocumentOp,
 	ApplyOptions,
 	OpOrigin,
 	MutationGroupMetadata,
-	SelectionState,
-	TextSelection,
-	DocumentRange,
 	BlockHandle,
-	Block,
-	DocumentState,
 	UndoManager,
-	Unsubscribe,
 	CRDTMap,
 	CRDTArray,
-	Position,
-	DecorationSet,
-	EditorViewMode,
 } from "@input/pen-types";
 import {
 	AI_AUTOCOMPLETE_CONTROLLER_SLOT,
@@ -75,10 +54,7 @@ import {
 import { a11yLabelFacet } from "../facets/a11yFacets";
 import { localeFacet, messagesFacet } from "../facets/i18nFacets";
 import { getDocumentLoadReport } from "@input/pen-yjs";
-import { SchemaEngineImpl } from "../schema/normalize";
 import { createBlockHandle } from "../schema/handles";
-import { resolveCellSelectionMatrix } from "./cellSelection";
-import { filterOpsForDocumentProfile } from "./profilePolicy";
 import type { CRDTUnknownMap } from "./crdtShapes";
 import {
 	getTextProp,
@@ -88,7 +64,6 @@ import {
 } from "./crdtShapes";
 import { createEmptyBlockIndex } from "../changes/blockIndex";
 import { emptyDecorationSet } from "./decorations";
-import { DocumentStateImpl } from "./documentState";
 import { createDocumentSession } from "./documentSession";
 
 import type { Editor } from "@input/pen-types";
@@ -96,17 +71,6 @@ import type { EditorImplInternal } from "./editorImplContext";
 
 type EditorImplRuntime = EditorImplInternal;
 type CRDTBlockMap = CRDTMap<CRDTMap<unknown>>;
-type RawPenDocumentLike = {
-	getArray?(name: "blockOrder"): CRDTArray<string>;
-	getMap?(name: "blocks" | "apps" | "metadata"): CRDTMap<unknown>;
-	blockOrder?: CRDTArray<string>;
-	blocks?: CRDTMap<unknown>;
-	apps?: CRDTMap<unknown>;
-	metadata?: CRDTMap<unknown>;
-};
-function missingPenDocumentRoot(name: string): never {
-	throw new Error(`CRDT document is missing required Pen root "${name}".`);
-}
 
 const FACET_BY_SLOT_KEY: Record<string, Facet<unknown, unknown>> = {
 	[FIELD_EDITOR_SLOT_KEY]: fieldEditorHostFacet,
@@ -165,7 +129,10 @@ export function getEditorInternals(editor: EditorImplRuntime): EditorInternals {
 		crdtDoc: self._crdtDoc,
 		doc: self._doc,
 		engine: self._engine,
-		awareness: self._awareness,
+		// Read live: an extension may ensure the scope's awareness after bind.
+		awareness:
+			self._documentSession?.getAwareness(self._documentScope.id) ??
+			self._awareness,
 		documentSession: self._documentSession,
 		documentScope: self._documentScope,
 		viewId: self._viewId,
@@ -193,6 +160,9 @@ export function getEditorInternals(editor: EditorImplRuntime): EditorInternals {
 			if (!rowMap || !isCRDTMap(rowMap)) return null;
 			return getCellTextFromRow(rowMap, col);
 		},
+		selectionAnchors: () => self._selection.heldAnchors,
+		selectionAnchorRepair: (anchor, commitId) =>
+			self._selection.heldAnchorRepair(anchor, commitId),
 	};
 }
 
@@ -206,14 +176,23 @@ export function applyEditorOps(
 	const groupId = getApplyOptionsGroupId(origin, options);
 	const undo = self._slots.get("undo:manager") as UndoManager | undefined;
 
-	undo?.syncExplicitUndoGroup(groupId ?? null);
-
 	if (options?.undoGroup && !groupId) {
 		undo?.stopCapturing();
 	}
 
-	self._pipeline.apply(ops, origin, options?.structural);
-	self._recordMutationGroupMetadata(origin, groupId);
+	// AIB4: writes join the undo step of their group id (or of their origin
+	// type when ungrouped); an ungrouped write never closes an open group. The
+	// capture key travels with the apply: one issued from inside another apply
+	// is queued and runs after this call returns, under its own key.
+	const capture = (run: () => void) => {
+		if (undo) {
+			undo.withCapture(origin, groupId ?? null, run);
+		} else {
+			run();
+		}
+		self._recordMutationGroupMetadata(origin, groupId);
+	};
+	self._pipeline.apply(ops, origin, options?.structural, capture);
 }
 
 export function recordMutationGroupMetadata(
@@ -284,7 +263,10 @@ export function* iterateBlocks(
 		if (seen.has(id)) return;
 		seen.add(id);
 		const blockMap = (self._doc.blocks as CRDTBlockMap).get(id);
-		if (!type || blockMap?.get("type") === type) {
+		// A dangling entry names no block (COL4): skip it until the
+		// structural pass removes it.
+		if (!blockMap) return;
+		if (!type || blockMap.get("type") === type) {
 			yield createBlockHandle(
 				id,
 				self._doc,
@@ -292,7 +274,7 @@ export function* iterateBlocks(
 				self._registry,
 			);
 		}
-		const children = blockMap?.get("children") as
+		const children = blockMap.get("children") as
 			CRDTArray<string> | undefined;
 		if (!children) return;
 		for (let i = 0; i < children.length; i++) {
@@ -316,21 +298,26 @@ export function getEditorBlock(
 	return createBlockHandle(blockId, self._doc, self._crdtDoc, self._registry);
 }
 
+/** The first root entry with a block map; a dangling entry (COL4) is skipped. */
 export function getFirstBlock(editor: EditorImplRuntime): BlockHandle | null {
 	const self = editor as EditorImplRuntime;
-	if (self._doc.blockOrder.length === 0) return null;
-	const id = (self._doc.blockOrder as CRDTArray<string>).get(0) as string;
-	return createBlockHandle(id, self._doc, self._crdtDoc, self._registry);
+	const order = self._doc.blockOrder as CRDTArray<string>;
+	for (let i = 0; i < order.length; i++) {
+		const handle = getEditorBlock(self, order.get(i));
+		if (handle) return handle;
+	}
+	return null;
 }
 
+/** The last root entry with a block map; a dangling entry (COL4) is skipped. */
 export function getLastBlock(editor: EditorImplRuntime): BlockHandle | null {
 	const self = editor as EditorImplRuntime;
-	const len = self._doc.blockOrder.length;
-	if (len === 0) return null;
-	const id = (self._doc.blockOrder as CRDTArray<string>).get(
-		len - 1,
-	) as string;
-	return createBlockHandle(id, self._doc, self._crdtDoc, self._registry);
+	const order = self._doc.blockOrder as CRDTArray<string>;
+	for (let i = order.length - 1; i >= 0; i--) {
+		const handle = getEditorBlock(self, order.get(i));
+		if (handle) return handle;
+	}
+	return null;
 }
 
 export function getBlockCount(editor: EditorImplRuntime): number {
@@ -368,6 +355,7 @@ export function destroyEditor(editor: EditorImplRuntime): Promise<void> {
 
 function releaseDestroyedEditorCaches(self: EditorImplRuntime): void {
 	self._decorations = emptyDecorationSet();
+	self._decorationCollector.clear();
 	self._pendingSummary = null;
 	self._deferredCRDTEvent = null;
 	self._lastChangeSummary = null;

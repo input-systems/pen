@@ -1,45 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
-import type { GeometryLineBox } from "../../src/types";
 import { G5_WRAP_BLOCK } from "../../src/g5Geometry";
-
-/**
- * A live ArrowDown, unlike `scenarios/g5-vertical-motion.spec.ts`, goes through
- * the host: keymap -> `pen.caretDown` -> the geometry measure the host injected
- * with `setVerticalCaretMeasure`. Mid-block with no measure registered, core
- * emits `caret-geometry-unavailable` and returns handled, so the keystroke is
- * preventDefaulted and the caret does not move (`core/src/commands/caret.ts`).
- *
- * These two scenarios are therefore the binding-wiring probe, not another test
- * of the G5 algorithm. They cover the host seam that
- * `scenarios/g5-vertical-motion.spec.ts` cannot reach, because that one calls
- * `verticalCaretTarget` directly instead of pressing a key.
- *
- * This harness is React, so it exercises `pen-react`
- * (`primitives/editor/root.tsx`); `pen-vue` (`components/PenEditor.ts`)
- * registers the measure in the same place in its root-element watcher, covered
- * headlessly by `rendering/vue/src/__tests__/verticalCaretMeasure.test.ts`.
- *
- * Import the helper from `@input/pen-dom`, never `@input/pen-dom/geometry`:
- * that subpath is absent from the package `exports` map, but the Vite harness
- * aliases `@input/pen-dom` to the source directory, so it resolves here while
- * failing typecheck and failing for published consumers.
- */
-type FocusPoint = { blockId: string; offset: number } | null;
-
-async function readFocusPoint(page: Page): Promise<FocusPoint> {
-	return page.evaluate(() => {
-		const selection = window.__penConformance.selection;
-		if (selection?.type !== "text") {
-			return null;
-		}
-		return {
-			blockId: selection.focus.blockId,
-			offset: selection.focus.offset,
-		};
-	});
-}
+import { midpoint, readFocus } from "../specHelpers";
 
 async function readGeometryDiagnostics(page: Page): Promise<string[]> {
 	return page.evaluate(() =>
@@ -71,24 +34,15 @@ async function forceWrap(page: Page): Promise<void> {
 	}, G5_WRAP_BLOCK);
 }
 
-function midpoint(line: GeometryLineBox): number {
-	if (line.endOffset <= line.startOffset) {
-		return line.startOffset;
-	}
-	return (
-		line.startOffset + Math.floor((line.endOffset - line.startOffset) / 2)
-	);
-}
-
 scenario(
 	"G5: ArrowDown from mid-paragraph lands on the visually adjacent block",
 	async (s, page) => {
 		await s.load("two-paragraph");
 		await s.selectText(0, 6);
 
-		const before = await readFocusPoint(page);
+		const before = await readFocus(page);
 		await page.keyboard.press("ArrowDown");
-		const after = await readFocusPoint(page);
+		const after = await readFocus(page);
 		const diagnostics = await readGeometryDiagnostics(page);
 
 		await test.info().attach("g5-arrow-down-across-blocks", {
@@ -137,9 +91,9 @@ scenario(
 		).toBeTruthy();
 		await s.selectText(0, midpoint(firstLine!));
 
-		const before = await readFocusPoint(page);
+		const before = await readFocus(page);
 		await page.keyboard.press("ArrowDown");
-		const after = await readFocusPoint(page);
+		const after = await readFocus(page);
 		const diagnostics = await readGeometryDiagnostics(page);
 
 		await test.info().attach("g5-arrow-down-wrapped-line", {

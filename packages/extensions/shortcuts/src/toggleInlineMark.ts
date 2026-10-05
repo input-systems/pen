@@ -46,7 +46,9 @@ export function toggleInlineMark(editor: Editor, markType: string): boolean {
 	fieldEditor?.clearPendingMarks?.();
 
 	const hasMark = hasMarkAcrossSegments(editor, segments, markType);
-	editor.apply(buildFormatTextOps(segments, markType, hasMark ? null : true));
+	editor.apply(buildFormatTextOps(segments, markType, hasMark ? null : true), {
+		origin: "user",
+	});
 	return true;
 }
 
@@ -152,7 +154,9 @@ export function setInlineMark(
 
 	fieldEditor?.clearPendingMarks?.();
 
-	editor.apply(buildFormatTextOps(segments, markType, value));
+	editor.apply(buildFormatTextOps(segments, markType, value), {
+		origin: "user",
+	});
 	return true;
 }
 

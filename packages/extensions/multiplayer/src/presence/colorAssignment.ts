@@ -1,16 +1,22 @@
+import { isSafeCssColor } from "@input/pen-core";
+
+/**
+ * Default peer colors. The caret label paints white text on the peer color,
+ * so every entry holds at least 4.5:1 against white (WCAG 1.4.3, AX8).
+ */
 export const MULTIPLAYER_COLORS = [
-	"#2563eb",
-	"#dc2626",
-	"#16a34a",
-	"#ca8a04",
-	"#9333ea",
-	"#0891b2",
-	"#e11d48",
-	"#65a30d",
-	"#7c3aed",
-	"#059669",
-	"#d97706",
-	"#4f46e5",
+	"#1d4ed8",
+	"#b91c1c",
+	"#15803d",
+	"#a16207",
+	"#7e22ce",
+	"#0e7490",
+	"#be123c",
+	"#4d7c0f",
+	"#6d28d9",
+	"#047857",
+	"#b45309",
+	"#4338ca",
 ] as const;
 
 export function assignMultiplayerColor(userId: string): string {
@@ -23,39 +29,16 @@ export function assignMultiplayerColor(userId: string): string {
 	return MULTIPLAYER_COLORS[Math.abs(hash) % MULTIPLAYER_COLORS.length];
 }
 
-const HEX_COLOR_PATTERN =
-	/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-const FUNCTION_COLOR_PATTERN = /^(?:rgb|rgba|hsl|hsla)\([^;{}]+\)$/;
-const CSS_VARIABLE_COLOR_PATTERN = /^var\(--[A-Za-z0-9_-]+\)$/;
-const NAMED_COLOR_PATTERN = /^[A-Za-z]+$/;
-const CSS_COLOR_KEYWORDS = new Set([
-	"transparent",
-	"currentColor",
-	"inherit",
-	"initial",
-	"unset",
-	"revert",
-	"revert-layer",
-]);
-
+/**
+ * Returns `color` when it is a plain CSS colour (COL2: hex, a named colour,
+ * or an `rgb`/`hsl` function of numbers), else `fallbackColor`. A peer colour
+ * reaches a CSS custom property on every viewer, so anything that could
+ * fetch or reference (`url(`, `image-set(`, `var(`) is rejected.
+ */
 export function normalizeMultiplayerColor(
 	color: string | undefined,
 	fallbackColor: string,
 ): string {
 	const trimmedColor = color?.trim();
-	if (!trimmedColor) {
-		return fallbackColor;
-	}
-
-	if (
-		HEX_COLOR_PATTERN.test(trimmedColor) ||
-		FUNCTION_COLOR_PATTERN.test(trimmedColor) ||
-		CSS_VARIABLE_COLOR_PATTERN.test(trimmedColor) ||
-		NAMED_COLOR_PATTERN.test(trimmedColor) ||
-		CSS_COLOR_KEYWORDS.has(trimmedColor)
-	) {
-		return trimmedColor;
-	}
-
-	return fallbackColor;
+	return isSafeCssColor(trimmedColor) ? trimmedColor : fallbackColor;
 }

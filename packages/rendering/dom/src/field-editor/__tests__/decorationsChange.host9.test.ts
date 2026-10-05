@@ -8,42 +8,22 @@ import {
 } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Editor } from "@input/pen-types";
+import { HISTORY_ORIGIN_TAG, type Editor } from "@input/pen-types";
 import { ContentEditableBackend } from "../contenteditableBackend";
 import type { FieldEditorInputController } from "../controller";
-import type { FieldEditorTextLike } from "../crdt";
 import { EditContextBackend } from "../editContextBackend";
-import type { EditContext } from "../editContextTypes";
 import type { InputBackend } from "../../internal/inputBackend";
-import { DATA_ATTRS } from "../../utils/dataAttributes";
+import {
+	contextOf,
+	getYText,
+	installFakeEditContext,
+	mountBlockDom,
+	removeEditContext,
+} from "./fieldEditorFixtures.testHelpers";
+import { stubFieldEditorParts } from "./fieldEditorParts.testHelpers";
 
 const TEXT = "Hello world";
 const DECORATION_ATTRIBUTE = "data-test-decorated";
-
-class FakeEditContext implements EditContext {
-	text = "";
-	selectionStart = 0;
-	selectionEnd = 0;
-	updateText(): void {}
-	updateSelection(): void {}
-	updateCharacterBounds(): void {}
-	addEventListener(): void {}
-	removeEventListener(): void {}
-}
-
-function getYText(editor: Editor, blockId: string): FieldEditorTextLike {
-	const ydoc = editor.internals.adapter.raw<{
-		getMap(name: string): {
-			get(key: string): { get(field: string): unknown } | undefined;
-		};
-	}>(editor.internals.crdtDoc);
-	const ytext = ydoc.getMap("blocks").get(blockId)?.get("content") as
-		FieldEditorTextLike | null | undefined;
-	if (!ytext) {
-		throw new Error(`Missing test Y.Text for block ${blockId}`);
-	}
-	return ytext;
-}
 
 /** An editor whose first block carries one inline decoration once `decorate()` is called. */
 function seedEditor(): {
@@ -96,27 +76,11 @@ function seedEditor(): {
 	};
 }
 
-function inlineElement(blockId: string): HTMLElement {
-	const root = document.createElement("div");
-	root.setAttribute(DATA_ATTRS.editorRoot, "");
-	const block = document.createElement("div");
-	block.setAttribute(DATA_ATTRS.editorBlock, "");
-	block.setAttribute(DATA_ATTRS.blockId, blockId);
-	const inline = document.createElement("div");
-	inline.setAttribute(DATA_ATTRS.inlineContent, "");
-	inline.textContent = TEXT;
-	block.append(inline);
-	root.append(block);
-	document.body.append(root);
-	return inline;
-}
-
 function stubController(
 	editor: Editor,
 	blockId: string,
 	shouldProjectSelectionAfterReconcile: boolean,
 ) {
-	const withBackendSelectionWrite = vi.fn(<T>(write: () => T) => write());
 	const controller = {
 		focusBlockId: blockId,
 		inputMode: "richtext" as const,
@@ -127,65 +91,102 @@ function stubController(
 		activateCell: () => {},
 		activateTextSelection: () => {},
 		deactivate: () => {},
-		resetBackendSelectionAuthority: () => {},
-		withBackendSelectionWrite,
 		requestDomFocus: () => false,
-		shouldHandleDomSelectionChange: () => false,
-		shouldProjectSelectionAfterReconcile: () =>
-			shouldProjectSelectionAfterReconcile,
-		getBackendSelectionApplicationDepth: () => 0,
 		applyDomTextSelection: () => {},
+		syncTextSelection: () => {},
+		syncCellTextSelection: () => {},
 		selectAllBehavior: "block-first" as const,
-		resolveInsertMarks: () => undefined,
+		...stubFieldEditorParts({ shouldProjectSelectionAfterReconcile }),
 		setComposing: () => {},
 		notifyDomReconciled: () => {},
-		notifyGestureEvent: () => {},
-		setBackendSelectionAuthority: () => {},
-		getBackendSelectionAuthority: () => null,
-		hasBackendSelectionAuthority: () => false,
-		clearBackendSelectionAuthority: () => {},
-		setEditContextSelectionSnapshot: () => {},
-		getEditContextSelectionSnapshot: () => null,
 	} as unknown as FieldEditorInputController;
-	return { controller, withBackendSelectionWrite };
+	return { controller };
 }
 
 type Fixture = { editor: Editor; backend: InputBackend };
 const fixtures: Fixture[] = [];
 
+type MountOptions = {
+	shouldProjectSelectionAfterReconcile?: boolean;
+	/** Counts the activation's own selection writes too. */
+	countActivation?: boolean;
+	focusOptions?: { passive: boolean };
+	projectAfterRebuild?: (blockIds: readonly string[]) => void;
+};
+
+/** A backend activated on the decorated block; `selectionWrites` counts native range writes. */
 function mount(
 	createBackend: (
 		editor: Editor,
 		controller: FieldEditorInputController,
 	) => InputBackend,
-	shouldProjectSelectionAfterReconcile: boolean,
+	options: MountOptions = {},
 ) {
 	const { editor, blockId, decorate } = seedEditor();
-	const element = inlineElement(blockId);
-	const { controller, withBackendSelectionWrite } = stubController(
+	const { inline: element } = mountBlockDom(blockId, TEXT);
+	const { controller } = stubController(
 		editor,
 		blockId,
-		shouldProjectSelectionAfterReconcile,
+		options.shouldProjectSelectionAfterReconcile ?? true,
 	);
+	if (options.projectAfterRebuild) {
+		(controller as { projectAfterRebuild?: unknown }).projectAfterRebuild =
+			options.projectAfterRebuild;
+	}
 	const backend = createBackend(editor, controller);
 	fixtures.push({ editor, backend });
-	backend.activate(element, getYText(editor, blockId));
-	withBackendSelectionWrite.mockClear();
-	return { element, decorate, withBackendSelectionWrite };
+	const activate = () =>
+		backend.activate(
+			element,
+			getYText(editor, blockId),
+			options.focusOptions,
+		);
+	if (!options.countActivation) activate();
+	const setBaseAndExtent = vi.spyOn(Selection.prototype, "setBaseAndExtent");
+	const addRange = vi.spyOn(Selection.prototype, "addRange");
+	if (options.countActivation) activate();
+	const selectionWrites = () =>
+		setBaseAndExtent.mock.calls.length + addRange.mock.calls.length;
+	return { element, blockId, backend, decorate, selectionWrites };
 }
 
-const backends = [
+/** Opens and closes a composition that changes nothing (cancelled, or committed empty). */
+type CompositionDriver = {
+	start(element: HTMLElement): void;
+	endUnchanged(element: HTMLElement): void;
+};
+
+const backends: Array<{
+	name: string;
+	create: (
+		editor: Editor,
+		controller: FieldEditorInputController,
+	) => InputBackend;
+	composition: CompositionDriver;
+}> = [
 	{
 		name: "contenteditable",
 		create: (editor: Editor, controller: FieldEditorInputController) =>
 			new ContentEditableBackend(editor, controller),
+		composition: {
+			start: (element) =>
+				element.dispatchEvent(new Event("compositionstart")),
+			endUnchanged: (element) =>
+				element.dispatchEvent(
+					Object.assign(new Event("compositionend"), { data: "" }),
+				),
+		},
 	},
 	{
 		name: "EditContext",
 		create: (editor: Editor, controller: FieldEditorInputController) => {
-			(globalThis as { EditContext?: unknown }).EditContext =
-				FakeEditContext;
+			installFakeEditContext();
 			return new EditContextBackend(editor, controller);
+		},
+		composition: {
+			start: (element) => contextOf(element).emit("compositionstart"),
+			endUnchanged: (element) =>
+				contextOf(element).emit("compositionend", { data: "" }),
 		},
 	},
 ];
@@ -196,38 +197,115 @@ afterEach(() => {
 		fixture.editor.destroy();
 	}
 	document.body.replaceChildren();
-	delete (globalThis as { EditContext?: unknown }).EditContext;
+	removeEditContext();
+	vi.restoreAllMocks();
 });
 
 describe.each(backends)(
 	"HOST9: $name decoration change while another control owns focus",
 	({ create }) => {
 		it("rebuilds the field without writing the selection back into the DOM", () => {
-			const { element, decorate, withBackendSelectionWrite } = mount(
-				create,
-				false,
-			);
+			const { element, decorate, selectionWrites } = mount(create, {
+				shouldProjectSelectionAfterReconcile: false,
+			});
 
 			decorate();
 
 			expect(
 				element.querySelector(`[${DECORATION_ATTRIBUTE}]`),
 			).not.toBeNull();
-			expect(withBackendSelectionWrite).not.toHaveBeenCalled();
+			expect(selectionWrites()).toBe(0);
 		});
 
 		it("still restores the selection when the field owns focus", () => {
-			const { element, decorate, withBackendSelectionWrite } = mount(
-				create,
-				true,
-			);
+			const { element, decorate, selectionWrites } = mount(create);
 
 			decorate();
 
 			expect(
 				element.querySelector(`[${DECORATION_ATTRIBUTE}]`),
 			).not.toBeNull();
-			expect(withBackendSelectionWrite).toHaveBeenCalled();
+			expect(selectionWrites()).toBeGreaterThan(0);
+		});
+	},
+);
+
+describe.each(backends)(
+	"HOST9: $name decoration change during a composition",
+	({ create, composition }) => {
+		it("renders the decoration when the composition closes with no change", () => {
+			const { element, decorate } = mount(create);
+
+			composition.start(element);
+			decorate();
+			expect(
+				element.querySelector(`[${DECORATION_ATTRIBUTE}]`),
+				"deferred while the composition owns the field",
+			).toBeNull();
+			composition.endUnchanged(element);
+
+			expect(
+				element.querySelector(`[${DECORATION_ATTRIBUTE}]`),
+			).not.toBeNull();
+		});
+	},
+);
+
+describe.each(backends)("HOST9: attaching the $name backend", ({ create }) => {
+	it("passively writes no native range, which would take focus from the control holding it", () => {
+		expect(
+			mount(create, {
+				shouldProjectSelectionAfterReconcile: false,
+				countActivation: true,
+				focusOptions: { passive: true },
+			}).selectionWrites(),
+		).toBe(0);
+	});
+
+	it("writes the record's native range when the attach may take focus", () => {
+		expect(
+			mount(create, {
+				shouldProjectSelectionAfterReconcile: false,
+				countActivation: true,
+			}).selectionWrites(),
+		).toBeGreaterThan(0);
+	});
+});
+
+describe.each(backends)(
+	"S1/P3: an undo or redo rebuild of the $name field",
+	({ create }) => {
+		function rebuildFromHistory(
+			projectAfterRebuild?: (blockIds: readonly string[]) => void,
+		) {
+			const { backend, blockId, selectionWrites } = mount(create, {
+				projectAfterRebuild,
+			});
+			(
+				backend as unknown as {
+					handleYTextChange(event: unknown): void;
+				}
+			).handleYTextChange({
+				delta: [],
+				transaction: {
+					origin: { [HISTORY_ORIGIN_TAG]: true },
+					local: true,
+				},
+			});
+			return { blockId, writes: selectionWrites() };
+		}
+
+		it("projects through the projector, which applies HOST9 and the chrome rule, instead of writing the range itself", () => {
+			const projected: Array<readonly string[]> = [];
+			const { blockId, writes } = rebuildFromHistory((blockIds) => {
+				projected.push(blockIds);
+			});
+			expect(projected).toEqual([[blockId]]);
+			expect(writes).toBe(0);
+		});
+
+		it("still writes the range under a host-built controller with no projector part", () => {
+			expect(rebuildFromHistory().writes).toBeGreaterThan(0);
 		});
 	},
 );

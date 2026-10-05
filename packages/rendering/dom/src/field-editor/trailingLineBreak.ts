@@ -1,16 +1,18 @@
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomHTMLElement } from "../utils/domNodes";
 import { isEmptyBlockPlaceholder } from "./emptyBlockPlaceholder";
 import { getLogicalNodeText } from "./inlineAtomLogicalDom";
 
-export function createTrailingLineBreak(): HTMLElement {
-	const br = document.createElement("br");
+/** Created in `doc`, the field's own document (an iframe's when mounted there). */
+export function createTrailingLineBreak(doc: Document = document): HTMLElement {
+	const br = doc.createElement("br");
 	br.setAttribute(DATA_ATTRS.trailingBreak, "");
 	return br;
 }
 
 export function isTrailingLineBreak(node: Node | null): node is HTMLElement {
 	return (
-		node instanceof HTMLElement &&
+		isDomHTMLElement(node) &&
 		node.tagName === "BR" &&
 		node.hasAttribute(DATA_ATTRS.trailingBreak)
 	);
@@ -37,7 +39,7 @@ export function syncTrailingLineBreak(element: HTMLElement): void {
 		return;
 	}
 	if (needed) {
-		element.appendChild(createTrailingLineBreak());
+		element.appendChild(createTrailingLineBreak(element.ownerDocument));
 		return;
 	}
 	clearTrailingLineBreak(element);

@@ -42,7 +42,7 @@ The root export also includes `urlPolicy`, `urlPolicyExtension`, `DomScheduler`,
 
 The normative per-surface matrix is `packages/docs/CAPABILITY-MATRIX.md` in the Pen repository. This package is the vanilla surface, and it is also where most capabilities are implemented for the framework bindings — so its column is mostly `bring-your-own-ui`: the behavior is here, and `mountEditor` renders no chrome for it.
 
-`supported` from `mountEditor` alone: single-block fields, expanded fields, document mutation, paste, editor-field chrome (`PEN_EDITOR_CHROME_STYLESHEET`), and the review-surface styling contract (adopt `PEN_REVIEW_STYLESHEET`). Everything else — table chrome, AI review affordances, overlays, multiplayer presence, search UI — exports its state and utilities and leaves the rendering to you.
+`supported` from `mountEditor` alone: single-block fields, expanded fields, document mutation, paste, editor-field chrome (`PEN_EDITOR_CHROME_STYLESHEET`), and the review-surface styling contract (adopt `PEN_REVIEW_STYLESHEET`). Everything else — AI review affordances, overlays, multiplayer presence, search UI, and the matrix's Chrome rows (toolbar, selection toolbar, slash menu, suggestion menu, block handle, table chrome) — exports its state and utilities and leaves the rendering to you.
 
 ## Options
 

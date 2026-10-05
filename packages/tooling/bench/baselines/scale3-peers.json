@@ -1,0 +1,36 @@
+{
+	"rule": "SCALE3",
+	"axis": "synced-peer-count",
+	"fixture": "createScale3PeerSession over createScale3YDoc(1000)",
+	"producedOn": "2026-10-03",
+	"reason": "W5 step 6: first record of the synced-peer axis",
+	"rows": [
+		{
+			"id": "scale3.keystroke.synced-peers.2",
+			"peers": 2,
+			"updatesDelivered": 1,
+			"remoteCommits": 1,
+			"maxAffectedBlocksPerRemoteCommit": 1,
+			"remoteCaretsOnTypist": 1,
+			"peersObservingKeystroke": 2
+		},
+		{
+			"id": "scale3.keystroke.synced-peers.4",
+			"peers": 4,
+			"updatesDelivered": 3,
+			"remoteCommits": 3,
+			"maxAffectedBlocksPerRemoteCommit": 1,
+			"remoteCaretsOnTypist": 3,
+			"peersObservingKeystroke": 4
+		},
+		{
+			"id": "scale3.keystroke.synced-peers.8",
+			"peers": 8,
+			"updatesDelivered": 7,
+			"remoteCommits": 7,
+			"maxAffectedBlocksPerRemoteCommit": 1,
+			"remoteCaretsOnTypist": 7,
+			"peersObservingKeystroke": 8
+		}
+	]
+}

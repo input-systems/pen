@@ -3,25 +3,12 @@
 import { act, createElement, type MouseEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createEditor } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
 import { Pen } from "../primitives/index";
-import { defaultSchema } from "@input/pen-schema";
+import { createTestEditor, fixtures } from "./utils/toolbarTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-function createTestEditor() {
-	return createEditor({
-		schema: defaultSchema,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
 
 async function renderToolbar(items: React.ReactElement[]) {
 	const editor = createTestEditor();
@@ -58,12 +45,6 @@ async function click(element: HTMLElement) {
 		);
 	});
 }
-
-const fixtures: Array<{
-	container: HTMLElement;
-	editor: ReturnType<typeof createTestEditor>;
-	root: ReturnType<typeof createRoot>;
-}> = [];
 
 afterEach(async () => {
 	while (fixtures.length > 0) {

@@ -2,19 +2,9 @@
 	"_comment": "Waived SelectionState-shaped property accesses. Each entry needs file, the exact waived construct, and a reason. A missing file or a vanished construct fails. Two kinds of entry live here and the reason must say which. A PENDING waiver is removed in the same PR that deletes the access. A PERMANENT one marks a construct that is not a SelectionState access at all, matched only because the receiver is named selection or sel; do not convert a permanent entry to a helper call.",
 	"entries": [
 		{
-			"file": "packages/rendering/dom/src/field-editor/contenteditableDomHelpers.ts",
+			"file": "packages/rendering/dom/src/field-editor/selectionProjector.ts",
 			"construct": "selection.isCollapsed",
 			"reason": "browser Selection.isCollapsed after addRange/extend"
-		},
-		{
-			"file": "packages/rendering/dom/src/field-editor/selectionBridgeOffsets.ts",
-			"construct": "selection.isCollapsed",
-			"reason": "browser Selection.isCollapsed after addRange/extend"
-		},
-		{
-			"file": "packages/rendering/react/src/primitives/ai/contextualPromptGeometry.ts",
-			"construct": "selection.isCollapsed",
-			"reason": "window.getSelection().isCollapsed"
 		},
 		{
 			"file": "packages/extensions/ai/src/helpers/session.ts",

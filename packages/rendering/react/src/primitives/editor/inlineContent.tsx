@@ -1,5 +1,5 @@
-import React, { useRef, useState } from "react";
-import { getOpOriginType, isCollapsed } from "@input/pen-core";
+import React, { memo, useRef, useState } from "react";
+import { getOpOriginType } from "@input/pen-core";
 import type { Decoration, InlineDecoration } from "@input/pen-types";
 import { getLogicalTextContent } from "@input/pen-dom/field-editor/inlineAtomDom";
 import { INLINE_ATOM_REPLACEMENT_TEXT } from "@input/pen-dom/field-editor/inlineAtomModel";
@@ -8,14 +8,11 @@ import { replaceElementChildren } from "@input/pen-dom/utils/replaceElementChild
 import { useEditorContentContext } from "../../context/editorContentContext";
 import { useEditorContext } from "../../context/editorContext";
 import { useFieldEditorContext } from "../../context/fieldEditorContext";
-import { useBlockEditingState } from "../../hooks/useBlockEditingState";
 import { useBlockCommitState } from "../../hooks/useBlockCommitState";
 import { useBlockDecorations } from "../../hooks/useBlockDecorations";
-import { useSelection } from "../../hooks/useSelection";
+import { useBlockSlice } from "../../hooks/useBlockNotifier";
 import { useBlockTextSnapshot } from "../../hooks/useBlockTextSnapshot";
-import { useFieldEditorState } from "../../hooks/useFieldEditorState";
 import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
-import { useInlineCompletionState } from "../../hooks/useInlineCompletionState";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import { fieldEditorTextEntryAttrs } from "../../utils/fieldEditorTextEntryAttrs";
@@ -33,6 +30,7 @@ import {
 	resolveNextInlineAtomTargets,
 	type InlineAtomRenderTarget,
 } from "./inlineAtomTargets";
+import { isDomNode } from "@input/pen-dom/utils/domNodes";
 
 export interface InlineContentProps extends AsChildProps {
 	blockId: string;
@@ -42,7 +40,13 @@ export interface InlineContentProps extends AsChildProps {
 	ref?: React.Ref<HTMLElement>;
 }
 
-export function InlineContent(props: InlineContentProps) {
+/**
+ * A block's inline text surface. Memoized, and fed only by its own block's
+ * notifier slices, so it re-renders for this block's text, field state,
+ * selection range, decorations or completion — not for a caret move or DOM
+ * sync elsewhere (SCALE6).
+ */
+export const InlineContent = memo(function InlineContent(props: InlineContentProps) {
 	const {
 		blockId,
 		className,
@@ -52,17 +56,18 @@ export function InlineContent(props: InlineContentProps) {
 	} = props;
 	const { editor, inlineAtomInteractions, inlineAtomRenderers, readonly } =
 		useEditorContext();
-	const { emptyPlaceholder, documentPlaceholderTargetBlockId } =
-		useEditorContentContext();
+	const { emptyPlaceholder } = useEditorContentContext();
 	const fieldEditor = useFieldEditorContext();
-	const fieldEditorState = useFieldEditorState(fieldEditor);
-	const isActive = useBlockEditingState(fieldEditor, blockId);
-	const selection = useSelection(editor);
-	const blockCommit = useBlockCommitState(editor, blockId);
-	const subscribedBlockDecorations = useBlockDecorations(editor, blockId);
+	const field = useBlockSlice(blockId, "field");
+	const selectionSlice = useBlockSlice(blockId, "selection");
+	const isDocumentPlaceholderTarget = useBlockSlice(blockId, "isPlaceholderTarget");
+	const visibleInlineCompletion = useBlockSlice(blockId, "inlineCompletion");
+	const anyInlineCompletionVisible = useBlockSlice(blockId, "inlineCompletionVisible");
+	const isActive = field.isFieldFocus;
+	const blockCommit = useBlockCommitState(blockId);
+	const subscribedBlockDecorations = useBlockDecorations(blockId);
 	const blockDecorations = blockDecorationsProp ?? subscribedBlockDecorations;
 	const textSnapshot = useBlockTextSnapshot(editor, blockId);
-	const visibleInlineCompletion = useInlineCompletionState(editor);
 	const elementRef = useRef<HTMLElement>(null);
 	const previousCommitRevisionRef = useRef(blockCommit.revision);
 	const previousRenderedDeltasRef = useRef<readonly TextDelta[] | null>(null);
@@ -70,23 +75,14 @@ export function InlineContent(props: InlineContentProps) {
 	const [inlineAtomTargets, setInlineAtomTargets] = useState<
 		InlineAtomRenderTarget[]
 	>([]);
-	const isExpandedOwnedBlock =
-		fieldEditorState.mode === "expanded" &&
-		fieldEditorState.activeBlockIds.includes(blockId);
-
-	const isDocumentPlaceholderTarget =
-		documentPlaceholderTargetBlockId === blockId;
+	// Expanded mode and this block among its active blocks.
+	const isExpandedOwnedBlock = field.expandedRole !== null;
 	const schemaPlaceholder = resolveEditorSchemaPlaceholder(editor, blockId);
-	const isFocusedBlock =
-		isActive ||
-		(selection?.type === "text" &&
-			isCollapsed(selection) &&
-			selection.focus.blockId === blockId);
+	const isFocusedBlock = isActive || selectionSlice.caretHere;
 
 	const blockTextEmpty = isInlineContentEmpty(textSnapshot.deltas);
 	const emptyInlineCompletionText =
 		visibleInlineCompletion?.type === "inline" &&
-		visibleInlineCompletion.blockId === blockId &&
 		blockTextEmpty &&
 		visibleInlineCompletion.text.length > 0
 			? visibleInlineCompletion.text
@@ -102,7 +98,7 @@ export function InlineContent(props: InlineContentProps) {
 		hasEmptyPlaceholder: !!emptyPlaceholder,
 		hasExplicitPlaceholder: !!placeholderProp,
 		hasSchemaPlaceholder: !!schemaPlaceholder,
-		suppressPlaceholders: visibleInlineCompletion !== null,
+		suppressPlaceholders: anyInlineCompletionVisible,
 	});
 
 	const placeholder = showDocumentPlaceholder
@@ -129,14 +125,19 @@ export function InlineContent(props: InlineContentProps) {
 	);
 	const renderedDeltasText = getDeltaText(renderedDeltas);
 
+	// P3: after a rebuild, a no-op unless this block is the projection target.
+	const projectRebuiltBlock = () => {
+		fieldEditor?.projectAfterRebuild?.([blockId]);
+	};
+
 	useIsomorphicLayoutEffect(() => {
-		if (fieldEditorState.mode === "expanded") {
+		if (isExpandedOwnedBlock) {
 			return;
 		}
 		if (isActive && elementRef.current && fieldEditor) {
 			fieldEditor.attachElement(elementRef.current);
 		}
-	}, [isActive, fieldEditor, fieldEditorState.mode, blockId]);
+	}, [isActive, fieldEditor, isExpandedOwnedBlock, blockId]);
 
 	useIsomorphicLayoutEffect(() => {
 		const syncInlineAtomTargets = () => {
@@ -161,7 +162,7 @@ export function InlineContent(props: InlineContentProps) {
 		const isBackendOwned =
 			!!elementRef.current &&
 			isActive &&
-			(activeElement instanceof Node
+			(isDomNode(activeElement)
 				? elementRef.current.contains(activeElement)
 				: false);
 		const shouldForceCommitReconcile =
@@ -170,7 +171,7 @@ export function InlineContent(props: InlineContentProps) {
 			getOpOriginType(blockCommit.origin) === "history";
 
 		if (isExpandedOwnedBlock || isActive) {
-			if (!elementRef.current || fieldEditorState.isComposing) {
+			if (!elementRef.current || field.isComposing) {
 				previousRenderedDeltasRef.current = renderedDeltas;
 				syncInlineAtomTargets();
 				return;
@@ -194,11 +195,9 @@ export function InlineContent(props: InlineContentProps) {
 				[...renderedDeltas],
 				elementRef.current,
 				editor.schema,
-				{
-					editor,
-					preserveSelection: true,
-				},
+				{ editor },
 			);
+			projectRebuiltBlock();
 			previousRenderedDeltasRef.current = renderedDeltas;
 			syncInlineAtomTargets();
 			return;
@@ -209,7 +208,7 @@ export function InlineContent(props: InlineContentProps) {
 		}
 		if (
 			!shouldForceCommitReconcile &&
-			(isBackendOwned || fieldEditorState.isComposing)
+			(isBackendOwned || field.isComposing)
 		) {
 			previousRenderedDeltasRef.current = renderedDeltas;
 			syncInlineAtomTargets();
@@ -225,20 +224,18 @@ export function InlineContent(props: InlineContentProps) {
 			[...renderedDeltas],
 			elementRef.current,
 			editor.schema,
-			{
-				editor,
-				preserveSelection: false,
-			},
+			{ editor },
 		);
+		projectRebuiltBlock();
 		previousRenderedDeltasRef.current = renderedDeltas;
 		syncInlineAtomTargets();
 	}, [
 		editor,
+		fieldEditor,
+		blockId,
 		isExpandedOwnedBlock,
-		fieldEditorState.isComposing,
-		fieldEditorState.domSyncVersion,
-		fieldEditorState.activeBlockIds,
-		fieldEditorState.mode,
+		field.isComposing,
+		field.domSyncVersion,
 		blockCommit,
 		isActive,
 		renderedDeltas,
@@ -255,7 +252,7 @@ export function InlineContent(props: InlineContentProps) {
 		showDocumentPlaceholder ||
 		showExplicitPlaceholder ||
 		showBlockPlaceholder;
-	const isActiveSurface = isActive && fieldEditorState.mode !== "expanded";
+	const isActiveSurface = isActive && !isExpandedOwnedBlock;
 
 	const primitiveProps: Record<string, unknown> = {
 		[DATA_ATTRS.inlineContent]: "",
@@ -299,13 +296,13 @@ export function InlineContent(props: InlineContentProps) {
 				blockId={blockId}
 				targets={inlineAtomTargets}
 				renderers={inlineAtomRenderers}
-				selection={selection}
+				selection={selectionSlice}
 				interactions={inlineAtomInteractions}
 				readonly={readonly}
 			/>
 		</>
 	);
-}
+});
 
 function getInlineContentClassName(
 	className: string | undefined,

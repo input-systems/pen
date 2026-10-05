@@ -1,22 +1,24 @@
 import type { Editor } from "@input/pen-types";
 import { DATA_ATTRS } from "./dataAttributes";
+import { closestDomElement, isDomHTMLElement } from "./domNodes";
+
+const FORM_CONTROL_NAMES = new Set(["input", "textarea", "select"]);
 
 export function shouldIgnoreAIKeyboardEvent(
 	editor: Editor,
 	event: KeyboardEvent,
 ): boolean {
 	const eventElement = resolveEventElement(event.target);
-	const editorRoot = resolveEditorRootForAI(editor);
+	const editorRoot = resolveEditorRootForAI(
+		editor,
+		eventElement?.ownerDocument ?? document,
+	);
 
 	if (editorRoot && eventElement && !editorRoot.contains(eventElement)) {
 		return true;
 	}
 
-	if (
-		eventElement instanceof HTMLInputElement ||
-		eventElement instanceof HTMLTextAreaElement ||
-		eventElement instanceof HTMLSelectElement
-	) {
+	if (eventElement && FORM_CONTROL_NAMES.has(eventElement.localName)) {
 		return true;
 	}
 
@@ -26,7 +28,10 @@ export function shouldIgnoreAIKeyboardEvent(
 	);
 }
 
-function resolveEditorRootForAI(editor: Editor): HTMLElement | null {
+function resolveEditorRootForAI(
+	editor: Editor,
+	doc: Document,
+): HTMLElement | null {
 	const selection = editor.getSelection();
 	const activeBlockId =
 		selection?.type === "text"
@@ -38,29 +43,24 @@ function resolveEditorRootForAI(editor: Editor): HTMLElement | null {
 					: null;
 
 	if (activeBlockId) {
-		const activeBlock = document.querySelector<HTMLElement>(
+		const activeBlock = doc.querySelector<HTMLElement>(
 			`[${DATA_ATTRS.blockId}="${escapeForAttributeSelector(activeBlockId)}"]`,
 		);
 		const activeRoot = activeBlock?.closest(`[${DATA_ATTRS.editorRoot}]`);
-		if (activeRoot instanceof HTMLElement) {
+		if (isDomHTMLElement(activeRoot)) {
 			return activeRoot;
 		}
 	}
 
-	const roots = document.querySelectorAll<HTMLElement>(
+	const roots = doc.querySelectorAll<HTMLElement>(
 		`[${DATA_ATTRS.editorRoot}]`,
 	);
 	return roots.length === 1 ? roots[0] : null;
 }
 
 function resolveEventElement(target: EventTarget | null): HTMLElement | null {
-	if (target instanceof HTMLElement) {
-		return target;
-	}
-	if (target instanceof Node) {
-		return target.parentElement;
-	}
-	return null;
+	const element = closestDomElement(target);
+	return isDomHTMLElement(element) ? element : null;
 }
 
 function escapeForAttributeSelector(value: string): string {

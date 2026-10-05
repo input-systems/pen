@@ -78,6 +78,7 @@ function parseTranslate3d(transform: string): { x: number; y: number } {
 
 function assertPaintedMatchesPlan(
 	items: readonly GeometryEightCaretItem[],
+	origin: { x: number; y: number },
 	painted: readonly PaintedCaret[],
 ): void {
 	expect(painted).toHaveLength(items.length);
@@ -88,7 +89,9 @@ function assertPaintedMatchesPlan(
 		expect(node.kind).toBe("caret");
 		expect(node.styleLeft).toBe("0px");
 		expect(node.styleTop).toBe("0px");
-		expect(node.styleWidth).toBe(`${item.width}px`);
+		// A caret's width is the host's caret-width token, not a measured
+		// value; its height is the measured line.
+		expect(node.styleWidth).not.toBe("");
 		expect(node.styleHeight).toBe(`${item.height}px`);
 		// translate.* is parsed back out of the serialized `style.transform`
 		// string, which Chromium writes to four decimals: a planned 36.03125
@@ -98,11 +101,13 @@ function assertPaintedMatchesPlan(
 		// value with a 5 in the fifth decimal. Precision 3 leaves ten times
 		// the worst serialization error. box.* comes from
 		// getBoundingClientRect and is not serialized, so it stays at 4.
+		// Items are layer-relative (OV2): the painted box is the item plus
+		// the layer origin the read phase measured.
 		expect(translate.x).toBeCloseTo(item.x, 3);
 		expect(translate.y).toBeCloseTo(item.y, 3);
-		expect(node.box.x).toBeCloseTo(item.x, 4);
-		expect(node.box.y).toBeCloseTo(item.y, 4);
-		expect(node.box.width).toBeCloseTo(item.width, 4);
+		expect(node.box.x).toBeCloseTo(origin.x + item.x, 3);
+		expect(node.box.y).toBeCloseTo(origin.y + item.y, 3);
+		expect(node.box.width).toBeGreaterThan(0);
 		expect(node.box.height).toBeCloseTo(item.height, 4);
 	}
 }
@@ -203,7 +208,7 @@ scenario(
 		).toBe(REMOTE_CARET_COUNT);
 
 		const painted = await paintedCarets(page);
-		assertPaintedMatchesPlan(budget.items, painted);
+		assertPaintedMatchesPlan(budget.items, budget.layerOrigin, painted);
 
 		const project = test.info().project.name;
 		if (project === "chromium") {

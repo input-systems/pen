@@ -11,26 +11,17 @@ import { extractEditDocumentPreview } from "../runtime/editDocumentPreview";
 import type { AIStreamingReviewPreview } from "../types";
 import { aiExtension, getAIController, runAgenticLoop } from "../index";
 import { deltaStreamExtension } from "../stream";
+import {
+	ORIGINAL,
+	annotationsFromRequest,
+	seedDocument,
+	snapshot,
+} from "./editChannel.testHelpers";
 
 const PROMPT = "Shorten the closing paragraph.";
-const ORIGINAL = "Revenue grew. Costs fell. Margins improved.";
 const REWRITE = "Revenue grew.";
 const NEW_TITLE = "Q3 Highlights";
 const SECOND_INSERT = "Second thought\n\nStill arriving.";
-const BLOCK_ANNOTATION_PATTERN = /<!-- block:(\S+) (\S+) -->/g;
-
-interface Annotation {
-	id: string;
-	type: string;
-}
-
-function annotationsFromRequest(request: { messages: unknown }): Annotation[] {
-	const serialized = JSON.stringify(request.messages);
-	return [...serialized.matchAll(BLOCK_ANNOTATION_PATTERN)].map((match) => ({
-		id: match[1]!,
-		type: match[2]!,
-	}));
-}
 
 function lastParagraphId(request: { messages: unknown }): string {
 	const lastParagraph = annotationsFromRequest(request)
@@ -84,50 +75,6 @@ function createChatEditor(
 			}),
 		],
 	});
-}
-
-function seedDocument(editor: ReturnType<typeof createEditor>): string {
-	const headingId = editor.firstBlock()!.id;
-	editor.apply(
-		[
-			{
-				type: "set-props",
-				blockId: headingId,
-				props: { type: "heading", level: 1 },
-			},
-			{
-				type: "splice-text",
-				blockId: headingId,
-				from: 0,
-				to: 0,
-				insert: "Quarterly Report",
-			},
-			{
-				type: "insert-block",
-				blockId: "closing",
-				blockType: "paragraph",
-				props: {},
-				position: "last",
-			},
-			{
-				type: "splice-text",
-				blockId: "closing",
-				from: 0,
-				to: 0,
-				insert: ORIGINAL,
-			},
-		],
-		{ origin: "system" },
-	);
-	return "closing";
-}
-
-function snapshot(editor: ReturnType<typeof createEditor>) {
-	return Array.from(editor.blocks()).map((block) => ({
-		id: block.id,
-		type: block.type,
-		text: block.textContent(),
-	}));
 }
 
 /**
@@ -271,10 +218,14 @@ describe("EC15: content in an edit payload streams into the blocks it addresses"
 			toolCallId: "call-1",
 			operationIndex: 0,
 			blockId: "closing",
+			blockIds: ["closing"],
+			placement: null,
 			operation: "replace_block_text",
 			text: "Revenue gr",
 			// Plain text, so there is no markdown payload to write from.
 			markdown: null,
+			// The string has not closed: a short prefix is not yet a short edit.
+			complete: false,
 		});
 	});
 
@@ -285,9 +236,12 @@ describe("EC15: content in an edit payload streams into the blocks it addresses"
 			toolCallId: "call-2",
 			operationIndex: 1,
 			blockId: "closing",
+			blockIds: ["closing"],
+			placement: "after",
 			operation: "insert_blocks",
 			text: "Find",
 			markdown: "## Find",
+			complete: false,
 		});
 	});
 

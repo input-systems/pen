@@ -14,6 +14,8 @@ type CellEditingControllerOptions = {
 		col: number,
 	) => FieldEditorTextLike | null;
 	attachElement: (element: HTMLElement) => boolean;
+	/** Writes the cell's caret to the authority; the projector shows it (W3.R18). */
+	claimCaret: (cell: ActiveCellCoord) => void;
 	requestDomFocus: (
 		target: HTMLElement,
 		reason: FieldEditorFocusReason,
@@ -66,21 +68,16 @@ export class CellEditingController {
 	}
 
 	placeCaretInCell(cellEl: HTMLElement): void {
+		const coord = this.coord;
 		if (
+			!coord ||
 			!this.options.requestDomFocus(cellEl, "cell", {
 				preventScroll: true,
 			})
 		) {
 			return;
 		}
-		const selection = cellEl.ownerDocument?.getSelection();
-		if (!selection) return;
-
-		const range = cellEl.ownerDocument.createRange();
-		range.selectNodeContents(cellEl);
-		range.collapse(false);
-		selection.removeAllRanges();
-		selection.addRange(range);
+		this.options.claimCaret(coord);
 	}
 
 	resolveInlineElement(blockId: string): HTMLElement | null {
@@ -89,19 +86,6 @@ export class CellEditingController {
 			return null;
 		}
 		return this.resolveCellElement(coord.blockId, coord.row, coord.col);
-	}
-
-	resolveActiveCellElement(
-		rootElement?: HTMLElement | null,
-	): HTMLElement | null {
-		const coord = this.coord;
-		if (!coord) return null;
-		return this.resolveCellElement(
-			coord.blockId,
-			coord.row,
-			coord.col,
-			rootElement,
-		);
 	}
 
 	resolveCellElement(

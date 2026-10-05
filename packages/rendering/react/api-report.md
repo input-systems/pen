@@ -15,7 +15,6 @@
 - composeRefs
 - DefaultRenderer
 - DividerRenderer
-- EditorBlock
 - EditorBlockHandle
 - EditorCaretOverlay
 - EditorContent
@@ -26,7 +25,6 @@
 - EditorSelectionRect
 - HeadingRenderer
 - ImageRenderer
-- InlineContent
 - NumberedListItemRenderer
 - ParagraphRenderer
 - PenEditor
@@ -73,6 +71,7 @@
 - useFieldEditorContext
 - useFieldEditorState
 - useFocusController
+- useReducedMotion
 - useSelection
 - useSelectionToolbar
 - useSelectionToolbarContext
@@ -171,6 +170,7 @@
 - Decoration
 - DecorationSet
 - Editor
+- EditorBlock
 - EditorContext
 - FieldEditor
 - FieldEditorContext
@@ -181,6 +181,7 @@
 - getInlineAtomAtOffset
 - InlineAtomInteractions
 - InlineAtomRenderInteractionProps
+- InlineContent
 - InlineDecoration
 - InlineSuggestionControlPosition
 - InlineSuggestionControlsState
@@ -501,17 +502,15 @@
 
 `./dist/multiplayer.d.ts`
 
-### function
-
-- MultiplayerCaretOverlay
-- MultiplayerPresenceList
-- MultiplayerRemoteCursors
-- useMultiplayer
-- useRemoteCursors
-- useRemoteSelections
-
 ### value
 
+- MultiplayerCaretOverlay
+- MultiplayerCaretOverlayProps
+- MultiplayerCaretRenderProps
+- MultiplayerPresenceList
+- MultiplayerPresenceListProps
+- MultiplayerRemoteCursors
+- MultiplayerRemoteCursorsProps
 - MultiplayerState
 - PeerState
 - RemoteCellPresence
@@ -520,13 +519,9 @@
 - RemoteCursorState
 - RemoteSelectionState
 - resolveRemoteCellPresence
-
-### type
-
-- MultiplayerCaretOverlayProps
-- MultiplayerCaretRenderProps
-- MultiplayerPresenceListProps
-- MultiplayerRemoteCursorsProps
+- useMultiplayer
+- useRemoteCursors
+- useRemoteSelections
 
 ## ./search
 

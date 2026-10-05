@@ -6,7 +6,7 @@ import type {
   PenMarkJSON,
 } from "../json/export";
 import { urlPolicy } from "@input/pen-core";
-import { escapeMarkupAttribute, escapeMarkupText } from "./escapeMarkup";
+import { escapeMarkupAttribute, escapeMarkupText } from "../escapeMarkup";
 
 const INDENT = "  ";
 

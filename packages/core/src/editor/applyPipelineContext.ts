@@ -1,6 +1,5 @@
 import type {
 	CRDTAdapter,
-	CRDTArray,
 	CRDTDocument,
 	CRDTEvent,
 	CRDTMap,
@@ -17,6 +16,14 @@ import type { EventEmitter } from "./events";
 import type { PipelinePhase } from "./pipelinePhases";
 import type { SelectionAuthorityImpl } from "./selection";
 import type { TableGridExecutor } from "./tableGridExecutor";
+
+/**
+ * Wraps one apply's execution, e.g. in its undo capture key (AIB4). It runs
+ * when the ops execute, so an apply queued behind the running one still
+ * executes under its own wrapper rather than whatever was ambient when it
+ * was issued.
+ */
+export type ApplyCapture = (run: () => void) => void;
 
 export type ApplyPipelineMutableMap = CRDTUnknownMap & {
 	delete(key: string): void;
@@ -42,6 +49,11 @@ export interface ApplyPipelineDocumentContext {
 	readonly _crdtDoc: CRDTDocument;
 	readonly _tableGrid: TableGridExecutor;
 	readonly _emitter: EventEmitter;
+	/**
+	 * The normalizer, whose pass index the block executors resolve positions
+	 * through and advance at every structural write (SCALE2).
+	 */
+	readonly _engine: SchemaEngineImpl;
 	_doc: PenDocument;
 }
 
@@ -52,19 +64,17 @@ export interface ApplyPipelineOrchestrationContext extends ApplyPipelineDocument
 	_applyStormEmitted: boolean;
 	_suppressObserver: boolean;
 	_unknownBlockTypesReported: Set<string> | undefined;
-	/**
-	 * Block count at the last unknown-type scan. A document whose block count
-	 * is unchanged cannot hold a type the previous scan did not already see,
-	 * so the scan is skipped (SCALE2).
-	 */
-	_unknownScanBlockCount: number | undefined;
+	/** Whether the next apply sweeps every block for unknown types: after a load. */
+	_unknownScanPending: boolean;
+	/** Blocks a remote or undo commit stored or retyped since the last apply. */
+	readonly _unknownTypeCandidates: Set<string>;
 	_commitDiagnostics: DiagnosticEvent[];
 	readonly _queue: {
 		ops: DocumentOp[];
 		origin: OpOrigin;
 		structural?: StructuralOriginTag;
+		capture?: ApplyCapture;
 	}[];
-	readonly _engine: SchemaEngineImpl;
 	readonly _selection: SelectionAuthorityImpl;
 	_onDidApply: ((event: CRDTEvent) => void) | null;
 	_recordPhase: ((phase: PipelinePhase) => void) | null;

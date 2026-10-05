@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { createEditor } from "@input/pen-core";
 import { toolsExtension } from "@input/pen-tools";
@@ -13,6 +12,7 @@ import type {
 import { aiExtension, getAIController } from "../index";
 import { AI_TOOL_FAILED_CODE } from "../tools/constants";
 import { deltaStreamExtension } from "../stream";
+import { documentHash } from "./fixtures/documentHash";
 
 /**
  * UC2: a parse- or schema-shaped edit failure is a diagnostic and a
@@ -111,13 +111,6 @@ function seedDocument(editor: ReturnType<typeof createEditor>): void {
 		],
 		{ origin: "system" },
 	);
-}
-
-function documentHash(editor: Editor): string {
-	const crdt = editor.internals.crdtDoc;
-	return createHash("sha256")
-		.update(Buffer.from(crdt.adapter.encodeState(crdt)))
-		.digest("hex");
 }
 
 describe("UC2: no mutation is derived from assistant text, and no failure is an edit", () => {

@@ -20,12 +20,20 @@ export function computeDocumentEmpty(editor: Editor): boolean {
 export function getDocumentPlaceholderTargetBlockId(
 	editor: Editor,
 ): string | null {
-	const contentBlockIds = editor.documentState.blockOrder.filter(
-		(blockId) => !isChromeBlock(editor, blockId),
-	);
-	if (contentBlockIds.length !== 1) return null;
-
-	const blockId = contentBlockIds[0];
+	// Stop at the second content block: the answer is already null, and a
+	// commit must not scan the document to learn that (SCALE2).
+	// `blockAt` rather than `blockOrder`, whose copy is O(document) after a
+	// root edit.
+	const state = editor.documentState;
+	let blockId: string | null = null;
+	for (let index = 0; ; index += 1) {
+		const candidate = state.blockAt(index);
+		if (candidate === null) break;
+		if (isChromeBlock(editor, candidate)) continue;
+		if (blockId !== null) return null;
+		blockId = candidate;
+	}
+	if (blockId === null) return null;
 	const block = editor.getBlock(blockId);
 	if (!block) return null;
 	const schema = editor.schema.resolve(block.type);

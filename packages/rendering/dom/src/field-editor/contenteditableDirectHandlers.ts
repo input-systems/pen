@@ -1,3 +1,4 @@
+import { getLogicalInlineText } from "./commandsShared";
 import {
 	deleteBackward,
 	deleteForward,
@@ -18,6 +19,7 @@ import {
 import type { Command, Editor } from "@input/pen-types";
 import type { FieldEditorInputController } from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
+import { resolveFieldInsertMarks } from "./pendingMarkController";
 import {
 	applyDeleteBehavior,
 	applyEnterBehavior,
@@ -28,12 +30,12 @@ import {
 	dispatchEditorCommand,
 	syncEditorTextSelection,
 } from "./commandDispatch";
+import { reportCellMarkDecline } from "./cellMarkDecline";
 import { getPasteImporters, handlePaste } from "./clipboard";
 import { staticRangeToOffsets } from "./contenteditableDomHelpers";
 
 export interface ContentEditableDirectInputBackend {
 	resolveCurrentInputRange(): { start: number; end: number } | null;
-	resolveLiveInputRange?(): { start: number; end: number } | null;
 	applyListInputRule(options: {
 		blockId: string;
 		range: { start: number; end: number };
@@ -65,127 +67,58 @@ const insertText: DirectHandler = (
 	_element,
 	backend,
 ) => {
-	const text = event.data ?? "";
-	if (!text) return;
-	if (hasMultiBlockTextSelection(editor)) {
-		editor.replaceSelection(text);
-		return;
-	}
-	const blockId = fe.focusBlockId;
-	if (!blockId) return;
-	const range = resolveFieldInsertRange(
-		editor,
-		fe,
+	insertTextOverRange(event, editor, ytext, fe, backend, () =>
 		backend.resolveCurrentInputRange(),
 	);
-	if (!range) return;
-	if (backend.applyListInputRule({ blockId, range, text })) {
-		return;
-	}
-	const marks = fe.resolveInsertMarks(ytext, range.start);
-	if (tryDispatchInsert(editor, fe, backend, blockId, range, text, marks)) {
-		return;
-	}
-	backend.applyInlineTextEdit({
-		blockId,
-		range,
-		text,
-		marks,
-	});
 };
 
-const deleteLineBackward: DirectHandler = (
-	_event,
-	editor,
-	_ytext,
-	fe,
-	_element,
-	backend,
-) => {
-	const blockId = fe.focusBlockId;
-	if (!blockId) return;
-	const range = backend.resolveCurrentInputRange();
-	if (!range) return;
-
-	if (
-		tryDispatchMapped(
+/**
+ * A word or line delete. Undispatched, it removes a non-collapsed range, else
+ * the span from the caret to `boundary` in the delete's direction.
+ */
+function boundaryDelete(
+	command: typeof deleteBackward | typeof deleteForward,
+	granularity: "word" | "line",
+	boundary: (
+		ytext: FieldEditorTextLike,
+		caret: number,
+		editor: Editor,
+	) => number,
+): DirectHandler {
+	return (_event, editor, ytext, fe, _element, backend) => {
+		const resolved = resolveUndispatchedDelete(
 			editor,
 			fe,
 			backend,
-			deleteBackward,
-			{
-				granularity: "line",
-			},
-			range,
-		)
-	) {
-		return;
-	}
+			command,
+			granularity,
+		);
+		if (!resolved) return;
+		const { blockId, range } = resolved;
 
-	if (range.start !== range.end) {
-		backend.applyInlineTextEdit({
-			blockId,
-			range,
-			text: "",
-		});
-		return;
-	}
+		if (range.start !== range.end) {
+			deleteInlineRange(backend, blockId, range);
+			return;
+		}
 
-	if (range.start > 0) {
-		backend.applyInlineTextEdit({
-			blockId,
-			range: { start: 0, end: range.start },
-			text: "",
-		});
-	}
-};
+		const caret = range.start;
+		const target = boundary(ytext, caret, editor);
+		if (command === deleteBackward ? target < caret : target > caret) {
+			deleteInlineRange(backend, blockId, {
+				start: Math.min(target, caret),
+				end: Math.max(target, caret),
+			});
+		}
+	};
+}
 
-const deleteLineForward: DirectHandler = (
-	_event,
-	editor,
-	ytext,
-	fe,
-	_element,
-	backend,
-) => {
-	const blockId = fe.focusBlockId;
-	if (!blockId) return;
-	const range = backend.resolveCurrentInputRange();
-	if (!range) return;
+const deleteLineBackward = boundaryDelete(deleteBackward, "line", () => 0);
 
-	if (
-		tryDispatchMapped(
-			editor,
-			fe,
-			backend,
-			deleteForward,
-			{
-				granularity: "line",
-			},
-			range,
-		)
-	) {
-		return;
-	}
-
-	if (range.start !== range.end) {
-		backend.applyInlineTextEdit({
-			blockId,
-			range,
-			text: "",
-		});
-		return;
-	}
-
-	const end = ytext.toString().length;
-	if (end > range.end) {
-		backend.applyInlineTextEdit({
-			blockId,
-			range: { start: range.end, end },
-			text: "",
-		});
-	}
-};
+const deleteLineForward = boundaryDelete(
+	deleteForward,
+	"line",
+	(ytext) => getLogicalInlineText(ytext).length,
+);
 
 // command-policy implementations; preventDefault / allow / block live in BEFOREINPUT_MAP
 export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
@@ -193,37 +126,11 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 	insertFromDrop: insertText,
 
 	insertReplacementText: (event, editor, ytext, fe, element, backend) => {
-		const text = event.data ?? "";
-		if (!text) return;
-		if (hasMultiBlockTextSelection(editor)) {
-			editor.replaceSelection(text);
-			return;
-		}
-		const blockId = fe.focusBlockId;
-		if (!blockId) return;
-		const targetRanges = event.getTargetRanges?.();
-		const range = resolveFieldInsertRange(
-			editor,
-			fe,
-			targetRanges?.length
+		insertTextOverRange(event, editor, ytext, fe, backend, () => {
+			const targetRanges = event.getTargetRanges?.();
+			return targetRanges?.length
 				? staticRangeToOffsets(targetRanges[0], element)
-				: backend.resolveCurrentInputRange(),
-		);
-		if (!range) return;
-		if (backend.applyListInputRule({ blockId, range, text })) {
-			return;
-		}
-		const marks = fe.resolveInsertMarks(ytext, range.start);
-		if (
-			tryDispatchInsert(editor, fe, backend, blockId, range, text, marks)
-		) {
-			return;
-		}
-		backend.applyInlineTextEdit({
-			blockId,
-			range,
-			text,
-			marks,
+				: backend.resolveCurrentInputRange();
 		});
 	},
 
@@ -232,66 +139,43 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 			editor.deleteSelection();
 			return;
 		}
-		const blockId = fe.focusBlockId;
-		if (!blockId) return;
-		const range = backend.resolveCurrentInputRange();
-		if (!range) return;
+		const resolved = resolveUndispatchedDelete(
+			editor,
+			fe,
+			backend,
+			deleteBackward,
+			"grapheme",
+		);
+		if (!resolved) return;
+		const { blockId, range } = resolved;
 
-		if (
-			tryDispatchMapped(
-				editor,
-				fe,
-				backend,
-				deleteBackward,
-				{
-					granularity: "grapheme",
-				},
-				range,
-			)
-		) {
-			return;
-		}
-
-		const target = applyDeleteBehavior(editor, {
-			blockId,
-			ytext,
-			range,
-			direction: "backward",
-		});
+		// A cell's text is not the table block's: block-level delete
+		// would select on the table and clear the cell, so it edits inline.
+		const target = isCellEditing(editor, fe)
+			? null
+			: applyDeleteBehavior(editor, {
+					blockId,
+					ytext,
+					range,
+					direction: "backward",
+				});
 		if (target) {
-			if (target.selectBlock) {
-				fe.deactivate();
-				editor.selectBlock(target.blockId);
-			} else {
-				fe.activateTextSelection(
-					target.blockId,
-					target.anchorOffset,
-					target.focusOffset,
-				);
-			}
+			activateDeleteTarget(editor, fe, target);
 			return;
 		}
 
 		if (range.start !== range.end) {
-			backend.applyInlineTextEdit({
-				blockId,
-				range,
-				text: "",
-			});
+			deleteInlineRange(backend, blockId, range);
 			return;
 		}
 
 		const start = previousGraphemeBoundary(
-			ytext.toString(),
+			getLogicalInlineText(ytext),
 			range.start,
 			resolveEditorLocale(editor),
 		);
 		if (start < range.start) {
-			backend.applyInlineTextEdit({
-				blockId,
-				range: { start, end: range.start },
-				text: "",
-			});
+			deleteInlineRange(backend, blockId, { start, end: range.start });
 		}
 	},
 
@@ -300,104 +184,57 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 			editor.deleteSelection();
 			return;
 		}
-		const blockId = fe.focusBlockId;
-		if (!blockId) return;
-		const range = backend.resolveCurrentInputRange();
-		if (!range) return;
+		const resolved = resolveUndispatchedDelete(
+			editor,
+			fe,
+			backend,
+			deleteForward,
+			"grapheme",
+		);
+		if (!resolved) return;
+		const { blockId, range } = resolved;
 
-		if (
-			tryDispatchMapped(
-				editor,
-				fe,
-				backend,
-				deleteForward,
-				{
-					granularity: "grapheme",
-				},
-				range,
-			)
-		) {
+		// A cell's text is not the table block's: block-level delete
+		// would select on the table and clear the cell, so it edits inline.
+		const target = isCellEditing(editor, fe)
+			? null
+			: applyDeleteBehavior(editor, {
+					blockId,
+					ytext,
+					range,
+					direction: "forward",
+				});
+		if (target) {
+			activateDeleteTarget(editor, fe, target);
 			return;
 		}
 
-		const target = applyDeleteBehavior(editor, {
-			blockId,
-			ytext,
-			range,
-			direction: "forward",
-		});
-		if (target) {
-			if (target.selectBlock) {
-				fe.deactivate();
-				editor.selectBlock(target.blockId);
-			} else {
-				fe.activateTextSelection(
-					target.blockId,
-					target.anchorOffset,
-					target.focusOffset,
-				);
-			}
+		if (range.start !== range.end) {
+			deleteInlineRange(backend, blockId, range);
 			return;
 		}
 
 		const start = range.start;
 		const end = nextGraphemeBoundary(
-			ytext.toString(),
+			getLogicalInlineText(ytext),
 			start,
 			resolveEditorLocale(editor),
 		);
 		if (end > start) {
-			backend.applyInlineTextEdit({
-				blockId,
-				range: { start, end },
-				text: "",
-			});
+			deleteInlineRange(backend, blockId, { start, end });
 		}
 	},
 
-	deleteWordBackward: (_event, editor, ytext, fe, element, backend) => {
-		const blockId = fe.focusBlockId;
-		if (!blockId) return;
-		const range = backend.resolveCurrentInputRange();
-		if (!range) return;
-
-		if (
-			tryDispatchMapped(
-				editor,
-				fe,
-				backend,
-				deleteBackward,
-				{
-					granularity: "word",
-				},
-				range,
-			)
-		) {
-			return;
-		}
-
-		if (range.start !== range.end) {
-			backend.applyInlineTextEdit({
-				blockId,
-				range,
-				text: "",
-			});
-			return;
-		}
-
-		const start = previousWordBoundary(
-			ytext.toString(),
-			range.start,
-			resolveEditorLocale(editor),
-		);
-		if (start < range.start) {
-			backend.applyInlineTextEdit({
-				blockId,
-				range: { start, end: range.start },
-				text: "",
-			});
-		}
-	},
+	deleteWordBackward: boundaryDelete(
+		deleteBackward,
+		"word",
+		(ytext, caret, editor) =>
+			previousWordBoundary(
+				getLogicalInlineText(ytext),
+				caret,
+				resolveEditorLocale(editor),
+			),
+	),
 
 	deleteSoftLineBackward: deleteLineBackward,
 	deleteHardLineBackward: deleteLineBackward,
@@ -405,49 +242,16 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 	deleteSoftLineForward: deleteLineForward,
 	deleteHardLineForward: deleteLineForward,
 
-	deleteWordForward: (_event, editor, ytext, fe, element, backend) => {
-		const blockId = fe.focusBlockId;
-		if (!blockId) return;
-		const range = backend.resolveCurrentInputRange();
-		if (!range) return;
-
-		if (
-			tryDispatchMapped(
-				editor,
-				fe,
-				backend,
-				deleteForward,
-				{
-					granularity: "word",
-				},
-				range,
-			)
-		) {
-			return;
-		}
-
-		if (range.start !== range.end) {
-			backend.applyInlineTextEdit({
-				blockId,
-				range,
-				text: "",
-			});
-			return;
-		}
-
-		const end = nextWordBoundary(
-			ytext.toString(),
-			range.end,
-			resolveEditorLocale(editor),
-		);
-		if (end > range.end) {
-			backend.applyInlineTextEdit({
-				blockId,
-				range: { start: range.end, end },
-				text: "",
-			});
-		}
-	},
+	deleteWordForward: boundaryDelete(
+		deleteForward,
+		"word",
+		(ytext, caret, editor) =>
+			nextWordBoundary(
+				getLogicalInlineText(ytext),
+				caret,
+				resolveEditorLocale(editor),
+			),
+	),
 
 	insertParagraph: (_event, editor, ytext, fe, element, backend) => {
 		const blockId = fe.focusBlockId;
@@ -471,6 +275,7 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 				target.blockId,
 				target.anchorOffset,
 				target.focusOffset,
+				{ origin: "keyboard" },
 			);
 			return;
 		}
@@ -479,6 +284,7 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 			target.blockId,
 			target.anchorOffset,
 			target.focusOffset,
+			{ origin: "keyboard" },
 		);
 	},
 
@@ -503,7 +309,12 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 			blockId,
 			range,
 			text: "\n",
-			marks: fe.resolveInsertMarks(ytext, range.start),
+			marks: resolveFieldInsertMarks(
+				fe.pendingMarks,
+				editor.schema,
+				ytext,
+				range.start,
+			),
 		});
 	},
 
@@ -561,14 +372,7 @@ function toggleMarkOrReport(
 	if (!isCellEditing(editor, fe)) {
 		return;
 	}
-	editor.internals.emit("diagnostic", {
-		code: "cell-capability-unsupported",
-		level: "info",
-		source: "field-editor",
-		message: `marks are not supported inside a table cell: ${mark}`,
-		capability: "marks",
-		mark,
-	});
+	reportCellMarkDecline(editor, mark);
 }
 
 function isCellEditing(
@@ -583,6 +387,104 @@ function isCellEditing(
 		return false;
 	}
 	return editor.getBlock(blockId)?.type === "table";
+}
+
+type InlineRange = { start: number; end: number };
+
+/**
+ * The shared `insertText` / `insertReplacementText` body; the two differ only
+ * in where the raw input range comes from.
+ */
+function insertTextOverRange(
+	event: InputEvent,
+	editor: Editor,
+	ytext: FieldEditorTextLike,
+	fe: FieldEditorInputController,
+	backend: ContentEditableDirectInputBackend,
+	resolveInputRange: () => InlineRange | null,
+): void {
+	const text = event.data ?? "";
+	if (!text) return;
+	if (hasMultiBlockTextSelection(editor)) {
+		editor.replaceSelection(text);
+		return;
+	}
+	const blockId = fe.focusBlockId;
+	if (!blockId) return;
+	const range = resolveFieldInsertRange(editor, fe, resolveInputRange());
+	if (!range) return;
+	if (backend.applyListInputRule({ blockId, range, text })) {
+		return;
+	}
+	const marks = resolveFieldInsertMarks(
+		fe.pendingMarks,
+		editor.schema,
+		ytext,
+		range.start,
+	);
+	if (tryDispatchInsert(editor, fe, backend, blockId, range, text, marks)) {
+		return;
+	}
+	backend.applyInlineTextEdit({
+		blockId,
+		range,
+		text,
+		marks,
+	});
+}
+
+/**
+ * Resolve the focused block and input range for a delete, and try the mapped
+ * core command first. Returns `null` when there is nothing to delete or the
+ * command already handled it; otherwise the caller falls back to a direct edit.
+ */
+function resolveUndispatchedDelete(
+	editor: Editor,
+	fe: FieldEditorInputController,
+	backend: ContentEditableDirectInputBackend,
+	command: typeof deleteBackward | typeof deleteForward,
+	granularity: "grapheme" | "word" | "line",
+): { blockId: string; range: InlineRange } | null {
+	const blockId = fe.focusBlockId;
+	if (!blockId) return null;
+	const range = backend.resolveCurrentInputRange();
+	if (!range) return null;
+	if (
+		tryDispatchMapped(editor, fe, backend, command, { granularity }, range)
+	) {
+		return null;
+	}
+	return { blockId, range };
+}
+
+function deleteInlineRange(
+	backend: ContentEditableDirectInputBackend,
+	blockId: string,
+	range: InlineRange,
+): void {
+	backend.applyInlineTextEdit({
+		blockId,
+		range,
+		text: "",
+	});
+}
+
+function activateDeleteTarget(
+	editor: Editor,
+	fe: FieldEditorInputController,
+	target: NonNullable<ReturnType<typeof applyDeleteBehavior>>,
+): void {
+	if (target.selectBlock) {
+		fe.deactivate();
+		editor.selectBlock(target.blockId, { origin: "keyboard" });
+		return;
+	}
+	fe.activateTextSelection(
+		target.blockId,
+		target.anchorOffset,
+		target.focusOffset,
+		{ origin: "keyboard" },
+	);
 }
 
 function resolveFieldInsertRange(

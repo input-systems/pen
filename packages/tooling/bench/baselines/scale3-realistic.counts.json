@@ -1,0 +1,117 @@
+{
+	"schemaVersion": 1,
+	"rule": "SCALE3",
+	"producedOn": "2026-10-05",
+	"points": [
+		{
+			"id": "scale3.realistic.keystroke.100",
+			"blockCount": 100,
+			"stagedSuggestions": 8,
+			"searchMatches": 1,
+			"counts": {
+				"blockOrderReads": 1,
+				"blocksMapReads": 25,
+				"blocksMapIterations": 0,
+				"textFullReads": 6,
+				"orderArrayReads": 0,
+				"documentWalks": 0
+			}
+		},
+		{
+			"id": "scale3.realistic.keystroke.1000",
+			"blockCount": 1000,
+			"stagedSuggestions": 8,
+			"searchMatches": 1,
+			"counts": {
+				"blockOrderReads": 1,
+				"blocksMapReads": 25,
+				"blocksMapIterations": 0,
+				"textFullReads": 6,
+				"orderArrayReads": 0,
+				"documentWalks": 0
+			}
+		},
+		{
+			"id": "scale3.realistic.keystroke.5000",
+			"blockCount": 5000,
+			"stagedSuggestions": 8,
+			"searchMatches": 1,
+			"counts": {
+				"blockOrderReads": 1,
+				"blocksMapReads": 25,
+				"blocksMapIterations": 0,
+				"textFullReads": 6,
+				"orderArrayReads": 0,
+				"documentWalks": 0
+			}
+		}
+	],
+	"clocks": {
+		"producedOn": "2026-10-02",
+		"machine": "macos-arm64 (darwin 27, Apple Silicon). Not the CI runner (github-actions-ubuntu-latest).",
+		"load": {
+			"load1": 8.6474609375,
+			"ncpu": 14,
+			"busy": true
+		},
+		"points": [
+			{
+				"id": "scale3.realistic.keystroke.100",
+				"samples": 50,
+				"p50Ms": 0.06
+			},
+			{
+				"id": "scale3.realistic.keystroke.1000",
+				"samples": 50,
+				"p50Ms": 0.04
+			},
+			{
+				"id": "scale3.realistic.keystroke.5000",
+				"samples": 50,
+				"p50Ms": 0.05
+			}
+		]
+	},
+	"history": [
+		{
+			"date": "2026-10-02",
+			"reason": "Initial record (W1-S7). The AI review provider walks every block and reads each Y.Text per keystroke, and the active search query rescans every block; W2.G4 owns the fix.",
+			"moved": [
+				"initial record"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R7: the unknown-type gate reads documentState.generation instead of blocks.size (YMap#size iterates every key)",
+			"moved": [
+				"scale3.realistic.keystroke.100/blocksMapIterations: 0 !== 200",
+				"scale3.realistic.keystroke.1000/blocksMapIterations: 0 !== 2000",
+				"scale3.realistic.keystroke.5000/blocksMapIterations: 0 !== 10000"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R9: AI review and search are scoped sources",
+			"moved": [
+				"scale3.realistic.keystroke.100/blocksMapReads: 27 !== 1415",
+				"scale3.realistic.keystroke.100/textFullReads: 6 !== 403",
+				"scale3.realistic.keystroke.100/documentWalks: 0 !== 4",
+				"scale3.realistic.keystroke.1000/blocksMapReads: 27 !== 14015",
+				"scale3.realistic.keystroke.1000/textFullReads: 6 !== 4003",
+				"scale3.realistic.keystroke.1000/documentWalks: 0 !== 4",
+				"scale3.realistic.keystroke.5000/blocksMapReads: 27 !== 70015",
+				"scale3.realistic.keystroke.5000/textFullReads: 6 !== 20003",
+				"scale3.realistic.keystroke.5000/documentWalks: 0 !== 4"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2b: the document index reads each named block map once per commit through the commit's shared reader",
+			"moved": [
+				"scale3.realistic.keystroke.100/blocksMapReads: 25 !== 27",
+				"scale3.realistic.keystroke.1000/blocksMapReads: 25 !== 27",
+				"scale3.realistic.keystroke.5000/blocksMapReads: 25 !== 27"
+			]
+		}
+	]
+}

@@ -1,6 +1,7 @@
 import { isCollapsed, isMultiBlock } from "@input/pen-core";
 import type { ReadonlySelectionState } from "@input/pen-types";
 import { DATA_ATTRS } from "./dataAttributes";
+import { closestDomElement, isDomHTMLElement, isDomNode } from "./domNodes";
 
 const TEXTBOX_ROLE_SELECTOR = '[role~="textbox"]';
 const FIELD_EDITOR_SURFACE_SELECTOR = `[${DATA_ATTRS.fieldEditorSurface}]`;
@@ -26,24 +27,26 @@ type EditorKeyboardRoutingOptions = {
 export function isNativeTextEntryTarget(
 	target: EventTarget | null,
 ): target is HTMLElement {
-	if (!(target instanceof HTMLElement)) {
+	if (!isDomHTMLElement(target)) {
 		return false;
 	}
 
-	if (target instanceof HTMLInputElement) {
-		return isTextEntryInput(target);
+	// Tag names, not constructors: a host iframe's controls are not
+	// instances of this window's `HTMLInputElement`.
+	if (target.localName === "input") {
+		return isTextEntryInput(target as HTMLInputElement);
 	}
 
 	if (
 		target.isContentEditable ||
-		target instanceof HTMLTextAreaElement ||
-		target instanceof HTMLSelectElement
+		target.localName === "textarea" ||
+		target.localName === "select"
 	) {
 		return true;
 	}
 
 	const textbox = target.closest(TEXTBOX_ROLE_SELECTOR);
-	if (!(textbox instanceof HTMLElement)) {
+	if (!isDomHTMLElement(textbox)) {
 		return false;
 	}
 
@@ -55,7 +58,7 @@ export function isNativeTextEntryTarget(
 export function isFieldEditorTextEntryTarget(
 	target: EventTarget | null,
 ): target is HTMLElement {
-	const element = getClosestElement(target);
+	const element = closestDomElement(target);
 	return element
 		? element.closest(FIELD_EDITOR_SURFACE_SELECTOR) !== null
 		: false;
@@ -64,7 +67,7 @@ export function isFieldEditorTextEntryTarget(
 export function isActiveFieldEditorTextEntryTarget(
 	target: EventTarget | null,
 ): target is HTMLElement {
-	const element = getClosestElement(target);
+	const element = closestDomElement(target);
 	return element
 		? element.closest(ACTIVE_FIELD_EDITOR_SURFACE_SELECTOR) !== null
 		: false;
@@ -79,16 +82,19 @@ export function isTextEntryTarget(
 }
 
 /**
- * Native text entry that is not this editor's field. Host chrome — a prompt
- * textarea nested in the root, or an input outside it — keeps its own caret.
- * The field surface is contenteditable, so it is not this case (HOST9).
+ * Text entry that is not `root`'s own field. Host chrome — a prompt textarea
+ * nested in the root, or an input outside it — keeps its own caret, and so
+ * does another editor's field surface (HOST9). `root`'s field surface is
+ * contenteditable, so it is not this case.
  */
 export function isForeignNativeTextEntryTarget(
 	target: EventTarget | null,
+	root: HTMLElement,
 ): boolean {
-	return (
-		isNativeTextEntryTarget(target) && !isFieldEditorTextEntryTarget(target)
-	);
+	if (isFieldEditorTextEntryTarget(target)) {
+		return getClosestEditorRoot(target) !== root;
+	}
+	return isNativeTextEntryTarget(target);
 }
 
 export function isFieldEditorTextEditingKey(event: KeyboardEvent): boolean {
@@ -143,7 +149,7 @@ export function shouldHandleEditorKeyboardEvent({
 		return false;
 	}
 
-	if (activeElement instanceof Node && root.contains(activeElement)) {
+	if (isDomNode(activeElement) && root.contains(activeElement)) {
 		if (isFieldEditorTextEntryTarget(activeElement)) {
 			if (event.key === "Escape" || isCollapsedSelectAll(event)) {
 				return true;
@@ -164,7 +170,7 @@ export function shouldHandleEditorKeyboardEvent({
 	}
 
 	if (
-		activeElement instanceof Node &&
+		isDomNode(activeElement) &&
 		!root.contains(activeElement) &&
 		isNativeTextEntryTarget(activeElement)
 	) {
@@ -185,21 +191,13 @@ export function shouldHandleEditorKeyboardEvent({
 export function getClosestEditorRoot(
 	target: EventTarget | null,
 ): HTMLElement | null {
-	const element = getClosestElement(target);
+	const element = closestDomElement(target);
 	return element?.closest(`[${DATA_ATTRS.editorRoot}]`) as HTMLElement | null;
 }
 
 function isDetachedLibrarySurface(target: EventTarget | null): boolean {
-	const element = getClosestElement(target);
+	const element = closestDomElement(target);
 	return element?.closest(DETACHED_SURFACE_SELECTOR) !== null;
-}
-
-function getClosestElement(target: EventTarget | null): HTMLElement | null {
-	if (!(target instanceof Node)) {
-		return null;
-	}
-
-	return target instanceof HTMLElement ? target : target.parentElement;
 }
 
 function isDocumentSelection(
@@ -228,7 +226,12 @@ function isDocumentSelection(
 function isSelectionThatOverridesActiveTextEditingKey(
 	selection: KeyboardRoutingSelection,
 ): boolean {
-	return selection?.type === "cell" || isMultiBlock(selection ?? null);
+	// A cell selection with `text` is one cell being edited (A1, T6): its
+	// field owns the text editing keys, as it does for a single-block range.
+	if (selection?.type === "cell") {
+		return selection.text === undefined;
+	}
+	return isMultiBlock(selection ?? null);
 }
 
 function isCollapsedSelectAll(event: KeyboardEvent): boolean {

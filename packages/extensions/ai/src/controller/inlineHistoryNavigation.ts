@@ -8,7 +8,6 @@ import { rejectSuggestions } from "../suggestions/acceptReject";
 import type { AIControllerImpl } from "./aiController";
 import type { AIInlineShortcutHistoryWaypoint } from "../helpers";
 import {
-	areInlineHistorySnapshotsEqual,
 	areInlineShortcutHistoryStatesEqual,
 	cloneInlineHistorySessions,
 	resolveInlineShortcutHistoryState,

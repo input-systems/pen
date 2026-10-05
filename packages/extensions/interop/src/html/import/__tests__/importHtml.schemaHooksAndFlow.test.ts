@@ -7,31 +7,12 @@ import { htmlImporter, parseHtmlToBlocks, parseHtmlWithReport } from "../importe
 import { sanitizeHTML } from "../sanitize";
 import { parseHTML } from "../domAdapter";
 import { domToBlocks } from "../domToBlocks";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
-
-const stubRegistry: SchemaRegistry = {
-	resolve: () => null,
-	resolveInline: () => null,
-	resolveApp: () => null,
-	resolveLayout: () => null,
-	allBlocks: () => [],
-	allInlines: () => [],
-	allApps: () => [],
-	allBlockDisplays: () => [],
-};
-
-const defaultRegistry = createDefaultSchema();
-
-function convert(html: string, registry: SchemaRegistry = stubRegistry) {
-	const sanitized = sanitizeHTML(html);
-	const dom = parseHTML(sanitized);
-	return domToBlocks(dom, registry);
-}
+import {
+	convert,
+	defaultRegistry,
+	noDefaultExtensionsPreset,
+	stubRegistry,
+} from "./importHtml.testHelpers";
 
 function tableEditor() {
 	const editor = createEditor({

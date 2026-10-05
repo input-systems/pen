@@ -1,38 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { createEditor, getInlineCompletionController } from "@input/pen-core";
-import { FIELD_EDITOR_SLOT_KEY } from "@input/pen-types";
-import { defineExtension } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import {
 	autocompleteExtension,
 	createAutocompleteProvider,
 	getAutocompleteController,
 } from "../index";
-
-async function waitForCondition(
-	check: () => boolean,
-	maxTicks = 20,
-): Promise<void> {
-	for (let tick = 0; tick < maxTicks; tick += 1) {
-		if (check()) {
-			return;
-		}
-		await Promise.resolve();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-	}
-	throw new Error("Condition was not met in time.");
-}
+import { fieldEditorSlot, waitForCondition } from "./extension.testHelpers";
 
 describe("@input/pen-ai/autocomplete", () => {
 	it("includes registered provider context in autocomplete prompts", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
 		let firstPrompt = "";
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -65,23 +45,7 @@ describe("@input/pen-ai/autocomplete", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;
@@ -119,13 +83,8 @@ describe("@input/pen-ai/autocomplete", () => {
 	});
 
 	it("strips echoed prefix text from end-of-block completions", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -141,23 +100,7 @@ describe("@input/pen-ai/autocomplete", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;
@@ -183,13 +126,8 @@ describe("@input/pen-ai/autocomplete", () => {
 	});
 
 	it("strips wrapped quotes and stray leading punctuation from prose completions", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -205,23 +143,7 @@ describe("@input/pen-ai/autocomplete", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;
@@ -255,13 +177,8 @@ describe("@input/pen-ai/autocomplete", () => {
 	});
 
 	it("keeps short but meaningful single-word prose continuations", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -277,23 +194,7 @@ describe("@input/pen-ai/autocomplete", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;
@@ -324,13 +225,8 @@ describe("@input/pen-ai/autocomplete", () => {
 	});
 
 	it("drops stray continuation commas after sentence-ending punctuation", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -346,23 +242,7 @@ describe("@input/pen-ai/autocomplete", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;
@@ -396,13 +276,8 @@ describe("@input/pen-ai/autocomplete", () => {
 	});
 
 	it("capitalizes prose continuations after sentence-ending punctuation", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -418,23 +293,7 @@ describe("@input/pen-ai/autocomplete", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;

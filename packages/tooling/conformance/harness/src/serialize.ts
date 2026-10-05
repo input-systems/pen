@@ -47,7 +47,8 @@ export function serializeSelection(
 				type: "cell",
 				blockId: selection.blockId,
 				anchor: { ...selection.anchor },
-				head: { ...selection.head }
+				head: { ...selection.head },
+				...(selection.text ? { text: { ...selection.text } } : {}),
 			};
 		default: {
 			const _exhaustive: never = selection;
@@ -99,7 +100,8 @@ export function serializeSelectionRecord(
 					type: "cell",
 					blockId: state.blockId,
 					anchor: { ...state.anchor },
-					head: { ...state.head }
+					head: { ...state.head },
+					...(state.text ? { text: { ...state.text } } : {}),
 				};
 				break;
 			default: {
@@ -119,11 +121,29 @@ export function serializeSelectionRecord(
 export function serializeDiagnostic(
 	event: DiagnosticEvent,
 ): SerializedDiagnostic {
+	const details = primitiveDetails(event);
 	return {
 		code: event.code,
 		level: event.level,
 		source: event.source,
 		message: event.message,
-		...(typeof event.reason === "string" ? { reason: event.reason } : {})
+		...(typeof event.reason === "string" ? { reason: event.reason } : {}),
+		...(details ? { details } : {}),
 	};
+}
+
+const BASE_DIAGNOSTIC_KEYS = new Set(["code", "level", "source", "message", "reason"]);
+
+/** The diagnostic's extra primitive fields, or undefined when it has none. */
+function primitiveDetails(
+	event: DiagnosticEvent,
+): Record<string, string | number | boolean> | undefined {
+	const details: Record<string, string | number | boolean> = {};
+	for (const [key, value] of Object.entries(event)) {
+		if (BASE_DIAGNOSTIC_KEYS.has(key)) continue;
+		if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+			details[key] = value;
+		}
+	}
+	return Object.keys(details).length > 0 ? details : undefined;
 }

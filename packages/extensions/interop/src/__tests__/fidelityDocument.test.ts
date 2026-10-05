@@ -18,7 +18,7 @@ const committed = readFileSync(
 );
 
 describe("IOP3 merged fidelity document", () => {
-	it("IOP3 FIDELITY.md is exactly the four format tables in D8 order", () => {
+	it("IOP3 FIDELITY.md is exactly the four format tables in html, json, markdown, xml order", () => {
 		expect(committed).toBe(
 			renderHtmlFidelityTable() +
 				renderJsonFidelityTable() +

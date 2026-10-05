@@ -6,7 +6,6 @@ import { createRoot, type Root } from "react-dom/client";
 import {
 	blockDirectionFacet,
 	createEditor as createCoreEditor,
-	defaultDirectionFacet,
 	defineExtension,
 	resolveBlockDirection,
 } from "@input/pen-core";
@@ -97,108 +96,69 @@ function setBlockText(
 	]);
 }
 
+// First-strong text and pen.defaultDirection are core's resolution, covered in
+// core/src/direction/__tests__/resolve.dir1.test.ts; these cases pin what the
+// binding renders: no dir for resolved LTR, the resolved or explicit dir otherwise.
+const DIR1_CASES: Array<{
+	name: string;
+	extensions: NonNullable<
+		Parameters<typeof createCoreEditor>[0]
+	>["extensions"];
+	text: string;
+	direction?: "ltr" | "rtl";
+	expected: "ltr" | "rtl";
+}> = [
+	{
+		name: "LTR text with no facet and no prop omits dir",
+		extensions: [],
+		text: "Hello",
+		expected: "ltr",
+	},
+	{
+		name: "pen.blockDirection resolver changes rendered dir",
+		extensions: [
+			defineExtension({
+				name: "dir-facet",
+				facets: [blockDirectionFacet.of(() => "rtl")],
+			}),
+		],
+		text: "Hello",
+		expected: "rtl",
+	},
+	{
+		name: "explicit props.direction wins over pen.blockDirection",
+		extensions: [
+			defineExtension({
+				name: "dir-facet",
+				facets: [blockDirectionFacet.of(() => "rtl")],
+			}),
+		],
+		text: "Hello",
+		direction: "ltr",
+		expected: "ltr",
+	},
+];
+
 describe("React DIR1 resolved host dir", () => {
-	it("DIR1: LTR text with no facet and no prop omits dir", async () => {
-		const editor = createEditor();
-		const blockId = editor.firstBlock()!.id;
-		setBlockText(editor, blockId, "Hello");
+	it.each(DIR1_CASES)(
+		"DIR1: $name",
+		async ({ extensions, text, direction, expected }) => {
+			const editor = createEditor({ extensions });
+			const blockId = editor.firstBlock()!.id;
+			setBlockText(editor, blockId, text, direction);
 
-		const { container, root } = await renderEditor(editor);
-		const block = editor.getBlock(blockId)!;
+			const { container, root } = await renderEditor(editor);
+			const block = editor.getBlock(blockId)!;
 
-		expect(resolveBlockDirection(editor, block)).toBe("ltr");
-		expect(getBlockHost(container, blockId).hasAttribute("dir")).toBe(
-			false,
-		);
-		expect(container.innerHTML).not.toContain('dir="auto"');
+			expect(resolveBlockDirection(editor, block)).toBe(expected);
+			expect(getBlockHost(container, blockId).getAttribute("dir")).toBe(
+				expected === "ltr" && !direction ? null : expected,
+			);
+			expect(container.innerHTML).not.toContain('dir="auto"');
 
-		await cleanupEditor(editor, root, container);
-	});
-
-	it("DIR1: pen.blockDirection resolver changes rendered dir", async () => {
-		const editor = createEditor({
-			extensions: [
-				defineExtension({
-					name: "dir-facet",
-					facets: [blockDirectionFacet.of(() => "rtl")],
-				}),
-			],
-		});
-		const blockId = editor.firstBlock()!.id;
-		setBlockText(editor, blockId, "Hello");
-
-		const { container, root } = await renderEditor(editor);
-		const block = editor.getBlock(blockId)!;
-
-		expect(resolveBlockDirection(editor, block)).toBe("rtl");
-		expect(getBlockHost(container, blockId).getAttribute("dir")).toBe(
-			"rtl",
-		);
-
-		await cleanupEditor(editor, root, container);
-	});
-
-	it("DIR1: explicit props.direction wins over pen.blockDirection", async () => {
-		const editor = createEditor({
-			extensions: [
-				defineExtension({
-					name: "dir-facet",
-					facets: [blockDirectionFacet.of(() => "rtl")],
-				}),
-			],
-		});
-		const blockId = editor.firstBlock()!.id;
-		setBlockText(editor, blockId, "Hello", "ltr");
-
-		const { container, root } = await renderEditor(editor);
-		const block = editor.getBlock(blockId)!;
-
-		expect(resolveBlockDirection(editor, block)).toBe("ltr");
-		expect(getBlockHost(container, blockId).getAttribute("dir")).toBe(
-			"ltr",
-		);
-
-		await cleanupEditor(editor, root, container);
-	});
-
-	it("DIR1: first-strong RTL text with no prop and no resolver renders RTL", async () => {
-		const editor = createEditor();
-		const blockId = editor.firstBlock()!.id;
-		setBlockText(editor, blockId, "مرحبا");
-
-		const { container, root } = await renderEditor(editor);
-		const block = editor.getBlock(blockId)!;
-
-		expect(resolveBlockDirection(editor, block)).toBe("rtl");
-		expect(getBlockHost(container, blockId).getAttribute("dir")).toBe(
-			"rtl",
-		);
-
-		await cleanupEditor(editor, root, container);
-	});
-
-	it("DIR1: pen.defaultDirection applies when nothing else does", async () => {
-		const editor = createEditor({
-			extensions: [
-				defineExtension({
-					name: "dir-default",
-					facets: [defaultDirectionFacet.of("rtl")],
-				}),
-			],
-		});
-		const blockId = editor.firstBlock()!.id;
-		setBlockText(editor, blockId, "12345");
-
-		const { container, root } = await renderEditor(editor);
-		const block = editor.getBlock(blockId)!;
-
-		expect(resolveBlockDirection(editor, block)).toBe("rtl");
-		expect(getBlockHost(container, blockId).getAttribute("dir")).toBe(
-			"rtl",
-		);
-
-		await cleanupEditor(editor, root, container);
-	});
+			await cleanupEditor(editor, root, container);
+		},
+	);
 
 	it("RI1: block and inline content hosts are unicode-bidi isolate", async () => {
 		const editor = createEditor();

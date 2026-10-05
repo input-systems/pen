@@ -2,6 +2,7 @@ import type {
 	InsertBlockOp,
 	DeleteBlockOp,
 	MoveBlockOp,
+	Position,
 	SetPropsOp,
 	StructuralOriginTag,
 	TableColumnSchema,
@@ -9,8 +10,8 @@ import type {
 import { STRUCTURAL_ORIGIN_META_KEY } from "@input/pen-yjs";
 import { resolveRuntimeContentType } from "../schema/contentType";
 import {
-	type CRDTTextLike,
 	type CRDTUnknownMap,
+	getArrayProp,
 	getMapProp,
 	getTableContent,
 } from "./crdtShapes";
@@ -25,7 +26,7 @@ import {
 	getOrCreateStringArrayProp,
 	getTextContent,
 	removeBlockIdFromAllChildren,
-	removeBlockIdFromArray,
+	removeBlockIdFromBlockOrder,
 	resolvePosition,
 } from "./applySharedHelpers";
 
@@ -45,6 +46,7 @@ export function insertBlock(
 		op.blockType,
 		contentType,
 	) as MutableMap;
+	pipeline._engine.noteBlockChanged(op.blockId, blockMap);
 
 	if (op.props && Object.keys(op.props).length > 0) {
 		const propsMap = getOrCreateMapProp(pipeline, blockMap, "props");
@@ -67,21 +69,7 @@ export function insertBlock(
 		}
 	}
 
-	if (typeof op.position === "object" && "parent" in op.position) {
-		const parentMap = getMutableBlockMap(pipeline, op.position.parent);
-		if (parentMap) {
-			const children = getOrCreateStringArrayProp(
-				pipeline,
-				parentMap,
-				"children",
-			);
-			const idx = Math.min(op.position.index, children.length);
-			children.insert(idx, [op.blockId]);
-		}
-	} else {
-		const idx = resolvePosition(pipeline, op.position);
-		pipeline.mutableBlockOrder.insert(idx, [op.blockId]);
-	}
+	placeBlockId(pipeline, op.blockId, op.position);
 
 	return [op.blockId];
 }
@@ -90,37 +78,81 @@ export function deleteBlock(
 	pipeline: ApplyPipelineDocumentAccess,
 	op: DeleteBlockOp,
 ): string[] {
+	const descendants = childrenArrayDescendants(pipeline, op.blockId);
 	pipeline.mutableBlocks.delete(op.blockId);
-	removeBlockIdFromArray(pipeline.mutableBlockOrder, op.blockId);
+	pipeline._engine.noteBlockChanged(op.blockId, undefined);
+	// A `children` array lives inside its container's block map, so deleting
+	// the container drops every entry for its children: their block maps
+	// would survive in no array, rendered nowhere. They go with it. `parentId`
+	// children sit in `blockOrder` and are promoted by normalization instead.
+	for (const descendantId of descendants) {
+		pipeline.mutableBlocks.delete(descendantId);
+		pipeline._engine.noteBlockChanged(descendantId, undefined);
+	}
+	removeBlockIdFromBlockOrder(pipeline, op.blockId);
 	removeBlockIdFromAllChildren(pipeline, op.blockId);
 
 	return [op.blockId];
+}
+
+/** Every block under `blockId` through `children` arrays, at any depth. */
+function childrenArrayDescendants(
+	pipeline: ApplyPipelineDocumentAccess,
+	blockId: string,
+): string[] {
+	const descendants: string[] = [];
+	const seen = new Set<string>([blockId]);
+	const visit = (parentId: string): void => {
+		const parentMap = getMutableBlockMap(pipeline, parentId);
+		const children = parentMap ? getArrayProp<string>(parentMap, "children") : null;
+		if (!children) return;
+		for (let i = 0; i < children.length; i++) {
+			const childId = children.get(i);
+			if (seen.has(childId)) continue;
+			seen.add(childId);
+			descendants.push(childId);
+			visit(childId);
+		}
+	};
+	visit(blockId);
+	return descendants;
 }
 
 export function moveBlock(
 	pipeline: ApplyPipelineDocumentAccess,
 	op: MoveBlockOp,
 ): string[] {
-	removeBlockIdFromArray(pipeline.mutableBlockOrder, op.blockId, true);
+	removeBlockIdFromBlockOrder(pipeline, op.blockId, true);
 	removeBlockIdFromAllChildren(pipeline, op.blockId);
 
-	if (typeof op.position === "object" && "parent" in op.position) {
-		const parentMap = getMutableBlockMap(pipeline, op.position.parent);
+	placeBlockId(pipeline, op.blockId, op.position);
+
+	return [op.blockId];
+}
+
+/** Inserts `blockId` at `position`: a parent's `children`, or the root order. */
+function placeBlockId(
+	pipeline: ApplyPipelineDocumentAccess,
+	blockId: string,
+	position: Position,
+): void {
+	if (typeof position === "object" && "parent" in position) {
+		const parentMap = getMutableBlockMap(pipeline, position.parent);
 		if (parentMap) {
 			const children = getOrCreateStringArrayProp(
 				pipeline,
 				parentMap,
 				"children",
 			);
-			const idx = Math.min(op.position.index, children.length);
-			children.insert(idx, [op.blockId]);
+			const idx = Math.min(position.index, children.length);
+			children.insert(idx, [blockId]);
+			pipeline._engine.noteBlockChanged(position.parent, parentMap);
 		}
 	} else {
-		const idx = resolvePosition(pipeline, op.position);
-		pipeline.mutableBlockOrder.insert(idx, [op.blockId]);
+		const idx = resolvePosition(pipeline, position);
+		pipeline.mutableBlockOrder.insert(idx, [blockId]);
+		pipeline._engine.noteRootInserted(idx, [blockId]);
 	}
-
-	return [op.blockId];
 }
 
 function convertBlock(

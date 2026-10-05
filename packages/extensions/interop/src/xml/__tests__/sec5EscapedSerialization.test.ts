@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEditor } from "@input/pen-core";
-import { escapeMarkupAttribute, escapeMarkupText } from "../escapeMarkup";
+import { escapeMarkupAttribute, escapeMarkupText } from "../../escapeMarkup";
 import { xmlExporter } from "../exporter";
 import { xmlImporter } from "../importer";
 import { defaultSchema } from "@input/pen-schema";

@@ -37,10 +37,6 @@ function createMixedBoundaryEditor() {
 	return { editor, p1 };
 }
 
-function boundaryPoint(blockId: string, side: "start" | "end") {
-	return { blockId, offset: side === "start" ? 0 : 1 };
-}
-
 describe("resolvePointerDragSelection T2/N2", () => {
 	it("keeps a paragraph-to-divider drag as text", () => {
 		const { editor, p1 } = createMixedBoundaryEditor();
@@ -69,7 +65,6 @@ describe("resolvePointerDragSelection T2/N2", () => {
 		const resolved = resolvePointerDragSelection(editor, root, gesture, {
 			clientX: 80,
 			clientY: 40,
-			getBoundaryPoint: boundaryPoint,
 		});
 
 		expect(resolved?.mode).not.toBe("block");
@@ -97,7 +92,6 @@ describe("resolvePointerDragSelection T2/N2", () => {
 		const resolved = resolvePointerDragSelection(editor, root, gesture, {
 			clientX: 0,
 			clientY: 0,
-			getBoundaryPoint: boundaryPoint,
 		});
 
 		expect(resolved?.mode).not.toBe("block");

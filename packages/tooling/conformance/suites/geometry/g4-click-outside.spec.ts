@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { fileURLToPath } from "node:url";
-import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
+import { logLoad, readBlockIds } from "../specHelpers";
 
 const FIRST_ID = "two-p1";
 const LAST_ID = "two-p2";
@@ -14,8 +14,9 @@ const LAST_TEXT = "Delta echo foxtrot";
  * in this harness does not observe that rule — React's
  * `handleClickOutsideBlocks` inserts a paragraph when the adjacent block is
  * non-empty. That is host chrome UX, not G4. Vanilla `pointerActivation`
- * already places a caret; jsdom `geometryExtra.test.ts` already pins the
- * mapping. This scenario calls `pointAt` the same way G3 loads the reader.
+ * already places a caret. This scenario owns the above/below mapping (jsdom
+ * `geometryExtra.test.ts` keeps only the band-snap and caret-position cases)
+ * and calls `pointAt` the same way G3 loads the reader.
  */
 const PEN_DOM_FS = `/@fs${fileURLToPath(new URL("../../../../rendering/dom/src/index.ts", import.meta.url))}`;
 
@@ -31,16 +32,6 @@ type HostChrome = {
 };
 
 type PointAtHit = { blockId: string; offset: number } | null;
-
-function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
-
-async function readBlockIds(page: Page): Promise<string[]> {
-	return page.evaluate(() => [...window.__penConformance.blockIds]);
-}
 
 async function readBlockChrome(page: Page): Promise<HostChrome> {
 	return page.evaluate(

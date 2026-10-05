@@ -4,20 +4,22 @@ import { describe, expect, it } from "vitest";
 import { DATA_ATTRS } from "../../utils/dataAttributes";
 import * as selectionBridge from "../selectionBridge";
 import { pointToEditorSelectionPoint } from "../selectionBridge";
+import { writeNativeRange } from "../selectionProjector";
 import {
 	domPointToOffset,
-	domSelectionToEditor,
 	getBlockBoundaryPoint,
 	getBlockSurfaceRole,
+	resolveSelectionPoint,
 } from "../selectionMapping";
+import { domSelectionToEditor } from "../selectionReader";
 
 const BRIDGE_VALUE_EXPORTS = [
 	"computeTextDiff",
 	"domPointToOffset",
 	"domSelectionToEditor",
-	"editorSelectionToDOM",
 	"extractTextFromDOM",
 	"findBlockElement",
+	"findDOMPoint",
 	"findInlineContentElement",
 	"getBlockBoundaryPoint",
 	"getCaretOffset",
@@ -316,7 +318,7 @@ describe("pointToEditorSelectionPoint", () => {
 	});
 });
 
-describe("editorSelectionToDOM", () => {
+describe("writeNativeRange", () => {
 	function mountParagraphThenStructural(): {
 		root: HTMLElement;
 		paragraphText: Text;
@@ -346,7 +348,7 @@ describe("editorSelectionToDOM", () => {
 		const { root, paragraphText, structural } =
 			mountParagraphThenStructural();
 		try {
-			selectionBridge.editorSelectionToDOM(
+			writeNativeRange(
 				root,
 				{ blockId: "p1", offset: 0 },
 				{ blockId: "d1", offset: 1 },
@@ -367,7 +369,7 @@ describe("editorSelectionToDOM", () => {
 	it("stops before a structural block selected from its start", () => {
 		const { root, structural } = mountParagraphThenStructural();
 		try {
-			selectionBridge.editorSelectionToDOM(
+			writeNativeRange(
 				root,
 				{ blockId: "p1", offset: 0 },
 				{ blockId: "d1", offset: 0 },
@@ -429,7 +431,7 @@ describe("editorSelectionToDOM", () => {
 				selectionBridge.findInlineContentElement(container),
 			).toBeNull();
 
-			selectionBridge.editorSelectionToDOM(
+			writeNativeRange(
 				root,
 				{ blockId: "p1", offset: 0 },
 				{ blockId: "quote", offset: 1 },
@@ -455,7 +457,7 @@ describe("editorSelectionToDOM", () => {
 				nestedInline,
 			);
 
-			selectionBridge.editorSelectionToDOM(
+			writeNativeRange(
 				root,
 				{ blockId: "q1", offset: 0 },
 				{ blockId: "q1", offset: 6 },
@@ -466,6 +468,87 @@ describe("editorSelectionToDOM", () => {
 			expect(range.startOffset).toBe(0);
 			expect(range.endContainer).toBe(nestedText);
 			expect(range.endOffset).toBe(6);
+		} finally {
+			root.remove();
+		}
+	});
+});
+
+describe("resolveSelectionPoint between blocks", () => {
+	it("N2 S2: a gap beside an image maps to the image's 0..1 extent, as findDOMPoint writes it", () => {
+		const root = document.createElement("div");
+		root.setAttribute(DATA_ATTRS.editorRoot, "");
+		appendBlock(root, { blockId: "p1", text: "Before" });
+		appendBlock(root, { blockId: "image", blockType: "image", includeInline: false });
+		appendBlock(root, { blockId: "p2", text: "After" });
+		document.body.append(root);
+		try {
+			// The image is child 1: (root, 1) is before it, (root, 2) after it.
+			expect(resolveSelectionPoint(root, root, 1)).toEqual({ blockId: "image", offset: 0 });
+			expect(resolveSelectionPoint(root, root, 2)).toEqual({ blockId: "image", offset: 1 });
+			// A gap between two text blocks is the end of the one before.
+			expect(resolveSelectionPoint(root, root, 3)).toEqual({ blockId: "p2", offset: 5 });
+		} finally {
+			root.remove();
+		}
+	});
+});
+
+describe("unit-block gaps (N2, S2)", () => {
+	/** p1, an image, a 2-cell table, p2: the table's cells are not its offsets. */
+	function mountImageThenTable(): { root: HTMLElement; table: HTMLElement } {
+		const root = document.createElement("div");
+		root.setAttribute(DATA_ATTRS.editorRoot, "");
+		appendBlock(root, { blockId: "p1", text: "Before" });
+		appendBlock(root, { blockId: "image", blockType: "image", includeInline: false });
+		const table = document.createElement("div");
+		table.setAttribute(DATA_ATTRS.editorBlock, "");
+		table.setAttribute(DATA_ATTRS.blockId, "table");
+		table.setAttribute(DATA_ATTRS.blockType, "table");
+		const cell = document.createElement("div");
+		cell.setAttribute(DATA_ATTRS.tableCell, "");
+		const cellInline = document.createElement("span");
+		cellInline.setAttribute(DATA_ATTRS.inlineContent, "");
+		cellInline.textContent = "r0c0";
+		cell.append(cellInline);
+		table.append(cell);
+		root.append(table);
+		appendBlock(root, { blockId: "p2", text: "After" });
+		document.body.append(root);
+		return { root, table };
+	}
+
+	it("S2: a table endpoint is written as the gaps around the table, not inside a cell", () => {
+		const { root } = mountImageThenTable();
+		try {
+			// The table is child 2: (root, 2) is before it, (root, 3) after it.
+			expect(selectionBridge.findDOMPoint(root, "table", 0)).toEqual({ node: root, offset: 2 });
+			expect(selectionBridge.findDOMPoint(root, "table", 1)).toEqual({ node: root, offset: 3 });
+		} finally {
+			root.remove();
+		}
+	});
+
+	it("S2: the gap between two unit blocks reads as the later block's start at a range start, else the earlier block's end", () => {
+		const { root } = mountImageThenTable();
+		try {
+			expect(resolveSelectionPoint(root, root, 2)).toEqual({ blockId: "image", offset: 1 });
+			expect(resolveSelectionPoint(root, root, 2, { rangeEdge: "end" })).toEqual({ blockId: "image", offset: 1 });
+			expect(resolveSelectionPoint(root, root, 2, { rangeEdge: "start" })).toEqual({ blockId: "table", offset: 0 });
+			expect(resolveSelectionPoint(root, root, 3)).toEqual({ blockId: "table", offset: 1 });
+		} finally {
+			root.remove();
+		}
+	});
+
+	it("S2: a backward range from text to the table's start reads back as written", () => {
+		const { root } = mountImageThenTable();
+		try {
+			writeNativeRange(root, { blockId: "p2", offset: 3 }, { blockId: "table", offset: 0 });
+			expect(domSelectionToEditor(root, window.getSelection())).toEqual({
+				anchor: { blockId: "p2", offset: 3 },
+				focus: { blockId: "table", offset: 0 },
+			});
 		} finally {
 			root.remove();
 		}
@@ -486,7 +569,7 @@ describe("getBlockSurfaceRole", () => {
 		}
 	});
 
-	it("keeps a stamped delegated role and a table's cells delegated (G4)", () => {
+	it("G4 S2: a stamped delegated code block still maps text offsets; a table's cells stay delegated", () => {
 		const { root, block: stamped } = mountBlock({
 			blockId: "c1",
 			text: "hey",
@@ -506,7 +589,9 @@ describe("getBlockSurfaceRole", () => {
 		table.append(cell);
 		root.append(table);
 		try {
-			expect(getBlockSurfaceRole(stamped)).toBe("delegated");
+			// Core's selection holds text offsets in a code block whether or
+			// not expanded mode stamped it; the reader must read the same.
+			expect(getBlockSurfaceRole(stamped)).toBe("editable-inline");
 			expect(getBlockSurfaceRole(table)).toBe("delegated");
 		} finally {
 			root.remove();

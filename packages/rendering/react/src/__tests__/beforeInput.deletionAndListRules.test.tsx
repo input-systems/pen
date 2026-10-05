@@ -11,6 +11,7 @@ import {
 	flushAnimationFrames,
 	getFieldEditor,
 } from "./utils/selectionDeletionTestHelpers";
+import { fieldEditorInternals } from "./utils/fieldEditorInternals";
 describe("@input/pen-react beforeinput: deletion and list rules", () => {
 	it("collapses backspace deletion to the normalized range start", async () => {
 		const editor = createEditor({ schema: defaultSchema });
@@ -49,7 +50,7 @@ describe("@input/pen-react beforeinput: deletion and list rules", () => {
 		});
 
 		await act(async () => {
-			fieldEditor.beginPointerSelection();
+			fieldEditorInternals(fieldEditor).reader.notifyGesture("pointerdown");
 			const selection = document.getSelection();
 			const range = document.createRange();
 			range.setStart(inlineElement!.firstChild ?? inlineElement!, 1);

@@ -3,7 +3,7 @@ import {
 	reportPendingBlockImportViolations,
 	resolveBlockFlowCapability,
 } from "@input/pen-core";
-import type { DiagnosticEvent, Editor } from "@input/pen-types";
+import type { DiagnosticEvent, Editor, Importer } from "@input/pen-types";
 import type { PendingBlock } from "@input/pen-core";
 import type { FieldEditorTransferController } from "./controller";
 import {
@@ -11,6 +11,7 @@ import {
 	admitClipboardPlainText,
 	emitClipboardIngestReport,
 	withForbiddenKeyDrops,
+	type ClipboardIngestResult,
 } from "../utils/clipboardIngest";
 import {
 	decodePenBlocksFromHtml,
@@ -27,6 +28,7 @@ import {
 	getTransferCursorContext,
 	selectionSnapshotMatches,
 	snapshotTransferSelection,
+	type TransferCursorContext,
 } from "./transferSelection";
 import {
 	canAcceptImageTransfer,
@@ -41,6 +43,28 @@ import {
 	type UploadedImage,
 } from "./transferTypes";
 import { shouldAllowDirectBlockPaste } from "../utils/flowCapabilities";
+import { originForTransfer } from "./selectionReader";
+
+/**
+ * Reports what the clipboard ingest dropped, then pastes the admitted Pen
+ * blocks over the selection when they can land directly.
+ */
+function tryDirectPasteAdmittedBlocks(
+	editor: Editor,
+	fieldEditor: FieldEditorTransferController,
+	cursorBefore: TransferCursorContext | null,
+	admitted: ClipboardIngestResult,
+): boolean {
+	emitClipboardIngestReport(editor, admitted);
+	if (!canDirectPastePenBlocks(editor, admitted.blocks)) {
+		return false;
+	}
+	const { cursorAfter } = deleteSelectionForTransfer(editor, cursorBefore);
+	pasteBlocks(admitted.blocks, editor, fieldEditor, cursorAfter, {
+		undoGroup: false,
+	});
+	return true;
+}
 
 export async function executePasteTransfer(
 	options: ExecuteTransferOptions,
@@ -67,15 +91,14 @@ export async function executePasteTransfer(
 				admitClipboardBlocks(parsed.payload.blocks, editor),
 				parsed.forbiddenKeyCount,
 			);
-			emitClipboardIngestReport(editor, admitted);
-			if (canDirectPastePenBlocks(editor, admitted.blocks)) {
-				const { cursorAfter } = deleteSelectionForTransfer(
+			if (
+				tryDirectPasteAdmittedBlocks(
 					editor,
+					fieldEditor,
 					cursorBefore,
-				);
-				pasteBlocks(admitted.blocks, editor, fieldEditor, cursorAfter, {
-					undoGroup: false,
-				});
+					admitted,
+				)
+			) {
 				return true;
 			}
 		} else {
@@ -96,21 +119,14 @@ export async function executePasteTransfer(
 					decodePenBlocksFromHtml(penMatch[1]),
 					editor,
 				);
-				emitClipboardIngestReport(editor, admitted);
-				if (canDirectPastePenBlocks(editor, admitted.blocks)) {
-					const { cursorAfter } = deleteSelectionForTransfer(
-						editor,
-						cursorBefore,
-					);
-					pasteBlocks(
-						admitted.blocks,
+				if (
+					tryDirectPasteAdmittedBlocks(
 						editor,
 						fieldEditor,
-						cursorAfter,
-						{
-							undoGroup: false,
-						},
-					);
+						cursorBefore,
+						admitted,
+					)
+				) {
 					return true;
 				}
 			} catch (error) {
@@ -176,22 +192,13 @@ export async function executePasteTransfer(
 				}
 				return true;
 			} else {
-				const { position, emptyBlockToRemove } =
-					deleteSelectionForTransfer(editor, cursorBefore);
-				const blockCountBefore = editor.documentState.blockOrder.length;
-				importers.html.import(html, editor, {
-					position,
-					undoGroup: false,
-				});
-				const removed = removeLegacyEmptyPlaceholderIfNeeded({
+				importReplacingSelection(
 					editor,
 					fieldEditor,
-					emptyBlockToRemove,
-					blockCountBefore,
-				});
-				if (!removed) {
-					placeCursorAfterImport(editor, fieldEditor);
-				}
+					importers.html,
+					html,
+					cursorBefore,
+				);
 				return true;
 			}
 		}
@@ -235,24 +242,13 @@ export async function executePasteTransfer(
 				return true;
 			}
 
-			const { position, emptyBlockToRemove } = deleteSelectionForTransfer(
-				editor,
-				cursorBefore,
-			);
-			const blockCountBefore = editor.documentState.blockOrder.length;
-			importers.markdown.import(plainText, editor, {
-				position,
-				undoGroup: false,
-			});
-			const removed = removeLegacyEmptyPlaceholderIfNeeded({
+			importReplacingSelection(
 				editor,
 				fieldEditor,
-				emptyBlockToRemove,
-				blockCountBefore,
-			});
-			if (!removed) {
-				placeCursorAfterImport(editor, fieldEditor);
-			}
+				importers.markdown,
+				plainText,
+				cursorBefore,
+			);
 			return true;
 		}
 		const { cursorAfter } = deleteSelectionForTransfer(
@@ -286,6 +282,37 @@ function executePasteImageTransfer(options: {
 	return true;
 }
 
+/**
+ * Replaces the selection with `importer`'s blocks for `input`, then drops the
+ * emptied placeholder block or places the caret after the import.
+ */
+function importReplacingSelection(
+	editor: Editor,
+	fieldEditor: FieldEditorTransferController,
+	importer: Importer<string, PendingBlock[]>,
+	input: string,
+	cursorBefore: TransferCursorContext | null,
+): void {
+	const { position, emptyBlockToRemove } = deleteSelectionForTransfer(
+		editor,
+		cursorBefore,
+	);
+	const blockCountBefore = editor.documentState.blockOrder.length;
+	importer.import(input, editor, {
+		position,
+		undoGroup: false,
+	});
+	const removed = removeLegacyEmptyPlaceholderIfNeeded({
+		editor,
+		fieldEditor,
+		emptyBlockToRemove,
+		blockCountBefore,
+	});
+	if (!removed) {
+		placeCursorAfterImport(editor, fieldEditor);
+	}
+}
+
 function placeCursorAfterImport(
 	editor: Editor,
 	fieldEditor: FieldEditorTransferController,
@@ -296,6 +323,7 @@ function placeCursorAfterImport(
 			selection.anchor.blockId,
 			selection.anchor.offset,
 			selection.anchor.offset,
+			{ origin: originForTransfer(fieldEditor) },
 		);
 	}
 }
@@ -491,10 +519,12 @@ function restoreCursorAtBlockEnd(
 	const schema = editor.schema.resolve(block.type);
 	if (schema?.content === "inline") {
 		const offset = block.textContent().length;
-		fieldEditor.activateTextSelection(blockId, offset, offset);
+		fieldEditor.activateTextSelection(blockId, offset, offset, {
+			origin: originForTransfer(fieldEditor),
+		});
 		return;
 	}
-	editor.selectBlock(blockId);
+	editor.selectBlock(blockId, { origin: originForTransfer(fieldEditor) });
 }
 
 function canDirectPastePenBlocks(

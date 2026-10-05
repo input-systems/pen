@@ -1,8 +1,21 @@
 import { usesInlineTextSelection } from "@input/pen-core";
-import type { Editor } from "@input/pen-types";
-import { pointToEditorSelectionPoint } from "../field-editor/selectionBridge";
+import type {
+	Editor,
+	FieldEditorFocusOptions,
+	Point,
+	SelectionOrigin,
+} from "@input/pen-types";
+import {
+	getBlockBoundaryPoint,
+	pointToEditorSelectionPoint,
+} from "../field-editor/selectionBridge";
+import { isInlineAtomChipNode } from "../field-editor/inlineAtomDom";
 import { findInlineContentElement } from "../field-editor/selectionDomQueries";
+import { getEditorBlockSelectionLength } from "../utils/blockSelectionSemantics";
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { getPreorderBlockIds } from "../utils/documentPreorder";
+import { normalizeSelectionFormation } from "../utils/selectionFormation";
+import { closestDomElement, isDomHTMLElement } from "../utils/domNodes";
 
 export interface FieldEditorPointerTarget {
 	getSnapshot(): {
@@ -13,8 +26,15 @@ export interface FieldEditorPointerTarget {
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	attachElement(element: HTMLElement): void;
+	/** A cross-block text range; a shift-click into another block extends through it. */
+	applyDocumentTextSelection?(
+		anchor: Point,
+		focus: Point,
+		origin: SelectionOrigin,
+	): void;
 }
 
 export interface FieldEditorPointerActivateOptions {
@@ -34,7 +54,7 @@ export function handleFieldEditorPointerActivate(
 		return false;
 	}
 
-	const target = resolveEventElement(event.target);
+	const target = closestDomElement(event.target);
 	if (!target) {
 		return false;
 	}
@@ -53,13 +73,12 @@ export function handleFieldEditorPointerActivate(
 
 	const clickedBlock = target.closest(`[${DATA_ATTRS.editorBlock}]`);
 	const hostFallback =
-		clickedBlock instanceof HTMLElement && blocksHost.contains(clickedBlock)
+		isDomHTMLElement(clickedBlock) && blocksHost.contains(clickedBlock)
 			? null
 			: resolveHostChromeFallbackBlock(event, editor, root, blocksHost);
 	const blockElement =
 		hostFallback?.element ??
-		(clickedBlock instanceof HTMLElement &&
-		blocksHost.contains(clickedBlock)
+		(isDomHTMLElement(clickedBlock) && blocksHost.contains(clickedBlock)
 			? clickedBlock
 			: null);
 	if (!blockElement) {
@@ -71,6 +90,18 @@ export function handleFieldEditorPointerActivate(
 		return false;
 	}
 
+	// A shift-click extends from the anchor whatever the clicked block is
+	// (T5): on a block with no text position of its own (a divider, an
+	// image) the focus is its edge, as the React content gestures form it.
+	if (
+		event.shiftKey &&
+		!hostFallback &&
+		extendSelectionToPointer({ event, editor, fieldEditor, root, blockId })
+	) {
+		event.preventDefault();
+		return true;
+	}
+
 	const block = editor.getBlock(blockId);
 	const schema = block ? editor.schema.resolve(block.type) : null;
 	if (!usesInlineTextSelection(schema)) {
@@ -79,7 +110,13 @@ export function handleFieldEditorPointerActivate(
 
 	const snapshot = fieldEditor.getSnapshot();
 	if (snapshot.isEditing && snapshot.focusBlockId === blockId) {
-		return false;
+		return activateInlineAtomSide({
+			event,
+			fieldEditor,
+			root,
+			blockId,
+			target,
+		});
 	}
 
 	event.preventDefault();
@@ -88,6 +125,7 @@ export function handleFieldEditorPointerActivate(
 			blockId,
 			hostFallback.offset,
 			hostFallback.offset,
+			{ origin: "pointer" },
 		);
 	} else {
 		const point = pointToEditorSelectionPoint(
@@ -100,30 +138,150 @@ export function handleFieldEditorPointerActivate(
 				point.blockId,
 				point.offset,
 				point.offset,
+				{ origin: "pointer" },
 			);
 		} else {
 			const offset = block?.length() ?? 0;
-			fieldEditor.activateTextSelection(blockId, offset, offset);
+			fieldEditor.activateTextSelection(blockId, offset, offset, {
+				origin: "pointer",
+			});
 		}
 	}
 
 	const inline =
 		target.closest(`[${DATA_ATTRS.inlineContent}]`) ??
 		findInlineContentElement(blockElement);
-	if (inline instanceof HTMLElement) {
+	if (isDomHTMLElement(inline)) {
 		fieldEditor.attachElement(inline);
 	}
 	return true;
 }
 
-function resolveEventElement(target: EventTarget | null): Element | null {
-	if (target instanceof Element) {
-		return target;
+/**
+ * A shift-click in another block extends the selection from its anchor to
+ * the logical offset under the pointer, the point a plain click there
+ * collapses to (T5): the same range the React content gestures form
+ * (`contentGesturesPointerSelection`). A click inside an inline atom takes
+ * the side of the half it lands on (O1). Where geometry resolves no point in
+ * the clicked block, the focus is that block's far edge in the nested
+ * document walk. A shift-click in the anchor's own block stays the
+ * browser's native extend.
+ */
+function extendSelectionToPointer(options: {
+	event: MouseEvent;
+	editor: Editor;
+	fieldEditor: FieldEditorPointerTarget;
+	root: HTMLElement;
+	blockId: string;
+}): boolean {
+	const { event, editor, fieldEditor, root, blockId } = options;
+	if (!fieldEditor.applyDocumentTextSelection) {
+		return false;
 	}
-	if (target instanceof Node) {
-		return target.parentElement;
+	const anchor = resolveShiftAnchor(editor, fieldEditor, root);
+	if (!anchor || anchor.blockId === blockId) {
+		return false;
 	}
-	return null;
+	const order = getPreorderBlockIds(editor);
+	const anchorIndex = order.indexOf(anchor.blockId);
+	const targetIndex = order.indexOf(blockId);
+	if (anchorIndex < 0 || targetIndex < 0) {
+		return false;
+	}
+	const pointerPoint = pointToEditorSelectionPoint(
+		root,
+		event.clientX,
+		event.clientY,
+	);
+	const focus =
+		pointerPoint?.blockId === blockId
+			? { blockId, offset: pointerPoint.offset }
+			: blockBoundaryPoint(
+					editor,
+					root,
+					blockId,
+					anchorIndex < targetIndex ? "end" : "start",
+				);
+	const formed = normalizeSelectionFormation(editor, { anchor, focus });
+	fieldEditor.applyDocumentTextSelection(
+		formed.anchor,
+		formed.focus,
+		"pointer",
+	);
+	return true;
+}
+
+function resolveShiftAnchor(
+	editor: Editor,
+	fieldEditor: FieldEditorPointerTarget,
+	root: HTMLElement,
+): Point | null {
+	const selection = editor.selection;
+	if (selection?.type === "text") {
+		return selection.anchor;
+	}
+	if (selection?.type === "block" && selection.blockIds[0]) {
+		return blockBoundaryPoint(editor, root, selection.blockIds[0], "start");
+	}
+	const focusBlockId = fieldEditor.getSnapshot().focusBlockId;
+	return focusBlockId
+		? blockBoundaryPoint(editor, root, focusBlockId, "start")
+		: null;
+}
+
+function blockBoundaryPoint(
+	editor: Editor,
+	root: HTMLElement,
+	blockId: string,
+	side: "start" | "end",
+): Point {
+	return (
+		getBlockBoundaryPoint(root, blockId, side) ?? {
+			blockId,
+			offset:
+				side === "start"
+					? 0
+					: getEditorBlockSelectionLength(editor, blockId),
+		}
+	);
+}
+
+/**
+ * A plain click on an inline chip in the field that is already editing.
+ * The chip is `contenteditable="false"`, so the browser's own mousedown puts
+ * the DOM caret inside the chip's text, which the reader can only map to
+ * one side of the atom. The side is the half of the chip the pointer is
+ * on (O1, W35.R16), resolved from geometry like an activating click. A
+ * double click or a shift-extend stays the browser's.
+ */
+function activateInlineAtomSide(options: {
+	event: MouseEvent;
+	fieldEditor: FieldEditorPointerTarget;
+	root: HTMLElement;
+	blockId: string;
+	target: Element;
+}): boolean {
+	const { event, fieldEditor, root, blockId, target } = options;
+	if (event.detail > 1 || event.shiftKey) {
+		return false;
+	}
+	const chip = target.closest(`[${DATA_ATTRS.inlineAtom}]`);
+	if (!isInlineAtomChipNode(chip)) {
+		return false;
+	}
+	const point = pointToEditorSelectionPoint(
+		root,
+		event.clientX,
+		event.clientY,
+	);
+	if (!point || point.blockId !== blockId) {
+		return false;
+	}
+	event.preventDefault();
+	fieldEditor.activateTextSelection(blockId, point.offset, point.offset, {
+		origin: "pointer",
+	});
+	return true;
 }
 
 function isEditorHostChrome(
@@ -134,7 +292,21 @@ function isEditorHostChrome(
 	return (
 		target === root ||
 		target === blocksHost ||
-		target === blocksHost.parentElement
+		target === blocksHost.parentElement ||
+		isOwnListGroup(target, root, blocksHost)
+	);
+}
+
+/** An AX1 list group wrapper of this root is host chrome, like the blocks host (W6.R6). */
+function isOwnListGroup(
+	target: Element,
+	root: HTMLElement,
+	blocksHost: HTMLElement,
+): boolean {
+	return (
+		target.hasAttribute(DATA_ATTRS.listGroup) &&
+		blocksHost.contains(target) &&
+		target.closest(`[${DATA_ATTRS.editorRoot}]`) === root
 	);
 }
 
@@ -186,10 +358,7 @@ export function collectHostTextBlocks(
 	for (const element of blocksHost.querySelectorAll(
 		`[${DATA_ATTRS.editorBlock}]`,
 	)) {
-		if (
-			!(element instanceof HTMLElement) ||
-			!blocksHost.contains(element)
-		) {
+		if (!isDomHTMLElement(element) || !blocksHost.contains(element)) {
 			continue;
 		}
 		const owningRoot = element.closest(`[${DATA_ATTRS.editorRoot}]`);

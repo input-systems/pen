@@ -7,10 +7,10 @@ React renderer, primitives, and hooks for Pen.
 ## Install
 
 ```bash
-pnpm add @input/pen @input/pen-react react react-dom yjs y-protocols
+pnpm add @input/pen @input/pen-react react react-dom yjs
 ```
 
-`react` and `react-dom` are peers of this package. `yjs` and `y-protocols` are peers of `@input/pen-yjs`, which `@input/pen-core` depends on. Add `@input/pen-core` explicitly when you import from it directly.
+`react` and `react-dom` are peers of this package. `yjs` is a peer of `@input/pen-yjs`, which `@input/pen-core` depends on; add `y-protocols` only when you install `@input/pen-multiplayer`. Add `@input/pen-core` explicitly when you import from it directly.
 
 ## Quick Start
 
@@ -35,7 +35,7 @@ export function App() {
 
 The normative per-surface matrix is `packages/docs/CAPABILITY-MATRIX.md` in the Pen repository. React is the reference surface: every capability in the matrix is `supported` here except undo and input rules, which are `bring-your-own-ui` because they need no chrome — install `undoExtension()` or `autoformatExtension()` and the keyboard works without any binding code.
 
-React ships the reference feature set, so it carries components other bindings leave to the host: the AI review and suggestion primitives, the generation zone, overlays and caret painting, multiplayer presence, and the search UI. That is bundled chrome over public state, not exclusive access — a capability marked `bring-your-own-ui` in another binding's column is reachable there too.
+React ships the reference feature set, so it carries components other bindings leave to the host: the AI review and suggestion primitives, the generation zone, overlays and caret painting, multiplayer presence, the search UI, and the editor chrome the matrix lists in its Chrome rows — toolbar, selection toolbar, slash menu, suggestion menu, block handle, and table chrome. That is bundled chrome over public state, not exclusive access — a capability marked `bring-your-own-ui` in another binding's column is reachable there too.
 
 ## Server rendering (HOST5)
 

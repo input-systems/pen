@@ -32,7 +32,7 @@ test.describe("N2 / G5 / HOST9 vertical caret onto non-text", () => {
 			.toBe(true);
 	});
 
-	test("ArrowDown onto a table keeps a collapsed text caret", async ({
+	test("ArrowDown onto a table enters its first-row edge cell (T5)", async ({
 		page,
 	}) => {
 		await openPlayground(page);
@@ -47,23 +47,21 @@ test.describe("N2 / G5 / HOST9 vertical caret onto non-text", () => {
 		await expect
 			.poll(async () => {
 				const selection = await readSelection(page);
-				if (selection?.type !== "text") {
+				if (selection?.type !== "cell") {
 					return selection;
 				}
 				return {
 					type: selection.type,
-					blockId: selection.focus.blockId,
-					offset: selection.focus.offset,
-					collapsed:
-						selection.anchor.blockId === selection.focus.blockId &&
-						selection.anchor.offset === selection.focus.offset,
+					blockId: selection.blockId,
+					anchor: selection.anchor,
+					head: selection.head,
 				};
 			})
 			.toEqual({
-				type: "text",
+				type: "cell",
 				blockId: nonTextId,
-				offset: 0,
-				collapsed: true,
+				anchor: { row: 0, col: 0 },
+				head: { row: 0, col: 0 },
 			});
 	});
 });

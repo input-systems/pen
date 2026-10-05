@@ -8,6 +8,7 @@ import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import { getAutocompleteController } from "../../utils/autocompleteController";
 import { shouldIgnoreAIKeyboardEvent } from "../../utils/aiKeyboardScope";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
+import { resolveEditorOwnerDocument } from "../../utils/aiDomScope";
 interface AIContextValue {
 	editor: Editor;
 	controller: AIController | null;
@@ -72,9 +73,10 @@ export function AIRoot(props: AIRootProps) {
 			}
 		};
 
-		document.addEventListener("keydown", handleKeyDown, true);
+		const doc = resolveEditorOwnerDocument(editor);
+		doc.addEventListener("keydown", handleKeyDown, true);
 		return () =>
-			document.removeEventListener("keydown", handleKeyDown, true);
+			doc.removeEventListener("keydown", handleKeyDown, true);
 	}, [controller, editor, state.ephemeralSuggestion]);
 
 	return (

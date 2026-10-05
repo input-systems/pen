@@ -241,7 +241,7 @@ describe("CH2 lint gate", () => {
 			{
 				filePath: path.join(
 					repoRoot,
-					"packages/core/src/editor/caretPositions.ts",
+					"packages/core/src/selection/transitions.ts",
 				),
 			},
 		);

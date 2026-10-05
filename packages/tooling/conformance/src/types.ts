@@ -1,4 +1,4 @@
-import type { DocumentOp } from "@input/pen-types";
+import type { BlockScrollAlign, DocumentOp } from "@input/pen-types";
 import type { StandingDiagnosticCode } from "./diagnosticsAllowlist";
 
 export type LogicalPoint = {
@@ -36,6 +36,8 @@ export type SerializedCellSelection = {
 	blockId: string;
 	anchor: { row: number; col: number };
 	head: { row: number; col: number };
+	/** The edited cell's caret (W3.R18). */
+	text?: { anchor: number; focus: number };
 };
 
 export type SerializedSelection =
@@ -58,6 +60,8 @@ export type SerializedDiagnostic = {
 	source: string;
 	message: string;
 	reason?: string;
+	/** Primitive payload fields the diagnostic carries (version, blockId, …). */
+	details?: Readonly<Record<string, string | number | boolean>>;
 };
 
 export type ConformanceEventRecord = {
@@ -201,6 +205,32 @@ export type GeometryVerticalMotion = {
 	lineBoxes: GeometryLineBox[];
 };
 
+/** OV4: what the overlay layer painted against the authority record after a flush. */
+export type OverlayAuthorityCheck = {
+	/** `held`: versions match and any local caret names the record's focus and affinity. */
+	kind: "held" | "failed" | "no-overlay";
+	reason: string;
+	layerVersion: number | null;
+	recordVersion: number | null;
+	caret: { blockId: string; offset: number; affinity: string } | null;
+	expectedCaret: { blockId: string; offset: number; affinity: string } | null;
+};
+
+/** OV1 counters over a window: flushes, paints, reader calls, layer mutations. */
+export type OverlayProbeCounts = {
+	flushes: number;
+	paints: number;
+	caretRectReads: number;
+	blockRectReads: number;
+	/** The most `caretRect` / `blockRect` calls any single flush made. */
+	maxCaretRectReadsPerFlush: number;
+	maxBlockRectReadsPerFlush: number;
+	/** Mutation records on the layer's items and children. */
+	layerMutations: number;
+	/** Attribute writes on the layer element itself (OV4 version, caret-visible). */
+	layerAttributeWrites: number;
+};
+
 export type GeometryEightCaretItem = {
 	id: string;
 	kind: string;
@@ -215,6 +245,8 @@ export type GeometryEightCaretBudget = {
 	paintedCount: number;
 	overlayConnected: boolean;
 	overlayAttr: string | null;
+	/** The overlay layer's viewport origin; item x/y are relative to it (OV2). */
+	layerOrigin: { x: number; y: number };
 	readPhase: string;
 	writePhase: string;
 	items: GeometryEightCaretItem[];
@@ -281,6 +313,57 @@ export type SelectionEqualsArgs = {
 	focus: PointRef;
 };
 
+/** One block as the DOM fuzzer's generator sees it (W3.R19). */
+export type FuzzBlockView = {
+	id: string;
+	type: string;
+	/** Logical length (an inline atom is one offset). */
+	length: number;
+	/** `"text"` when a caret can sit in it (N2), else `"structural"`. */
+	kind: "text" | "structural";
+};
+
+/** S5 over every text endpoint of the current record. */
+export type FuzzNormalPositionCheck = {
+	ok: boolean;
+	reason?: string;
+};
+
+/** `validateDocument` errors on both peers, and whether they converged. */
+export type FuzzDocumentCheck = {
+	localErrors: string[];
+	remoteErrors: string[];
+	stateVectorsEqual: boolean;
+};
+
+/**
+ * `window.__penConformance.fuzzCheck()` (W3.R19 §3.15): what the page saw
+ * after one fuzz step. `diagnostics` holds only what arrived since the
+ * previous call; the call drains them.
+ */
+export type FuzzCheckReport = {
+	s2: DomAuthorityCheck;
+	s5: FuzzNormalPositionCheck;
+	record: { version: number; commitId: number } | null;
+	diagnostics: SerializedDiagnostic[];
+	documents: FuzzDocumentCheck;
+	blocks: FuzzBlockView[];
+};
+
+/** The page's side of the two-page relay (W5.R10). Every update is base64. */
+export type RelayBridge = {
+	/** Updates the local doc emitted since the last drain; relay deliveries are never re-emitted. */
+	drainOutbox(): string[];
+	/** Applied non-locally with the relay origin, as a real provider applies them. */
+	deliver(updates: readonly string[]): void;
+	stateVector(): string;
+	/** Everything this page holds that `stateVector` lacks; `""` means everything. */
+	encodeSince(stateVector: string): string;
+	/** The local awareness state when it changed since the last drain. */
+	drainAwareness(): string[];
+	deliverAwareness(updates: readonly string[]): void;
+};
+
 export type PenConformanceBridge = {
 	readonly selection: SerializedSelection;
 	/** Official `isCollapsed` from `@input/pen-core` over the live editor selection. */
@@ -291,17 +374,47 @@ export type PenConformanceBridge = {
 	readonly diagnostics: readonly SerializedDiagnostic[];
 	readonly documentText: string;
 	readonly blockIds: readonly string[];
+	/** Root ids as the renderer sees them (`getRootBlockIds`). */
+	readonly rootBlockIds: readonly string[];
 	readonly hasFocus: boolean;
 	readonly fixtureName: string;
 	readonly generation: number;
 	readonly hasFieldEditor: boolean;
+	/** The field editor's composing state: the C1 ime window is open. */
+	readonly composing: boolean;
 	readonly reducedMotion: boolean;
 	readonly windowRange: { start: number; size: number };
 	readonly hasMultiplayer: boolean;
 	readonly presence: PresenceSnapshot;
 	load(name: string): void;
+	/** `?relay=1` (W5.R10): fork this page from another page's encoded state with its own client id. */
+	loadSeeded(fixture: string, seedBase64: string, clientId: number): void;
+	/** `?relay=1` only: the page's side of the two-page relay. Updates are base64. */
+	readonly relay?: RelayBridge;
 	focusText(block?: number): void;
 	selectText(block: number, offset?: number): void;
+	/** Plain text of one block, by id. */
+	blockText(blockId: string): string;
+	/** Select by block id; scale fixtures address blocks by id, not index. */
+	selectTextById(blockId: string, anchorOffset: number, focusOffset?: number): void;
+	/** A programmatic text range between two blocks, origin `programmatic`. */
+	selectTextRangeById(anchor: LogicalPoint, focus: LogicalPoint): void;
+	/** D5: the field editor's `getSubstituteState()`, or null. */
+	readonly substituteState:
+		"block-surface-range" | "engine-confined-range" | null;
+	/** G3: a collapsed caret with an explicit affinity, origin `keyboard`. */
+	selectCaretWithAffinity(
+		blockId: string,
+		offset: number,
+		affinity: "upstream" | "downstream",
+	): void;
+	/** O3: a block selection over these ids, origin `keyboard`. */
+	selectBlocksById(blockIds: readonly string[]): void;
+	/** Every block id, nested ones included, in document preorder. */
+	readonly preorderBlockIds: readonly string[];
+
+	/** Disconnect or reconnect the in-page remote peer (`connectPeers`). */
+	setPeersConnected(connected: boolean): void;
 	setWindow(start: number): void;
 	apply(ops: readonly DocumentOp[]): void;
 	remoteApply(ops: readonly DocumentOp[]): void;
@@ -320,6 +433,17 @@ export type PenConformanceBridge = {
 	): Promise<PresenceSnapshot>;
 	serializePresenceAnchor(blockId: string, offset: number): string;
 	installBrokenProjector(): void;
+	/** W3.R1: drop the next native selection write and count writes from here. */
+	installSelectionWriteFault(): void;
+	readonly selectionWriteFault: { dropped: number; writes: number };
+	/** W3.R17: confine the next multi-block selection write to the anchor field. */
+	installConfiningWriteFault(): void;
+	/** Clamped writes, the lone clears that task ended with, and writes after it. */
+	readonly confiningWriteFault: {
+		confined: number;
+		clears: number;
+		laterWrites: number;
+	};
 	forceUnwindowedDomDivergence(): ForcedDomDivergence;
 	domMatchesAuthority(): DomAuthorityCheck;
 	/** CS10: call `domSelectionToEditor` on a page-owned root. */
@@ -327,7 +451,7 @@ export type PenConformanceBridge = {
 		anchor: LogicalPoint;
 		focus: LogicalPoint;
 	} | null;
-	/** CS10: call `editorSelectionToDOM` on a page-owned root. */
+	/** CS10: write the native range for `anchor`..`focus` on a page-owned root. */
 	projectSelectionToDom(
 		root: HTMLElement,
 		anchor: LogicalPoint,
@@ -335,6 +459,11 @@ export type PenConformanceBridge = {
 	): void;
 	/** CS10: mount the same one-paragraph probe the jsdom tests used. */
 	mountSelectionProbe(text: string, blockId: string): HTMLElement;
+	/**
+	 * HOST9: mount a second, independent editor (vanilla `mountEditor`) after
+	 * the harness editor, holding one paragraph of `text`. Returns its root.
+	 */
+	mountSecondEditor(text: string): HTMLElement;
 	applyAiRangeReplacement(args: {
 		start: { blockId: string; offset: number };
 		end: { blockId: string; offset: number };
@@ -362,6 +491,12 @@ export type PenConformanceBridge = {
 	flushEightRemoteCarets(
 		points: readonly GeometryPoint[],
 	): Promise<GeometryEightCaretBudget>;
+	/** OV4: run a flush, then compare the overlay layer with the authority record. */
+	overlayMatchesAuthority(): Promise<OverlayAuthorityCheck>;
+	/** OV1: start counting overlay flushes, paints, reader calls and layer mutations. */
+	startOverlayProbe(): void;
+	/** OV1: stop counting and return the counts since `startOverlayProbe`. */
+	stopOverlayProbe(): OverlayProbeCounts;
 	readonly beforeinputMap: Readonly<
 		Record<string, SerializedBeforeInputMapping>
 	>;
@@ -374,8 +509,14 @@ export type PenConformanceBridge = {
 	clearDiagnostics(): void;
 	mutateActiveSurfaceText(text: string): void;
 	undo(): void;
+	/** W3.R15: `scrollIntoView({ blockId }, { align })` on the field editor. */
+	scrollBlockIntoView(blockId: string, align: BlockScrollAlign): void;
 	redo(): void;
 	stopCapturing(): void;
+	/** W3.R19: invariants after one fuzz step; drains diagnostics. */
+	fuzzCheck(): FuzzCheckReport;
+	/** Resolves after a scheduler flush that leaves no work queued. Test-side only. */
+	whenIdle(): Promise<void>;
 };
 
 export type LoadOptions = {
@@ -442,9 +583,19 @@ export type ScenarioApi = {
 	};
 };
 
+/** The `?probe=render` window API (W1 scale-render counts). */
+interface ScaleProbeBridge {
+	/** Resolves after one frame has settled the setup, with the window open. */
+	begin(): Promise<void>;
+	end(): Promise<Record<string, number>>;
+	live(): Record<string, number>;
+}
+
 declare global {
 	interface Window {
 		__penConformance: PenConformanceBridge;
+		/** `?probe=render` instruments (harness/src/probes); absent otherwise. */
+		__penScaleProbe: ScaleProbeBridge;
 		__xssProbe: () => void;
 		__xssProbeTripped: boolean;
 	}

@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DATA_ATTRS, buildDataAttributes } from "../utils/dataAttributes";
 
-const SRC_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const RENDERING_ROOT = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"../../..",
+);
 const CATALOG = new Set<string>(Object.values(DATA_ATTRS));
 
 function listProductionSources(dir: string): string[] {
@@ -16,7 +19,7 @@ function listProductionSources(dir: string): string[] {
 			files.push(...listProductionSources(path));
 			continue;
 		}
-		if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
+		if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
 			files.push(path);
 		}
 	}
@@ -112,21 +115,49 @@ describe("DATA_ATTRS catalog pin", () => {
 		]);
 	});
 
-	it("every name this package emits through buildDataAttributes is a DATA_ATTRS value", () => {
-		const unknown: string[] = [];
-		let dynamicCalls = 0;
-		for (const file of listProductionSources(SRC_ROOT)) {
-			const source = readFileSync(file, "utf8");
-			if (!source.includes("buildDataAttributes({")) continue;
-			const extracted = emittedNamesFromSource(source);
-			dynamicCalls += extracted.dynamicCalls;
-			for (const name of extracted.names) {
-				if (!CATALOG.has(name)) unknown.push(`${file}: ${name}`);
-			}
-		}
-		expect(unknown).toEqual([]);
-		// setBooleanAttr passes a DATA_ATTRS value as `[name]`; the pin cannot
-		// read that key statically and does not cover those two call sites.
-		expect(dynamicCalls).toBe(2);
+	it("HOST6: true is valueless and false is omitted", () => {
+		expect(
+			buildDataAttributes({
+				[DATA_ATTRS.readonly]: true,
+				[DATA_ATTRS.empty]: false,
+				[DATA_ATTRS.focused]: undefined,
+			}),
+		).toEqual({
+			[DATA_ATTRS.readonly]: "",
+		});
+		expect(
+			Object.keys(buildDataAttributes({ [DATA_ATTRS.readonly]: false })),
+		).toEqual([]);
 	});
+
+	// setBooleanAttr passes a DATA_ATTRS value as `[name]`; the pin cannot
+	// read that key statically and does not cover those two pen-dom call sites.
+	// The React and Vue bindings emit through the same helper and are pinned here.
+	it.each([
+		{ pkg: "dom", dynamicCalls: 2 },
+		{ pkg: "react", dynamicCalls: 0 },
+		{ pkg: "vue", dynamicCalls: 0 },
+	])(
+		"every name pen-$pkg emits through buildDataAttributes is a DATA_ATTRS value",
+		({ pkg, dynamicCalls: expectedDynamicCalls }) => {
+			const unknown: string[] = [];
+			let calls = 0;
+			let dynamicCalls = 0;
+			for (const file of listProductionSources(
+				join(RENDERING_ROOT, pkg, "src"),
+			)) {
+				const source = readFileSync(file, "utf8");
+				if (!source.includes("buildDataAttributes({")) continue;
+				const extracted = emittedNamesFromSource(source);
+				calls += 1;
+				dynamicCalls += extracted.dynamicCalls;
+				for (const name of extracted.names) {
+					if (!CATALOG.has(name)) unknown.push(`${file}: ${name}`);
+				}
+			}
+			expect(calls).toBeGreaterThan(0);
+			expect(unknown).toEqual([]);
+			expect(dynamicCalls).toBe(expectedDynamicCalls);
+		},
+	);
 });

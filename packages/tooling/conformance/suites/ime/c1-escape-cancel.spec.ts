@@ -3,12 +3,18 @@ import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
 import {
+	disableEditContext,
 	dispatchComposingKey,
-	readDocumentText,
 	readSurfaceText,
 	replayCompositionStart,
 } from "./compose";
-import { installKeyProbe, readKeyProbe } from "../input/keys";
+import {
+	installKeyProbe,
+	readBackend,
+	readDocumentText,
+	readFocusOffset,
+	readKeyProbe,
+} from "../input/keys";
 
 scenario(
 	"C1: Escape during composition never preventDefaults",
@@ -124,3 +130,46 @@ scenario(
 		).toBe(false);
 	},
 );
+
+/**
+ * C1: a cancelled composition leaves the caret where the composition
+ * started. Every update moves the browser's caret inside the composed run;
+ * once the IME empties the run, the authority caret is the composition start
+ * again, so the next keystroke lands there.
+ */
+const CANCEL_CASES = [
+	{ label: "three updates", updates: ["k", "ka", "kan"] },
+	{ label: "one update", updates: ["kan"] },
+];
+
+for (const { label, updates } of CANCEL_CASES) {
+	scenario(
+		`C1: a cancelled composition restores the caret to its start (contenteditable, ${label})`,
+		async (s, page) => {
+			test.skip(
+				test.info().project.name !== "chromium",
+				"Input.imeSetComposition is Chromium CDP",
+			);
+			await s.load("hello-world");
+			expect((await readBackend(page)).hasEditContext).toBe(false);
+			await page.evaluate(() =>
+				window.__penConformance.selectTextById("hello-p1", 5, 5),
+			);
+			const cdp = await page.context().newCDPSession(page);
+			// The trailing empty update is the IME cancelling the composition.
+			for (const update of [...updates, ""]) {
+				await cdp.send("Input.imeSetComposition", {
+					text: update,
+					selectionStart: update.length,
+					selectionEnd: update.length,
+				});
+			}
+			expect(await readFocusOffset(page), "the caret is back at the composition start").toBe(5);
+			await page.keyboard.type("Q");
+			expect(await readDocumentText(page)).toBe("HelloQ world");
+			expect(await readFocusOffset(page), "the caret follows the typed Q").toBe(6);
+			await s.assert.domMatchesAuthority();
+		},
+		{ initScript: disableEditContext },
+	);
+}

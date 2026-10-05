@@ -9,7 +9,6 @@ import type { Point, SelectAllBehavior } from "@input/pen-types";
 
 export type Affinity = "upstream" | "downstream";
 
-export type { Point };
 
 export interface TextSelection {
 	readonly type: "text";
@@ -61,6 +60,10 @@ export type CellTransitionInput =
 			readonly extend: boolean;
 	  };
 
+/**
+ * One block as the T functions see it: `text` blocks hold offsets up to
+ * `length`; `structural` blocks are covered whole (pseudo offsets `0..1`).
+ */
 export interface TransitionBlock {
 	readonly id: string;
 	readonly kind: TransitionBlockKind;
@@ -71,6 +74,11 @@ export interface TransitionBlock {
 	readonly grid?: { readonly rows: number; readonly cols: number };
 }
 
+/**
+ * The document the T functions read: visible blocks in document order, the
+ * top-level ids, and the blocks by id. Built by `buildTransitionSnapshot`,
+ * optionally scoped to the blocks a transition touches.
+ */
 export interface TransitionSnapshot {
 	readonly blockOrder: readonly string[];
 	readonly topLevelIds: readonly string[];
@@ -109,8 +117,13 @@ export function escalateSelectAll(
 }
 
 /**
- * T2: pointer crossing a text-block boundary stays a text selection.
+ * T2: pointer crossing a block boundary stays a text selection.
  * Does not call escalateCoveredTextToBlocks (T3) — no implicit flip.
+ *
+ * A structural end of a cross-block range covers that block in the drag's
+ * direction (pseudo offsets `0..1`, A4), so a delete removes the divider and
+ * keeps the text beside it, and a mid-paragraph text end stays where the
+ * pointer put it (N2). Within one block the focus is only clamped.
  */
 export function convertPointerDrag(
 	doc: TransitionSnapshot,
@@ -120,18 +133,36 @@ export function convertPointerDrag(
 	if (selection === null || selection.type !== "text") {
 		return selection;
 	}
-	const nextFocus = clampPoint(doc, focus);
-	if (!nextFocus) {
+	if (!doc.blocks[focus.blockId]) {
 		return selection;
 	}
-	return textSelection(selection.anchor, nextFocus, selection.affinity);
+	const { anchor } = selection;
+	if (anchor.blockId === focus.blockId) {
+		return textSelection(
+			anchor,
+			dragEndpoint(doc, focus, null),
+			selection.affinity,
+		);
+	}
+	const anchorIndex = doc.blockOrder.indexOf(anchor.blockId);
+	const focusIndex = doc.blockOrder.indexOf(focus.blockId);
+	const forward =
+		anchorIndex < 0 || focusIndex < 0 || anchorIndex <= focusIndex;
+	const anchorBlock = doc.blocks[anchor.blockId];
+	return textSelection(
+		anchorBlock?.kind === "structural"
+			? dragEndpoint(doc, anchor, forward ? "start" : "end")
+			: anchor,
+		dragEndpoint(doc, focus, forward ? "end" : "start"),
+		selection.affinity,
+	);
 }
 
 /**
  * T3: full-coverage multi-block text becomes BlockSelection.
  * Used by escalateSelectAll on rung 2+; never by convertPointerDrag.
  */
-export function escalateCoveredTextToBlocks(
+function escalateCoveredTextToBlocks(
 	doc: TransitionSnapshot,
 	selection: SelectionState,
 ): SelectionState {
@@ -169,6 +200,15 @@ export function arrowFromBlockSelection(
 	return collapseBlockSelection(doc, selection, direction, headIndex);
 }
 
+/**
+ * T5: a click on a structural block selects it as a BlockSelection with that
+ * block as head; a click in a text block is a collapsed caret, clamped.
+ *
+ * @param doc - The transition snapshot holding `blockId`.
+ * @param blockId - The clicked block.
+ * @param offset - The clicked offset in a text block.
+ * @returns The selection the click forms, or `null` for an unknown block.
+ */
 export function clickSelectableBlock(
 	doc: TransitionSnapshot,
 	blockId: string,
@@ -677,6 +717,38 @@ function inGrid(
 		cell.row < grid.rows &&
 		cell.col < grid.cols
 	);
+}
+
+/** The pseudo length of a structural block in a text range (A4). */
+const STRUCTURAL_COVER_LENGTH = 1;
+
+/**
+ * A drag endpoint: a structural block covers to `side` (`null` within one
+ * block clamps to the cover), a text block clamps, an unknown block stays.
+ * The anchor of a text range is where the gesture started and is not clamped.
+ */
+function dragEndpoint(
+	doc: TransitionSnapshot,
+	point: Point,
+	side: "start" | "end" | null,
+): Point {
+	const block = doc.blocks[point.blockId];
+	if (!block) {
+		return point;
+	}
+	if (block.kind === "structural") {
+		if (side === null) {
+			return {
+				blockId: point.blockId,
+				offset: clampOffset(STRUCTURAL_COVER_LENGTH, point.offset),
+			};
+		}
+		return {
+			blockId: point.blockId,
+			offset: side === "start" ? 0 : STRUCTURAL_COVER_LENGTH,
+		};
+	}
+	return clampPoint(doc, point) ?? point;
 }
 
 function clampPoint(doc: TransitionSnapshot, point: Point): Point | null {

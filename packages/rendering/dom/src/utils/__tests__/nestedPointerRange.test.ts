@@ -7,7 +7,7 @@ import {
 } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import { afterEach, describe, expect, it } from "vitest";
-import { getBlockIdRange, type ContentGesturesContext } from "../../field-editor/contentGesturesShared";
+import { isPreorderForward, type ContentGesturesContext } from "../../field-editor/contentGesturesShared";
 import { getPreorderBlockIds } from "../documentPreorder";
 
 const emailQuote = defineBlock("emailQuote", {
@@ -72,12 +72,13 @@ function createNestedQuoteEditor() {
 }
 
 describe("D6 nested pointer block range", () => {
-	it("getBlockIdRange includes children-array children absent from blockOrder", () => {
+	it("isPreorderForward orders children-array children absent from blockOrder", () => {
 		const editor = createNestedQuoteEditor();
 		expect(editor.documentState.blockOrder).not.toContain("q1");
 		expect(getPreorderBlockIds(editor)).toEqual(["quote", "q1", "q2"]);
 
 		const ctx = { editor } as ContentGesturesContext;
-		expect(getBlockIdRange(ctx, "q1", "q2")).toEqual(["q1", "q2"]);
+		expect(isPreorderForward(ctx, "q1", "q2")).toBe(true);
+		expect(isPreorderForward(ctx, "q2", "q1")).toBe(false);
 	});
 });

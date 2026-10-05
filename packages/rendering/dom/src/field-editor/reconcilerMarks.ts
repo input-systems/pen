@@ -13,6 +13,9 @@ export function wrapWithMarks(
 	registry: SchemaRegistry,
 	policy: UrlPolicy = urlPolicy,
 ): Node {
+	// Marks are created in `node`'s document, the field's, which is an
+	// iframe's when the host mounts the editor there.
+	const doc = node.ownerDocument ?? document;
 	let wrapped = node;
 	const decorationAttributes = isDecorationAttributesValue(
 		attributes[INLINE_DECORATION_ATTRIBUTE_KEY],
@@ -30,7 +33,7 @@ export function wrapWithMarks(
 		});
 
 	for (const [markType, markProps] of entries) {
-		const element = createMarkElement(markType, markProps, policy);
+		const element = createMarkElement(markType, markProps, policy, doc);
 		element.appendChild(wrapped);
 		wrapped = element;
 	}
@@ -40,6 +43,7 @@ export function wrapWithMarks(
 			INLINE_DECORATION_ATTRIBUTE_KEY,
 			decorationAttributes,
 			policy,
+			doc,
 		);
 		element.appendChild(wrapped);
 		wrapped = element;
@@ -53,8 +57,9 @@ export function createMarkedNode(
 	attributes: Record<string, unknown>,
 	registry: SchemaRegistry,
 	policy: UrlPolicy = urlPolicy,
+	doc: Document = document,
 ): Node {
-	const node: Node = document.createTextNode(text);
+	const node: Node = doc.createTextNode(text);
 	return wrapWithMarks(node, attributes, registry, policy);
 }
 
@@ -62,25 +67,26 @@ function createMarkElement(
 	markType: string,
 	props: unknown,
 	policy: UrlPolicy,
+	doc: Document,
 ): HTMLElement {
 	switch (markType) {
 		case INLINE_DECORATION_ATTRIBUTE_KEY: {
-			const span = document.createElement("span");
+			const span = doc.createElement("span");
 			applyElementAttributes(span, props, policy);
 			return span;
 		}
 		case "bold":
-			return document.createElement("strong");
+			return doc.createElement("strong");
 		case "italic":
-			return document.createElement("em");
+			return doc.createElement("em");
 		case "underline":
-			return document.createElement("u");
+			return doc.createElement("u");
 		case "strikethrough":
-			return document.createElement("s");
+			return doc.createElement("s");
 		case "code":
-			return document.createElement("code");
+			return doc.createElement("code");
 		case "link": {
-			const anchor = document.createElement("a");
+			const anchor = doc.createElement("a");
 			if (typeof props === "object" && props !== null) {
 				const record = props as Record<string, unknown>;
 				if (record.href) {
@@ -100,23 +106,23 @@ function createMarkElement(
 				tagName: "mark",
 				cssProperty: "background-color",
 				customProperty: HIGHLIGHT_CUSTOM_PROPERTY,
-			});
+			}, doc);
 		case "textColor":
 			return createColorMarkElement(props, {
 				tagName: "span",
 				markType: "textColor",
 				cssProperty: "color",
 				customProperty: TEXT_COLOR_CUSTOM_PROPERTY,
-			});
+			}, doc);
 		case "backgroundColor":
 			return createColorMarkElement(props, {
 				tagName: "span",
 				markType: "backgroundColor",
 				cssProperty: "background-color",
 				customProperty: BACKGROUND_COLOR_CUSTOM_PROPERTY,
-			});
+			}, doc);
 		case "suggestion": {
-			const span = document.createElement("span");
+			const span = doc.createElement("span");
 			span.dataset.markType = markType;
 
 			if (typeof props === "object" && props !== null) {
@@ -143,7 +149,7 @@ function createMarkElement(
 			return span;
 		}
 		default: {
-			const span = document.createElement("span");
+			const span = doc.createElement("span");
 			span.dataset.markType = markType;
 			return span;
 		}
@@ -161,8 +167,9 @@ type ColorMarkShape = {
 function createColorMarkElement(
 	props: unknown,
 	shape: ColorMarkShape,
+	doc: Document,
 ): HTMLElement {
-	const element = document.createElement(shape.tagName);
+	const element = doc.createElement(shape.tagName);
 	if (shape.markType) {
 		element.dataset.markType = shape.markType;
 	}

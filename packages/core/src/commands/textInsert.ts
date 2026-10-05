@@ -111,8 +111,8 @@ function toggleMarkAcrossBlocks(
 		return false;
 	}
 	const order = documentPreorderBlockIds(editor);
-	const startIndex = order.indexOf(range.start.blockId);
-	const endIndex = order.indexOf(range.end.blockId);
+	const startIndex = editor.documentState.preorderIndexOf(range.start.blockId);
+	const endIndex = editor.documentState.preorderIndexOf(range.end.blockId);
 	if (startIndex < 0 || endIndex < 0) {
 		return false;
 	}

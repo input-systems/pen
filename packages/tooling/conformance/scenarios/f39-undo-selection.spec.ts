@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
-import { getInlineOffsetPoint } from "../src/domGeometry";
 import { scenario } from "../src/scenario";
+import { blockInlineText, clickOffset, readFocus } from "../suites/specHelpers";
 
 function historyBridge(page: Page) {
 	return {
@@ -22,41 +22,12 @@ function historyBridge(page: Page) {
 	};
 }
 
-async function clickOffset(
-	page: Page,
-	blockId: string,
-	offset: number,
-): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId, offset });
-	await page.mouse.click(point.x, point.y);
+async function focusOffset(page: Page): Promise<number | undefined> {
+	return (await readFocus(page))?.offset;
 }
 
-async function blockInlineText(page: Page, blockId: string): Promise<string> {
-	return page.evaluate((id) => {
-		const block = document.querySelector(`[data-block-id="${id}"]`);
-		const inline = block?.querySelector("[data-pen-inline-content]");
-		return inline?.textContent ?? "";
-	}, blockId);
-}
-
-async function focusOffset(page: Page): Promise<number | null> {
-	return page.evaluate(() => {
-		const selection = window.__penConformance.selection;
-		if (selection?.type !== "text") {
-			return null;
-		}
-		return selection.focus.offset;
-	});
-}
-
-async function focusBlockId(page: Page): Promise<string | null> {
-	return page.evaluate(() => {
-		const selection = window.__penConformance.selection;
-		if (selection?.type !== "text") {
-			return null;
-		}
-		return selection.focus.blockId;
-	});
+async function focusBlockId(page: Page): Promise<string | undefined> {
+	return (await readFocus(page))?.blockId;
 }
 
 scenario(
@@ -157,7 +128,7 @@ scenario(
 		const redoneBlockId = redoneIds.find((id) => id !== "hello-p1");
 		expect(redoneBlockId).toBeTruthy();
 		await expect(
-			page.locator(`[data-block-id="${redoneBlockId}"]`),
+			page.locator(`[data-pen-editor-block][data-block-id="${redoneBlockId}"]`),
 		).toBeVisible();
 		await s.assert.domMatchesAuthority();
 	},

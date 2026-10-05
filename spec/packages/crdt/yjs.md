@@ -10,24 +10,24 @@ Bridge Pen contracts to a specific CRDT implementation.
 
 ## Key Exports / Entrypoints
 
-- Export map: `.`
+- Export map: `.` and `./awareness`
 - CRDT adapter and document helpers such as `yjsAdapter()`, `wrapYjsDocument()`, `initBlockMap()`, and `getYjsDoc()`
 - `PenDocumentUnreadableError`, thrown by `loadDocument` when `minReader` is too new or a shared type has the wrong Yjs constructor
-- Collaboration helpers such as `createYjsProviderSession()`, `createYjsAwareness()`, and `getYjsAwareness()`
+- Collaboration helpers such as `createYjsProviderSession()`; awareness lives on `@input/pen-yjs/awareness` (`createYjsAwareness()`, `getYjsAwareness()`, `encodeYjsAwarenessUpdate()`, `applyYjsAwarenessUpdate()`). `yjsAdapter()` creates no awareness: the multiplayer extension ensures one per scope when it activates, and `yjsAdapter({ awareness: createYjsAwareness })` is the explicit option for a host that wires a provider without it
 - State-vector helpers such as `encodeYjsStateVectorBase64()`, `compareYjsStateVectors()`, and `isYjsStateVectorBase64Satisfied()`
 - Generic field adapters such as `createYTextFieldAdapter()` and `createYArrayFieldAdapter()`
 - Extension-root helpers such as `ensureExtensionRoot()` and `readExtensionRoot()`
 - Anchor methods `createRelativePosition(doc, target, assoc)` and `resolveRelativePosition(doc, encoded, options?)` live on the `CRDTAdapter` object returned by `yjsAdapter()`, not on the package barrel. `editor.anchors` is the host surface; these methods are the CRDT implementation behind it. `loadDocument()` is adapter-scoped the same way.
 - Summary and origin plumbing: `createSummarySource()`, `STRUCTURAL_ORIGIN_META_KEY`, `createRemoteUpdateOrigin()`, `originToOpOrigin()`
 - Document lifecycle: `validateDocument()`, `createYjsSubdocument()`, `getDocumentProfile()` / `setDocumentProfile()`, `getDocumentLoadReport()`, `readFormatStamp()` / `refreshFormatStamp()`
-- Awareness wire helpers `encodeYjsAwarenessUpdate()` and `applyYjsAwarenessUpdate()`
 - Format stamp helpers; new documents stamp `PEN_DOCUMENT_FORMAT` (`3`)
+- The adapter's own metadata writes (format stamp, `setDocumentProfile()`, load repairs) run in a `"system"`-origin transaction, so constructing an editor over a fresh document emits no `ORIGIN_UNKNOWN` diagnostic
 - Workspace scripts: `build`, `clean`, `dev`, `lint`, `test`, `typecheck`
 
 ## Dependencies And Boundaries
 
 - Runtime dependencies: `@input/pen-types`
-- Peer dependencies: `y-protocols`, `yjs`
+- Peer dependencies: `yjs`; `y-protocols` (optional, needed only by `./awareness`)
 - Boundary: Adapters must respect the editor authority boundary while exposing persistence and sync integration points.
 
 ## Undo Origin Matching
@@ -35,6 +35,8 @@ Bridge Pen contracts to a specific CRDT implementation.
 The apply pipeline passes a freshly built structured origin object into `adapter.transact` so `groupId` / `requestId` survive on the Yjs transaction. `Y.UndoManager` matches `trackedOrigins` by identity, so neither the bare type string (`"user"`) nor an interned canonical object is the same reference as that transaction origin.
 
 `createYjsUndoManager()` therefore installs a `TrackedOriginSet` (`packages/crdt/yjs/src/undo.ts`) that extends `Set` and overrides `has()`: identity still wins, and a structured object also matches when its `type` string is in the set. Default tracked types are `"user"` and `"ai"`. The class is adapter-local, not a public export.
+
+Capture is keyed (AIB4): `Y.UndoManager` runs with `captureTimeout: 0`, and the adapter merges stack items per key (`setCaptureKey`, or a key derived from the transaction's structured origin: `group:<groupId>` when it carries one, `origin:<type>` otherwise). An explicit group's item collects every write of its key and moves to the top, unless a step above it deleted content the item inserted, in which case the key's item closes and the write starts a new one; an origin key joins only the item directly beneath the new one within the capture window. Undo and redo close every key, `stopCapturing()` closes the origin keys, and `maxDepth` trimming drops the keys of trimmed items.
 
 ## Data Flow / Runtime Model
 
@@ -49,6 +51,8 @@ Extension-root helpers reserve namespaced Yjs maps under the document `apps` roo
 Empty text-capable `Y.Text` is `""`. Relative-position mint and resolve walk `penDocument.blocks` (and nested table cells) for the resolved `Y.Text`; a missing or deleted type is `null`. The adapter never throws on hostile or stale encoded positions.
 
 `createSummarySource` reports a block that arrives carrying content as an insert of that content. Yjs leaves a type created inside a transaction out of `txn.changed`, so a block whose text was written at construction — a split's tail block, an import, a paste — emits no text delta of its own, and every observer downstream would otherwise see the block appear and its text arrive from nowhere. The gate is the block's entry changing on the `blocks` map, so a reorder, which only touches order arrays, never restates existing text as an insert. This is what gives AN14's remote delete/insert pairing an insert to pair against when a peer splits a block.
+
+A write made while another transaction is being observed — a commit listener applying ops during a remote delivery or an undo — is queued by Yjs, and its observers run only after the earlier transactions' cleanup. That cleanup merges structs: a deleted run with the struct beside it the queued write deleted, and, from an earlier queued transaction whose state vector is read only when its cleanup starts (Yjs opens an empty one whenever a text delta is read from an observer), the queued write's new struct with the one the same client wrote just before. The queued write's own events then miss that delete or insert. `createSummarySource` therefore reads each transaction queued behind the one it just reported before that one's cleanup runs, and reports those deltas when the queued transaction is observed, so a listener write's summary names everything it changed.
 
 ## Integration Notes
 

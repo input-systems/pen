@@ -1,0 +1,1507 @@
+{
+	"schemaVersion": 1,
+	"surface": "react",
+	"browser": "chromium",
+	"fixtures": {
+		"scale-1k": {
+			"generator": "@input/pen-test generateMixedBlockSpecs + mixedFixtureOps",
+			"contentSha256": "93d3049d81d59e622d1ba0e932071adf538f9f2c99c5c696c3ccc7cafdf9b92f",
+			"identity": {
+				"rootCount": 1000,
+				"blockOrderLength": 1050,
+				"totalBlocks": 1050,
+				"tableCount": 1,
+				"composition": {
+					"heading": 49,
+					"paragraph": 400,
+					"bulletListItem": 150,
+					"numberedListItem": 150,
+					"checkListItem": 50,
+					"blockquote": 50,
+					"codeBlock": 50,
+					"toggle": 50,
+					"divider": 50,
+					"table": 1
+				}
+			}
+		},
+		"scale-5k": {
+			"generator": "@input/pen-test generateMixedBlockSpecs + mixedFixtureOps",
+			"contentSha256": "b0136c63dbaab76dff2c65852067b1fb9df5f937abc885cd19b99266eb9499e0",
+			"identity": {
+				"rootCount": 5000,
+				"blockOrderLength": 5250,
+				"totalBlocks": 5250,
+				"tableCount": 5,
+				"composition": {
+					"heading": 245,
+					"paragraph": 2000,
+					"bulletListItem": 750,
+					"numberedListItem": 750,
+					"checkListItem": 250,
+					"blockquote": 250,
+					"codeBlock": 250,
+					"toggle": 250,
+					"divider": 250,
+					"table": 5
+				}
+			}
+		}
+	},
+	"counts": {
+		"scale-1k": {
+			"mount": {
+				"commit.affectedBlockIds": 26,
+				"dom.mutationRecords": 0,
+				"listeners.invoked.commit": 1,
+				"listeners.invoked.diagnostic": 1,
+				"render.blockRenders": 1003,
+				"render.contentRenders": 2,
+				"render.reactCommits": 2,
+				"scan.blockOrderReads": 27,
+				"scan.blocksMapIterations": 1049,
+				"scan.blocksMapReads": 38190,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 3071,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 999,
+				"notifier.deliveries": 0,
+				"listeners.live.commit": 8,
+				"listeners.live.selectionChange": 5,
+				"listeners.live.historyApplied": 3,
+				"listeners.live.diagnostic": 1,
+				"listeners.live.decorationsChange": 2,
+				"listeners.live.store": 1,
+				"listeners.live.total": 20,
+				"notifier.blockSubscribers": 13802,
+				"mount.blocksMounted": 1050
+			},
+			"keystroke": {
+				"commit.affectedBlockIds": 1,
+				"dom.mutationRecords": 3,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
+				"listeners.invoked.commit": 7,
+				"listeners.invoked.selectionChange": 5,
+				"render.blockRenders": 1,
+				"render.reactCommits": 1,
+				"scan.blockOrderReads": 1,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 78,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 11,
+				"scheduler.measureNow": 0,
+				"dom.blocksTouched": 1,
+				"render.blocksRendered": 1,
+				"notifier.deliveries": 26
+			},
+			"caretRight": {
+				"dom.mutationRecords": 0,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 1,
+				"render.blockRenders": 1,
+				"render.reactCommits": 1,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 70,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 10,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 1,
+				"notifier.deliveries": 13
+			},
+			"caretDown": {
+				"dom.mutationRecords": 22,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.outOfFlush": 1581,
+				"geometry.boundingClientRect.total": 1582,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 6,
+				"render.blockRenders": 2,
+				"render.reactCommits": 1,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 106,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 10,
+				"scheduler.measureNow": 1,
+				"dom.blocksTouched": 2,
+				"render.blocksRendered": 2,
+				"notifier.deliveries": 69
+			},
+			"shiftDown": {
+				"dom.mutationRecords": 17,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.outOfFlush": 1581,
+				"geometry.boundingClientRect.total": 1582,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 3,
+				"render.blockRenders": 2,
+				"render.contentRenders": 1,
+				"render.reactCommits": 1,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 117,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 5,
+				"scheduler.measureNow": 1,
+				"dom.blocksTouched": 2,
+				"render.blocksRendered": 2,
+				"notifier.deliveries": 54
+			},
+			"enterParagraph": {
+				"commit.affectedBlockIds": 2,
+				"dom.mutationRecords": 15,
+				"geometry.boundingClientRect.inFlush": 10,
+				"geometry.boundingClientRect.total": 10,
+				"listeners.invoked.commit": 7,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 7,
+				"render.blockRenders": 4,
+				"render.contentRenders": 1,
+				"render.reactCommits": 3,
+				"scan.blockOrderReads": 3,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 203,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 22,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 2,
+				"dom.blocksTouched": 2,
+				"notifier.deliveries": 58
+			},
+			"enterNumbered": {
+				"commit.affectedBlockIds": 2,
+				"dom.mutationRecords": 17,
+				"geometry.boundingClientRect.inFlush": 12,
+				"geometry.boundingClientRect.total": 12,
+				"listeners.invoked.commit": 7,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 7,
+				"render.blockRenders": 4,
+				"render.contentRenders": 1,
+				"render.reactCommits": 3,
+				"scan.blockOrderReads": 3,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 400,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 23,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 2,
+				"dom.blocksTouched": 3,
+				"notifier.deliveries": 81
+			},
+			"remoteInsert": {
+				"commit.affectedBlockIds": 1,
+				"dom.mutationRecords": 2,
+				"listeners.invoked.commit": 7,
+				"listeners.invoked.store": 1,
+				"render.blockRenders": 2,
+				"render.contentRenders": 1,
+				"render.reactCommits": 2,
+				"scan.blockOrderReads": 2,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 167,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 8,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 1,
+				"dom.blocksTouched": 1,
+				"notifier.deliveries": 15
+			}
+		},
+		"scale-5k": {
+			"mount": {
+				"commit.affectedBlockIds": 130,
+				"dom.mutationRecords": 0,
+				"listeners.invoked.commit": 1,
+				"listeners.invoked.diagnostic": 1,
+				"render.blockRenders": 5015,
+				"render.contentRenders": 2,
+				"render.reactCommits": 2,
+				"scan.blockOrderReads": 135,
+				"scan.blocksMapIterations": 5245,
+				"scan.blocksMapReads": 190934,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 15355,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 4995,
+				"notifier.deliveries": 0,
+				"listeners.live.commit": 8,
+				"listeners.live.selectionChange": 5,
+				"listeners.live.historyApplied": 3,
+				"listeners.live.diagnostic": 1,
+				"listeners.live.decorationsChange": 2,
+				"listeners.live.store": 1,
+				"listeners.live.total": 20,
+				"notifier.blockSubscribers": 69010,
+				"mount.blocksMounted": 5250
+			},
+			"keystroke": {
+				"commit.affectedBlockIds": 1,
+				"dom.mutationRecords": 3,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
+				"listeners.invoked.commit": 7,
+				"listeners.invoked.selectionChange": 5,
+				"render.blockRenders": 1,
+				"render.reactCommits": 1,
+				"scan.blockOrderReads": 1,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 78,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 11,
+				"scheduler.measureNow": 0,
+				"dom.blocksTouched": 1,
+				"render.blocksRendered": 1,
+				"notifier.deliveries": 26
+			},
+			"caretRight": {
+				"dom.mutationRecords": 0,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 1,
+				"render.blockRenders": 1,
+				"render.reactCommits": 1,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 70,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 10,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 1,
+				"notifier.deliveries": 13
+			},
+			"caretDown": {
+				"dom.mutationRecords": 22,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.outOfFlush": 7881,
+				"geometry.boundingClientRect.total": 7882,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 6,
+				"render.blockRenders": 2,
+				"render.reactCommits": 1,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 106,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 10,
+				"scheduler.measureNow": 1,
+				"dom.blocksTouched": 2,
+				"render.blocksRendered": 2,
+				"notifier.deliveries": 69
+			},
+			"shiftDown": {
+				"dom.mutationRecords": 17,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.outOfFlush": 7881,
+				"geometry.boundingClientRect.total": 7882,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 3,
+				"render.blockRenders": 2,
+				"render.contentRenders": 1,
+				"render.reactCommits": 1,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 117,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 5,
+				"scheduler.measureNow": 1,
+				"dom.blocksTouched": 2,
+				"render.blocksRendered": 2,
+				"notifier.deliveries": 54
+			},
+			"enterParagraph": {
+				"commit.affectedBlockIds": 2,
+				"dom.mutationRecords": 15,
+				"geometry.boundingClientRect.inFlush": 10,
+				"geometry.boundingClientRect.total": 10,
+				"listeners.invoked.commit": 7,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 7,
+				"render.blockRenders": 4,
+				"render.contentRenders": 1,
+				"render.reactCommits": 3,
+				"scan.blockOrderReads": 3,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 203,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 22,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 2,
+				"dom.blocksTouched": 2,
+				"notifier.deliveries": 58
+			},
+			"enterNumbered": {
+				"commit.affectedBlockIds": 2,
+				"dom.mutationRecords": 17,
+				"geometry.boundingClientRect.inFlush": 12,
+				"geometry.boundingClientRect.total": 12,
+				"listeners.invoked.commit": 7,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 7,
+				"render.blockRenders": 4,
+				"render.contentRenders": 1,
+				"render.reactCommits": 3,
+				"scan.blockOrderReads": 3,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 400,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 23,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 2,
+				"dom.blocksTouched": 3,
+				"notifier.deliveries": 81
+			},
+			"remoteInsert": {
+				"commit.affectedBlockIds": 1,
+				"dom.mutationRecords": 2,
+				"listeners.invoked.commit": 7,
+				"listeners.invoked.store": 1,
+				"render.blockRenders": 2,
+				"render.contentRenders": 1,
+				"render.reactCommits": 2,
+				"scan.blockOrderReads": 2,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 167,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 8,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 1,
+				"dom.blocksTouched": 1,
+				"notifier.deliveries": 15
+			}
+		}
+	},
+	"largeCounts": {
+		"scale-10k": {
+			"mount": {
+				"commit.affectedBlockIds": 260,
+				"dom.mutationRecords": 0,
+				"listeners.invoked.commit": 1,
+				"listeners.invoked.diagnostic": 1,
+				"render.blockRenders": 10030,
+				"render.contentRenders": 2,
+				"render.reactCommits": 2,
+				"scan.blockOrderReads": 84000,
+				"scan.blocksMapIterations": 41990,
+				"scan.blocksMapReads": 657670,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 42010,
+				"scan.textFullReads": 30710,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 9990,
+				"notifier.deliveries": 0,
+				"listeners.live.commit": 8,
+				"listeners.live.selectionChange": 5,
+				"listeners.live.historyApplied": 3,
+				"listeners.live.diagnostic": 1,
+				"listeners.live.decorationsChange": 2,
+				"listeners.live.store": 1,
+				"listeners.live.total": 20,
+				"notifier.blockSubscribers": 138020,
+				"mount.blocksMounted": 10500
+			}
+		},
+		"scale-50k": {
+			"mount": {
+				"commit.affectedBlockIds": 1300,
+				"dom.mutationRecords": 0,
+				"listeners.invoked.commit": 1,
+				"listeners.invoked.diagnostic": 1,
+				"render.blockRenders": 50150,
+				"render.contentRenders": 2,
+				"render.reactCommits": 2,
+				"scan.blockOrderReads": 1470000,
+				"scan.blocksMapIterations": 209950,
+				"scan.blocksMapReads": 3288270,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 210010,
+				"scan.textFullReads": 153550,
+				"scheduler.measureNow": 0,
+				"render.blocksRendered": 49950,
+				"notifier.deliveries": 0,
+				"listeners.live.commit": 8,
+				"listeners.live.selectionChange": 5,
+				"listeners.live.historyApplied": 3,
+				"listeners.live.diagnostic": 1,
+				"listeners.live.decorationsChange": 2,
+				"listeners.live.store": 1,
+				"listeners.live.total": 20,
+				"notifier.blockSubscribers": 690100,
+				"mount.blocksMounted": 52500
+			}
+		}
+	},
+	"clocks": {
+		"recordedAt": "2026-10-04",
+		"machineClass": "macos-arm64 (darwin 27, Apple Silicon). Not the CI runner (github-actions-ubuntu-latest).",
+		"load": {
+			"load1": 4.67578125,
+			"ncpu": 14,
+			"busy": false
+		},
+		"browserVersion": "151.0.7922.34",
+		"statistic": "median",
+		"floors": {
+			"scale-1k": {
+				"mountMs": {
+					"p50": 27.7,
+					"n": 5,
+					"min": 23,
+					"max": 34.9
+				},
+				"keystrokeToFrameMs": {
+					"p50": 12,
+					"n": 20,
+					"min": 9.6,
+					"max": 13
+				},
+				"heapAfterMountBytes": 19020204
+			},
+			"scale-5k": {
+				"mountMs": {
+					"p50": 100.5,
+					"n": 5,
+					"min": 98.1,
+					"max": 128.4
+				},
+				"keystrokeToFrameMs": {
+					"p50": 10.5,
+					"n": 20,
+					"min": 4.1,
+					"max": 32.2
+				},
+				"heapAfterMountBytes": 36226976
+			},
+			"scale-10k": {
+				"mountMs": {
+					"p50": 218.5,
+					"n": 5,
+					"min": 203.5,
+					"max": 228.1
+				},
+				"keystrokeToFrameMs": {
+					"p50": 8.7,
+					"n": 20,
+					"min": 8.3,
+					"max": 44.5
+				},
+				"heapAfterMountBytes": 58095040
+			}
+		},
+		"fixtures": {
+			"scale-1k": {
+				"mountMs": {
+					"p50": 124,
+					"n": 5,
+					"min": 116.4,
+					"max": 228.9
+				},
+				"keystrokeToFrameMs": {
+					"p50": 7.3,
+					"n": 20,
+					"min": 6.5,
+					"max": 16
+				},
+				"caretRightToFrameMs": {
+					"p50": 5.4,
+					"n": 20,
+					"min": 2.4,
+					"max": 16.1
+				},
+				"caretDownToFrameMs": {
+					"p50": 11.9,
+					"n": 20,
+					"min": 11.4,
+					"max": 18.6
+				},
+				"scrollLongTasks": {
+					"count": 0,
+					"totalMs": 0
+				},
+				"heapAfterMountBytes": 41277436
+			},
+			"scale-5k": {
+				"mountMs": {
+					"p50": 1039.8,
+					"n": 5,
+					"min": 688.9,
+					"max": 1152.1
+				},
+				"keystrokeToFrameMs": {
+					"p50": 30.8,
+					"n": 20,
+					"min": 29.1,
+					"max": 35.6
+				},
+				"caretRightToFrameMs": {
+					"p50": 8.8,
+					"n": 20,
+					"min": 8.6,
+					"max": 14.3
+				},
+				"caretDownToFrameMs": {
+					"p50": 167.2,
+					"n": 20,
+					"min": 162.5,
+					"max": 174.6
+				},
+				"scrollLongTasks": {
+					"count": 0,
+					"totalMs": 0
+				},
+				"heapAfterMountBytes": 138879864
+			},
+			"scale-10k": {
+				"mountMs": {
+					"p50": 2638.5,
+					"n": 5,
+					"min": 1918.9,
+					"max": 3460.1
+				},
+				"keystrokeToFrameMs": {
+					"p50": 61.8,
+					"n": 20,
+					"min": 59.2,
+					"max": 77.5
+				},
+				"caretRightToFrameMs": {
+					"p50": 15.5,
+					"n": 20,
+					"min": 14.8,
+					"max": 23.1
+				},
+				"caretDownToFrameMs": {
+					"p50": 673.1,
+					"n": 20,
+					"min": 666.6,
+					"max": 689.4
+				},
+				"scrollLongTasks": {
+					"count": 0,
+					"totalMs": 0
+				},
+				"heapAfterMountBytes": 416756564
+			}
+		}
+	},
+	"history": [
+		{
+			"date": "2026-10-02",
+			"reason": "initial record at 5bc267fe + W0 (renderer counts before W2)",
+			"moved": [
+				"initial record"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R7 core keystroke reads; W2.R8/R9 scoped decorations; W2.R11 structural commits; W2.R12 geometry invalidation; W2.R1 notifier metrics",
+			"moved": [
+				"react/scale-1k/mount/scan.blockOrderReads: 847275 !== 848325",
+				"react/scale-1k/mount/scan.blocksMapIterations: 4199 !== 5248",
+				"react/scale-1k/mount/scan.blocksMapReads: 101963 !== 119755",
+				"react/scale-1k/mount/scan.orderArrayReads: 2116 !== 10500",
+				"react/scale-1k/mount/scan.textFullReads: 14084 !== 15058",
+				"react/scale-1k/mount/notifier.deliveries: new metric — re-record",
+				"react/scale-1k/mount/notifier.blockSubscribers: new metric — re-record",
+				"react/scale-1k/keystroke/scan.blockOrderReads: 105451 !== 108601",
+				"react/scale-1k/keystroke/scan.blocksMapIterations: 0 !== 3152",
+				"react/scale-1k/keystroke/scan.blocksMapReads: 20980 !== 25173",
+				"react/scale-1k/keystroke/scan.orderArrayReads: 1109857 !== 1110905",
+				"react/scale-1k/keystroke/notifier.deliveries: new metric — re-record",
+				"react/scale-1k/caretRight/scan.blockOrderReads: 0 !== 4200",
+				"react/scale-1k/caretRight/scan.blocksMapReads: 26974 !== 29074",
+				"react/scale-1k/caretRight/notifier.deliveries: new metric — re-record",
+				"react/scale-1k/caretDown/scan.blockOrderReads: 421800 !== 427050",
+				"react/scale-1k/caretDown/scan.blocksMapReads: 55706 !== 67240",
+				"react/scale-1k/caretDown/scan.orderArrayReads: 2221808 !== 2226000",
+				"react/scale-1k/caretDown/notifier.deliveries: new metric — re-record",
+				"react/scale-1k/shiftDown/scan.blockOrderReads: 421800 !== 424950",
+				"react/scale-1k/shiftDown/scan.blocksMapReads: 55722 !== 66206",
+				"react/scale-1k/shiftDown/scan.orderArrayReads: 2221808 !== 2226000",
+				"react/scale-1k/shiftDown/notifier.deliveries: new metric — re-record",
+				"react/scale-1k/enterParagraph/scan.blockOrderReads: 1375830 !== 1383187",
+				"react/scale-1k/enterParagraph/scan.blocksMapIterations: 4203 !== 7355",
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 155839 !== 186263",
+				"react/scale-1k/enterParagraph/scan.orderArrayReads: 4447852 !== 4461489",
+				"react/scale-1k/enterParagraph/scan.textFullReads: 35086 !== 36084",
+				"react/scale-1k/enterParagraph/notifier.deliveries: new metric — re-record",
+				"react/scale-1k/enterNumbered/scan.blockOrderReads: 1395169 !== 1402526",
+				"react/scale-1k/enterNumbered/scan.blocksMapIterations: 4203 !== 7355",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 156046 !== 186470",
+				"react/scale-1k/enterNumbered/scan.orderArrayReads: 4531912 !== 4545549",
+				"react/scale-1k/enterNumbered/scan.textFullReads: 35086 !== 36084",
+				"react/scale-1k/enterNumbered/notifier.deliveries: new metric — re-record",
+				"react/scale-1k/remoteInsert/scan.blockOrderReads: 952052 !== 953103",
+				"react/scale-1k/remoteInsert/scan.blocksMapIterations: 2102 !== 3176",
+				"react/scale-1k/remoteInsert/scan.blocksMapReads: 98996 !== 118926",
+				"react/scale-1k/remoteInsert/scan.orderArrayReads: 2271229 !== 2280670",
+				"react/scale-1k/remoteInsert/scan.textFullReads: 18052 !== 23043",
+				"react/scale-1k/remoteInsert/notifier.deliveries: new metric — re-record"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R3 React on the block notifier; W2.R7 DOM selection read and caret motion use a lazy normal-position snapshot",
+			"moved": [
+				"react/scale-1k/mount/render.blockRenders: 1003 !== 6104",
+				"react/scale-1k/mount/scan.blockOrderReads: 3675 !== 847275",
+				"react/scale-1k/mount/scan.blocksMapReads: 40927 !== 101963",
+				"react/scale-1k/mount/scan.orderArrayReads: 1107756 !== 2116",
+				"react/scale-1k/mount/scan.textFullReads: 3071 !== 14084",
+				"react/scale-1k/mount/render.blocksRendered: 999 !== 1050",
+				"react/scale-1k/mount/listeners.live.commit: 8 !== 3362",
+				"react/scale-1k/mount/listeners.live.selectionChange: 5 !== 2054",
+				"react/scale-1k/mount/listeners.live.decorationsChange: 2 !== 2050",
+				"react/scale-1k/mount/listeners.live.store: 1 !== 4104",
+				"react/scale-1k/mount/listeners.live.total: 20 !== 11574",
+				"react/scale-1k/mount/notifier.blockSubscribers: 13552 !== 0",
+				"react/scale-1k/keystroke/commit.affectedBlockIds: 7 !== 3361",
+				"react/scale-1k/keystroke/listeners.invoked.commit: 7 !== 3361",
+				"react/scale-1k/keystroke/listeners.invoked.selectionChange: 5 !== 2054",
+				"react/scale-1k/keystroke/render.blockRenders: 1 !== 2003",
+				"react/scale-1k/keystroke/scan.blockOrderReads: 1 !== 105451",
+				"react/scale-1k/keystroke/scan.blocksMapReads: 92 !== 20980",
+				"react/scale-1k/keystroke/scan.orderArrayReads: 2 !== 1109857",
+				"react/scale-1k/keystroke/scan.textFullReads: 17 !== 8031",
+				"react/scale-1k/keystroke/render.blocksRendered: 1 !== 999",
+				"react/scale-1k/keystroke/notifier.deliveries: 26 !== 0",
+				"react/scale-1k/caretRight/listeners.invoked.selectionChange: 5 !== 2054",
+				"react/scale-1k/caretRight/listeners.invoked.store: 1 !== 4104",
+				"react/scale-1k/caretRight/render.blockRenders: 1 !== 2002",
+				"react/scale-1k/caretRight/scan.blocksMapReads: 74 !== 26974",
+				"react/scale-1k/caretRight/scan.orderArrayReads: 0 !== 1109850",
+				"react/scale-1k/caretRight/scan.textFullReads: 28 !== 10037",
+				"react/scale-1k/caretRight/render.blocksRendered: 1 !== 999",
+				"react/scale-1k/caretRight/notifier.deliveries: 13 !== 0",
+				"react/scale-1k/caretDown/dom.mutationRecords: 22 !== 172",
+				"react/scale-1k/caretDown/listeners.invoked.selectionChange: 5 !== 2054",
+				"react/scale-1k/caretDown/listeners.invoked.store: 6 !== 24624",
+				"react/scale-1k/caretDown/render.blockRenders: 2 !== 3052",
+				"react/scale-1k/caretDown/scan.blockOrderReads: 0 !== 421800",
+				"react/scale-1k/caretDown/scan.blocksMapReads: 117 !== 55706",
+				"react/scale-1k/caretDown/scan.orderArrayReads: 0 !== 2221808",
+				"react/scale-1k/caretDown/scan.textFullReads: 36 !== 13035",
+				"react/scale-1k/caretDown/dom.blocksTouched: 2 !== 52",
+				"react/scale-1k/caretDown/render.blocksRendered: 2 !== 1050",
+				"react/scale-1k/caretDown/notifier.deliveries: 69 !== 0",
+				"react/scale-1k/shiftDown/dom.mutationRecords: 16 !== 166",
+				"react/scale-1k/shiftDown/listeners.invoked.selectionChange: 5 !== 2054",
+				"react/scale-1k/shiftDown/listeners.invoked.store: 3 !== 12312",
+				"react/scale-1k/shiftDown/render.blockRenders: 2 !== 3052",
+				"react/scale-1k/shiftDown/scan.blockOrderReads: 0 !== 421800",
+				"react/scale-1k/shiftDown/scan.blocksMapReads: 113 !== 55722",
+				"react/scale-1k/shiftDown/scan.orderArrayReads: 0 !== 2221808",
+				"react/scale-1k/shiftDown/scan.textFullReads: 9 !== 9018",
+				"react/scale-1k/shiftDown/dom.blocksTouched: 2 !== 52",
+				"react/scale-1k/shiftDown/render.blocksRendered: 2 !== 1050",
+				"react/scale-1k/shiftDown/notifier.deliveries: 54 !== 0",
+				"react/scale-1k/enterParagraph/commit.affectedBlockIds: 14 !== 6722",
+				"react/scale-1k/enterParagraph/dom.mutationRecords: 14 !== 464",
+				"react/scale-1k/enterParagraph/listeners.invoked.commit: 7 !== 3361",
+				"react/scale-1k/enterParagraph/listeners.invoked.selectionChange: 5 !== 2054",
+				"react/scale-1k/enterParagraph/listeners.invoked.store: 7 !== 28732",
+				"react/scale-1k/enterParagraph/render.blockRenders: 4 !== 9165",
+				"react/scale-1k/enterParagraph/render.contentRenders: 2 !== 3",
+				"react/scale-1k/enterParagraph/scan.blockOrderReads: 3680 !== 1375830",
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 2315 !== 155839",
+				"react/scale-1k/enterParagraph/scan.orderArrayReads: 1053 !== 4447852",
+				"react/scale-1k/enterParagraph/scan.textFullReads: 36 !== 35086",
+				"react/scale-1k/enterParagraph/render.blocksRendered: 2 !== 1051",
+				"react/scale-1k/enterParagraph/dom.blocksTouched: 2 !== 52",
+				"react/scale-1k/enterParagraph/notifier.deliveries: 57 !== 0",
+				"react/scale-1k/enterNumbered/commit.affectedBlockIds: 14 !== 6722",
+				"react/scale-1k/enterNumbered/dom.mutationRecords: 14 !== 464",
+				"react/scale-1k/enterNumbered/listeners.invoked.commit: 7 !== 3361",
+				"react/scale-1k/enterNumbered/listeners.invoked.selectionChange: 5 !== 2054",
+				"react/scale-1k/enterNumbered/listeners.invoked.store: 7 !== 28732",
+				"react/scale-1k/enterNumbered/render.blockRenders: 4 !== 9165",
+				"react/scale-1k/enterNumbered/render.contentRenders: 2 !== 3",
+				"react/scale-1k/enterNumbered/scan.blockOrderReads: 3690 !== 1395169",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 2599 !== 156046",
+				"react/scale-1k/enterNumbered/scan.orderArrayReads: 1053 !== 4531912",
+				"react/scale-1k/enterNumbered/scan.textFullReads: 36 !== 35086",
+				"react/scale-1k/enterNumbered/render.blocksRendered: 2 !== 1051",
+				"react/scale-1k/enterNumbered/dom.blocksTouched: 2 !== 52",
+				"react/scale-1k/enterNumbered/notifier.deliveries: 61 !== 0",
+				"react/scale-1k/remoteInsert/commit.affectedBlockIds: 7 !== 3361",
+				"react/scale-1k/remoteInsert/dom.mutationRecords: 2 !== 302",
+				"react/scale-1k/remoteInsert/listeners.invoked.commit: 7 !== 3361",
+				"react/scale-1k/remoteInsert/listeners.invoked.store: 1 !== 4108",
+				"react/scale-1k/remoteInsert/render.blockRenders: 2 !== 6110",
+				"react/scale-1k/remoteInsert/render.contentRenders: 1 !== 2",
+				"react/scale-1k/remoteInsert/scan.blockOrderReads: 2102 !== 952052",
+				"react/scale-1k/remoteInsert/scan.blocksMapReads: 1154 !== 98996",
+				"react/scale-1k/remoteInsert/scan.orderArrayReads: 1053 !== 2271229",
+				"react/scale-1k/remoteInsert/scan.textFullReads: 16 !== 18052",
+				"react/scale-1k/remoteInsert/render.blocksRendered: 1 !== 1051",
+				"react/scale-1k/remoteInsert/dom.blocksTouched: 1 !== 51",
+				"react/scale-1k/remoteInsert/notifier.deliveries: 14 !== 0"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R3: React scale-5k runs on every run",
+			"moved": [
+				"react/scale-5k/mount/commit.affectedBlockIds: new metric — re-record",
+				"react/scale-5k/mount/dom.mutationRecords: new metric — re-record",
+				"react/scale-5k/mount/listeners.invoked.commit: new metric — re-record",
+				"react/scale-5k/mount/listeners.invoked.diagnostic: new metric — re-record",
+				"react/scale-5k/mount/render.blockRenders: new metric — re-record",
+				"react/scale-5k/mount/render.contentRenders: new metric — re-record",
+				"react/scale-5k/mount/render.reactCommits: new metric — re-record",
+				"react/scale-5k/mount/scan.blockOrderReads: new metric — re-record",
+				"react/scale-5k/mount/scan.blocksMapIterations: new metric — re-record",
+				"react/scale-5k/mount/scan.blocksMapReads: new metric — re-record",
+				"react/scale-5k/mount/scan.documentWalks: new metric — re-record",
+				"react/scale-5k/mount/scan.orderArrayReads: new metric — re-record",
+				"react/scale-5k/mount/scan.textFullReads: new metric — re-record",
+				"react/scale-5k/mount/scheduler.measureNow: new metric — re-record",
+				"react/scale-5k/mount/render.blocksRendered: new metric — re-record",
+				"react/scale-5k/mount/notifier.deliveries: new metric — re-record",
+				"react/scale-5k/mount/listeners.live.commit: new metric — re-record",
+				"react/scale-5k/mount/listeners.live.selectionChange: new metric — re-record",
+				"react/scale-5k/mount/listeners.live.historyApplied: new metric — re-record",
+				"react/scale-5k/mount/listeners.live.diagnostic: new metric — re-record",
+				"react/scale-5k/mount/listeners.live.decorationsChange: new metric — re-record",
+				"react/scale-5k/mount/listeners.live.store: new metric — re-record",
+				"react/scale-5k/mount/listeners.live.total: new metric — re-record",
+				"react/scale-5k/mount/notifier.blockSubscribers: new metric — re-record",
+				"react/scale-5k/mount/mount.blocksMounted: new metric — re-record",
+				"react/scale-5k/keystroke/commit.affectedBlockIds: new metric — re-record",
+				"react/scale-5k/keystroke/dom.mutationRecords: new metric — re-record",
+				"react/scale-5k/keystroke/listeners.invoked.commit: new metric — re-record",
+				"react/scale-5k/keystroke/listeners.invoked.selectionChange: new metric — re-record",
+				"react/scale-5k/keystroke/render.blockRenders: new metric — re-record",
+				"react/scale-5k/keystroke/render.reactCommits: new metric — re-record",
+				"react/scale-5k/keystroke/scan.blockOrderReads: new metric — re-record",
+				"react/scale-5k/keystroke/scan.blocksMapIterations: new metric — re-record",
+				"react/scale-5k/keystroke/scan.blocksMapReads: new metric — re-record",
+				"react/scale-5k/keystroke/scan.documentWalks: new metric — re-record",
+				"react/scale-5k/keystroke/scan.orderArrayReads: new metric — re-record",
+				"react/scale-5k/keystroke/scan.textFullReads: new metric — re-record",
+				"react/scale-5k/keystroke/scheduler.flushes: new metric — re-record",
+				"react/scale-5k/keystroke/scheduler.measureNow: new metric — re-record",
+				"react/scale-5k/keystroke/dom.blocksTouched: new metric — re-record",
+				"react/scale-5k/keystroke/render.blocksRendered: new metric — re-record",
+				"react/scale-5k/keystroke/notifier.deliveries: new metric — re-record",
+				"react/scale-5k/caretRight/dom.mutationRecords: new metric — re-record",
+				"react/scale-5k/caretRight/listeners.invoked.selectionChange: new metric — re-record",
+				"react/scale-5k/caretRight/listeners.invoked.store: new metric — re-record",
+				"react/scale-5k/caretRight/render.blockRenders: new metric — re-record",
+				"react/scale-5k/caretRight/render.reactCommits: new metric — re-record",
+				"react/scale-5k/caretRight/scan.blockOrderReads: new metric — re-record",
+				"react/scale-5k/caretRight/scan.blocksMapIterations: new metric — re-record",
+				"react/scale-5k/caretRight/scan.blocksMapReads: new metric — re-record",
+				"react/scale-5k/caretRight/scan.documentWalks: new metric — re-record",
+				"react/scale-5k/caretRight/scan.orderArrayReads: new metric — re-record",
+				"react/scale-5k/caretRight/scan.textFullReads: new metric — re-record",
+				"react/scale-5k/caretRight/scheduler.flushes: new metric — re-record",
+				"react/scale-5k/caretRight/scheduler.measureNow: new metric — re-record",
+				"react/scale-5k/caretRight/render.blocksRendered: new metric — re-record",
+				"react/scale-5k/caretRight/notifier.deliveries: new metric — re-record",
+				"react/scale-5k/caretDown/dom.mutationRecords: new metric — re-record",
+				"react/scale-5k/caretDown/geometry.boundingClientRect.outOfFlush: new metric — re-record",
+				"react/scale-5k/caretDown/geometry.boundingClientRect.total: new metric — re-record",
+				"react/scale-5k/caretDown/listeners.invoked.selectionChange: new metric — re-record",
+				"react/scale-5k/caretDown/listeners.invoked.store: new metric — re-record",
+				"react/scale-5k/caretDown/render.blockRenders: new metric — re-record",
+				"react/scale-5k/caretDown/render.contentRenders: new metric — re-record",
+				"react/scale-5k/caretDown/render.reactCommits: new metric — re-record",
+				"react/scale-5k/caretDown/scan.blockOrderReads: new metric — re-record",
+				"react/scale-5k/caretDown/scan.blocksMapIterations: new metric — re-record",
+				"react/scale-5k/caretDown/scan.blocksMapReads: new metric — re-record",
+				"react/scale-5k/caretDown/scan.documentWalks: new metric — re-record",
+				"react/scale-5k/caretDown/scan.orderArrayReads: new metric — re-record",
+				"react/scale-5k/caretDown/scan.textFullReads: new metric — re-record",
+				"react/scale-5k/caretDown/scheduler.flushes: new metric — re-record",
+				"react/scale-5k/caretDown/scheduler.measureNow: new metric — re-record",
+				"react/scale-5k/caretDown/dom.blocksTouched: new metric — re-record",
+				"react/scale-5k/caretDown/render.blocksRendered: new metric — re-record",
+				"react/scale-5k/caretDown/notifier.deliveries: new metric — re-record",
+				"react/scale-5k/shiftDown/dom.mutationRecords: new metric — re-record",
+				"react/scale-5k/shiftDown/geometry.boundingClientRect.outOfFlush: new metric — re-record",
+				"react/scale-5k/shiftDown/geometry.boundingClientRect.total: new metric — re-record",
+				"react/scale-5k/shiftDown/listeners.invoked.selectionChange: new metric — re-record",
+				"react/scale-5k/shiftDown/listeners.invoked.store: new metric — re-record",
+				"react/scale-5k/shiftDown/render.blockRenders: new metric — re-record",
+				"react/scale-5k/shiftDown/render.contentRenders: new metric — re-record",
+				"react/scale-5k/shiftDown/render.reactCommits: new metric — re-record",
+				"react/scale-5k/shiftDown/scan.blockOrderReads: new metric — re-record",
+				"react/scale-5k/shiftDown/scan.blocksMapIterations: new metric — re-record",
+				"react/scale-5k/shiftDown/scan.blocksMapReads: new metric — re-record",
+				"react/scale-5k/shiftDown/scan.documentWalks: new metric — re-record",
+				"react/scale-5k/shiftDown/scan.orderArrayReads: new metric — re-record",
+				"react/scale-5k/shiftDown/scan.textFullReads: new metric — re-record",
+				"react/scale-5k/shiftDown/scheduler.flushes: new metric — re-record",
+				"react/scale-5k/shiftDown/scheduler.measureNow: new metric — re-record",
+				"react/scale-5k/shiftDown/dom.blocksTouched: new metric — re-record",
+				"react/scale-5k/shiftDown/render.blocksRendered: new metric — re-record",
+				"react/scale-5k/shiftDown/notifier.deliveries: new metric — re-record",
+				"react/scale-5k/enterParagraph/commit.affectedBlockIds: new metric — re-record",
+				"react/scale-5k/enterParagraph/dom.mutationRecords: new metric — re-record",
+				"react/scale-5k/enterParagraph/listeners.invoked.commit: new metric — re-record",
+				"react/scale-5k/enterParagraph/listeners.invoked.selectionChange: new metric — re-record",
+				"react/scale-5k/enterParagraph/listeners.invoked.store: new metric — re-record",
+				"react/scale-5k/enterParagraph/render.blockRenders: new metric — re-record",
+				"react/scale-5k/enterParagraph/render.contentRenders: new metric — re-record",
+				"react/scale-5k/enterParagraph/render.reactCommits: new metric — re-record",
+				"react/scale-5k/enterParagraph/scan.blockOrderReads: new metric — re-record",
+				"react/scale-5k/enterParagraph/scan.blocksMapIterations: new metric — re-record",
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: new metric — re-record",
+				"react/scale-5k/enterParagraph/scan.documentWalks: new metric — re-record",
+				"react/scale-5k/enterParagraph/scan.orderArrayReads: new metric — re-record",
+				"react/scale-5k/enterParagraph/scan.textFullReads: new metric — re-record",
+				"react/scale-5k/enterParagraph/scheduler.flushes: new metric — re-record",
+				"react/scale-5k/enterParagraph/scheduler.measureNow: new metric — re-record",
+				"react/scale-5k/enterParagraph/render.blocksRendered: new metric — re-record",
+				"react/scale-5k/enterParagraph/dom.blocksTouched: new metric — re-record",
+				"react/scale-5k/enterParagraph/notifier.deliveries: new metric — re-record",
+				"react/scale-5k/enterNumbered/commit.affectedBlockIds: new metric — re-record",
+				"react/scale-5k/enterNumbered/dom.mutationRecords: new metric — re-record",
+				"react/scale-5k/enterNumbered/listeners.invoked.commit: new metric — re-record",
+				"react/scale-5k/enterNumbered/listeners.invoked.selectionChange: new metric — re-record",
+				"react/scale-5k/enterNumbered/listeners.invoked.store: new metric — re-record",
+				"react/scale-5k/enterNumbered/render.blockRenders: new metric — re-record",
+				"react/scale-5k/enterNumbered/render.contentRenders: new metric — re-record",
+				"react/scale-5k/enterNumbered/render.reactCommits: new metric — re-record",
+				"react/scale-5k/enterNumbered/scan.blockOrderReads: new metric — re-record",
+				"react/scale-5k/enterNumbered/scan.blocksMapIterations: new metric — re-record",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: new metric — re-record",
+				"react/scale-5k/enterNumbered/scan.documentWalks: new metric — re-record",
+				"react/scale-5k/enterNumbered/scan.orderArrayReads: new metric — re-record",
+				"react/scale-5k/enterNumbered/scan.textFullReads: new metric — re-record",
+				"react/scale-5k/enterNumbered/scheduler.flushes: new metric — re-record",
+				"react/scale-5k/enterNumbered/scheduler.measureNow: new metric — re-record",
+				"react/scale-5k/enterNumbered/render.blocksRendered: new metric — re-record",
+				"react/scale-5k/enterNumbered/dom.blocksTouched: new metric — re-record",
+				"react/scale-5k/enterNumbered/notifier.deliveries: new metric — re-record",
+				"react/scale-5k/remoteInsert/commit.affectedBlockIds: new metric — re-record",
+				"react/scale-5k/remoteInsert/dom.mutationRecords: new metric — re-record",
+				"react/scale-5k/remoteInsert/listeners.invoked.commit: new metric — re-record",
+				"react/scale-5k/remoteInsert/listeners.invoked.store: new metric — re-record",
+				"react/scale-5k/remoteInsert/render.blockRenders: new metric — re-record",
+				"react/scale-5k/remoteInsert/render.contentRenders: new metric — re-record",
+				"react/scale-5k/remoteInsert/render.reactCommits: new metric — re-record",
+				"react/scale-5k/remoteInsert/scan.blockOrderReads: new metric — re-record",
+				"react/scale-5k/remoteInsert/scan.blocksMapIterations: new metric — re-record",
+				"react/scale-5k/remoteInsert/scan.blocksMapReads: new metric — re-record",
+				"react/scale-5k/remoteInsert/scan.documentWalks: new metric — re-record",
+				"react/scale-5k/remoteInsert/scan.orderArrayReads: new metric — re-record",
+				"react/scale-5k/remoteInsert/scan.textFullReads: new metric — re-record",
+				"react/scale-5k/remoteInsert/scheduler.flushes: new metric — re-record",
+				"react/scale-5k/remoteInsert/scheduler.measureNow: new metric — re-record",
+				"react/scale-5k/remoteInsert/render.blocksRendered: new metric — re-record",
+				"react/scale-5k/remoteInsert/dom.blocksTouched: new metric — re-record",
+				"react/scale-5k/remoteInsert/notifier.deliveries: new metric — re-record"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R3: EditorContent reads surface mode and active ids only",
+			"moved": []
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R3: EditorContent reads surface mode and active ids only",
+			"moved": []
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R3: EditorContent ignores single-mode active ids",
+			"moved": []
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R3: EditorContent ignores single-mode active ids",
+			"moved": []
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R3: list-level contexts and surface selection stay stable on a caret move",
+			"moved": [
+				"react/scale-1k/caretDown/render.contentRenders: missing !== 1",
+				"react/scale-1k/enterParagraph/render.contentRenders: 1 !== 2",
+				"react/scale-1k/enterNumbered/render.contentRenders: 1 !== 2"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R3: list-level contexts and surface selection stay stable on a caret move",
+			"moved": [
+				"react/scale-5k/caretDown/render.contentRenders: missing !== 1",
+				"react/scale-5k/enterParagraph/render.contentRenders: 1 !== 2",
+				"react/scale-5k/enterNumbered/render.contentRenders: 1 !== 2"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe counts commit.affectedBlockIds once per commit, not once per listener",
+			"moved": [
+				"react/scale-1k/keystroke/commit.affectedBlockIds: 1 !== 7",
+				"react/scale-1k/enterParagraph/commit.affectedBlockIds: 2 !== 14",
+				"react/scale-1k/enterNumbered/commit.affectedBlockIds: 2 !== 14",
+				"react/scale-1k/remoteInsert/commit.affectedBlockIds: 1 !== 7"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe counts commit.affectedBlockIds once per commit, not once per listener",
+			"moved": [
+				"react/scale-5k/keystroke/commit.affectedBlockIds: 1 !== 7",
+				"react/scale-5k/enterParagraph/commit.affectedBlockIds: 2 !== 14",
+				"react/scale-5k/enterNumbered/commit.affectedBlockIds: 2 !== 14",
+				"react/scale-5k/remoteInsert/commit.affectedBlockIds: 1 !== 7"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe counts commit.affectedBlockIds once per commit",
+			"moved": []
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe stops counting scheduler flushes (frame-timing dependent, CH9); W2.R6 vanilla tree",
+			"moved": [
+				"react/scale-1k/keystroke/scheduler.flushes: missing !== 1",
+				"react/scale-1k/caretRight/scheduler.flushes: missing !== 1",
+				"react/scale-1k/caretDown/scheduler.flushes: missing !== 1",
+				"react/scale-1k/shiftDown/scheduler.flushes: missing !== 1",
+				"react/scale-1k/enterParagraph/scheduler.flushes: missing !== 1",
+				"react/scale-1k/enterNumbered/scheduler.flushes: missing !== 1",
+				"react/scale-1k/remoteInsert/scheduler.flushes: missing !== 1"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe stops counting scheduler flushes (frame-timing dependent, CH9); W2.R6 vanilla tree",
+			"moved": [
+				"react/scale-5k/keystroke/scheduler.flushes: missing !== 1",
+				"react/scale-5k/caretRight/scheduler.flushes: missing !== 1",
+				"react/scale-5k/caretDown/scheduler.flushes: missing !== 1",
+				"react/scale-5k/shiftDown/scheduler.flushes: missing !== 1",
+				"react/scale-5k/enterParagraph/scheduler.flushes: missing !== 1",
+				"react/scale-5k/enterNumbered/scheduler.flushes: missing !== 1",
+				"react/scale-5k/remoteInsert/scheduler.flushes: missing !== 1"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3.R1: projection read-back adds a bounded DOM-selection read per projection",
+			"moved": [
+				"react/scale-1k/keystroke/scan.blocksMapReads: 103 !== 92",
+				"react/scale-1k/keystroke/scan.textFullReads: 19 !== 17",
+				"react/scale-1k/caretRight/scan.blocksMapReads: 96 !== 74",
+				"react/scale-1k/caretRight/scan.textFullReads: 32 !== 28",
+				"react/scale-1k/caretDown/scan.blocksMapReads: 150 !== 117",
+				"react/scale-1k/caretDown/scan.textFullReads: 42 !== 36",
+				"react/scale-1k/shiftDown/scan.blocksMapReads: 133 !== 113",
+				"react/scale-1k/shiftDown/scan.textFullReads: 13 !== 9",
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 2335 !== 2315",
+				"react/scale-1k/enterParagraph/scan.textFullReads: 38 !== 36",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 2619 !== 2599",
+				"react/scale-1k/enterNumbered/scan.textFullReads: 38 !== 36",
+				"react/scale-1k/remoteInsert/scan.blocksMapReads: 1176 !== 1154",
+				"react/scale-1k/remoteInsert/scan.textFullReads: 20 !== 16"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3.R1: projection read-back adds a bounded DOM-selection read per projection",
+			"moved": [
+				"react/scale-5k/keystroke/scan.blocksMapReads: 103 !== 92",
+				"react/scale-5k/keystroke/scan.textFullReads: 19 !== 17",
+				"react/scale-5k/caretRight/scan.blocksMapReads: 96 !== 74",
+				"react/scale-5k/caretRight/scan.textFullReads: 32 !== 28",
+				"react/scale-5k/caretDown/scan.blocksMapReads: 150 !== 117",
+				"react/scale-5k/caretDown/scan.textFullReads: 42 !== 36",
+				"react/scale-5k/shiftDown/scan.blocksMapReads: 133 !== 113",
+				"react/scale-5k/shiftDown/scan.textFullReads: 13 !== 9",
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 10735 !== 10715",
+				"react/scale-5k/enterParagraph/scan.textFullReads: 38 !== 36",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 11019 !== 10999",
+				"react/scale-5k/enterNumbered/scan.textFullReads: 38 !== 36",
+				"react/scale-5k/remoteInsert/scan.blocksMapReads: 5376 !== 5354",
+				"react/scale-5k/remoteInsert/scan.textFullReads: 20 !== 16"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 3b: reconciles stop saving/restoring the native range; P3 projects after a target rebuild (one projection + read-back per rebuilt keystroke/Enter), and the microtask divergence projection after unowned rebuilds is gone",
+			"moved": [
+				"react/scale-1k/keystroke/scan.blocksMapReads: 114 !== 103",
+				"react/scale-1k/keystroke/scan.textFullReads: 25 !== 19",
+				"react/scale-1k/caretDown/scan.blocksMapReads: 139 !== 150",
+				"react/scale-1k/caretDown/scan.textFullReads: 36 !== 42",
+				"react/scale-1k/remoteInsert/scan.blocksMapReads: 1154 !== 1176",
+				"react/scale-1k/remoteInsert/scan.textFullReads: 8 !== 20"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 3b: reconciles stop saving/restoring the native range; P3 projects after a target rebuild (one projection + read-back per rebuilt keystroke/Enter), and the microtask divergence projection after unowned rebuilds is gone",
+			"moved": [
+				"react/scale-5k/keystroke/scan.blocksMapReads: 114 !== 103",
+				"react/scale-5k/keystroke/scan.textFullReads: 25 !== 19",
+				"react/scale-5k/caretDown/scan.blocksMapReads: 139 !== 150",
+				"react/scale-5k/caretDown/scan.textFullReads: 36 !== 42",
+				"react/scale-5k/remoteInsert/scan.blocksMapReads: 5354 !== 5376",
+				"react/scale-5k/remoteInsert/scan.textFullReads: 8 !== 20"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 6: the projector skips the write when the DOM and focus already agree (fewer full-text reads per action) and pays one read-back on caretRight",
+			"moved": [
+				"react/scale-1k/keystroke/scan.textFullReads: 17 !== 25",
+				"react/scale-1k/caretRight/scan.blocksMapReads: 105 !== 96",
+				"react/scale-1k/caretRight/scan.textFullReads: 30 !== 32",
+				"react/scale-1k/caretDown/scan.textFullReads: 28 !== 36",
+				"react/scale-1k/enterParagraph/scan.textFullReads: 30 !== 38",
+				"react/scale-1k/enterNumbered/scan.textFullReads: 30 !== 38"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 6: the projector skips the write when the DOM and focus already agree (fewer full-text reads per action) and pays one read-back on caretRight",
+			"moved": [
+				"react/scale-5k/keystroke/scan.textFullReads: 17 !== 25",
+				"react/scale-5k/caretRight/scan.blocksMapReads: 105 !== 96",
+				"react/scale-5k/caretRight/scan.textFullReads: 30 !== 32",
+				"react/scale-5k/caretDown/scan.textFullReads: 28 !== 36",
+				"react/scale-5k/enterParagraph/scan.textFullReads: 30 !== 38",
+				"react/scale-5k/enterNumbered/scan.textFullReads: 30 !== 38"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 17 (W3.R15): keyboard and local-typing projections measure the scroll container and the caret's block in a scheduler read phase to scroll into view (+1-2 getBoundingClientRect per action, all in-flush)",
+			"moved": [
+				"react/scale-1k/keystroke/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-1k/keystroke/geometry.boundingClientRect.total: new metric — re-record",
+				"react/scale-1k/caretRight/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-1k/caretRight/geometry.boundingClientRect.total: new metric — re-record",
+				"react/scale-1k/caretDown/geometry.boundingClientRect.total: 1583 !== 1581",
+				"react/scale-1k/caretDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-1k/shiftDown/geometry.boundingClientRect.total: 1582 !== 1581",
+				"react/scale-1k/shiftDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-1k/enterParagraph/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-1k/enterParagraph/geometry.boundingClientRect.total: new metric — re-record",
+				"react/scale-1k/enterNumbered/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-1k/enterNumbered/geometry.boundingClientRect.total: new metric — re-record"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 17 (W3.R15): keyboard and local-typing projections measure the scroll container and the caret's block in a scheduler read phase to scroll into view (+1-2 getBoundingClientRect per action, all in-flush)",
+			"moved": [
+				"react/scale-5k/keystroke/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-5k/keystroke/geometry.boundingClientRect.total: new metric — re-record",
+				"react/scale-5k/caretRight/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-5k/caretRight/geometry.boundingClientRect.total: new metric — re-record",
+				"react/scale-5k/caretDown/geometry.boundingClientRect.total: 7883 !== 7881",
+				"react/scale-5k/caretDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-5k/shiftDown/geometry.boundingClientRect.total: 7882 !== 7881",
+				"react/scale-5k/shiftDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-5k/enterParagraph/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-5k/enterParagraph/geometry.boundingClientRect.total: new metric — re-record",
+				"react/scale-5k/enterNumbered/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"react/scale-5k/enterNumbered/geometry.boundingClientRect.total: new metric — re-record"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 16: cross-block reads form through core T2 (convertPointerDrag over a two-block scoped snapshot); shiftDown +16 map reads, +4 text reads, equal at 1k and 5k",
+			"moved": [
+				"react/scale-1k/shiftDown/scan.blocksMapReads: 149 !== 133",
+				"react/scale-1k/shiftDown/scan.textFullReads: 17 !== 13"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 16: cross-block reads form through core T2 (convertPointerDrag over a two-block scoped snapshot); shiftDown +16 map reads, +4 text reads, equal at 1k and 5k",
+			"moved": [
+				"react/scale-5k/shiftDown/scan.blocksMapReads: 149 !== 133",
+				"react/scale-5k/shiftDown/scan.textFullReads: 17 !== 13"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 1: the overlay layer is appended once at mount and its data-pen-overlay-selection-version is written once per selection change on Vue and vanilla; +1 dom.mutationRecords per action, equal at 1k and 5k",
+			"moved": []
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 1: the overlay layer is appended once at mount and its data-pen-overlay-selection-version is written once per selection change on Vue and vanilla; +1 dom.mutationRecords per action, equal at 1k and 5k",
+			"moved": []
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 3: the overlay is on by default; per action it reads the caret block's inline facts (+3 blocks-map reads, +1 text read), measures the caret and layer origin in the read phase (+2..+8 in-flush rect reads) and writes its plan (+1 mutation record); equal at 1k and 5k",
+			"moved": [
+				"react/scale-1k/keystroke/scan.blocksMapReads: 117 !== 114",
+				"react/scale-1k/keystroke/scan.textFullReads: 18 !== 17",
+				"react/scale-1k/enterParagraph/dom.mutationRecords: 15 !== 14",
+				"react/scale-1k/enterParagraph/geometry.boundingClientRect.inFlush: 10 !== 2",
+				"react/scale-1k/enterParagraph/geometry.boundingClientRect.total: 10 !== 2",
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 2338 !== 2335",
+				"react/scale-1k/enterParagraph/scan.textFullReads: 31 !== 30",
+				"react/scale-1k/enterNumbered/dom.mutationRecords: 15 !== 14",
+				"react/scale-1k/enterNumbered/geometry.boundingClientRect.inFlush: 12 !== 8",
+				"react/scale-1k/enterNumbered/geometry.boundingClientRect.total: 12 !== 8",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 2622 !== 2619",
+				"react/scale-1k/enterNumbered/scan.textFullReads: 31 !== 30"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 3: the overlay is on by default; per action it reads the caret block's inline facts (+3 blocks-map reads, +1 text read), measures the caret and layer origin in the read phase (+2..+8 in-flush rect reads) and writes its plan (+1 mutation record); equal at 1k and 5k",
+			"moved": [
+				"react/scale-5k/keystroke/scan.blocksMapReads: 117 !== 114",
+				"react/scale-5k/keystroke/scan.textFullReads: 18 !== 17",
+				"react/scale-5k/enterParagraph/dom.mutationRecords: 15 !== 14",
+				"react/scale-5k/enterParagraph/geometry.boundingClientRect.inFlush: 10 !== 2",
+				"react/scale-5k/enterParagraph/geometry.boundingClientRect.total: 10 !== 2",
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 10738 !== 10735",
+				"react/scale-5k/enterParagraph/scan.textFullReads: 31 !== 30",
+				"react/scale-5k/enterNumbered/dom.mutationRecords: 15 !== 14",
+				"react/scale-5k/enterNumbered/geometry.boundingClientRect.inFlush: 12 !== 8",
+				"react/scale-5k/enterNumbered/geometry.boundingClientRect.total: 12 !== 8",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 11022 !== 11019",
+				"react/scale-5k/enterNumbered/scan.textFullReads: 31 !== 30"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 4 (N1): BlockHandle.length() reads Y.Text length instead of toString(); every action does fewer full text reads (-2 to -9), equal at 1k and 5k",
+			"moved": [
+				"react/scale-1k/keystroke/scan.textFullReads: 15 !== 18",
+				"react/scale-1k/caretRight/scan.textFullReads: 21 !== 30",
+				"react/scale-1k/caretDown/scan.textFullReads: 25 !== 28",
+				"react/scale-1k/shiftDown/scan.textFullReads: 9 !== 17",
+				"react/scale-1k/enterParagraph/scan.textFullReads: 26 !== 31",
+				"react/scale-1k/enterNumbered/scan.textFullReads: 26 !== 31"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 4 (N1): BlockHandle.length() reads Y.Text length instead of toString(); every action does fewer full text reads (-2 to -9), equal at 1k and 5k",
+			"moved": [
+				"react/scale-5k/keystroke/scan.textFullReads: 15 !== 18",
+				"react/scale-5k/caretRight/scan.textFullReads: 21 !== 30",
+				"react/scale-5k/caretDown/scan.textFullReads: 25 !== 28",
+				"react/scale-5k/shiftDown/scan.textFullReads: 9 !== 17",
+				"react/scale-5k/enterParagraph/scan.textFullReads: 26 !== 31",
+				"react/scale-5k/enterNumbered/scan.textFullReads: 26 !== 31"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 5: the EditContext backend tests emptiness with Y.Text length instead of toString(); full text reads drop by 1 to 12 per action, equal at 1k and 5k",
+			"moved": [
+				"react/scale-1k/keystroke/scan.textFullReads: 14 !== 15",
+				"react/scale-1k/caretRight/scan.textFullReads: 13 !== 21",
+				"react/scale-1k/caretDown/scan.textFullReads: 13 !== 25",
+				"react/scale-1k/enterParagraph/scan.textFullReads: 22 !== 26",
+				"react/scale-1k/enterNumbered/scan.textFullReads: 22 !== 26"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 5: the EditContext backend tests emptiness with Y.Text length instead of toString(); full text reads drop by 1 to 12 per action, equal at 1k and 5k",
+			"moved": [
+				"react/scale-5k/keystroke/scan.textFullReads: 14 !== 15",
+				"react/scale-5k/caretRight/scan.textFullReads: 13 !== 21",
+				"react/scale-5k/caretDown/scan.textFullReads: 13 !== 25",
+				"react/scale-5k/enterParagraph/scan.textFullReads: 22 !== 26",
+				"react/scale-5k/enterNumbered/scan.textFullReads: 22 !== 26"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 22: identical endpoints are equivalent without a normal-position snapshot, and null/app/block/unedited-cell projections skip the text read-back; scan reads drop and stay flat 1k→5k",
+			"moved": [
+				"react/scale-1k/keystroke/scan.blocksMapReads: 84 !== 117",
+				"react/scale-1k/keystroke/scan.textFullReads: 11 !== 14",
+				"react/scale-1k/caretRight/scan.blocksMapReads: 72 !== 105",
+				"react/scale-1k/caretRight/scan.textFullReads: 10 !== 13",
+				"react/scale-1k/caretDown/scan.blocksMapReads: 108 !== 139",
+				"react/scale-1k/caretDown/scan.textFullReads: 10 !== 13",
+				"react/scale-1k/shiftDown/scan.blocksMapReads: 119 !== 149",
+				"react/scale-1k/shiftDown/scan.textFullReads: 5 !== 9",
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 2308 !== 2338",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 2592 !== 2622"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 22: identical endpoints are equivalent without a normal-position snapshot, and null/app/block/unedited-cell projections skip the text read-back; scan reads drop and stay flat 1k→5k",
+			"moved": [
+				"react/scale-5k/keystroke/scan.blocksMapReads: 84 !== 117",
+				"react/scale-5k/keystroke/scan.textFullReads: 11 !== 14",
+				"react/scale-5k/caretRight/scan.blocksMapReads: 72 !== 105",
+				"react/scale-5k/caretRight/scan.textFullReads: 10 !== 13",
+				"react/scale-5k/caretDown/scan.blocksMapReads: 108 !== 139",
+				"react/scale-5k/caretDown/scan.textFullReads: 10 !== 13",
+				"react/scale-5k/shiftDown/scan.blocksMapReads: 119 !== 149",
+				"react/scale-5k/shiftDown/scan.textFullReads: 5 !== 9",
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 10708 !== 10738",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 10992 !== 11022"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W6 step 3 (W6.R4/R5): AX1 list semantics. Structural commits walk the list runs around each change (+8 map reads on enterParagraph, +108 on remoteInsert next to a run, +113..152 on enterNumbered) and re-segment the touched sibling list; React and Vue sibling loops now hear the list-segment channel (+1 delivery per structural commit); Enter in a numbered item re-renders the set sibling whose aria-setsize moved (+1 block, D7); React list items hold one more block subscription; mount walks each list run once (+3 map reads per block on Vue and vanilla, +25 on React, whose first render reads the notifier detached). Keystroke and caret counts are unchanged.",
+			"moved": [
+				"react/scale-1k/mount/scan.blocksMapReads: 65785 !== 40927",
+				"react/scale-1k/mount/scan.orderArrayReads: 1109860 !== 1107756",
+				"react/scale-1k/mount/notifier.blockSubscribers: 13802 !== 13552",
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 2316 !== 2308",
+				"react/scale-1k/enterParagraph/notifier.deliveries: 58 !== 57",
+				"react/scale-1k/enterNumbered/dom.mutationRecords: 17 !== 15",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 2705 !== 2592",
+				"react/scale-1k/enterNumbered/scan.textFullReads: 23 !== 22",
+				"react/scale-1k/enterNumbered/dom.blocksTouched: 3 !== 2",
+				"react/scale-1k/enterNumbered/notifier.deliveries: 81 !== 61",
+				"react/scale-1k/remoteInsert/scan.blocksMapReads: 1262 !== 1154",
+				"react/scale-1k/remoteInsert/notifier.deliveries: 15 !== 14"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W6 step 3 (W6.R4/R5): AX1 list semantics. Structural commits walk the list runs around each change (+8 map reads on enterParagraph, +108 on remoteInsert next to a run, +113..152 on enterNumbered) and re-segment the touched sibling list; React and Vue sibling loops now hear the list-segment channel (+1 delivery per structural commit); Enter in a numbered item re-renders the set sibling whose aria-setsize moved (+1 block, D7); React list items hold one more block subscription; mount walks each list run once (+3 map reads per block on Vue and vanilla, +25 on React, whose first render reads the notifier detached). Keystroke and caret counts are unchanged.",
+			"moved": [
+				"react/scale-5k/mount/scan.blocksMapReads: 328845 !== 204587",
+				"react/scale-5k/mount/scan.orderArrayReads: 27599260 !== 27588756",
+				"react/scale-5k/mount/notifier.blockSubscribers: 69010 !== 67760",
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 10716 !== 10708",
+				"react/scale-5k/enterParagraph/notifier.deliveries: 58 !== 57",
+				"react/scale-5k/enterNumbered/dom.mutationRecords: 17 !== 15",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 11105 !== 10992",
+				"react/scale-5k/enterNumbered/scan.textFullReads: 23 !== 22",
+				"react/scale-5k/enterNumbered/dom.blocksTouched: 3 !== 2",
+				"react/scale-5k/enterNumbered/notifier.deliveries: 81 !== 61",
+				"react/scale-5k/remoteInsert/scan.blocksMapReads: 5462 !== 5354",
+				"react/scale-5k/remoteInsert/notifier.deliveries: 15 !== 14"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "SCALE6: React mount read the block order once per block. Its first render reads every block snapshot before any subscription attaches, and the detached block notifier rebuilt the document snapshot (getRootBlockIds over the whole order) on each read. The detached snapshot now reuses its root ids until documentState.generation moves. React mount scan.orderArrayReads: 1k 1109860 -> 4210, 5k 27599260 -> 21010 (now ~4 per block, linear). No other count moves.",
+			"moved": [
+				"react/scale-1k/mount/scan.orderArrayReads: 4210 !== 1109860"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "SCALE6: React mount read the block order once per block. Its first render reads every block snapshot before any subscription attaches, and the detached block notifier rebuilt the document snapshot (getRootBlockIds over the whole order) on each read. The detached snapshot now reuses its root ids until documentState.generation moves. React mount scan.orderArrayReads: 1k 1109860 -> 4210, 5k 27599260 -> 21010 (now ~4 per block, linear). No other count moves.",
+			"moved": [
+				"react/scale-5k/mount/scan.orderArrayReads: 21010 !== 27599260"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "SCALE6 largeCounts (record:scale-render:large counts, React only): the same detached-notifier fix makes React mount order-array reads linear at 10k and 50k.",
+			"moved": [
+				"react/scale-10k/mount/scan.orderArrayReads: 42010 !== 110323510",
+				"react/scale-50k/mount/scan.orderArrayReads: 210010 !== 2756617510"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "Merge of main (76f2fadd): bindSurfaceTabStop flips the active surface's tabIndex on focus and blur (AX1, Firefox Shift+Tab), so a shift-down extend that moves focus to the next block's surface records one more attribute mutation",
+			"moved": [
+				"react/scale-1k/shiftDown/dom.mutationRecords: 17 !== 16"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "Merge of main (76f2fadd): bindSurfaceTabStop flips the active surface's tabIndex on focus and blur (AX1, Firefox Shift+Tab), so a shift-down extend that moves focus to the next block's surface records one more attribute mutation",
+			"moved": [
+				"react/scale-5k/shiftDown/dom.mutationRecords: 17 !== 16"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "b4c8dc03 scrolls a projected selection once per measure: a version projected twice in one turn (selection-change then activation) no longer queues a duplicate scroll measure, so keystroke and caret moves read one bounding rect instead of two",
+			"moved": [
+				"react/scale-1k/keystroke/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-1k/keystroke/geometry.boundingClientRect.total: 1 !== 2",
+				"react/scale-1k/caretRight/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-1k/caretRight/geometry.boundingClientRect.total: 1 !== 2",
+				"react/scale-1k/caretDown/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-1k/caretDown/geometry.boundingClientRect.total: 1582 !== 1583"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "b4c8dc03 scrolls a projected selection once per measure: a version projected twice in one turn (selection-change then activation) no longer queues a duplicate scroll measure, so keystroke and caret moves read one bounding rect instead of two",
+			"moved": [
+				"react/scale-5k/keystroke/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-5k/keystroke/geometry.boundingClientRect.total: 1 !== 2",
+				"react/scale-5k/caretRight/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-5k/caretRight/geometry.boundingClientRect.total: 1 !== 2",
+				"react/scale-5k/caretDown/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"react/scale-5k/caretDown/geometry.boundingClientRect.total: 7882 !== 7883"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "d87aa054 and 864b6644 validate apply parent targets and op shapes before reading block liveness, so an insert reads one blocks-map entry fewer (Enter -1 per op, mount -5 at 1k / -25 at 5k); no count rises",
+			"moved": [
+				"react/scale-1k/mount/scan.blocksMapReads: 65780 !== 65785",
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 2315 !== 2316",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 2704 !== 2705"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "d87aa054 and 864b6644 validate apply parent targets and op shapes before reading block liveness, so an insert reads one blocks-map entry fewer (Enter -1 per op, mount -5 at 1k / -25 at 5k); no count rises",
+			"moved": [
+				"react/scale-5k/mount/scan.blocksMapReads: 328820 !== 328845",
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 10715 !== 10716",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 11104 !== 11105"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2b: structural commits advance the summary, pass and document indexes by what they touched; a keystroke reads each named block map once per commit",
+			"moved": [
+				"react/scale-1k/mount/scan.blockOrderReads: 27 !== 3675",
+				"react/scale-1k/mount/scan.blocksMapIterations: 1049 !== 4199",
+				"react/scale-1k/mount/scan.blocksMapReads: 64756 !== 65780",
+				"react/scale-1k/keystroke/scan.blocksMapReads: 82 !== 84",
+				"react/scale-1k/enterParagraph/scan.blockOrderReads: 3 !== 3680",
+				"react/scale-1k/enterParagraph/scan.blocksMapIterations: 0 !== 4203",
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 215 !== 2315",
+				"react/scale-1k/enterNumbered/scan.blockOrderReads: 3 !== 3690",
+				"react/scale-1k/enterNumbered/scan.blocksMapIterations: 0 !== 4203",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 604 !== 2704",
+				"react/scale-1k/remoteInsert/scan.blockOrderReads: 2 !== 2102",
+				"react/scale-1k/remoteInsert/scan.blocksMapIterations: 0 !== 2102",
+				"react/scale-1k/remoteInsert/scan.blocksMapReads: 212 !== 1262"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2b: structural commits advance the summary, pass and document indexes by what they touched; a keystroke reads each named block map once per commit",
+			"moved": [
+				"react/scale-5k/mount/scan.blockOrderReads: 135 !== 28875",
+				"react/scale-5k/mount/scan.blocksMapIterations: 5245 !== 20995",
+				"react/scale-5k/mount/scan.blocksMapReads: 323700 !== 328820",
+				"react/scale-5k/keystroke/scan.blocksMapReads: 82 !== 84",
+				"react/scale-5k/enterParagraph/scan.blockOrderReads: 3 !== 18380",
+				"react/scale-5k/enterParagraph/scan.blocksMapIterations: 0 !== 21003",
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 215 !== 10715",
+				"react/scale-5k/enterNumbered/scan.blockOrderReads: 3 !== 18390",
+				"react/scale-5k/enterNumbered/scan.blocksMapIterations: 0 !== 21003",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 604 !== 11104",
+				"react/scale-5k/remoteInsert/scan.blockOrderReads: 2 !== 10502",
+				"react/scale-5k/remoteInsert/scan.blocksMapIterations: 0 !== 10502",
+				"react/scale-5k/remoteInsert/scan.blocksMapReads: 212 !== 5462"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2c: root ids and the empty-document placeholder read core's top-level list instead of copying blockOrder, the block notifier stops scanning every cached snapshot, and children-array edits stop rebuilding the document index; every count that moved went down",
+			"moved": [
+				"react/scale-1k/mount/scan.orderArrayReads: 0 !== 4210",
+				"react/scale-1k/keystroke/scan.orderArrayReads: 0 !== 2",
+				"react/scale-1k/enterParagraph/scan.orderArrayReads: 0 !== 1053",
+				"react/scale-1k/enterNumbered/scan.orderArrayReads: 0 !== 1053",
+				"react/scale-1k/remoteInsert/scan.orderArrayReads: 0 !== 1053"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2c: root ids and the empty-document placeholder read core's top-level list instead of copying blockOrder, the block notifier stops scanning every cached snapshot, and children-array edits stop rebuilding the document index; every count that moved went down",
+			"moved": [
+				"react/scale-5k/mount/scan.orderArrayReads: 0 !== 21010",
+				"react/scale-5k/keystroke/scan.orderArrayReads: 0 !== 2",
+				"react/scale-5k/enterParagraph/scan.orderArrayReads: 0 !== 5253",
+				"react/scale-5k/enterNumbered/scan.orderArrayReads: 0 !== 5253",
+				"react/scale-5k/remoteInsert/scan.orderArrayReads: 0 !== 5253"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Undo holds the selection authority's AS1 anchors as its drift pair instead of minting a second pair per selection change; every count that moved went down",
+			"moved": [
+				"react/scale-1k/keystroke/scan.blocksMapReads: 78 !== 82",
+				"react/scale-1k/caretRight/scan.blocksMapReads: 70 !== 72",
+				"react/scale-1k/caretDown/scan.blocksMapReads: 106 !== 108",
+				"react/scale-1k/shiftDown/scan.blocksMapReads: 117 !== 119",
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 211 !== 215",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 600 !== 604"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Undo holds the selection authority's AS1 anchors as its drift pair instead of minting a second pair per selection change; every count that moved went down",
+			"moved": [
+				"react/scale-5k/keystroke/scan.blocksMapReads: 78 !== 82",
+				"react/scale-5k/caretRight/scan.blocksMapReads: 70 !== 72",
+				"react/scale-5k/caretDown/scan.blocksMapReads: 106 !== 108",
+				"react/scale-5k/shiftDown/scan.blocksMapReads: 117 !== 119",
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 211 !== 215",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 600 !== 604"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes: reads attach the notifier, so a render-before-subscribe mount reads blocks through the shared run context and kept root ids (React mount -41%); list slices keep across non-structural events; numbered ordinals come from the AX1 run walk with block types read once (Enter in a numbered run or paragraph and a remote insert read fewer blocks). Decreases only.",
+			"moved": [
+				"react/scale-1k/mount/scan.blocksMapReads: 38190 !== 64756",
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 205 !== 211",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 402 !== 600",
+				"react/scale-1k/remoteInsert/scan.blocksMapReads: 167 !== 212"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes: reads attach the notifier, so a render-before-subscribe mount reads blocks through the shared run context and kept root ids (React mount -41%); list slices keep across non-structural events; numbered ordinals come from the AX1 run walk with block types read once (Enter in a numbered run or paragraph and a remote insert read fewer blocks). Decreases only.",
+			"moved": [
+				"react/scale-5k/mount/scan.blocksMapReads: 190934 !== 323700",
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 205 !== 211",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 402 !== 600",
+				"react/scale-5k/remoteInsert/scan.blocksMapReads: 167 !== 212"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes on top of the parentId sibling sort lower enter block reads by 2",
+			"moved": [
+				"react/scale-1k/enterParagraph/scan.blocksMapReads: 203 !== 205",
+				"react/scale-1k/enterNumbered/scan.blocksMapReads: 400 !== 402"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes on top of the parentId sibling sort lower enter block reads by 2",
+			"moved": [
+				"react/scale-5k/enterParagraph/scan.blocksMapReads: 203 !== 205",
+				"react/scale-5k/enterNumbered/scan.blocksMapReads: 400 !== 402"
+			]
+		}
+	]
+}

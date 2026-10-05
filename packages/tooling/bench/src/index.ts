@@ -20,6 +20,15 @@ export type {
 // off the barrel. createBenchSuites is the public suite entry.
 export { createLargeDocument } from "./fixtures/largeDoc";
 export { createScale3Editor } from "./fixtures/scale3Stack";
+export {
+	SCALE3_REALISTIC_BLOCK_COUNTS,
+	createScale3RealisticEditor,
+	observeScale3Realistic,
+} from "./fixtures/scale3Realistic";
+export type {
+	Scale3RealisticBlockCount,
+	Scale3RealisticOptions,
+} from "./fixtures/scale3Realistic";
 export { createEnvelopeEditor } from "./fixtures/envelope";
 export {
 	ENVELOPE_DRIFT_FLOOR_MS,
@@ -34,6 +43,8 @@ export {
 export type { EnvelopeAxis, EnvelopeRungId } from "./constants/scale1";
 export { buildEnvelopeRecord, compareEnvelopeDrift } from "./envelope/compare";
 export type { EnvelopeRecord } from "./envelope/compare";
+export { detectLoadSnapshot, detectMachineClass } from "./envelope/machine";
+export type { EnvelopeLoadSnapshot } from "./envelope/machine";
 export {
 	SCALE2_PLUS8_BASE_ID,
 	SCALE2_PLUS8_ID,

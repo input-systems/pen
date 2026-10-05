@@ -156,7 +156,39 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// only exists if the host-chrome fallback opened it.
 	// 69 -> 70 is G4/G5 in code blocks: scenarios/g5-code-block-lines.spec.ts,
 	// where blank lines own line boxes and clicks map to text offsets.
-	const expectedPlaywrightSpecs = 70;
+	// 70 -> 72 is C2 real composition (suites/ime/c2-real-composition.spec.ts)
+	// and R1 drag-window close (suites/selection/r1-drag-window.spec.ts), W0.
+	// 72 -> 73 is SCALE1 scale fixtures: scenarios/scale-fixtures.spec.ts.
+	// 73 -> 74 is the harness surfaces: scenarios/harness-surfaces.spec.ts.
+	// 74 -> 75 is SCALE6 renderer counts: scenarios/scale-render.record.spec.ts.
+	// 75 -> 76 is W3.R1 projection read-back: suites/selection/p-projection.spec.ts.
+	// 76 -> 77 is the multi-click guard for W3.R5/W3.R12:
+	// suites/selection/r-multi-click.spec.ts.
+	// 77 -> 78 is W3.R8 keyed mount ack on three surfaces:
+	// suites/selection/p4-vanilla-ack.spec.ts.
+	// 78 -> 79 is W3.R19 the PR DOM fuzz job: suites/fuzz/dom-fuzz.spec.ts.
+	// 79 -> 81 is W1's scale-render clocks (scenarios/scale-render.clocks.record.spec.ts)
+	// and W3.R11's origins (suites/selection/s3-origins.spec.ts).
+	// 81 -> 82 is W3.R16's focus targets: suites/selection/focus-sink.spec.ts.
+	// 82 -> 83 is W35 step 2's customCaret mode: suites/overlays/custom-caret.spec.ts.
+	// 83 -> 88 is W35 step 3's default overlay: suites/overlays/{o5-readonly,
+	// g3-affinity,ax7-overlay-presentation,o-focus-composition,ov1-paint-counts}.spec.ts.
+	// 88 -> 89 is W35.G7's atom and chip caret set: suites/overlays/o1-atoms.spec.ts.
+	// 89 -> 90 is W5.R10's two-editor relay set: scenarios/col-two-editors.spec.ts.
+	// 91 -> 94: suites/selection/r1-native-range.spec.ts (W3.G20), scenarios/ax1-list-editing.spec.ts (W6.G2), suites/selection/s2-states.spec.ts (W3.G19).
+	// 94 -> 96: suites/selection/r1-context-menu-window.spec.ts (R1) and suites/input/fe9-editcontext-programmatic-caret.spec.ts (FE9).
+	// 96 -> 97: suites/ime/expanded-composition.spec.ts (FE2, Firefox composition over a cross-block range).
+	// 97 -> 98: suites/ime/c-editcontext-multi-update.spec.ts (C2/C4, one EditContext composition lifecycle under real CDP IME input).
+	// 98 -> 99: scenarios/ax3-toolbar-press.spec.ts (AX3, a toolbar press keeps compatibility mouse events).
+	// 99 -> 100: suites/selection/r-shift-click-range.spec.ts (R1/S2, shift-click extends across blocks on React, Vue and vanilla).
+	// 98 -> 99: suites/overlays/ov2-scaled-ancestor.spec.ts (OV2, items under a scaled or zoomed ancestor).
+
+	// 99 -> 101: suites/overlays/{ov2-moved-root,ov2-scroll-clip}.spec.ts (OV2, the root is the layer's containing block).
+	// 101 -> 102: suites/overlays/ov3-rtl-binding.spec.ts (OV2/OV3, binding-rendered carets in an RTL host).
+	// 104 -> 102: scenarios/{m2-arrow-swap,m5-vertical-no-swap}.spec.ts merged into
+	// suites/bidi/{live-rules,m2-shift-word,m5-vertical-no-swap}.spec.ts (same M2/M5 scenarios).
+	// 102 -> 103: suites/selection/t6-cell-editing-delete.spec.ts (T6/A1, Backspace and Delete in an edited cell).
+	const expectedPlaywrightSpecs = 103;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

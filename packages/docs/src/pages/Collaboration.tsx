@@ -18,8 +18,9 @@ export function CollaborationPage() {
 			<p>
 				<code>@input/pen-yjs</code> is the Yjs adapter (
 				<code>yjsAdapter</code>
-				). <code>yjs</code> and <code>y-protocols</code> are peers, not
-				bundled. <code>@input/pen-multiplayer</code> owns local
+				). <code>yjs</code> is a peer, not bundled. <code>y-protocols</code>{" "}
+				is needed only for awareness, on the{" "}
+				<code>@input/pen-yjs/awareness</code> subpath. <code>@input/pen-multiplayer</code> owns local
 				awareness, peer derivation, remote cursors, and decorations.
 				Neither package ships a transport, provider, server, or rooms.
 				The host constructs a <code>MultiplayerSession</code> (or a{" "}
@@ -41,7 +42,8 @@ function install(session: MultiplayerSession) {
 				<code>session</code> is host-owned. For Yjs, wrap the provider
 				with <code>createYjsProviderSession</code> and pass the native
 				document and awareness through <code>getYjsDoc(editor)</code>{" "}
-				and <code>getYjsAwareness(awareness)</code>. The canonical{" "}
+				and <code>getYjsAwareness(awareness)</code> from{" "}
+				<code>@input/pen-yjs/awareness</code>. The canonical{" "}
 				<code>y-websocket</code> wiring is in the{" "}
 				<code>@input/pen-yjs</code> README. The playground file is
 				a demo.

@@ -1,4 +1,4 @@
-import { buildTableChildren, sortDeltaAttributes } from "@input/pen-core";
+import { sortDeltaAttributes } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
 import { resolveEditorUrl } from "../security/resolveEditorUrl";
 import {

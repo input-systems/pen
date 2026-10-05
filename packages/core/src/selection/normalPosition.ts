@@ -16,7 +16,6 @@ const GRAPHEME_LOCALE = "und";
 
 export type NormalPositionDirection = -1 | 1;
 
-export type { Point };
 
 export interface BlockBoundary {
 	readonly blockBoundary: string;
@@ -47,6 +46,12 @@ export interface NormalPositionBlock {
 export interface NormalPositionSnapshot {
 	readonly blockOrder: readonly string[];
 	readonly blocks: Readonly<Record<string, NormalPositionBlock>>;
+	/**
+	 * Whether `blockId` is in `blockOrder`, answered without materialising it.
+	 * A lazy snapshot provides it so a per-keystroke check reads O(1) blocks
+	 * (SCALE2); without it, `blockOrder.includes` is used.
+	 */
+	readonly has?: (blockId: string) => boolean;
 }
 
 export function isNormalPosition(
@@ -128,7 +133,7 @@ function resolveBlock(
 	doc: NormalPositionSnapshot,
 	blockId: string,
 ): NormalPositionBlock | "structural" | null {
-	if (!doc.blockOrder.includes(blockId)) {
+	if (!(doc.has ? doc.has(blockId) : doc.blockOrder.includes(blockId))) {
 		return null;
 	}
 	const block = doc.blocks[blockId];

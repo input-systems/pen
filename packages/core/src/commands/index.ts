@@ -22,7 +22,6 @@ export {
 	caretWordRight,
 	selectAll,
 	selectBlock,
-	setCellCaretFocus,
 } from "./caret";
 export {
 	convertBlock,

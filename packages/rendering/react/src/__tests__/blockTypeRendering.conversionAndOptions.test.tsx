@@ -3,51 +3,18 @@
 import React, { act } from "react";
 import { describe, expect, it } from "vitest";
 import { createRoot } from "react-dom/client";
-import { createEditor } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
 import { Pen } from "../primitives/index";
 import { getAttachedFieldEditor } from "../utils/fieldEditor";
-import { defaultSchema } from "@input/pen-schema";
+import {
+	BLOCK_TYPE_OPTIONS,
+	TABLE_BLOCK_TYPE_OPTIONS,
+	createBlockTypeEditor,
+	visibleText,
+} from "./utils/blockTypeRenderingTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-const BLOCK_TYPE_OPTIONS = [
-	{ value: "paragraph", label: "Paragraph" },
-	{ value: "heading", label: "Heading" },
-];
-
-const TABLE_BLOCK_TYPE_OPTIONS = [
-	{ value: "paragraph", label: "Paragraph" },
-	{ value: "table", label: "Table" },
-];
-
-function visibleText(text: string | null | undefined): string {
-	return (text ?? "").replace(/\u200B/g, "");
-}
-
-function numberedListMarkers(container: HTMLElement): string[] {
-	return Array.from(
-		container.querySelectorAll(
-			"[data-pen-list-item-layout][data-block-type='numberedListItem'] [data-pen-list-marker]",
-		),
-	).map((marker) => marker.textContent ?? "");
-}
-
-function createBlockTypeEditor(
-	options: Parameters<typeof createEditor>[0] = {},
-) {
-	return createEditor({
-		schema: defaultSchema,
-		...options,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
 
 describe("@input/pen-react block type rendering: conversion and toolbar options", () => {
 	it("derives flow-aware default block type options from schema metadata", async () => {

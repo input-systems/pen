@@ -1,38 +1,15 @@
 import { describe, expect, it } from "vitest";
-import {
-	createEditor,
-	defineExtension,
-	getInlineCompletionController,
-} from "@input/pen-core";
+import { createEditor, getInlineCompletionController } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import { createModelDouble } from "@input/pen-test";
 import { undoExtension } from "@input/pen-undo";
-import { FIELD_EDITOR_SLOT_KEY } from "@input/pen-types";
 import { autocompleteExtension, getAutocompleteController } from "../index";
-
-async function waitForCondition(
-	check: () => boolean,
-	maxTicks = 20,
-): Promise<void> {
-	for (let tick = 0; tick < maxTicks; tick += 1) {
-		if (check()) {
-			return;
-		}
-		await Promise.resolve();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-	}
-	throw new Error("Condition was not met in time.");
-}
+import { fieldEditorSlot, waitForCondition } from "./extension.testHelpers";
 
 describe("AIB4 autocomplete accept undo", () => {
 	it("AIB4: autocomplete accept is a single undo step", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -43,23 +20,7 @@ describe("AIB4 autocomplete accept undo", () => {
 						responses: [{ text: " world from pen" }],
 					}),
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;

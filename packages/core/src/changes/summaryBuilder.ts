@@ -7,6 +7,8 @@ import type {
 
 import { affectedBlockIdsFromSummary } from "./affectedBlocks";
 import type { BlockIndexSnapshot } from "./blockIndex";
+import { sortIntoDocumentOrder } from "./documentOrder";
+import { asMap } from "./readStored";
 import type {
 	BlockTextChange,
 	ChangeSummary,
@@ -19,19 +21,22 @@ export interface ChangeSummaryState {
 	readonly blockText: readonly BlockTextChange[];
 	readonly structural: readonly StructuralChange[];
 	readonly index?: BlockIndexSnapshot;
+	/** Positions in `index.roots`, when the index keeps them. */
+	readonly rootIndexOf?: (blockId: string) => number;
 }
 
 export function createChangeSummary(state: ChangeSummaryState): ChangeSummary {
 	const blockText = state.blockText;
 	const structural = state.structural;
+	const collected = affectedBlockIdsFromSummary({ blockText, structural });
 	return {
 		commitId: state.commitId,
 		blockText,
 		structural,
-		affectedBlockIds: affectedBlockIdsFromSummary(
-			{ blockText, structural },
-			state.index?.order,
-		),
+		affectedBlockIds:
+			state.index && collected.length > 1
+				? sortIntoDocumentOrder(state.index, collected, state.rootIndexOf)
+				: collected,
 	};
 }
 
@@ -50,19 +55,45 @@ export function logicalLengthFromStored(stored: string): number {
 	return stored.length;
 }
 
+/** Reads of the index and the document a summary may need beyond the snapshot. */
+export interface SummaryLookups {
+	/** Whether the block map is stored; asked only for entries that name no indexed block (COL4). */
+	readonly blockExists?: (blockId: string) => boolean;
+	/**
+	 * Whether the pre-commit index lists the id in more than one array entry
+	 * (COL4). Without it, a removal scans every array for another entry.
+	 */
+	readonly listedMoreThanOnce?: (blockId: string) => boolean;
+	/** The id's position in the pre-commit root order. Without it, sorting the affected ids scans the order. */
+	readonly rootIndexOf?: (blockId: string) => number;
+	/**
+	 * The stored block map; asked only for a block whose map a commit
+	 * replaced whole while the block stays. Without it, such a replacement
+	 * reports no props change.
+	 */
+	readonly readBlock?: (blockId: string) => unknown;
+}
+
 export function buildChangeSummary(
 	delta: RawCommitDelta,
 	index: BlockIndexSnapshot,
 	commitId: number,
+	lookups: SummaryLookups = {},
 ): ChangeSummary {
 	const structuralOrigin = readStructuralOrigin(delta.originTag);
 	const blockText = buildTextChanges(delta, index);
-	const structural = buildStructuralChanges(delta, index, structuralOrigin);
+	const structural = buildStructuralChanges(
+		delta,
+		index,
+		structuralOrigin,
+		lookups,
+	);
 	return createChangeSummary({
 		commitId,
 		blockText,
 		structural,
 		index,
+		rootIndexOf: lookups.rootIndexOf,
 	});
 }
 
@@ -171,14 +202,77 @@ function buildStructuralChanges(
 	delta: RawCommitDelta,
 	index: BlockIndexSnapshot,
 	structuralOrigin: StructuralOriginTag | null,
+	{ blockExists, listedMoreThanOnce, readBlock }: SummaryLookups,
 ): StructuralChange[] {
 	const structural: StructuralChange[] = [];
-	const { inserted, removed } = collectArrayEdits(delta, index);
+	const edits = collectArrayEdits(delta, index, listedMoreThanOnce);
+	const removed = edits.removed;
+	addReplacedChildArrays(removed, delta, index, blockExists);
+	if (delta.arrivedChildArrays?.size) {
+		addInsertedDescendants(edits.inserted, delta.arrivedChildArrays);
+	}
+	const splitNewId =
+		structuralOrigin?.kind === "split" ? structuralOrigin.newBlockId : null;
+
+	// A stored block whose entry an earlier commit removed without deleting
+	// it (COL4: an orphan the next pass re-homes, an out-of-order delivery
+	// whose re-insert lands late) brings its `children`-array subtree back
+	// with its new entry, and no array edit names those descendants: each
+	// one the commit does not place itself is reported inserted where the
+	// pre-commit index holds it, mirroring the removal. Bounded by the
+	// re-entering subtrees (SCALE2).
+	const reentered = new Set<string>();
+	const reportReenteredDescendants = (blockId: string) => {
+		if (!index.typeById.has(blockId) || reentered.has(blockId)) return;
+		reentered.add(blockId);
+		const children = index.childrenByParentId.get(blockId) ?? [];
+		for (let at = 0; at < children.length; at += 1) {
+			const childId = children[at]!;
+			if (insertedIds.has(childId) || removedIds.has(childId)) continue;
+			if (!index.typeById.has(childId)) continue;
+			structural.push({
+				type: "block-inserted",
+				blockId: childId,
+				parentId: blockId,
+				index: at,
+			});
+			reportReenteredDescendants(childId);
+		}
+	};
+
+	// COL4: an inserted entry can name no block — an undo restoring an
+	// order entry a peer's delete orphaned, a peer's move re-inserting an
+	// entry for a block deleted here (once, or again beside an earlier such
+	// entry), a move arriving with the delete of the block it moves, or an
+	// entry whose block map arrived and was deleted in the same commit. It is
+	// no insert and no move. One the index never held is reported removed
+	// where it sits; one it held is reported removed where it sat, by the
+	// removal or deleted-map paths below. A map that arrived in the commit
+	// is judged by the summary source's own read (`absentBlockIds`), so an
+	// ordinary insert or move reads nothing more (SCALE2).
+	const danglingInserted: ArrayInsert[] = [];
+	const inserted: ArrayInsert[] = [];
+	for (const item of edits.inserted) {
+		const held = index.typeById.has(item.id);
+		const mapChange = delta.blockMapChanges.get(item.id);
+		if (
+			blockExists &&
+			item.id !== splitNewId &&
+			(held
+				? mapChange?.size === 0 && !blockExists(item.id)
+				: mapChange === undefined
+					? !blockExists(item.id)
+					: (delta.absentBlockIds?.has(item.id) ?? false))
+		) {
+			if (!held) danglingInserted.push(item);
+			continue;
+		}
+		inserted.push(item);
+	}
 
 	const insertedIds = new Set(inserted.map((item) => item.id));
 	const removedIds = new Set(removed.map((item) => item.id));
-	const splitNewId =
-		structuralOrigin?.kind === "split" ? structuralOrigin.newBlockId : null;
+	const removedById = new Map(removed.map((item) => [item.id, item]));
 	const mergeSourceId =
 		structuralOrigin?.kind === "merge"
 			? structuralOrigin.sourceBlockId
@@ -193,24 +287,55 @@ function buildStructuralChanges(
 		});
 	}
 	if (structuralOrigin?.kind === "merge") {
+		// The source's array entry leaves with no `block-removed` (OB1); its
+		// pre-commit position travels on the recipe instead.
+		const vacated = removedById.get(structuralOrigin.sourceBlockId);
 		structural.push({
 			type: "blocks-merged",
 			targetBlockId: structuralOrigin.targetBlockId,
 			sourceBlockId: structuralOrigin.sourceBlockId,
 			joinOffset:
 				index.lengthById.get(structuralOrigin.targetBlockId) ?? 0,
+			...(vacated
+				? { sourceParentId: vacated.parentId, sourceIndex: vacated.index }
+				: {}),
 		});
 	}
 
 	for (const item of inserted) {
 		if (item.id === splitNewId) continue;
 		if (removedIds.has(item.id) || index.parentById.has(item.id)) {
-			const fromParentId = index.parentById.get(item.id) ?? null;
-			const fromIndex = (
-				index.childrenByParentId.get(fromParentId) ?? []
-			).indexOf(item.id);
-			if (fromParentId === item.parentId && fromIndex === item.index)
+			// An entry deleted and re-inserted moved, even back to the same
+			// index: the index is pre-commit, `item.index` post-commit, and
+			// another edit before it can make the two numbers agree.
+			const removal = removedById.get(item.id);
+			const fromParentId =
+				removal?.parentId ?? index.parentById.get(item.id) ?? null;
+			const fromIndex =
+				removal?.index ??
+				(index.childrenByParentId.get(fromParentId) ?? []).indexOf(
+					item.id,
+				);
+			if (
+				!removal &&
+				!item.repair &&
+				fromParentId === item.parentId &&
+				fromIndex === item.index
+			) {
+				// A child an arrived array lists where the index held it
+				// did not move. An array edit inserting an id the commit
+				// removed nowhere adds a second entry (COL4: two peers moved
+				// the block to one place) that landed directly before the
+				// first: the list gained an entry, so it is reported.
+				if (item.arrived) continue;
+				structural.push({
+					type: "block-inserted",
+					blockId: item.id,
+					parentId: item.parentId,
+					index: item.index,
+				});
 				continue;
+			}
 			structural.push({
 				type: "block-moved",
 				blockId: item.id,
@@ -227,18 +352,103 @@ function buildStructuralChanges(
 			parentId: item.parentId,
 			index: item.index,
 		});
+		reportReenteredDescendants(item.id);
 	}
+
+	const reported = new Set<string>();
+	const reportRemoved = (
+		blockId: string,
+		parentId: string | null,
+		at: number,
+	) => {
+		if (reported.has(blockId)) return;
+		reported.add(blockId);
+		structural.push({ type: "block-removed", blockId, parentId, index: at });
+		reportRemovedDescendants(blockId);
+	};
+	// A removed block takes its `children`-array subtree out of the document
+	// with it: those entries live in the removed block, so no array edit names
+	// them. Report each descendant the commit did not re-home elsewhere, so a
+	// per-block index drops it. Bounded by the removed subtree (SCALE2).
+	// A descendant another entry still lists (COL4: it sat in this array and
+	// in another one or the root order) stays, so it moves to that entry.
+	const reportRemovedDescendants = (blockId: string) => {
+		const children = index.childrenByParentId.get(blockId) ?? [];
+		for (let at = 0; at < children.length; at += 1) {
+			const childId = children[at]!;
+			if (insertedIds.has(childId) || childId === splitNewId) continue;
+			const survivor = survivingParent({ id: childId, parentId: blockId, index: at });
+			if (survivor !== undefined) {
+				reportMovedToSurvivor(childId, blockId, at, survivor);
+				continue;
+			}
+			reportRemoved(childId, blockId, at);
+		}
+	};
+
+	// COL4: concurrent moves can list a block in two arrays; a repair that
+	// removes one entry leaves it in the other, where it now renders.
+	let listings: ReadonlyMap<string, readonly (string | null)[]> | null = null;
+	// A block whose map is not stored — the same commit deleted it, or an
+	// earlier one did while a peer's entry kept it listed (COL4) — does not
+	// stay: its other entry names no block, so it is reported removed where
+	// it sat, as a move arriving with the delete of the block it moves is.
+	const survivingParent = (item: (typeof removed)[number]) => {
+		if (listedMoreThanOnce && !listedMoreThanOnce(item.id)) return undefined;
+		if (blockExists && !blockExists(item.id)) return undefined;
+		listings ??= parentListings(index);
+		for (const parentId of listings.get(item.id) ?? []) {
+			if (parentId === item.parentId) continue;
+			// A parent removed with it takes that entry out too.
+			if (
+				parentId !== null &&
+				removedIds.has(parentId) &&
+				!insertedIds.has(parentId)
+			)
+				continue;
+			const alsoRemoved = removed.some(
+				(other) => other.id === item.id && other.parentId === parentId,
+			);
+			if (!alsoRemoved) return parentId;
+		}
+		return undefined;
+	};
+	const reportMovedToSurvivor = (
+		blockId: string,
+		fromParentId: string | null,
+		fromIndex: number,
+		survivor: string | null,
+	) => {
+		if (reported.has(blockId)) return;
+		reported.add(blockId);
+		structural.push({
+			type: "block-moved",
+			blockId,
+			fromParentId,
+			fromIndex,
+			toParentId: survivor,
+			toIndex: Math.max(
+				0,
+				(index.childrenByParentId.get(survivor) ?? []).indexOf(blockId),
+			),
+		});
+	};
 
 	for (const item of removed) {
 		if (item.id === mergeSourceId) continue;
 		if (insertedIds.has(item.id)) continue;
 		if (item.id === splitNewId) continue;
-		structural.push({
-			type: "block-removed",
-			blockId: item.id,
-			parentId: item.parentId,
-			index: item.index,
-		});
+		const survivor = survivingParent(item);
+		if (survivor !== undefined) {
+			reportMovedToSurvivor(item.id, item.parentId, item.index, survivor);
+			continue;
+		}
+		reportRemoved(item.id, item.parentId, item.index);
+	}
+	// Reported removed where it sits, as the COL4 delete-versus-move entry
+	// below is, so per-block indexes and renderers skip it.
+	for (const item of danglingInserted) {
+		reportRemoved(item.id, item.parentId, item.index);
 	}
 
 	const newIds = new Set<string>([
@@ -248,31 +458,66 @@ function buildStructuralChanges(
 		...(splitNewId ? [splitNewId] : []),
 	]);
 
+	// COL4: a remote delete against a concurrent move drops the block's map
+	// entry while the move keeps its order entry, so no array edit names it.
+	// The block is gone all the same; report it removed where it sat.
+	if (blockExists) {
+		for (const [blockId, keys] of delta.blockMapChanges) {
+			if (
+				keys.size > 0 ||
+				removedIds.has(blockId) ||
+				newIds.has(blockId)
+			) {
+				continue;
+			}
+			const parentId = index.parentById.get(blockId) ?? null;
+			const at = (index.childrenByParentId.get(parentId) ?? []).indexOf(
+				blockId,
+			);
+			if (!index.typeById.has(blockId)) {
+				// The converse: a map arriving for an entry an array already
+				// lists (an undo or redo restoring a block whose entry a peer
+				// moved) brings the block back where that entry sits.
+				if (at >= 0 && blockExists(blockId)) {
+					structural.push({
+						type: "block-inserted",
+						blockId,
+						parentId,
+						index: at,
+					});
+				}
+				continue;
+			}
+			if (blockExists(blockId)) continue;
+			reportRemoved(blockId, parentId, Math.max(0, at));
+		}
+	}
+
 	for (const [blockId, keys] of delta.blockMapChanges) {
 		if (newIds.has(blockId)) continue;
-		const keyList = [...keys];
-		const fromType = index.typeById.get(blockId) ?? "";
+		const keyList =
+			keys.size > 0
+				? [...keys]
+				: removedIds.has(blockId)
+					? []
+					: replacedBlockKeys(blockId, index, readBlock);
 		const residual = keyList.filter(
 			(key) => !IGNORABLE_BLOCK_KEYS.has(key),
 		);
 		if (residual.length === 0) continue;
 
-		const looksTable =
-			fromType === "table" || residual.some((key) => TABLE_KEYS.has(key));
-		if (looksTable) {
+		// `table-changed` names a grid structure change only; a table's props
+		// or meta change is `block-props-changed` like any other block's (A5).
+		if (residual.some((key) => TABLE_KEYS.has(key))) {
 			structural.push({ type: "table-changed", blockId });
 		}
-		if (!looksTable || residual.includes("type")) {
-			const keys = looksTable
-				? residual.filter((key) => !TABLE_KEYS.has(key))
-				: residual;
-			if (keys.length > 0) {
-				structural.push({
-					type: "block-props-changed",
-					blockId,
-					keys,
-				});
-			}
+		const propKeys = residual.filter((key) => !TABLE_KEYS.has(key));
+		if (propKeys.length > 0) {
+			structural.push({
+				type: "block-props-changed",
+				blockId,
+				keys: propKeys,
+			});
 		}
 	}
 
@@ -292,19 +537,173 @@ function buildStructuralChanges(
 	return structural;
 }
 
+/**
+ * The keys a block map replaced whole can have changed, for a block the index
+ * held that stays stored: an undo restoring a block a peer deleted, delivered
+ * with that delete, replaces the map a peer's prop writes went into, and no
+ * key change names them (COL4). The type when it differs from the indexed
+ * one, and every prop and meta key the arrived map holds; the replaced map is
+ * gone, so a key only it held is not named. Reads one map, only for a whole
+ * replacement (SCALE2).
+ */
+function replacedBlockKeys(
+	blockId: string,
+	index: BlockIndexSnapshot,
+	readBlock: SummaryLookups["readBlock"],
+): string[] {
+	if (!readBlock || !index.typeById.has(blockId)) return [];
+	const block = asMap(readBlock(blockId));
+	if (!block) return [];
+	const keys: string[] = [];
+	if (block.get("type") !== index.typeById.get(blockId)) keys.push("type");
+	for (const key of ["props", "meta"]) keys.push(...mapKeys(block.get(key)));
+	return keys;
+}
+
+function mapKeys(value: unknown): string[] {
+	const map = value as { keys?: () => Iterable<string> } | null | undefined;
+	return typeof map?.keys === "function" ? [...map.keys()] : [];
+}
+
+/**
+ * Whether a block-map change replaced an indexed block's `children` array:
+ * the key set or removed, or the whole map replaced (an undo restoring a
+ * container a peer's array edit had written into) while the block stays. A
+ * map deleted outright reports its subtree through the removal.
+ */
+function replacesChildArray(
+	blockId: string,
+	keys: ReadonlySet<string>,
+	index: BlockIndexSnapshot,
+	blockExists: SummaryLookups["blockExists"],
+): boolean {
+	if (!index.typeById.has(blockId)) return false;
+	if (keys.has("children")) return true;
+	return (
+		keys.size === 0 &&
+		(index.childrenByParentId.get(blockId)?.length ?? 0) > 0 &&
+		(blockExists?.(blockId) ?? false)
+	);
+}
+
+/**
+ * A `children` key replaced or removed on a block the index already held —
+ * two peers' concurrent first-child inserts each create an array and Yjs
+ * keeps one, an undo takes back the array a first child created, or an undo
+ * stores a whole new map for a container a peer wrote a child into — drops
+ * every entry of the array it replaced, and no array edit names them. Each
+ * entry the new array (`arrivedChildArrays`, absent when empty or gone) does
+ * not list is reported removed from the old one; one the commit placed
+ * elsewhere reads as a move. Bounded by the replaced arrays (SCALE2).
+ */
+function addReplacedChildArrays(
+	removed: { id: string; parentId: string | null; index: number }[],
+	delta: RawCommitDelta,
+	index: BlockIndexSnapshot,
+	blockExists: SummaryLookups["blockExists"],
+): void {
+	for (const [blockId, keys] of delta.blockMapChanges) {
+		if (!replacesChildArray(blockId, keys, index, blockExists)) continue;
+		// An array edited in place reports its own delta.
+		if (delta.childArrayDeltas.has(blockId)) continue;
+		const pre = index.childrenByParentId.get(blockId) ?? [];
+		if (pre.length === 0) continue;
+		const kept = new Set(delta.arrivedChildArrays?.get(blockId) ?? []);
+		for (let at = 0; at < pre.length; at += 1) {
+			const childId = pre[at]!;
+			if (!kept.has(childId)) removed.push({ id: childId, parentId: blockId, index: at });
+		}
+	}
+}
+
+/**
+ * A block inserted with a `children` array — an undo restoring a deleted
+ * container, a peer's insert — brings that subtree into the document, and no
+ * array edit names it: the array arrived inside the new block map, and the
+ * summary source reads it from there (`arrivedChildArrays`). Each
+ * descendant is added as an insert into its parent's array, so it reports
+ * `block-inserted`, or `block-moved` when it sat elsewhere before, and a
+ * per-block index reads it. An entry is added once per array, so a block
+ * the same commit also lists in another array (concurrent moves into two
+ * containers, COL4) reports both. Bounded by the inserted subtrees (SCALE2).
+ */
+function addInsertedDescendants(
+	inserted: ArrayInsert[],
+	arrivedChildArrays: ReadonlyMap<string, readonly string[]>,
+): void {
+	const entryKey = (parentId: string | null, blockId: string) =>
+		`${parentId ?? ""}\u0000${blockId}`;
+	const listed = new Set(inserted.map((item) => entryKey(item.parentId, item.id)));
+	const walked = new Set<string>();
+	const visit = (blockId: string) => {
+		if (walked.has(blockId)) return;
+		walked.add(blockId);
+		const children = arrivedChildArrays.get(blockId) ?? [];
+		for (let at = 0; at < children.length; at += 1) {
+			const childId = children[at]!;
+			const key = entryKey(blockId, childId);
+			if (!listed.has(key)) {
+				listed.add(key);
+				inserted.push({ id: childId, parentId: blockId, index: at, arrived: true });
+			}
+			visit(childId);
+		}
+	};
+	// A child the index already held there reads as an unmoved move and is
+	// dropped with the other no-op moves. An array set on a block that was
+	// already present (created by its first child) is walked from its owner.
+	for (const item of [...inserted]) visit(item.id);
+	for (const blockId of arrivedChildArrays.keys()) visit(blockId);
+}
+
+/** Every array (`null` for the root order) that lists each id before the commit. */
+function parentListings(
+	index: BlockIndexSnapshot,
+): Map<string, (string | null)[]> {
+	const listings = new Map<string, (string | null)[]>();
+	for (const [parentId, children] of index.childrenByParentId) {
+		for (const childId of children) {
+			const parents = listings.get(childId);
+			if (!parents) listings.set(childId, [parentId]);
+			else if (!parents.includes(parentId)) parents.push(parentId);
+		}
+	}
+	return listings;
+}
+
+/**
+ * An id an array edit placed. `repair` marks the surviving entry of a
+ * duplicate the commit removed (COL4): it reports as a move even when the
+ * surviving entry is where the block already rendered, because its sibling
+ * list lost an entry. `arrived` marks an entry of an array that arrived
+ * whole, which names a block the index may already hold there.
+ */
+interface ArrayInsert {
+	readonly id: string;
+	readonly parentId: string | null;
+	readonly index: number;
+	readonly repair?: boolean;
+	/** Read from an array that arrived whole (`arrivedChildArrays`), not from an array edit. */
+	readonly arrived?: boolean;
+}
+
 function collectArrayEdits(
 	delta: RawCommitDelta,
 	index: BlockIndexSnapshot,
+	listedMoreThanOnce: SummaryLookups["listedMoreThanOnce"],
 ): {
-	inserted: { id: string; parentId: string | null; index: number }[];
+	inserted: ArrayInsert[];
 	removed: { id: string; parentId: string | null; index: number }[];
 } {
-	const inserted: { id: string; parentId: string | null; index: number }[] =
-		[];
+	const inserted: ArrayInsert[] = [];
 	const removed: { id: string; parentId: string | null; index: number }[] =
 		[];
 
-	const rootEdits = interpretArrayDelta(index.roots, delta.blockOrderDelta);
+	const rootEdits = interpretArrayDelta(
+		index.roots,
+		delta.blockOrderDelta,
+		listedMoreThanOnce,
+	);
 	inserted.push(
 		...rootEdits.inserted.map((item) => ({ ...item, parentId: null })),
 	);
@@ -314,7 +713,7 @@ function collectArrayEdits(
 
 	for (const [parentId, arrayDelta] of delta.childArrayDeltas) {
 		const pre = index.childrenByParentId.get(parentId) ?? [];
-		const edits = interpretArrayDelta(pre, arrayDelta);
+		const edits = interpretArrayDelta(pre, arrayDelta, listedMoreThanOnce);
 		inserted.push(...edits.inserted.map((item) => ({ ...item, parentId })));
 		removed.push(...edits.removed.map((item) => ({ ...item, parentId })));
 	}
@@ -325,11 +724,12 @@ function collectArrayEdits(
 function interpretArrayDelta(
 	pre: readonly string[],
 	delta: YArrayDelta,
+	listedMoreThanOnce: SummaryLookups["listedMoreThanOnce"],
 ): {
-	inserted: { id: string; index: number }[];
+	inserted: Omit<ArrayInsert, "parentId">[];
 	removed: { id: string; index: number }[];
 } {
-	const inserted: { id: string; index: number }[] = [];
+	const inserted: Omit<ArrayInsert, "parentId">[] = [];
 	const removed: { id: string; index: number }[] = [];
 	let oldIndex = 0;
 	let newIndex = 0;
@@ -358,7 +758,77 @@ function interpretArrayDelta(
 		}
 	}
 
-	return { inserted, removed };
+	// A repair of a duplicate entry (COL4) removes one entry and leaves the
+	// block listed at the other: that is a move to the surviving entry.
+	const survivors = survivingDuplicates(
+		pre,
+		delta,
+		removed,
+		listedMoreThanOnce,
+	);
+	if (survivors.size === 0) return { inserted, removed };
+	for (const [id, at] of survivors)
+		inserted.push({ id, index: at, repair: true });
+	return {
+		inserted,
+		removed: removed.filter((item) => !survivors.has(item.id)),
+	};
+}
+
+/**
+ * The post-commit index of each removed id the array still holds at another
+ * entry. Reads only the in-memory pre-commit array, and walks the delta only
+ * when the array lost an id it held more than once.
+ */
+function survivingDuplicates(
+	pre: readonly string[],
+	delta: YArrayDelta,
+	removed: readonly { id: string; index: number }[],
+	listedMoreThanOnce: SummaryLookups["listedMoreThanOnce"],
+): Map<string, number> {
+	const survivors = new Map<string, number>();
+	if (removed.length === 0) return survivors;
+	// An id the index lists once cannot sit in this array twice, so an
+	// ordinary removal reads no array (SCALE2).
+	if (
+		listedMoreThanOnce &&
+		!removed.some((item) => listedMoreThanOnce(item.id))
+	) {
+		return survivors;
+	}
+	const removedIds = new Set(removed.map((item) => item.id));
+	let repeated = false;
+	const seen = new Set<string>();
+	for (const id of pre) {
+		if (!removedIds.has(id)) continue;
+		if (seen.has(id)) {
+			repeated = true;
+			break;
+		}
+		seen.add(id);
+	}
+	if (!repeated) return survivors;
+	const keep = (id: string | undefined, at: number) => {
+		if (id !== undefined && removedIds.has(id) && !survivors.has(id))
+			survivors.set(id, at);
+	};
+	let oldIndex = 0;
+	let newIndex = 0;
+	for (const op of delta) {
+		if (op.retain != null) {
+			for (let i = 0; i < op.retain; i++)
+				keep(pre[oldIndex + i], newIndex + i);
+			oldIndex += op.retain;
+			newIndex += op.retain;
+		} else if (op.delete != null) {
+			oldIndex += op.delete;
+		} else if (op.insert) {
+			newIndex += op.insert.length;
+		}
+	}
+	for (let i = oldIndex; i < pre.length; i++)
+		keep(pre[i], newIndex + i - oldIndex);
+	return survivors;
 }
 
 function mergeSplices(splices: readonly TextSplice[]): TextSplice[] {

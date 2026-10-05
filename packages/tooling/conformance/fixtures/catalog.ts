@@ -1,8 +1,46 @@
+import type { DocumentOp } from "@input/pen-types";
 import type { TestBlock } from "@input/pen-test";
 import { BIDI_MIXED_BLOCKS } from "./bidi";
+import { ATOM_CARET_BLOCKS, atomCaretOps } from "./atomCaret";
+import { FUZZ_LARGE_BLOCKS, fuzzLargeOps } from "./fuzzLarge";
+import { FUZZ_MIXED_BLOCKS, fuzzMixedOps } from "./fuzzMixed";
 import { GRAPHEME_CLUSTER_BLOCKS } from "./grapheme";
+import { SEMANTICS_BLOCKS, semanticsOps } from "./semantics";
+
+/** Large mixed fixtures (`@input/pen-test` mixed scale fixture), built on demand. */
+export type ScaleFixtureName = "scale-1k" | "scale-5k" | "scale-10k" | "scale-50k";
+
+/** Root-block count per scale fixture. */
+export const SCALE_FIXTURE_ROOT_COUNTS: Readonly<Record<ScaleFixtureName, number>> = {
+	"scale-1k": 1_000,
+	"scale-5k": 5_000,
+	"scale-10k": 10_000,
+	"scale-50k": 50_000,
+};
+
+/**
+ * Skeleton-plus-ops fixtures: a `populateYDoc` skeleton plus ops applied
+ * before any surface mounts, for content `populateYDoc` cannot write (inline
+ * atoms, marks, tables). The DOM fuzzer's document (W3.R19) and the atom
+ * caret set (W35.G7). Kept out of `FIXTURE_NAMES` like the scale fixtures,
+ * so per-fixture sweeps (AX1, AX8) do not grow with them.
+ */
+export type FuzzFixtureName = "fuzz-mixed" | "fuzz-large" | "atom-caret";
+
+export const FUZZ_FIXTURES: Readonly<
+	Record<FuzzFixtureName, { blocks: readonly TestBlock[]; ops: () => DocumentOp[] }>
+> = {
+	"fuzz-mixed": { blocks: FUZZ_MIXED_BLOCKS, ops: fuzzMixedOps },
+	"fuzz-large": { blocks: FUZZ_LARGE_BLOCKS, ops: fuzzLargeOps },
+	"atom-caret": { blocks: ATOM_CARET_BLOCKS, ops: atomCaretOps },
+};
+
+/** Fixtures built outside `LOCAL_FIXTURES`; per-fixture sweeps skip them. */
+type BuiltFixtureName = ScaleFixtureName | FuzzFixtureName;
 
 export type FixtureName =
+	| ScaleFixtureName
+	| FuzzFixtureName
 	| "hello-world"
 	| "two-paragraph"
 	| "empty"
@@ -12,7 +50,8 @@ export type FixtureName =
 	| "bidi-mixed"
 	| "nested-toggle"
 	| "grapheme-clusters"
-	| "code-block";
+	| "code-block"
+	| "semantics";
 
 export const CODE_BLOCK_LINES_ID = "code-lines";
 export const CODE_BLOCK_TRAILING_ID = "code-trailing";
@@ -39,11 +78,15 @@ const FIXTURE_PRESENT = {
 	"nested-toggle": true,
 	"grapheme-clusters": true,
 	"code-block": true,
-} as const satisfies Record<FixtureName, true>;
+	semantics: true,
+} as const satisfies Record<Exclude<FixtureName, BuiltFixtureName>, true>;
 
-export const FIXTURE_NAMES: readonly FixtureName[] = Object.keys(
-	FIXTURE_PRESENT,
-) as FixtureName[];
+/**
+ * Every small fixture. Scale fixtures are excluded on purpose: suites that
+ * iterate this list (AX1 runs axe per fixture) must not mount 50k blocks.
+ */
+export const FIXTURE_NAMES: readonly Exclude<FixtureName, BuiltFixtureName>[] =
+	Object.keys(FIXTURE_PRESENT) as Exclude<FixtureName, BuiltFixtureName>[];
 
 export const WINDOWED_LARGE_BLOCK_COUNT = 40;
 export const WINDOWED_WINDOW_SIZE = 8;
@@ -65,7 +108,7 @@ function windowedLargeBlocks(): TestBlock[] {
 }
 
 export const LOCAL_FIXTURES: Record<
-	Exclude<FixtureName, "deterministic">,
+	Exclude<FixtureName, "deterministic" | BuiltFixtureName>,
 	readonly TestBlock[]
 > = {
 	"hello-world": [
@@ -168,14 +211,38 @@ export const LOCAL_FIXTURES: Record<
 			content: "hey\n\n",
 		},
 	],
+	semantics: SEMANTICS_BLOCKS,
+};
+
+/**
+ * Ops a local fixture applies through `editor.apply` before any surface
+ * mounts, for content `populateYDoc` cannot write (tables, inline atoms).
+ */
+export const LOCAL_FIXTURE_OPS: Partial<
+	Record<Exclude<FixtureName, "deterministic" | BuiltFixtureName>, () => DocumentOp[]>
+> = {
+	semantics: semanticsOps,
 };
 
 export function isLocalFixtureName(
 	name: string,
-): name is Exclude<FixtureName, "deterministic"> {
+): name is Exclude<FixtureName, "deterministic" | BuiltFixtureName> {
 	return Object.prototype.hasOwnProperty.call(LOCAL_FIXTURES, name);
 }
 
+export function isScaleFixtureName(name: string): name is ScaleFixtureName {
+	return Object.prototype.hasOwnProperty.call(SCALE_FIXTURE_ROOT_COUNTS, name);
+}
+
+export function isFuzzFixtureName(name: string): name is FuzzFixtureName {
+	return Object.prototype.hasOwnProperty.call(FUZZ_FIXTURES, name);
+}
+
 export function isFixtureName(name: string): name is FixtureName {
-	return isLocalFixtureName(name) || name === "deterministic";
+	return (
+		isLocalFixtureName(name) ||
+		isScaleFixtureName(name) ||
+		name === "deterministic" ||
+		isFuzzFixtureName(name)
+	);
 }

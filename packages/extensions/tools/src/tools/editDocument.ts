@@ -1,10 +1,15 @@
 import { buildDocumentWriteOps } from "@input/pen-ingest";
-import { convertBlockOps, supportsInlineMarks } from "@input/pen-core";
+import {
+	convertBlockOps,
+	supportsInlineMarks,
+	usesInlineTextSelection,
+} from "@input/pen-core";
 import type {
 	ApplyOptions,
 	DocumentOp,
 	Editor,
 	InlineSchema,
+	ToolAuthorityContext,
 	ToolDefinition,
 } from "@input/pen-types";
 import { checkToolCanUseBlockType } from "../utils/blockTypePolicy";
@@ -251,7 +256,7 @@ export function executeEditDocument(
  *
  * @param editor - Editor the tool reads and writes.
  * @param options - Same as {@link executeEditDocument}. `origin` defaults to `"ai"`; `apply` defaults to `editor.apply`.
- * @returns A mutating, destructive {@link ToolDefinition} whose handler calls {@link executeEditDocument}.
+ * @returns A mutating {@link ToolDefinition} whose handler calls {@link executeEditDocument}. Its `destructive` is a per-call resolver (AIB3): staged calls never are, direct calls are when they remove or replace existing content.
  * @throws Never from the factory. The handler rejects or throws if {@link ExecuteEditDocumentOptions.apply} throws. Semantic refusals do not throw (EC5).
  */
 export function editDocumentTool(
@@ -263,7 +268,8 @@ export function editDocumentTool(
 		description:
 			"Edit the document. Every operation names the block ids it targets — get them from read_document with annotateBlocks. Operations: replace_block_text (new plain text for one block, keeping its type and identity), replace_blocks (one or more blocks become the given markdown — use this to change a block's type when identity need not be kept, e.g. paragraph to bullet list), insert_blocks (markdown placed before or after a block), delete_blocks, move_block, format_text (apply or clear marks over an exact text match inside a named block), set_block_props (change blockType and/or props in place, keeping the id). Send every part of a multi-part request as separate operations in one call. If an operation is rejected the result says why and lists the document's current blocks; fix the ids and call again.",
 		mutating: true,
-		destructive: true,
+		destructive: (input, context) =>
+			classifyEditDocumentCall(editor, input, context),
 		inputSchema: {
 			type: "object",
 			required: ["operations"],
@@ -1141,6 +1147,141 @@ function resolveBlockList(
 		return { ok: false, reason: `unknown-block: ${reasons.join("; ")}` };
 	}
 	return { ok: true, blockIds };
+}
+
+/**
+ * AIB3 / D6: whether one `edit_document` call is destructive, read against the
+ * live document at authorization time. A staged call never is — review is
+ * the confirmation and nothing lands until accept. A direct call is only when
+ * one of its operations removes or replaces content that exists; inserts,
+ * moves, formatting, and deleting an empty block are not (D37). A payload
+ * that compiles to nothing lands nothing (EC6), so it is not either.
+ */
+function classifyEditDocumentCall(
+	editor: Editor,
+	input: unknown,
+	context: ToolAuthorityContext,
+): boolean {
+	if (context.staged) {
+		return false;
+	}
+	return readRequests(input).some(
+		(request) =>
+			request != null &&
+			typeof request === "object" &&
+			isDestructiveEditOperation(editor, request),
+	);
+}
+
+function isDestructiveEditOperation(
+	editor: Editor,
+	request: EditDocumentOperationInput,
+): boolean {
+	const operation = request.operation;
+	// An unknown operation is refused by the compiler, so it removes nothing.
+	return (
+		isEditOperation(operation) &&
+		EDIT_OPERATION_REMOVES_CONTENT[operation](editor, request)
+	);
+}
+
+type RemovesContent = (
+	editor: Editor,
+	request: EditDocumentOperationInput,
+) => boolean;
+
+const NEVER_REMOVES_CONTENT: RemovesContent = () => false;
+
+/**
+ * Per operation, whether a direct apply removes or replaces existing content
+ * (AIB3). Keyed by the closed operation set, so a new operation does not
+ * compile until it is classified.
+ */
+const EDIT_OPERATION_REMOVES_CONTENT: Record<
+	EditDocumentOperation,
+	RemovesContent
+> = {
+	delete_blocks: removesNamedBlockContent,
+	replace_blocks: removesNamedBlockContent,
+	replace_block_text: (editor, request) =>
+		typeof request.blockId === "string" &&
+		(editor.getBlock(request.blockId)?.length() ?? 0) > 0,
+	set_block_props: changesContentKindOfNonEmptyBlock,
+	insert_blocks: NEVER_REMOVES_CONTENT,
+	move_block: NEVER_REMOVES_CONTENT,
+	format_text: NEVER_REMOVES_CONTENT,
+};
+
+function removesNamedBlockContent(
+	editor: Editor,
+	request: EditDocumentOperationInput,
+): boolean {
+	return readTargetBlockIds(request).some((blockId) =>
+		holdsContent(editor, blockId),
+	);
+}
+
+/** Same id reading as {@link resolveBlockList}, without its refusals. */
+function readTargetBlockIds(request: EditDocumentOperationInput): string[] {
+	const raw = Array.isArray(request.blockIds)
+		? request.blockIds
+		: typeof request.blockId === "string"
+			? [request.blockId]
+			: [];
+	return raw.filter((id): id is string => typeof id === "string");
+}
+
+/**
+ * Whether removing the block loses anything. An empty block is a
+ * text-capable block with no text and no child blocks; every other block
+ * that exists holds content.
+ */
+function holdsContent(editor: Editor, blockId: string): boolean {
+	const block = editor.getBlock(blockId);
+	if (!block) {
+		return false;
+	}
+	const isEmptyTextBlock =
+		usesInlineTextSelection(editor.schema.resolve(block.type)) &&
+		block.length() === 0 &&
+		block.children.length === 0;
+	return !isEmptyTextBlock;
+}
+
+/**
+ * A type change the user sees as content disappearing — paragraph to
+ * divider, say — whether or not conversion keeps the stored text (D37).
+ */
+function changesContentKindOfNonEmptyBlock(
+	editor: Editor,
+	request: EditDocumentOperationInput,
+): boolean {
+	if (
+		typeof request.blockId !== "string" ||
+		typeof request.blockType !== "string"
+	) {
+		return false;
+	}
+	const block = editor.getBlock(request.blockId);
+	if (
+		!block ||
+		block.type === request.blockType ||
+		!holdsContent(editor, block.id)
+	) {
+		return false;
+	}
+	return (
+		contentKind(editor, request.blockType) !==
+		contentKind(editor, block.type)
+	);
+}
+
+function contentKind(editor: Editor, blockType: string): string | null {
+	const content = editor.schema.resolve(blockType)?.content;
+	if (content == null) {
+		return null;
+	}
+	return Array.isArray(content) ? "nested" : content;
 }
 
 function isEditOperation(value: unknown): value is EditDocumentOperation {

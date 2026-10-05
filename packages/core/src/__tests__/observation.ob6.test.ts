@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { createHeadlessEditor, getEditorSelectionRecord } from "../index";
 import { defaultSchema } from "./fixtures/testSchema";
+import { TestRawDocLike, ownKeys } from "./observation.testHelpers";
 
 const COMMIT_EVENT_KEYS = [
 	"commitId",
@@ -33,23 +34,6 @@ const COMMIT_SOURCES: readonly CommitEventSource[] = [
 	"redo",
 	"stream",
 ];
-
-type TestYTextLike = {
-	insert(offset: number, text: string): void;
-};
-
-type TestRawDocLike = {
-	transact(fn: () => void, origin?: unknown): void;
-	getMap(name: "blocks"): {
-		get(
-			blockId: string,
-		): { get(key: "content"): TestYTextLike } | undefined;
-	};
-};
-
-function ownKeys(value: object): string[] {
-	return Object.keys(value).sort();
-}
 
 function snapshotRecord(record: SelectionRecord): SelectionRecord {
 	return {

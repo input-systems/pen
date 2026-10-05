@@ -1,4 +1,5 @@
 import type { Editor, Unsubscribe } from "@input/pen-types";
+import { isDomHTMLElement } from "../utils/domNodes";
 import type {
 	FieldEditorFocusReason,
 	FieldEditorFocusRequest,
@@ -10,7 +11,6 @@ import type {
 	PenFocusPolicy,
 	PenFocusReason,
 } from "./controller";
-import { queryBlockElement } from "./selectionBridge";
 
 type FocusControllerOptions = {
 	editor: Editor;
@@ -47,16 +47,11 @@ export class FocusController {
 		options?: FocusOptions,
 		policyOptions: PenFieldEditorFocusOptions = {},
 	): boolean {
-		const request = this._createFocusRequest(target, reason, policyOptions);
-		const decision = this._decideFocus(request);
-		if (decision.type === "deny") {
-			this._emitFocusDenied(request);
-			return false;
-		}
-		if (decision.type === "allow" && !request.passive) {
+		const decision = this._decide(target, reason, policyOptions);
+		if (decision === "allow") {
 			target.focus(options);
 		}
-		return true;
+		return decision !== "deny";
 	}
 
 	requestActivation(
@@ -64,13 +59,7 @@ export class FocusController {
 		reason: FieldEditorFocusReason,
 		options: PenFieldEditorFocusOptions = {},
 	): boolean {
-		const request = this._createFocusRequest(target, reason, options);
-		const decision = this._decideFocus(request);
-		if (decision.type === "deny") {
-			this._emitFocusDenied(request);
-			return false;
-		}
-		return true;
+		return this._decide(target, reason, options) !== "deny";
 	}
 
 	requestRootFocus(
@@ -85,37 +74,9 @@ export class FocusController {
 		const root = this._getRootElement();
 		if (!root) return;
 		const activeEl = root.ownerDocument?.activeElement;
-		if (activeEl instanceof HTMLElement && root.contains(activeEl)) {
+		if (isDomHTMLElement(activeEl) && root.contains(activeEl)) {
 			activeEl.blur();
 		}
-	}
-
-	restoreFocusAfterDeactivate(blockId: string | null): void {
-		const root = this._getRootElement();
-		if (!root) return;
-
-		if (blockId) {
-			const blockEl = queryBlockElement(root, blockId);
-			if (blockEl) {
-				this.requestDomFocus(blockEl, "restore", {
-					preventScroll: true,
-				});
-				return;
-			}
-		}
-
-		this.requestDomFocus(root, "restore", { preventScroll: true });
-	}
-
-	attachedElementOwnsFocus(): boolean {
-		const attachedElement = this._getAttachedElement();
-		if (!attachedElement) {
-			return false;
-		}
-		const activeElement = attachedElement.ownerDocument?.activeElement;
-		return activeElement instanceof Node
-			? attachedElement.contains(activeElement)
-			: false;
 	}
 
 	notifyRootAttached(root: HTMLElement): void {
@@ -129,11 +90,16 @@ export class FocusController {
 	waitForAttachment(
 		blockId: string | null = this._getFocusBlockId(),
 	): Promise<boolean> {
+		return Promise.resolve(this.isAttached(blockId));
+	}
+
+	/** Whether the field for `blockId` (or the focused one) is attached now. */
+	isAttached(blockId: string | null = this._getFocusBlockId()): boolean {
 		const attachedElement = this._getAttachedElement();
-		const attached =
+		return (
 			attachedElement?.isConnected === true &&
-			(blockId == null || this._getFocusBlockId() === blockId);
-		return Promise.resolve(attached);
+			(blockId == null || this._getFocusBlockId() === blockId)
+		);
 	}
 
 	onFocusLifecycle(listener: PenFocusLifecycleListener): Unsubscribe {
@@ -166,6 +132,20 @@ export class FocusController {
 			blockId: this._getFocusBlockId(),
 			passive: options.passive ?? options.domFocus === false,
 		};
+	}
+
+	/** Decides a focus request; a denied one is reported. `allow` means move focus now. */
+	private _decide(
+		target: HTMLElement,
+		reason: FieldEditorFocusReason,
+		options: PenFieldEditorFocusOptions,
+	): PenFocusDecision["type"] {
+		const request = this._createFocusRequest(target, reason, options);
+		const decision = this._decideFocus(request);
+		if (decision.type === "deny") {
+			this._emitFocusDenied(request);
+		}
+		return decision.type;
 	}
 
 	private _decideFocus(request: FieldEditorFocusRequest): PenFocusDecision {

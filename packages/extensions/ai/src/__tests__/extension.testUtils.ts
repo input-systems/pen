@@ -1,6 +1,10 @@
-import { getDocumentToolRuntime } from "@input/pen-tools";
+import { getDocumentToolRuntime, toolsExtension } from "@input/pen-tools";
 import type { ToolRuntime } from "@input/pen-types";
-import { defineExtension } from "@input/pen-core";
+import { createEditor, defineExtension } from "@input/pen-core";
+import { defaultSchema } from "@input/pen-schema";
+import { undoExtension } from "@input/pen-undo";
+import { aiExtension } from "../index";
+import { deltaStreamExtension } from "../stream";
 import {
 	createModelDouble,
 	type ModelDouble,
@@ -13,6 +17,29 @@ export function scriptedModel(
 	return createModelDouble({
 		responses: [
 			typeof response === "string" ? { text: response } : response,
+		],
+	});
+}
+
+/**
+ * An editor with undo, delta streaming, tools and an AI model whose every
+ * turn streams `delta` once and finishes.
+ */
+export function createSingleDeltaEditor(delta: string) {
+	return createEditor({
+		schema: defaultSchema,
+		extensions: [
+			undoExtension(),
+			deltaStreamExtension(),
+			toolsExtension(),
+			aiExtension({
+				model: {
+					async *stream() {
+						yield { type: "text-delta" as const, delta };
+						yield { type: "done" as const };
+					},
+				},
+			}),
 		],
 	});
 }

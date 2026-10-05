@@ -1,3 +1,4 @@
+import { inlineLogicalText } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
 import type { AIStreamingReviewPreview } from "../../types";
 import {
@@ -75,7 +76,9 @@ function buildTextRangeStreamingPreviewPlan(
 
 	const from = Math.min(preview.target.from, preview.target.to);
 	const to = Math.max(preview.target.from, preview.target.to);
-	const originalText = block.textContent().slice(from, to);
+	// Logical text, so an inline atom holds the offset it holds in the
+	// target (N6).
+	const originalText = inlineLogicalText(block).slice(from, to);
 	return buildStreamingTextPreviewPlan({
 		blockId: preview.target.blockId,
 		from,
@@ -83,6 +86,7 @@ function buildTextRangeStreamingPreviewPlan(
 		previousTextLength: preview.previousTextLength,
 		replacementText: preview.text,
 		to,
+		isComplete: preview.complete === true,
 	});
 }
 
@@ -111,21 +115,26 @@ function buildBlockRangeStreamingPreviewPlan(
 		return null;
 	}
 
+	const isComplete = preview.complete === true;
 	const alignedPlan = buildAlignedBlockRangeStreamingPreviewPlan(
 		editor,
 		normalizedRange,
 		preview.text,
+		isComplete,
 	);
 	if (alignedPlan) {
 		return alignedPlan;
 	}
 
-	const partialPlan = buildPartialBlockRangeStreamingPreviewPlan({
-		normalizedRange,
-		originalText,
-		previousTextLength: preview.previousTextLength,
-		replacementText: preview.text,
-	});
+	// Finished text is never mid-stream: diff it whole.
+	const partialPlan = isComplete
+		? null
+		: buildPartialBlockRangeStreamingPreviewPlan({
+				normalizedRange,
+				originalText,
+				previousTextLength: preview.previousTextLength,
+				replacementText: preview.text,
+			});
 	if (partialPlan) {
 		return partialPlan;
 	}
@@ -222,6 +231,7 @@ function buildAlignedBlockRangeStreamingPreviewPlan(
 	editor: Editor,
 	normalizedRange: BlockRangeStreamingPreviewPlan["normalizedRange"],
 	replacementText: string,
+	isComplete: boolean,
 ): AlignedBlockRangeStreamingPreviewPlan | null {
 	const normalizedReplacementRange = toNormalizedReplacementRange(
 		editor,
@@ -250,6 +260,7 @@ function buildAlignedBlockRangeStreamingPreviewPlan(
 			previousTextLength: Number.POSITIVE_INFINITY,
 			replacementText: paragraph,
 			to: fragment.offset + fragment.text.length,
+			isComplete,
 		});
 		if (plan.deleteTo > plan.deleteFrom || plan.text.length > 0) {
 			plans.push(plan);
@@ -266,6 +277,7 @@ function buildStreamingTextPreviewPlan({
 	previousTextLength,
 	replacementText,
 	to,
+	isComplete,
 }: {
 	blockId: string;
 	from: number;
@@ -273,14 +285,18 @@ function buildStreamingTextPreviewPlan({
 	previousTextLength: number;
 	replacementText: string;
 	to: number;
+	/** The replacement has finished arriving, so a short one is short, not slow. */
+	isComplete: boolean;
 }): TextRangeStreamingPreviewPlan {
-	const partialPlan = buildPartialStreamingTextPreviewPlan({
-		blockId,
-		from,
-		originalText,
-		previousTextLength,
-		replacementText,
-	});
+	const partialPlan = isComplete
+		? null
+		: buildPartialStreamingTextPreviewPlan({
+				blockId,
+				from,
+				originalText,
+				previousTextLength,
+				replacementText,
+			});
 	if (partialPlan) {
 		return partialPlan;
 	}

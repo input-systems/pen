@@ -98,7 +98,7 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 	{
 		code: "cell-capability-unsupported",
 		levels: ["info"],
-		sources: ["rendering/dom/src/field-editor/contenteditableDirectHandlers.ts"],
+		sources: ["rendering/dom/src/field-editor/cellMarkDecline.ts"],
 	},
 	{
 		code: "clipboard-invalid-payload",
@@ -119,6 +119,16 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		code: "command-intent-overwrite",
 		levels: ["warn"],
 		sources: ["core/src/commands/registry.ts"],
+	},
+	{
+		code: "dangling-block-reference",
+		levels: ["warn"],
+		sources: ["core/src/schema/normalize.ts"],
+	},
+	{
+		code: "decoration-out-of-scope",
+		levels: ["warn"],
+		sources: ["core/src/editor/decorationCollector.ts"],
 	},
 	{
 		code: "dom-divergence",
@@ -153,12 +163,12 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 	{
 		code: "import-dropped",
 		levels: ["warn"],
-		sources: ["extensions/interop/src/html/import/ingestBounds.ts", "extensions/interop/src/json/import/ingestBounds.ts", "extensions/interop/src/markdown/import/ingestBounds.ts", "rendering/dom/src/utils/clipboardIngest.ts"],
+		sources: ["extensions/interop/src/ingestReport.ts", "rendering/dom/src/utils/clipboardIngest.ts"],
 	},
 	{
 		code: "import-truncated",
 		levels: ["warn"],
-		sources: ["extensions/interop/src/html/import/ingestBounds.ts", "extensions/interop/src/json/import/ingestBounds.ts", "extensions/interop/src/markdown/import/ingestBounds.ts", "extensions/interop/src/xml/importer.ts", "rendering/dom/src/utils/clipboardIngest.ts"],
+		sources: ["extensions/interop/src/ingestReport.ts", "extensions/interop/src/xml/importer.ts", "rendering/dom/src/utils/clipboardIngest.ts"],
 	},
 	{
 		code: "ingest-unexposed-block",
@@ -181,6 +191,11 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		sources: ["core/src/i18n/resolveEditorMessage.ts"],
 	},
 	{
+		code: "nesting-route-conflict",
+		levels: ["warn"],
+		sources: ["core/src/schema/normalize.ts"],
+	},
+	{
 		code: "normalize-cap",
 		levels: ["error"],
 		sources: ["core/src/schema/normalize.ts"],
@@ -189,6 +204,16 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		code: "op-clamped",
 		levels: ["warn"],
 		sources: ["core/src/editor/applyInlineAndMetaOps.ts"],
+	},
+	{
+		code: "orphan-block-rehomed",
+		levels: ["warn"],
+		sources: ["core/src/schema/normalize.ts"],
+	},
+	{
+		code: "overlay-contributor-failed",
+		levels: ["warn"],
+		sources: ["rendering/dom/src/overlay/overlayController.ts"],
 	},
 	{
 		code: "parent-cycle",
@@ -268,7 +293,7 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 	{
 		code: "PEN_EXT_003",
 		levels: ["error"],
-		sources: ["core/src/editor/extensionManager.ts"],
+		sources: ["core/src/editor/decorationCollector.ts"],
 	},
 	{
 		code: "PEN_EXT_004",
@@ -341,6 +366,16 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 		sources: ["core/src/editor/selection.ts"],
 	},
 	{
+		code: "selection-invalid-cell-text",
+		levels: ["warn"],
+		sources: ["core/src/editor/selection.ts"],
+	},
+	{
+		code: "selection-projection-mismatch",
+		levels: ["warn"],
+		sources: ["rendering/dom/src/field-editor/selectionProjector.ts"],
+	},
+	{
 		code: "selection-reserved-origin",
 		levels: ["warn"],
 		sources: ["core/src/editor/selection.ts"],
@@ -348,7 +383,7 @@ export const DIAGNOSTIC_CODE_ROWS: readonly DiagnosticCodeRow[] = [
 	{
 		code: "selection-target-unmounted",
 		levels: ["warn"],
-		sources: ["rendering/dom/src/field-editor/selectionProjectionController.ts"],
+		sources: ["rendering/dom/src/field-editor/selectionProjector.ts"],
 	},
 	{
 		code: "stream-aborted",

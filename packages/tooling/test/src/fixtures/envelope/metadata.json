@@ -85,12 +85,12 @@
 			"id": "concurrentPeers",
 			"label": "Concurrent peers",
 			"verified": {
-				"display": "2",
-				"suite": "`@input/pen-test` `createTestCollaboration` + `assertPeerEditsSurvive`"
+				"display": "5",
+				"suite": "`@input/pen-test` `createPeerHarness` + `assertPeerEditsSurvive`"
 			},
 			"measured": null,
 			"untestedAbove": {
-				"display": "2"
+				"display": "5"
 			}
 		}
 	],

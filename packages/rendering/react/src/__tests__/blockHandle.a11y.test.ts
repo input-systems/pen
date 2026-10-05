@@ -88,6 +88,48 @@ async function renderHandle(options: {
 	};
 }
 
+function MoveHandle({ blockId }: { blockId: string }) {
+	return createElement(Pen.Editor.BlockHandle, { blockId });
+}
+
+async function renderDocumentWithHandles(
+	editor: ReturnType<typeof createEditor>,
+): Promise<{ container: HTMLDivElement; unmount: () => Promise<void> }> {
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+
+	await act(async () => {
+		root.render(
+			createElement(
+				Pen.Editor.Root,
+				{ editor, blockControls: MoveHandle },
+				createElement(Pen.Editor.Content),
+			),
+		);
+	});
+
+	return {
+		container,
+		unmount: async () => {
+			await act(async () => {
+				root.unmount();
+			});
+			container.remove();
+		},
+	};
+}
+
+function queryHandle(container: HTMLElement, blockId: string): HTMLElement {
+	const handle = container.querySelector<HTMLElement>(
+		`[data-pen-block-handle][data-block-id="${blockId}"]`,
+	);
+	if (!handle) {
+		throw new Error(`Missing block handle for ${blockId}`);
+	}
+	return handle;
+}
+
 function getHandle(container: HTMLElement): HTMLElement {
 	const handle = container.querySelector(
 		"[data-pen-block-handle]",
@@ -126,7 +168,10 @@ describe("@input/pen-react block handle AX3", () => {
 		editor.destroy();
 	});
 
-	it("AX3: Enter opens the drag-handle menu with role=menu", async () => {
+	it.each([
+		["Enter", "Enter"],
+		["Space", " "],
+	])("AX3: %s opens the drag-handle menu with role=menu", async (_name, key) => {
 		const editor = createHandleEditor();
 		const blockId = editor.firstBlock()!.id;
 		const view = await renderHandle({ editor, blockId });
@@ -134,47 +179,20 @@ describe("@input/pen-react block handle AX3", () => {
 		const handle = getHandle(view.container);
 		await act(async () => {
 			handle.focus();
-			dispatchKey(handle, "Enter");
+			dispatchKey(handle, key);
 		});
 
 		const menu = view.container.querySelector(
 			"[data-pen-block-handle-menu]",
 		);
-		expect(menu).not.toBeNull();
 		expect(menu?.getAttribute("role")).toBe("menu");
 		expect(handle.getAttribute("aria-expanded")).toBe("true");
 		expect(handle.getAttribute("aria-controls")).toBe(menu?.id);
-		expect(
-			menu
-				?.querySelector(`[data-pen-command="${PEN_MOVE_BLOCK_UP}"]`)
-				?.getAttribute("role"),
-		).toBe("menuitem");
-		expect(
-			menu
-				?.querySelector(`[data-pen-command="${PEN_MOVE_BLOCK_DOWN}"]`)
-				?.getAttribute("role"),
-		).toBe("menuitem");
-
-		await view.unmount();
-		editor.destroy();
-	});
-
-	it("AX3: Space opens the drag-handle menu", async () => {
-		const editor = createHandleEditor();
-		const blockId = editor.firstBlock()!.id;
-		const view = await renderHandle({ editor, blockId });
-
-		const handle = getHandle(view.container);
-		await act(async () => {
-			handle.focus();
-			dispatchKey(handle, " ");
-		});
-
-		expect(
-			view.container
-				.querySelector("[data-pen-block-handle-menu]")
-				?.getAttribute("role"),
-		).toBe("menu");
+		for (const command of [PEN_MOVE_BLOCK_UP, PEN_MOVE_BLOCK_DOWN]) {
+			expect(
+				menu?.querySelector(`[data-pen-command="${command}"]`)?.getAttribute("role"),
+			).toBe("menuitem");
+		}
 
 		await view.unmount();
 		editor.destroy();
@@ -278,6 +296,69 @@ describe("@input/pen-react block handle AX3", () => {
 			secondId,
 			firstId,
 		]);
+
+		await view.unmount();
+		editor.destroy();
+	});
+
+	it("AX3: moving a block from the handle menu returns focus to that block's handle without a microtask", async () => {
+		const editor = createHandleEditor();
+		const [firstId, secondId] = seedBlocks(editor, 2);
+		const view = await renderDocumentWithHandles(editor);
+
+		const handle = queryHandle(view.container, secondId!);
+		await act(async () => {
+			handle.focus();
+			dispatchKey(handle, "Enter");
+		});
+		const moveUp = view.container.querySelector<HTMLElement>(
+			`[data-pen-command="${PEN_MOVE_BLOCK_UP}"]`,
+		);
+		expect(document.activeElement).toBe(moveUp);
+
+		// Synchronous act: effects flush, microtasks do not.
+		act(() => {
+			moveUp!.click();
+		});
+
+		expect([...editor.documentState.blockOrder]).toEqual([
+			secondId,
+			firstId,
+		]);
+		expect(
+			view.container.querySelector("[data-pen-block-handle-menu]"),
+		).toBeNull();
+		expect(document.activeElement).toBe(
+			queryHandle(view.container, secondId!),
+		);
+
+		await view.unmount();
+		editor.destroy();
+	});
+
+	it("AX3: Escape in the handle menu returns focus to the handle", async () => {
+		const editor = createHandleEditor();
+		const [, secondId] = seedBlocks(editor, 2);
+		const view = await renderDocumentWithHandles(editor);
+
+		const handle = queryHandle(view.container, secondId!);
+		await act(async () => {
+			handle.focus();
+			dispatchKey(handle, "Enter");
+		});
+		const moveUp = view.container.querySelector<HTMLElement>(
+			`[data-pen-command="${PEN_MOVE_BLOCK_UP}"]`,
+		);
+		expect(document.activeElement).toBe(moveUp);
+
+		act(() => {
+			dispatchKey(moveUp!, "Escape");
+		});
+
+		expect(
+			view.container.querySelector("[data-pen-block-handle-menu]"),
+		).toBeNull();
+		expect(document.activeElement).toBe(handle);
 
 		await view.unmount();
 		editor.destroy();

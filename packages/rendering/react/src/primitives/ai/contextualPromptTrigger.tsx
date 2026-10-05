@@ -1,7 +1,9 @@
 import React from "react";
-import { foldAndNormalize, isCollapsed } from "@input/pen-core";
+import { isCollapsed } from "@input/pen-core";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
+import { matchesShortcut } from "./selectionTrigger";
 import { useAIContext } from "./root";
+import { resolveEditorOwnerDocument } from "../../utils/aiDomScope";
 
 export interface AIContextualPromptTriggerProps extends AsChildProps {
 	shortcut?: string;
@@ -47,10 +49,11 @@ export function AIContextualPromptTrigger(
 			event.preventDefault();
 			openContextualPrompt();
 		};
-		document.addEventListener("keydown", handleKeyDown, true);
+		const doc = resolveEditorOwnerDocument(editor);
+		doc.addEventListener("keydown", handleKeyDown, true);
 		return () =>
-			document.removeEventListener("keydown", handleKeyDown, true);
-	}, [openContextualPrompt, shortcut]);
+			doc.removeEventListener("keydown", handleKeyDown, true);
+	}, [editor, openContextualPrompt, shortcut]);
 
 	const triggerProps: AsChildProps & {
 		ref?: React.Ref<HTMLElement>;
@@ -65,27 +68,4 @@ export function AIContextualPromptTrigger(
 		"data-pen-ai-contextual-prompt-trigger": "",
 		disabled: !isSelectionEligible,
 	});
-}
-
-function matchesShortcut(event: KeyboardEvent, shortcut: string): boolean {
-	const parts = foldAndNormalize(shortcut, "en")
-		.split("+")
-		.map((part) => part.trim())
-		.filter(Boolean);
-	const key = parts[parts.length - 1];
-	const expectsMeta = parts.includes("mod")
-		? navigator.platform.toLowerCase().includes("mac")
-		: parts.includes("meta") || parts.includes("cmd");
-	const expectsCtrl = parts.includes("mod")
-		? !navigator.platform.toLowerCase().includes("mac")
-		: parts.includes("ctrl");
-	const expectsShift = parts.includes("shift");
-	const expectsAlt = parts.includes("alt") || parts.includes("option");
-	return (
-		event.key.toLowerCase() === key &&
-		event.metaKey === expectsMeta &&
-		event.ctrlKey === expectsCtrl &&
-		event.shiftKey === expectsShift &&
-		event.altKey === expectsAlt
-	);
 }

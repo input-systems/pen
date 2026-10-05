@@ -3,25 +3,9 @@ import { createEditor } from "@input/pen-core";
 import { undoExtension } from "@input/pen-undo";
 import { deltaStreamExtension } from "../stream";
 import { toolsExtension } from "@input/pen-tools";
-import {
-	acceptAllSuggestions,
-	acceptSuggestion,
-	aiExtension,
-	getAIInlineHistoryController,
-	getAIController,
-	rejectSuggestion,
-} from "../index";
-import {
-	readAllSuggestions,
-	readBlockSuggestionMeta,
-	readSuggestionsFromBlock,
-} from "../suggestions/persistent";
+import { aiExtension, getAIController } from "../index";
 import { defaultSchema } from "@input/pen-schema";
-import {
-	createDeferred,
-	testStreamingToolExtension,
-	waitForPreview,
-} from "./extension.testUtils";
+import { createDeferred, createSingleDeltaEditor } from "./extension.testUtils";
 
 describe("aiExtension: tool loop and markdown preview", () => {
 	it("keeps selection rewrites text-only when markdown block generation is enabled", async () => {
@@ -72,25 +56,7 @@ describe("aiExtension: tool loop and markdown preview", () => {
 	});
 
 	it("EC12: rewrite prompts take the tool loop and do not apply assistant text", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: " Updated",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor(" Updated");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hello" }],

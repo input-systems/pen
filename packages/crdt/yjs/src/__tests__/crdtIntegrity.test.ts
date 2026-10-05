@@ -123,7 +123,7 @@ describe("CRDT integrity", () => {
 				malformed.set("props", new Y.Map<unknown>());
 				malformed.set("meta", new Y.Map<unknown>());
 				malformed.set("content", new Y.Text());
-				malformed.set("children", new Y.Array<string>());
+				malformed.set("tableContent", new Y.Array<Y.Map<unknown>>());
 				blocks.set("multi-content", malformed);
 				blockOrder.push(["multi-content"]);
 			});
@@ -251,8 +251,11 @@ describe("CRDT integrity", () => {
 				b1.set("meta", new Y.Map<unknown>());
 				b1.set("content", new Y.Text());
 				blocks.set("b1", b1);
+				blocks.set("ghost", new Y.Map<unknown>());
 				blockOrder.push(["b1", "ghost"]);
 			});
+			// Only a deleted block map makes its entry dangling (COL4).
+			blocks.delete("ghost");
 
 			const result = validateDocument(ydoc);
 			const danglingWarns = result.errors.filter(
@@ -275,8 +278,11 @@ describe("CRDT integrity", () => {
 				b1.set("meta", new Y.Map<unknown>());
 				b1.set("content", new Y.Text());
 				blocks.set("b1", b1);
+				blocks.set("ghost", new Y.Map<unknown>());
 				blockOrder.push(["b1", "ghost"]);
 			});
+			// Only a deleted block map makes its entry dangling (COL4).
+			blocks.delete("ghost");
 
 			const result = validateDocument(ydoc, { repair: true });
 			expect(result.repaired).toBe(true);

@@ -135,12 +135,15 @@ export function applyBackspaceBehavior(
 
 	const targetOffset = previousBlock.length();
 	if (action.action === "delete" || getLogicalInlineLength(ytext) === 0) {
-		editor.apply([
-			{
-				type: "delete-block",
-				blockId,
-			} as DocumentOp,
-		]);
+		editor.apply(
+			[
+				{
+					type: "delete-block",
+					blockId,
+				} as DocumentOp,
+			],
+			{ origin: "user" },
+		);
 	} else {
 		applyMergeBlocks(editor, {
 			targetBlockId: previousBlock.id,
@@ -193,7 +196,9 @@ export function applyDeleteBehavior(
 	if (!range) return null;
 
 	if (!isCollapsedRange(range)) {
-		editor.selectText(blockId, range.start, range.end);
+		editor.selectText(blockId, range.start, range.end, {
+			origin: "keyboard",
+		});
 		editor.deleteSelection({ origin: "user" });
 		return (
 			getCollapsedTextSelectionTarget(editor) ?? {

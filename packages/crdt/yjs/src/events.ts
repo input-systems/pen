@@ -10,6 +10,7 @@ import * as Y from "yjs";
 import { BLOCKS, BLOCK_ORDER } from "./document";
 import type { YjsCRDTDocument } from "./document";
 import type { CRDTDiagnostic } from "./loadDocument";
+import { YJS_SINGLETON_MISMATCH, YJS_SINGLETON_MISMATCH_CODE } from "./yjsSingleton";
 
 // Yjs internal types inferred from Yjs APIs to avoid leaking `any`.
 type AnyAbstractType = Parameters<Y.Transaction["changed"]["get"]>[0];
@@ -77,13 +78,6 @@ function isStructuredOpOrigin(origin: unknown): origin is StructuredOpOrigin {
 		origin !== null &&
 		typeof (origin as { type?: unknown }).type === "string"
 	);
-}
-
-function rawOriginSource(origin: unknown): string {
-	if (typeof origin === "string") return origin;
-	if (origin == null) return "absent";
-	if (isStructuredOpOrigin(origin)) return origin.type;
-	return "unrecognized";
 }
 
 function unknownOriginDiagnostic(source: string): CRDTDiagnostic {
@@ -215,6 +209,21 @@ function resolveBlockId(
 	return null;
 }
 
+/**
+ * Ids a transaction inserted into or removed from `blockOrder`, read from the
+ * array's own event rather than the whole order (SCALE2). Deleted items still
+ * carry their content in `afterTransaction`: Yjs garbage-collects after it.
+ */
+function blockOrderChangedIds(txn: Y.Transaction, blockOrder: Y.Array<unknown>): string[] {
+	const event = (txn.changedParentTypes.get(blockOrder) ?? []).find(
+		(candidate) => candidate.target === blockOrder,
+	);
+	if (!event) return [];
+	const inserted = event.delta.flatMap((op) => (Array.isArray(op.insert) ? op.insert : []));
+	const removed = [...event.changes.deleted].flatMap((item) => item.content.getContent());
+	return [...inserted, ...removed].filter((value): value is string => typeof value === "string");
+}
+
 function extractAffectedBlocks(txn: Y.Transaction): string[] {
 	const blockIds = new Set<string>();
 	const blocksMap = txn.doc.getMap(BLOCKS) as Y.Map<Y.Map<unknown>>;
@@ -228,8 +237,7 @@ function extractAffectedBlocks(txn: Y.Transaction): string[] {
 			continue;
 		}
 		if ((ytype as unknown) === (blockOrderArray as unknown)) {
-			const arr = blockOrderArray.toArray() as string[];
-			for (const id of arr) blockIds.add(id);
+			for (const id of blockOrderChangedIds(txn, blockOrderArray)) blockIds.add(id);
 			continue;
 		}
 		const blockId = resolveBlockId(ytype, blocksMap);
@@ -239,11 +247,29 @@ function extractAffectedBlocks(txn: Y.Transaction): string[] {
 	return Array.from(blockIds);
 }
 
+const foreignCopyReported = new WeakSet<Y.Doc>();
+
 export function createObserver(
 	doc: YjsCRDTDocument,
 	callback: (event: CRDTEvent) => void,
 	onDiagnostic?: (diagnostic: CRDTDiagnostic) => void,
 ): Unsubscribe {
+	// API2: a transaction that is not this module's Y.Transaction was opened
+	// by a second yjs copy — a provider applying updates with its own
+	// applyUpdate, usually its initial sync. Report it once per document
+	// rather than throwing from an observer.
+	const beforeHandler = (txn: unknown) => {
+		if (txn instanceof Y.Transaction || foreignCopyReported.has(doc.ydoc)) {
+			return;
+		}
+		foreignCopyReported.add(doc.ydoc);
+		onDiagnostic?.({
+			code: YJS_SINGLETON_MISMATCH_CODE,
+			message: YJS_SINGLETON_MISMATCH,
+			severity: "error",
+			timestamp: Date.now(),
+		});
+	};
 	const txnHandler = (txn: Y.Transaction) => {
 		if (txn.changed.size === 0) {
 			return;
@@ -263,9 +289,11 @@ export function createObserver(
 		callback(event);
 	};
 
+	doc.ydoc.on("beforeTransaction", beforeHandler);
 	doc.ydoc.on("afterTransaction", txnHandler);
 
 	return () => {
+		doc.ydoc.off("beforeTransaction", beforeHandler);
 		doc.ydoc.off("afterTransaction", txnHandler);
 	};
 }

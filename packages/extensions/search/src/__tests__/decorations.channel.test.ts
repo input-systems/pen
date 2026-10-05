@@ -120,7 +120,7 @@ function insertHelloBlocks(editor: Editor, count: number): void {
 }
 
 describe("search decorations channel", () => {
-	it("declares decorations on decorationsFacet, not Extension.decorations", () => {
+	it("SCALE2: declares a scoped source on decorationsFacet, not Extension.decorations", () => {
 		const extension = searchExtension();
 		const editor = createEditor({
 			schema: defaultSchema,
@@ -129,7 +129,9 @@ describe("search decorations channel", () => {
 
 		expect("decorations" in extension).toBe(false);
 		expect(
-			editor.facet(decorationsFacet).some((source) => typeof source === "function"),
+			editor
+				.facet(decorationsFacet)
+				.some((source) => (source as { kind?: unknown }).kind === "scoped"),
 		).toBe(true);
 		editor.destroy();
 	});

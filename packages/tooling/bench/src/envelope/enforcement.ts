@@ -1,3 +1,4 @@
+import { SCALE3_SYNCED_PEER_POINTS } from "../constants/scale3";
 import { SCALE1_MEASUREMENTS } from "../constants/scale1";
 import { RELATED_FIXTURE_AUDIT, SCALE1_FIXTURE_AUDIT } from "../fixtures/audit";
 
@@ -77,9 +78,9 @@ export const ENFORCEMENT_INVENTORY: readonly EnforcementRow[] = [
 		unit: "enforced",
 		unitFailsOn:
 			"assertPeerBObservesPeerAInsert: B missing A's token after sync",
-		isolatedClock: "untrusted-gated",
+		isolatedClock: "record-only",
 		clockNote:
-			"committed wall 1.49ms vs later isolated 0.198ms; load-taken, not reproduced",
+			"quiet record (2026-10-02) agrees with the isolated run; below the 0.5ms signal, record-only",
 	},
 	{
 		id: "streaming.gen-delta-1000-parts",
@@ -105,8 +106,20 @@ export const ENFORCEMENT_INVENTORY: readonly EnforcementRow[] = [
 		unitFailsOn: "remote-caret decorations !== 8",
 		isolatedClock: "gated",
 		clockNote:
-			"critical:true; 0.06ms median against a 2ms gate. Axis is caret decorations, not synced Y.Docs. N-peer scaling is unmeasured",
+			"critical:true; 0.06ms median against a 2ms gate. Axis is caret decorations, not synced Y.Docs; synced peers have their own axis",
 	},
+	...SCALE3_SYNCED_PEER_POINTS.map(
+		(peers): EnforcementRow => ({
+			id: `scale3.keystroke.synced-peers.${peers}`,
+			subject: `SCALE3 synced-peer-count ${peers}`,
+			unit: "enforced",
+			unitFailsOn:
+				"any count field drift by row id and field name in baselines/scale3-peers.json",
+			isolatedClock: "record-only",
+			clockNote:
+				"typist and fan-out medians recorded by bench:scale3:peers with an empty-relay floor; never gated (CH8), fan-out grows with n",
+		}),
+	),
 	{
 		id: "scale3.keystroke.realistic-stack",
 		subject: "SCALE3 realistic-stack keystroke clocks",
@@ -115,6 +128,16 @@ export const ENFORCEMENT_INVENTORY: readonly EnforcementRow[] = [
 		isolatedClock: "gated",
 		clockNote:
 			"critical:true; flat 2ms gate on 0.04–0.06ms medians, below the pre-SCALE2-fix 3.76ms so per-document commit work fails",
+	},
+	{
+		id: "scale3.realistic",
+		subject: "SCALE3 keystroke with the real AI and search providers",
+		unit: "enforced",
+		unitFailsOn:
+			"any ScanCounts drift by point id and counter; fewer than 8 staged suggestions or not exactly 1 search match",
+		isolatedClock: "record-only",
+		clockNote:
+			"clocks written to scale3-realistic.counts.json by bench:scale3:realistic and never compared",
 	},
 	{
 		id: "createLargeDocument",

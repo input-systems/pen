@@ -10,6 +10,7 @@ import { createBlockIndexSnapshotFromDocument } from "../changes/fromDocument";
 import * as summaryBuilder from "../changes/summaryBuilder";
 import { createHeadlessEditor } from "../index";
 import { defaultSchema } from "./fixtures/testSchema";
+import { TestRawDocLike, ownKeys } from "./observation.testHelpers";
 
 /**
  * ChangeSummary v3 own fields (`spec/rules/observation.md` §1).
@@ -30,23 +31,6 @@ const SECTION_1_BLOCK_TEXT_KEYS = [
 ] as const;
 
 const SECTION_1_SPLICE_KEYS = ["from", "insertLength", "to"] as const;
-
-type TestYTextLike = {
-	insert(offset: number, text: string): void;
-};
-
-type TestRawDocLike = {
-	transact(fn: () => void, origin?: unknown): void;
-	getMap(name: "blocks"): {
-		get(
-			blockId: string,
-		): { get(key: "content"): TestYTextLike } | undefined;
-	};
-};
-
-function ownKeys(value: object): string[] {
-	return Object.keys(value).sort();
-}
 
 function omitCommitId<T extends { commitId: number }>(
 	summary: T,

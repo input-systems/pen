@@ -89,7 +89,7 @@ describe("enter-split leftover via readDomSelection", () => {
 
 	it("accepts leftover on another block while a pointer window is open", () => {
 		const { editor, fieldEditor, firstBlockId } = seedSplitSession();
-		fieldEditor.notifyGestureEvent("pointerdown");
+		fieldEditor.reader.notifyGesture("pointerdown");
 
 		const decision = fieldEditor.readDomSelection({
 			type: "text",

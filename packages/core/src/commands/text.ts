@@ -15,7 +15,6 @@ import {
 } from "./textInsert";
 import type {
 	ConvertBlockParam,
-	DeleteGranularity,
 	DeleteParam,
 	InsertTextParam,
 	ToggleMarkParam,

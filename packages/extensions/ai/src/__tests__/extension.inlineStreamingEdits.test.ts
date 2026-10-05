@@ -3,21 +3,12 @@ import { createEditor } from "@input/pen-core";
 import { undoExtension } from "@input/pen-undo";
 import { deltaStreamExtension } from "../stream";
 import { toolsExtension } from "@input/pen-tools";
-import {
-	acceptAllSuggestions,
-	acceptSuggestion,
-	aiExtension,
-	getAIInlineHistoryController,
-	getAIController,
-	rejectSuggestion,
-} from "../index";
-import {
-	readAllSuggestions,
-	readBlockSuggestionMeta,
-	readSuggestionsFromBlock,
-} from "../suggestions/persistent";
+import { aiExtension, getAIController } from "../index";
 import { defaultSchema } from "@input/pen-schema";
-import { testStreamingToolExtension } from "./extension.testUtils";
+import {
+	createSingleDeltaEditor,
+	testStreamingToolExtension,
+} from "./extension.testUtils";
 
 async function awaitExtensionLifecycle(
 	editor: ReturnType<typeof createEditor>,
@@ -27,25 +18,7 @@ async function awaitExtensionLifecycle(
 
 describe("aiExtension: inline streaming edits", () => {
 	it("routes inline local-edit prompts to block streaming suggestions", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: " Better version",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor(" Better version");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[
@@ -124,25 +97,7 @@ describe("aiExtension: inline streaming edits", () => {
 	});
 
 	it("uses the selection end as the insertion offset for inline block turns", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: " Better",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor(" Better");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[

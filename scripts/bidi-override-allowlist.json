@@ -1,4 +1,0 @@
-{
-  "_comment": "RI1 (spec/rules/dom.md): known bidi-override style sites in packages/rendering/{dom,react,vue} runtime src. Each entry needs file, a positive integer line, and a non-empty reason. unicode-bidi: isolate is allowed and is not a hit. Remove an entry in the same PR that deletes the override.",
-  "entries": []
-}

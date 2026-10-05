@@ -1,5 +1,5 @@
 import { announceEditorA11y } from "@input/pen-core";
-import type { CommitEvent } from "@input/pen-types";
+import type { ChangeSummary, CommitEvent } from "@input/pen-types";
 import type { AIInlineCompletionController } from "../types";
 import type { AIControllerImpl } from "./aiController";
 import {
@@ -9,7 +9,6 @@ import {
 	rejectSuggestion,
 	rejectSuggestions,
 } from "../suggestions/acceptReject";
-import { readAllSuggestions } from "../suggestions/persistent";
 import { AI_SESSION_SUGGESTION_ORIGIN } from "../suggestions/suggestMode";
 import { areSuggestionsEqual } from "../helpers";
 
@@ -44,7 +43,9 @@ export const suggestionControllerMethods = {
 			this._documentVersion += 1;
 		}
 		const previousState = this._state;
-		const suggestionsChanged = this._syncSuggestionsFromDocument();
+		const suggestionsChanged = this._syncSuggestionsFromDocument(
+			events.map((event) => event.summary),
+		);
 		const sessionsChanged = this._syncSessionsFromDocument();
 		this.handleExternalCommit(events);
 		if (this._state === previousState) {
@@ -107,9 +108,22 @@ export const suggestionControllerMethods = {
 		this._syncSuggestionResolutionState();
 	},
 
-	_syncSuggestionsFromDocument(this: AIControllerImpl): boolean {
+	/**
+	 * With summaries, re-reads only the blocks they touched; without, re-reads
+	 * every block (activation, and resolution paths that may run before the
+	 * resolving commit is observed).
+	 */
+	_syncSuggestionsFromDocument(
+		this: AIControllerImpl,
+		summaries?: readonly ChangeSummary[],
+	): boolean {
 		const previousCount = this._suggestions.length;
-		const nextSuggestions = readAllSuggestions(this._editor);
+		if (summaries) {
+			this._suggestionList.refreshForSummaries(this._editor, summaries);
+		} else {
+			this._suggestionList.refreshAll(this._editor);
+		}
+		const nextSuggestions = this._suggestionList.list(this._editor);
 		if (areSuggestionsEqual(this._suggestions, nextSuggestions)) {
 			return false;
 		}

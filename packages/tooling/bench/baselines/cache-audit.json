@@ -1,0 +1,4701 @@
+{
+	"date": "2026-10-05",
+	"machine": "Apple M4 Pro, 14 cores, Node v25.6.1",
+	"runs": 31,
+	"loadBefore": "5.98 8.59 10.46",
+	"loadAfter": "6.03 7.97 10.04",
+	"cells": [
+		{
+			"cache": "A",
+			"size": 1000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.088374999999985,
+				"opMedian": 0.11662499999999909,
+				"componentMin": 0.002292000000011285,
+				"componentMedian": 0.003375000000005457,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.4388749999999959,
+				"opMedian": 0.8233749999999986,
+				"componentMin": 0.2080829999999878,
+				"componentMedian": 0.59375,
+				"counts": {
+					"blockOrderReads": 1050,
+					"blocksMapReads": 1111,
+					"blocksMapIterations": 1050,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 1000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.011167000000000371,
+				"opMedian": 0.01279200000004721,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.010459000000025753,
+				"opMedian": 0.013500000000021828,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 1000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0917919999999981,
+				"opMedian": 0.1150000000000091,
+				"componentMin": 0.003249999999979991,
+				"componentMedian": 0.003958000000011452,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 49,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.52637500000003,
+				"opMedian": 0.5768750000000296,
+				"componentMin": 0.25225000000000364,
+				"componentMedian": 0.28708299999999554,
+				"counts": {
+					"blockOrderReads": 1123,
+					"blocksMapReads": 1168,
+					"blocksMapIterations": 1122,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 1000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.160082999999986,
+				"opMedian": 0.19412499999998545,
+				"componentMin": 0.0028750000000172804,
+				"componentMedian": 0.003750000000025011,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 302,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5777920000000449,
+				"opMedian": 0.9955830000000105,
+				"componentMin": 0.247792000000004,
+				"componentMedian": 0.39870899999999665,
+				"counts": {
+					"blockOrderReads": 1123,
+					"blocksMapReads": 1423,
+					"blocksMapIterations": 1122,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 1000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.06091699999996081,
+				"opMedian": 0.08058299999999008,
+				"componentMin": 0.0019169999999917309,
+				"componentMedian": 0.0026249999999663487,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 33,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.515041999999994,
+				"opMedian": 0.5506249999999682,
+				"componentMin": 0.2530830000000037,
+				"componentMedian": 0.3035000000000423,
+				"counts": {
+					"blockOrderReads": 1050,
+					"blocksMapReads": 1181,
+					"blocksMapIterations": 1050,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 1000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0882090000000062,
+				"opMedian": 0.10695800000002009,
+				"componentMin": 0.0034999999999740794,
+				"componentMedian": 0.004459000000053948,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 82,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5324170000000095,
+				"opMedian": 0.5835839999999735,
+				"componentMin": 0.27720899999997073,
+				"componentMedian": 0.30741699999998673,
+				"counts": {
+					"blockOrderReads": 1123,
+					"blocksMapReads": 1200,
+					"blocksMapIterations": 1122,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 1000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.048458999999979824,
+				"opMedian": 0.06370900000001711,
+				"componentMin": 0.0002920000000017353,
+				"componentMedian": 0.00050000000004502,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5272500000000377,
+				"opMedian": 0.6014160000000288,
+				"componentMin": 0.47304200000002083,
+				"componentMedian": 0.5322920000000408,
+				"counts": {
+					"blockOrderReads": 1051,
+					"blocksMapReads": 1112,
+					"blocksMapIterations": 1050,
+					"textFullReads": 1008,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 1000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0061670000000049185,
+				"opMedian": 0.006916999999987183,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.006207999999958247,
+				"opMedian": 0.006957999999997355,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 1000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.06412500000010368,
+				"opMedian": 0.12874999999996817,
+				"componentMin": 0.0020419999999603533,
+				"componentMedian": 0.0645000000000664,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5252080000000205,
+				"opMedian": 0.6115419999999858,
+				"componentMin": 0.4607910000000288,
+				"componentMedian": 0.532209000000023,
+				"counts": {
+					"blockOrderReads": 1124,
+					"blocksMapReads": 1168,
+					"blocksMapIterations": 1122,
+					"textFullReads": 1077,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 1000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.121291000000042,
+				"opMedian": 0.17354199999999764,
+				"componentMin": 0.0017080000000078144,
+				"componentMedian": 0.0028750000000172804,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.6094580000000178,
+				"opMedian": 0.6997089999999844,
+				"componentMin": 0.4709169999999858,
+				"componentMedian": 0.5261249999999791,
+				"counts": {
+					"blockOrderReads": 1124,
+					"blocksMapReads": 1423,
+					"blocksMapIterations": 1122,
+					"textFullReads": 1077,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 1000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.042374999999992724,
+				"opMedian": 0.08229200000005221,
+				"componentMin": 0.0012920000000349319,
+				"componentMedian": 0.0016249999999899956,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5079589999999143,
+				"opMedian": 0.5532499999999345,
+				"componentMin": 0.44899999999995543,
+				"componentMedian": 0.474207999999976,
+				"counts": {
+					"blockOrderReads": 1050,
+					"blocksMapReads": 1181,
+					"blocksMapIterations": 1050,
+					"textFullReads": 1001,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 1000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.059625000000096406,
+				"opMedian": 0.1319580000000542,
+				"componentMin": 0.0019169999999348875,
+				"componentMedian": 0.003459000000020751,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5240000000000009,
+				"opMedian": 0.6038749999999027,
+				"componentMin": 0.43545799999992596,
+				"componentMedian": 0.49804100000005747,
+				"counts": {
+					"blockOrderReads": 1125,
+					"blocksMapReads": 1200,
+					"blocksMapIterations": 1122,
+					"textFullReads": 1082,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 1000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.038374999999973625,
+				"opMedian": 0.049167000000011285,
+				"componentMin": 0.006291000000032909,
+				"componentMedian": 0.007624999999961801,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.038041999999904874,
+				"opMedian": 0.04845799999998235,
+				"componentMin": 0.00620800000001509,
+				"componentMedian": 0.007834000000002561,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 1000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0060000000000854925,
+				"opMedian": 0.006791000000021086,
+				"componentMin": 0.002124999999978172,
+				"componentMedian": 0.002250000000003638,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.0060839999999871,
+				"opMedian": 0.006792000000018561,
+				"componentMin": 0.002125000000091859,
+				"componentMedian": 0.002333000000021457,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 1000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.05208300000003874,
+				"opMedian": 0.07099999999991269,
+				"componentMin": 0.009374999999977263,
+				"componentMedian": 0.012166999999976724,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 1.676917000000003,
+				"opMedian": 1.8101250000000846,
+				"componentMin": 1.6309170000000677,
+				"componentMedian": 1.7176670000000058,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 9778,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 1000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.12524999999993724,
+				"opMedian": 0.14937499999996362,
+				"componentMin": 0.07024999999998727,
+				"componentMedian": 0.08345900000006168,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 1.6097499999999627,
+				"opMedian": 1.8265839999999116,
+				"componentMin": 1.5469579999999041,
+				"componentMedian": 1.7680839999999307,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 9779,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 1000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.045291000000020176,
+				"opMedian": 0.060124999999970896,
+				"componentMin": 0.009458999999992557,
+				"componentMedian": 0.01183400000002166,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 1.5228329999999914,
+				"opMedian": 1.7786669999999276,
+				"componentMin": 1.4829999999999472,
+				"componentMedian": 1.7046249999999645,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 9475,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 1000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.06358399999999165,
+				"opMedian": 0.07645800000000236,
+				"componentMin": 0.012333000000012362,
+				"componentMedian": 0.015083000000004176,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 1.5660830000000487,
+				"opMedian": 1.6625000000000227,
+				"componentMin": 1.5115420000000768,
+				"componentMedian": 1.5875839999999926,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 9808,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 1000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.04104199999994762,
+				"opMedian": 0.04729100000008657,
+				"componentMin": 0.002916000000027452,
+				"componentMedian": 0.003458999999907064,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5058330000000524,
+				"opMedian": 0.5620000000000118,
+				"componentMin": 0.4661670000000413,
+				"componentMedian": 0.5119159999999283,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 3209,
+					"blocksMapIterations": 0,
+					"textFullReads": 1007,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 1000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0060409999999819775,
+				"opMedian": 0.006500000000073669,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.005875000000060027,
+				"opMedian": 0.006499999999959982,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 1000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.05629199999998491,
+				"opMedian": 0.06820800000002691,
+				"componentMin": 0.0029169999999112406,
+				"componentMedian": 0.00354200000003857,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5019590000000562,
+				"opMedian": 0.5887089999999944,
+				"componentMin": 0.4517489999999498,
+				"componentMedian": 0.5214989999999489,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 3409,
+					"blocksMapIterations": 0,
+					"textFullReads": 1077,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 1000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.12637499999993906,
+				"opMedian": 0.13783300000000054,
+				"componentMin": 0.0027080000000978544,
+				"componentMedian": 0.003040999999939231,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.574916999999914,
+				"opMedian": 0.636957999999936,
+				"componentMin": 0.4510840000000371,
+				"componentMedian": 0.4927500000001146,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 3664,
+					"blocksMapIterations": 0,
+					"textFullReads": 1077,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 1000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.048125000000027285,
+				"opMedian": 0.051916000000005624,
+				"componentMin": 0.0018749999999272404,
+				"componentMedian": 0.002084000000081687,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5159159999999474,
+				"opMedian": 0.539916000000062,
+				"componentMin": 0.4647499999999809,
+				"componentMedian": 0.4892089999999598,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3281,
+					"blocksMapIterations": 0,
+					"textFullReads": 1001,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 1000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.06112499999994725,
+				"opMedian": 0.06950000000006185,
+				"componentMin": 0.0029580000000350992,
+				"componentMedian": 0.0034160000000156288,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5317499999999882,
+				"opMedian": 0.5607919999999922,
+				"componentMin": 0.4715839999998934,
+				"componentMedian": 0.49795799999992596,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 3438,
+					"blocksMapIterations": 0,
+					"textFullReads": 1082,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 1000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.03950000000008913,
+				"opMedian": 0.05050000000005639,
+				"componentMin": 0.003123999999843363,
+				"componentMedian": 0.0038750000001073204,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.6410829999999805,
+				"opMedian": 0.6944590000000517,
+				"componentMin": 0.5555819999999585,
+				"componentMedian": 0.645958999999948,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 5345,
+					"blocksMapIterations": 0,
+					"textFullReads": 1011,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 1000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.004999999999881766,
+				"opMedian": 0.005292000000054031,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.005083000000013271,
+				"opMedian": 0.0054169999998521234,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 1000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.05387499999983447,
+				"opMedian": 0.06929200000013225,
+				"componentMin": 0.003332999999884123,
+				"componentMedian": 0.003957999999784079,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.6226669999998649,
+				"opMedian": 0.8086660000001302,
+				"componentMin": 0.5714580000001206,
+				"componentMedian": 0.7544579999998859,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 5689,
+					"blocksMapIterations": 0,
+					"textFullReads": 1081,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 1000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.12100000000009459,
+				"opMedian": 0.15075000000001637,
+				"componentMin": 0.0027919999999994616,
+				"componentMedian": 0.00508399999989706,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.6799579999999423,
+				"opMedian": 0.7619999999999436,
+				"componentMin": 0.5494579999999587,
+				"componentMedian": 0.6151250000000346,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 5944,
+					"blocksMapIterations": 0,
+					"textFullReads": 1081,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 1000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.044499999999970896,
+				"opMedian": 0.05329099999994469,
+				"componentMin": 0.002457999999933236,
+				"componentMedian": 0.0029170000000249274,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5565420000000358,
+				"opMedian": 0.6154169999999795,
+				"componentMin": 0.5061660000001211,
+				"componentMedian": 0.5695840000000771,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 5419,
+					"blocksMapIterations": 0,
+					"textFullReads": 1005,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 1000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.061291999999866675,
+				"opMedian": 0.07045800000014424,
+				"componentMin": 0.004457999999885942,
+				"componentMedian": 0.0047920000001795415,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.5927910000000338,
+				"opMedian": 0.6510000000000673,
+				"componentMin": 0.5234179999999924,
+				"componentMedian": 0.578666000000112,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 5716,
+					"blocksMapIterations": 0,
+					"textFullReads": 1086,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 1000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.03545799999983501,
+				"opMedian": 0.04295899999988251,
+				"componentMin": 0.0035410000000410946,
+				"componentMedian": 0.004290999999966516,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.768666999999823,
+				"opMedian": 0.8312920000000759,
+				"componentMin": 0.73174999999992,
+				"componentMedian": 0.7941249999998945,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 3223,
+					"blocksMapIterations": 0,
+					"textFullReads": 1011,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 1000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0049579999999878055,
+				"opMedian": 0.005875000000060027,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.0050409999998919375,
+				"opMedian": 0.005749999999807187,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 1000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.05608299999994415,
+				"opMedian": 0.06412499999987631,
+				"componentMin": 0.0010830000001078588,
+				"componentMedian": 0.0012500000000272848,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.8087909999999283,
+				"opMedian": 0.8544170000000122,
+				"componentMin": 0.7499170000000959,
+				"componentMedian": 0.7938750000000709,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 3423,
+					"blocksMapIterations": 0,
+					"textFullReads": 1081,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 1000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.12170900000000984,
+				"opMedian": 0.13658399999985704,
+				"componentMin": 0.0017500000001291482,
+				"componentMedian": 0.002125000000205546,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.9024999999999181,
+				"opMedian": 0.9425000000001091,
+				"componentMin": 0.7626250000000709,
+				"componentMedian": 0.8049579999999423,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 3678,
+					"blocksMapIterations": 0,
+					"textFullReads": 1081,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 1000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.046542000000044936,
+				"opMedian": 0.05562499999996362,
+				"componentMin": 0.0006670000000212895,
+				"componentMedian": 0.0008339999999407155,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.787958000000117,
+				"opMedian": 0.8453749999998763,
+				"componentMin": 0.7391250000000582,
+				"componentMedian": 0.79300000000012,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3295,
+					"blocksMapIterations": 0,
+					"textFullReads": 1005,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 1000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.06320900000014262,
+				"opMedian": 0.07204200000001038,
+				"componentMin": 0.002167000000099506,
+				"componentMedian": 0.0023330000001351436,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.8251669999999649,
+				"opMedian": 0.8578330000000278,
+				"componentMin": 0.7540839999999207,
+				"componentMedian": 0.7874580000000151,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 3452,
+					"blocksMapIterations": 0,
+					"textFullReads": 1086,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 1000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.03366700000015044,
+				"opMedian": 0.038209000000051674,
+				"componentMin": 0.001875000000154614,
+				"componentMedian": 0.0021669999998721323,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.20870899999999892,
+				"opMedian": 0.21887500000002547,
+				"componentMin": 0.17116699999996854,
+				"componentMedian": 0.18279200000006313,
+				"counts": {
+					"blockOrderReads": 1051,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 1050,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 1000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0047080000001642475,
+				"opMedian": 0.005000000000109139,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.0047910000000683794,
+				"opMedian": 0.0050409999998919375,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 1000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.054333000000042375,
+				"opMedian": 0.08058299999993324,
+				"componentMin": 0.0017080000000078144,
+				"componentMedian": 0.002040999999962878,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.22704099999987193,
+				"opMedian": 0.25958300000002055,
+				"componentMin": 0.17000000000007276,
+				"componentMedian": 0.18079199999988305,
+				"counts": {
+					"blockOrderReads": 1124,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 1122,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 1000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.11562499999990905,
+				"opMedian": 0.1479580000000169,
+				"componentMin": 0.002040999999962878,
+				"componentMedian": 0.002624999999852662,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.2819170000000213,
+				"opMedian": 0.34904199999982666,
+				"componentMin": 0.16633299999989504,
+				"componentMedian": 0.19124999999985448,
+				"counts": {
+					"blockOrderReads": 1124,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 1122,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 1000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.05224999999995816,
+				"opMedian": 0.19804100000010294,
+				"componentMin": 0.0007920000000467553,
+				"componentMedian": 0.0009999999999763531,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.05012499999997999,
+				"opMedian": 0.20870799999988776,
+				"componentMin": 0.0007080000000314612,
+				"componentMedian": 0.0009999999999763531,
+				"counts": {
+					"blockOrderReads": 1051,
+					"blocksMapReads": 131,
+					"blocksMapIterations": 1050,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 1000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.061875000000100044,
+				"opMedian": 0.0911670000000413,
+				"componentMin": 0.0013750000000527507,
+				"componentMedian": 0.0017080000000078144,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.17466699999999946,
+				"opMedian": 0.21854099999995924,
+				"componentMin": 0.11604199999987941,
+				"componentMedian": 0.136417000000165,
+				"counts": {
+					"blockOrderReads": 1125,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 1122,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 1000,
+			"row": "paint after keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0006669999997939158,
+				"opMedian": 0.0009579999998550193,
+				"componentMin": 0.0006669999997939158,
+				"componentMedian": 0.0009579999998550193,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.0007499999999254214,
+				"opMedian": 0.0009580000000823929,
+				"componentMin": 0.0007499999999254214,
+				"componentMedian": 0.0009580000000823929,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 1000,
+			"row": "paint after caret move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.00024999999982355803,
+				"opMedian": 0.0002919999999448919,
+				"componentMin": 0.00024999999982355803,
+				"componentMedian": 0.0002919999999448919,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.0007910000001629669,
+				"opMedian": 0.0008749999999508873,
+				"componentMin": 0.0007910000001629669,
+				"componentMedian": 0.0008749999999508873,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 1000,
+			"row": "repaint, D5 range over half the document",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.00033400000006622577,
+				"opMedian": 0.00045799999998052954,
+				"componentMin": 0.00033400000006622577,
+				"componentMedian": 0.00045799999998052954,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.0024170000001504377,
+				"opMedian": 0.003165999999964697,
+				"componentMin": 0.0024170000001504377,
+				"componentMedian": 0.003165999999964697,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 1000,
+			"row": "repaint, block selection of every root block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0004590000000916916,
+				"opMedian": 0.0005830000000059954,
+				"componentMin": 0.0004590000000916916,
+				"componentMedian": 0.0005830000000059954,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.12854199999992488,
+				"opMedian": 0.13766599999985374,
+				"componentMin": 0.12854199999992488,
+				"componentMedian": 0.13766599999985374,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 10000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.05637499999988904,
+				"opMedian": 0.14708300000006602,
+				"componentMin": 0.0012500000000272848,
+				"componentMedian": 0.006374999999934516,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 6.082084000000123,
+				"opMedian": 6.774499999999989,
+				"componentMin": 3.7234169999999267,
+				"componentMedian": 4.207750000000033,
+				"counts": {
+					"blockOrderReads": 10500,
+					"blocksMapReads": 10561,
+					"blocksMapIterations": 10500,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 10000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.007166000000097483,
+				"opMedian": 0.00829199999998309,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.007041999999955806,
+				"opMedian": 0.008332999999993262,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 10000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.10666700000001583,
+				"opMedian": 0.2452499999999418,
+				"componentMin": 0.0021669999996447586,
+				"componentMedian": 0.006750000000010914,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 49,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 8.226957999999968,
+				"opMedian": 8.85091599999987,
+				"componentMin": 4.295959000000039,
+				"componentMedian": 4.547375000000102,
+				"counts": {
+					"blockOrderReads": 10573,
+					"blocksMapReads": 10618,
+					"blocksMapIterations": 10572,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 10000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.17808299999978772,
+				"opMedian": 0.2742500000003929,
+				"componentMin": 0.0017090000001189765,
+				"componentMedian": 0.004666000000270287,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 302,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 7.559875000000375,
+				"opMedian": 9.03920799999969,
+				"componentMin": 4.219249999999647,
+				"componentMedian": 4.487791000000016,
+				"counts": {
+					"blockOrderReads": 10573,
+					"blocksMapReads": 10873,
+					"blocksMapIterations": 10572,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 10000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0812909999999647,
+				"opMedian": 0.15854200000012497,
+				"componentMin": 0.0014160000000629225,
+				"componentMedian": 0.003749999999854481,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 33,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 7.722291999999925,
+				"opMedian": 8.539458000000195,
+				"componentMin": 4.079541999999947,
+				"componentMedian": 4.493833999999879,
+				"counts": {
+					"blockOrderReads": 10500,
+					"blocksMapReads": 10631,
+					"blocksMapIterations": 10500,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 10000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.09812499999998181,
+				"opMedian": 0.18025000000034197,
+				"componentMin": 0.002375000000029104,
+				"componentMedian": 0.006124999999883585,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 82,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 6.925000000000182,
+				"opMedian": 7.862749999999778,
+				"componentMin": 3.8277499999999236,
+				"componentMedian": 4.2314580000002024,
+				"counts": {
+					"blockOrderReads": 10573,
+					"blocksMapReads": 10650,
+					"blocksMapIterations": 10572,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 10000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.04620799999975134,
+				"opMedian": 0.07950000000028012,
+				"componentMin": 0.00016700000014679972,
+				"componentMedian": 0.0005000000001018634,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 7.2643750000002,
+				"opMedian": 7.582083000000239,
+				"componentMin": 6.975582999999915,
+				"componentMedian": 7.358584000000064,
+				"counts": {
+					"blockOrderReads": 10501,
+					"blocksMapReads": 10562,
+					"blocksMapIterations": 10500,
+					"textFullReads": 9999,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 10000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.006792000000132248,
+				"opMedian": 0.007166999999753898,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.006750000000010914,
+				"opMedian": 0.007250000000112777,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 10000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.09712499999977808,
+				"opMedian": 0.8182080000001406,
+				"componentMin": 0.002457999999933236,
+				"componentMedian": 0.6296250000000327,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 7.3362090000000535,
+				"opMedian": 7.8971660000001975,
+				"componentMin": 7.088999999999942,
+				"componentMedian": 7.525834000000032,
+				"counts": {
+					"blockOrderReads": 10574,
+					"blocksMapReads": 10618,
+					"blocksMapIterations": 10572,
+					"textFullReads": 10068,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 10000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.20908300000019153,
+				"opMedian": 0.8732089999998607,
+				"componentMin": 0.005540999999993801,
+				"componentMedian": 0.00937500000009095,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 7.6062080000001515,
+				"opMedian": 8.446916999999758,
+				"componentMin": 7.1965000000000146,
+				"componentMedian": 7.470166000000063,
+				"counts": {
+					"blockOrderReads": 10574,
+					"blocksMapReads": 10873,
+					"blocksMapIterations": 10572,
+					"textFullReads": 10068,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 10000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.08537499999965803,
+				"opMedian": 0.7799999999997453,
+				"componentMin": 0.0020000000004074536,
+				"componentMedian": 0.0044580000003406894,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 7.484999999999673,
+				"opMedian": 8.099166999999397,
+				"componentMin": 6.948249999999462,
+				"componentMedian": 7.499332999999751,
+				"counts": {
+					"blockOrderReads": 10500,
+					"blocksMapReads": 10631,
+					"blocksMapIterations": 10500,
+					"textFullReads": 9992,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 10000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.1212919999998121,
+				"opMedian": 1.3452500000003056,
+				"componentMin": 0.0027079999999841675,
+				"componentMedian": 0.012832999999773165,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 7.4641249999995125,
+				"opMedian": 9.076124999999593,
+				"componentMin": 7.143667000000278,
+				"componentMedian": 7.659125000000131,
+				"counts": {
+					"blockOrderReads": 10575,
+					"blocksMapReads": 10650,
+					"blocksMapIterations": 10572,
+					"textFullReads": 10073,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 10000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.03987499999948341,
+				"opMedian": 0.044292000000496046,
+				"componentMin": 0.005374999998821295,
+				"componentMedian": 0.005875000000742148,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.04012499999953434,
+				"opMedian": 0.04470900000069378,
+				"componentMin": 0.005250000000160071,
+				"componentMedian": 0.006000000000312866,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 10000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.00616600000012113,
+				"opMedian": 0.006624999999985448,
+				"componentMin": 0.0020409999997355044,
+				"componentMedian": 0.002124999999978172,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.006290999999691849,
+				"opMedian": 0.006666999999652035,
+				"componentMin": 0.0020409999997355044,
+				"componentMedian": 0.002124999999978172,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 10000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.10075000000051659,
+				"opMedian": 0.31320900000082474,
+				"componentMin": 0.029166999999688414,
+				"componentMedian": 0.0645409999997355,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 22.287499999999454,
+				"opMedian": 23.67425000000003,
+				"componentMin": 22.16374999999971,
+				"componentMedian": 23.434000000000196,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 94828,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 10000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.19216599999981554,
+				"opMedian": 0.4471659999999247,
+				"componentMin": 0.10187499999938154,
+				"componentMedian": 0.15791600000011385,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 22.819666999999754,
+				"opMedian": 23.658124999999927,
+				"componentMin": 22.6767090000003,
+				"componentMedian": 23.389917000000423,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 94829,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 10000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.08995900000081747,
+				"opMedian": 0.28683300000011513,
+				"componentMin": 0.025874999999359716,
+				"componentMedian": 0.05629199999930279,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 21.27624999999989,
+				"opMedian": 23.118333000000348,
+				"componentMin": 21.16649999999936,
+				"componentMedian": 22.86908299999959,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 94525,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 10000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.114875000000211,
+				"opMedian": 0.3257919999996375,
+				"componentMin": 0.03324999999949796,
+				"componentMedian": 0.06379099999958271,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 21.586333000000195,
+				"opMedian": 23.22608300000047,
+				"componentMin": 21.461083000000144,
+				"componentMedian": 22.977708999999777,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 94858,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 10000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.04383300000154122,
+				"opMedian": 0.11024999999972351,
+				"componentMin": 0.0024990000001707813,
+				"componentMedian": 0.0040829999998095445,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 5.674624999999651,
+				"opMedian": 6.335500000001048,
+				"componentMin": 5.565500000000611,
+				"componentMedian": 6.090749000000869,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 31559,
+					"blocksMapIterations": 0,
+					"textFullReads": 9998,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 10000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.005250000000160071,
+				"opMedian": 0.005959000000075321,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.005416999998487881,
+				"opMedian": 0.005875000000742148,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 10000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.08729200000016135,
+				"opMedian": 0.1974579999987327,
+				"componentMin": 0.002540999999837368,
+				"componentMedian": 0.004415999999764608,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 5.44195800000125,
+				"opMedian": 6.266083000000435,
+				"componentMin": 5.243708000001789,
+				"componentMedian": 5.991208000001279,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 31759,
+					"blocksMapIterations": 0,
+					"textFullReads": 10068,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 10000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.18516699999963748,
+				"opMedian": 0.3258750000004511,
+				"componentMin": 0.0026250000009895302,
+				"componentMedian": 0.0045829999980924185,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 6.073458000000755,
+				"opMedian": 6.431749999999738,
+				"componentMin": 5.562667000000147,
+				"componentMedian": 6.036832000001596,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 32014,
+					"blocksMapIterations": 0,
+					"textFullReads": 10068,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 10000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.08441700000003038,
+				"opMedian": 0.1879590000007738,
+				"componentMin": 0.0017920000009326031,
+				"componentMedian": 0.0035830000015266705,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 5.903207999999722,
+				"opMedian": 6.200084000000061,
+				"componentMin": 5.663876000000528,
+				"componentMedian": 6.017916000000696,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31631,
+					"blocksMapIterations": 0,
+					"textFullReads": 9992,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 10000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.10687500000130967,
+				"opMedian": 0.26037499999983993,
+				"componentMin": 0.0029169999997975538,
+				"componentMedian": 0.005124999999679858,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 5.919625000000451,
+				"opMedian": 6.204666999999972,
+				"componentMin": 5.728958999998213,
+				"componentMedian": 5.913958000002822,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 31788,
+					"blocksMapIterations": 0,
+					"textFullReads": 10073,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 10000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.04441699999915727,
+				"opMedian": 0.1708330000001297,
+				"componentMin": 0.00316700000075798,
+				"componentMedian": 0.004707999998572632,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 6.687874999999622,
+				"opMedian": 7.079999999999927,
+				"componentMin": 6.622124999999869,
+				"componentMedian": 6.922665999998571,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 52937,
+					"blocksMapIterations": 0,
+					"textFullReads": 10038,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 10000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0052080000004934845,
+				"opMedian": 0.006042000000888947,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.005250000000160071,
+				"opMedian": 0.0059999999994033715,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 10000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.10199999999895226,
+				"opMedian": 0.29783300000053714,
+				"componentMin": 0.003500000000713044,
+				"componentMedian": 0.004958999999871594,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 6.95220800000061,
+				"opMedian": 7.3527500000000146,
+				"componentMin": 6.728499999999258,
+				"componentMedian": 7.057749999999942,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 53281,
+					"blocksMapIterations": 0,
+					"textFullReads": 10108,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 10000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.19995799999924202,
+				"opMedian": 0.4711250000000291,
+				"componentMin": 0.0035830000015266705,
+				"componentMedian": 0.006292000000030384,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 7.071250000000873,
+				"opMedian": 7.57958299999882,
+				"componentMin": 6.693834000001516,
+				"componentMedian": 7.044667000000118,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 53536,
+					"blocksMapIterations": 0,
+					"textFullReads": 10108,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 10000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.08704099999886239,
+				"opMedian": 0.2622090000004391,
+				"componentMin": 0.0026259999995090766,
+				"componentMedian": 0.00408400000014808,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 6.808542000000671,
+				"opMedian": 7.239042000001064,
+				"componentMin": 6.690333000000464,
+				"componentMedian": 6.975083000001177,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 53011,
+					"blocksMapIterations": 0,
+					"textFullReads": 10032,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 10000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.11883399999896938,
+				"opMedian": 0.27329199999985576,
+				"componentMin": 0.004457999999431195,
+				"componentMedian": 0.006083000000216998,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 6.841833999998926,
+				"opMedian": 7.644000000000233,
+				"componentMin": 6.442041999998764,
+				"componentMedian": 7.349666000001889,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 53308,
+					"blocksMapIterations": 0,
+					"textFullReads": 10113,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 10000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.04212499999994179,
+				"opMedian": 0.07820900000115216,
+				"componentMin": 0.0037080000001878943,
+				"componentMedian": 0.006041000000550412,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 8.561124999998356,
+				"opMedian": 9.234707999999955,
+				"componentMin": 8.433917000000292,
+				"componentMedian": 9.059957999999824,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 31699,
+					"blocksMapIterations": 0,
+					"textFullReads": 10038,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 10000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.005208999999013031,
+				"opMedian": 0.0059999999994033715,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.005124999999679858,
+				"opMedian": 0.006000000001222361,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 10000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.10529200000019046,
+				"opMedian": 0.31754199999886623,
+				"componentMin": 0.00112500000068394,
+				"componentMedian": 0.003875000000334694,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 9.248917000000802,
+				"opMedian": 9.685124999999971,
+				"componentMin": 8.943207999998776,
+				"componentMedian": 9.322375000001557,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 31899,
+					"blocksMapIterations": 0,
+					"textFullReads": 10108,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 10000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.20379099999991013,
+				"opMedian": 0.43404199999895354,
+				"componentMin": 0.001833000000260654,
+				"componentMedian": 0.0052080000004934845,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 9.406084000000192,
+				"opMedian": 9.824625000001106,
+				"componentMin": 9.054833000000144,
+				"componentMedian": 9.383834000000206,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 32154,
+					"blocksMapIterations": 0,
+					"textFullReads": 10108,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 10000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.08487500000046566,
+				"opMedian": 0.16899999999986903,
+				"componentMin": 0.0007079999995767139,
+				"componentMedian": 0.002500000000509317,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 9.018500000000131,
+				"opMedian": 9.796916000001147,
+				"componentMin": 8.870082999999795,
+				"componentMedian": 9.471625000000131,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31771,
+					"blocksMapIterations": 0,
+					"textFullReads": 10032,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 10000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.12479199999870616,
+				"opMedian": 0.36654099999941536,
+				"componentMin": 0.002666000000317581,
+				"componentMedian": 0.008541000001059729,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 9.816624999999476,
+				"opMedian": 10.523707999998805,
+				"componentMin": 9.279708000000028,
+				"componentMedian": 10.07024999999885,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 31928,
+					"blocksMapIterations": 0,
+					"textFullReads": 10113,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 10000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.04012499999953434,
+				"opMedian": 0.053334000000177184,
+				"componentMin": 0.001916999999593827,
+				"componentMedian": 0.0029589999994641403,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 1.8512080000000424,
+				"opMedian": 2.6305409999986296,
+				"componentMin": 1.7802919999994629,
+				"componentMedian": 2.4945000000006985,
+				"counts": {
+					"blockOrderReads": 10501,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 10500,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 10000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.004915999999866472,
+				"opMedian": 0.005166999999346444,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.004875000000538421,
+				"opMedian": 0.005208999999013031,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 10000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.1102919999993901,
+				"opMedian": 0.5890420000014274,
+				"componentMin": 0.0018749999999272404,
+				"componentMedian": 0.005084000000351807,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 2.4908329999998386,
+				"opMedian": 3.869457999999213,
+				"componentMin": 1.888041999998677,
+				"componentMedian": 3.183082999999897,
+				"counts": {
+					"blockOrderReads": 10574,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 10572,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 10000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.19070900000042457,
+				"opMedian": 0.6204579999994166,
+				"componentMin": 0.0017079999997804407,
+				"componentMedian": 0.003291999999419204,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 2.105999999999767,
+				"opMedian": 3.2156660000000556,
+				"componentMin": 1.783292000000074,
+				"componentMedian": 2.4554170000010345,
+				"counts": {
+					"blockOrderReads": 10574,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 10572,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 10000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.08883400000013353,
+				"opMedian": 2.449333000000479,
+				"componentMin": 0.0009169999993901001,
+				"componentMedian": 0.0024580000008427305,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.07999999999992724,
+				"opMedian": 2.4158749999987776,
+				"componentMin": 0.001082999999198364,
+				"componentMedian": 0.0019589999992604135,
+				"counts": {
+					"blockOrderReads": 10501,
+					"blocksMapReads": 131,
+					"blocksMapIterations": 10500,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 10000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.1101249999992433,
+				"opMedian": 0.5323750000006839,
+				"componentMin": 0.0015000000003055902,
+				"componentMedian": 0.003042000000277767,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 2.015124999999898,
+				"opMedian": 3.1807499999995343,
+				"componentMin": 1.8583330000001297,
+				"componentMedian": 2.6306669999994483,
+				"counts": {
+					"blockOrderReads": 10575,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 10572,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 10000,
+			"row": "paint after keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0007920000007288763,
+				"opMedian": 0.0010419999998703133,
+				"componentMin": 0.0007920000007288763,
+				"componentMedian": 0.0010419999998703133,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.0008340000003954628,
+				"opMedian": 0.0010830000010173535,
+				"componentMin": 0.0008340000003954628,
+				"componentMedian": 0.0010830000010173535,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 10000,
+			"row": "paint after caret move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0002500000009604264,
+				"opMedian": 0.0002920000006270129,
+				"componentMin": 0.0002500000009604264,
+				"componentMedian": 0.0002920000006270129,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.0008749999997235136,
+				"opMedian": 0.001041000001350767,
+				"componentMin": 0.0008749999997235136,
+				"componentMedian": 0.001041000001350767,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 10000,
+			"row": "repaint, D5 range over half the document",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0003749999996216502,
+				"opMedian": 0.0004579999986162875,
+				"componentMin": 0.0003749999996216502,
+				"componentMedian": 0.0004579999986162875,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.01583299999947485,
+				"opMedian": 0.0163749999992433,
+				"componentMin": 0.01583299999947485,
+				"componentMedian": 0.0163749999992433,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 10000,
+			"row": "repaint, block selection of every root block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0010419999998703133,
+				"opMedian": 0.0018340000005991897,
+				"componentMin": 0.0010419999998703133,
+				"componentMedian": 0.0018340000005991897,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 1.2307500000006257,
+				"opMedian": 1.521708000000217,
+				"componentMin": 1.2307500000006257,
+				"componentMedian": 1.521708000000217,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 50000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.048541000000113854,
+				"opMedian": 0.16300000000046566,
+				"componentMin": 0.0015000000003055902,
+				"componentMedian": 0.007790999999997439,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 41.46337499999936,
+				"opMedian": 43.23162500000035,
+				"componentMin": 21.575666999999157,
+				"componentMedian": 22.596290999999837,
+				"counts": {
+					"blockOrderReads": 52500,
+					"blocksMapReads": 52561,
+					"blocksMapIterations": 52500,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 50000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.004374999998617568,
+				"opMedian": 0.005083000000013271,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.004500000000916771,
+				"opMedian": 0.005083000000013271,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 50000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.2909170000002632,
+				"opMedian": 0.574916999999914,
+				"componentMin": 0.0021660000002157176,
+				"componentMedian": 0.007792000000335975,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 49,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 46.53600000000006,
+				"opMedian": 47.59345799999937,
+				"componentMin": 22.028667000002315,
+				"componentMedian": 22.782333999999537,
+				"counts": {
+					"blockOrderReads": 52573,
+					"blocksMapReads": 52618,
+					"blocksMapIterations": 52572,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 50000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.4369170000027225,
+				"opMedian": 0.5634170000012091,
+				"componentMin": 0.0021249999990686774,
+				"componentMedian": 0.006667000001471024,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 302,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 47.078042000001005,
+				"opMedian": 47.633042000001296,
+				"componentMin": 22.22308399999747,
+				"componentMedian": 22.75404200000048,
+				"counts": {
+					"blockOrderReads": 52573,
+					"blocksMapReads": 52873,
+					"blocksMapIterations": 52572,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 50000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.2325830000008864,
+				"opMedian": 0.4025000000001455,
+				"componentMin": 0.0016250000007858034,
+				"componentMedian": 0.005375000000640284,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 33,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 46.40600000000268,
+				"opMedian": 47.71141700000226,
+				"componentMin": 22.210541999997076,
+				"componentMedian": 22.708542000000307,
+				"counts": {
+					"blockOrderReads": 52500,
+					"blocksMapReads": 52631,
+					"blocksMapIterations": 52500,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "A",
+			"size": 50000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.30983300000298186,
+				"opMedian": 0.6240829999987909,
+				"componentMin": 0.0032080000019050203,
+				"componentMedian": 0.009500000000116415,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 82,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 46.91508299999987,
+				"opMedian": 48.595791999996436,
+				"componentMin": 22.18937499999811,
+				"componentMedian": 23.17395899999974,
+				"counts": {
+					"blockOrderReads": 52573,
+					"blocksMapReads": 52650,
+					"blocksMapIterations": 52572,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 50000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.05658399999811081,
+				"opMedian": 0.12445799999841256,
+				"componentMin": 0.00020799999765586108,
+				"componentMedian": 0.0008749999979045242,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 45.93670800000109,
+				"opMedian": 50.43274999999994,
+				"componentMin": 45.59779100000014,
+				"componentMedian": 49.99829200000022,
+				"counts": {
+					"blockOrderReads": 52501,
+					"blocksMapReads": 52562,
+					"blocksMapIterations": 52500,
+					"textFullReads": 49959,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 50000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.00487500000235741,
+				"opMedian": 0.005708000000595348,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.004917000002023997,
+				"opMedian": 0.005583999998634681,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 50000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.3740829999987909,
+				"opMedian": 3.9252079999969283,
+				"componentMin": 0.006124999999883585,
+				"componentMedian": 3.3368329999975685,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 43.867082999997365,
+				"opMedian": 48.79612499999712,
+				"componentMin": 43.310208999999304,
+				"componentMedian": 48.25233300000036,
+				"counts": {
+					"blockOrderReads": 52574,
+					"blocksMapReads": 52618,
+					"blocksMapIterations": 52572,
+					"textFullReads": 50028,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 50000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.627042000000074,
+				"opMedian": 3.988832999999431,
+				"componentMin": 0.015834000001632376,
+				"componentMedian": 0.07295900000099209,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 44.544999999998254,
+				"opMedian": 49.22362499999872,
+				"componentMin": 43.604584000000614,
+				"componentMedian": 47.8415419999983,
+				"counts": {
+					"blockOrderReads": 52574,
+					"blocksMapReads": 52873,
+					"blocksMapIterations": 52572,
+					"textFullReads": 50028,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 50000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.31416600000011385,
+				"opMedian": 3.6926669999993464,
+				"componentMin": 0.004666000000725035,
+				"componentMedian": 0.011583000003156485,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 44.353375000002416,
+				"opMedian": 48.94004199999836,
+				"componentMin": 43.065833000000566,
+				"componentMedian": 47.868624999999156,
+				"counts": {
+					"blockOrderReads": 52500,
+					"blocksMapReads": 52631,
+					"blocksMapIterations": 52500,
+					"textFullReads": 49952,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "B",
+			"size": 50000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.4479590000009921,
+				"opMedian": 6.771874999998545,
+				"componentMin": 0.005874999998923158,
+				"componentMedian": 0.08516600000075414,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 45.048750000001746,
+				"opMedian": 52.567040999998426,
+				"componentMin": 43.494707999998354,
+				"componentMedian": 48.886875000000146,
+				"counts": {
+					"blockOrderReads": 52575,
+					"blocksMapReads": 52650,
+					"blocksMapIterations": 52572,
+					"textFullReads": 50033,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 50000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.03770799999983865,
+				"opMedian": 0.03937500000029104,
+				"componentMin": 0.005040999996708706,
+				"componentMedian": 0.005208999999013031,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.03687500000160071,
+				"opMedian": 0.03933300000062445,
+				"componentMin": 0.005084000000351807,
+				"componentMedian": 0.005415999996330356,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 50000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0048749999987194315,
+				"opMedian": 0.0051660000026458874,
+				"componentMin": 0.0015409999978146516,
+				"componentMedian": 0.0016250000007858034,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.004916999998386018,
+				"opMedian": 0.005166999999346444,
+				"componentMin": 0.0015409999978146516,
+				"componentMedian": 0.0016250000007858034,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 50000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.37954200000240235,
+				"opMedian": 0.7770840000011958,
+				"componentMin": 0.20395799999823794,
+				"componentMedian": 0.3053329999966081,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 136.41845799999282,
+				"opMedian": 144.546875,
+				"componentMin": 135.95708300000115,
+				"componentMedian": 144.0969999999943,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 472828,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 50000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.5709580000038841,
+				"opMedian": 0.9759159999957774,
+				"componentMin": 0.32383300000219606,
+				"componentMedian": 0.4687919999996666,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 138.10941599999933,
+				"opMedian": 139.58204200000182,
+				"componentMin": 137.56045900000026,
+				"componentMedian": 138.90104200000496,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 472829,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 50000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.2925840000025346,
+				"opMedian": 0.6916669999991427,
+				"componentMin": 0.13866699999925913,
+				"componentMedian": 0.2865419999943697,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 137.59179199999926,
+				"opMedian": 146.7627500000017,
+				"componentMin": 137.19512499999837,
+				"componentMedian": 146.27087500000198,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 472525,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "C",
+			"size": 50000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.3896669999958249,
+				"opMedian": 0.8077080000002752,
+				"componentMin": 0.2039169999989099,
+				"componentMedian": 0.34883399999671383,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 137.38837500000227,
+				"opMedian": 140.32983300000342,
+				"componentMin": 136.70791699999972,
+				"componentMedian": 139.95641700000124,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 472858,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 50000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.05200000000331784,
+				"opMedian": 0.15912499999831198,
+				"componentMin": 0.003126000003248919,
+				"componentMedian": 0.008207999999285676,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 38.331208000003244,
+				"opMedian": 39.35775000000285,
+				"componentMin": 37.89429099999688,
+				"componentMedian": 39.16166599999997,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 157559,
+					"blocksMapIterations": 0,
+					"textFullReads": 49958,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 50000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.004958000004990026,
+				"opMedian": 0.005667000004905276,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.0049589999980526045,
+				"opMedian": 0.005666999997629318,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 50000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.37454199999774573,
+				"opMedian": 0.6607500000027358,
+				"componentMin": 0.0036249999975552782,
+				"componentMedian": 0.0090829999971902,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 39.462500000001455,
+				"opMedian": 41.28662500000064,
+				"componentMin": 38.95549900000333,
+				"componentMedian": 40.5784180000046,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 157759,
+					"blocksMapIterations": 0,
+					"textFullReads": 50028,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 50000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.5530409999992116,
+				"opMedian": 0.7831670000014128,
+				"componentMin": 0.003250000001571607,
+				"componentMedian": 0.007625000005646143,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 38.15424999999959,
+				"opMedian": 38.87883299999521,
+				"componentMin": 37.127667000000656,
+				"componentMedian": 38.131625000001804,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 158014,
+					"blocksMapIterations": 0,
+					"textFullReads": 50028,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 50000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.2736670000012964,
+				"opMedian": 0.4995839999974123,
+				"componentMin": 0.002125999999407213,
+				"componentMedian": 0.0037079999965499155,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 37.359000000004016,
+				"opMedian": 38.533667000003334,
+				"componentMin": 36.77433300000121,
+				"componentMedian": 37.898416000003635,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 157631,
+					"blocksMapIterations": 0,
+					"textFullReads": 49952,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "D",
+			"size": 50000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.3484580000003916,
+				"opMedian": 0.6343750000014552,
+				"componentMin": 0.003584000005503185,
+				"componentMedian": 0.007498999999370426,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 37.735334000004514,
+				"opMedian": 38.861541999998735,
+				"componentMin": 36.97254200000316,
+				"componentMedian": 38.05558300000121,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 157788,
+					"blocksMapIterations": 0,
+					"textFullReads": 50033,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 50000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.05704199999308912,
+				"opMedian": 0.25054200000158744,
+				"componentMin": 0.0037919999958830886,
+				"componentMedian": 0.006207999991602264,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 44.925083000001905,
+				"opMedian": 45.987458000003244,
+				"componentMin": 44.65266600000177,
+				"componentMedian": 45.75416700000642,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 264457,
+					"blocksMapIterations": 0,
+					"textFullReads": 50158,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 50000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.005375000000640284,
+				"opMedian": 0.005916999994951766,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.005375000000640284,
+				"opMedian": 0.005790999995952006,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 50000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.36087500000576256,
+				"opMedian": 0.8017500000059954,
+				"componentMin": 0.0044580000030691735,
+				"componentMedian": 0.007625000005646143,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 46.65208300000086,
+				"opMedian": 49.06445800000074,
+				"componentMin": 46.05537600000389,
+				"componentMedian": 48.28870900000038,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 264801,
+					"blocksMapIterations": 0,
+					"textFullReads": 50228,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 50000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.5692500000004657,
+				"opMedian": 1.1390830000018468,
+				"componentMin": 0.004876000006333925,
+				"componentMedian": 0.009792999990168028,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 47.86420900000667,
+				"opMedian": 50.13762500000303,
+				"componentMin": 47.009875000003376,
+				"componentMedian": 49.12025000000722,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 265056,
+					"blocksMapIterations": 0,
+					"textFullReads": 50228,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 50000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.2972079999890411,
+				"opMedian": 0.6454999999987194,
+				"componentMin": 0.0035829999978886917,
+				"componentMedian": 0.005582999991020188,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 45.305667000007816,
+				"opMedian": 47.70725000000675,
+				"componentMin": 44.595999999990454,
+				"componentMedian": 47.39758299998357,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 264531,
+					"blocksMapIterations": 0,
+					"textFullReads": 50152,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "E",
+			"size": 50000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.36162500000500586,
+				"opMedian": 0.8164580000011483,
+				"componentMin": 0.005666000011842698,
+				"componentMedian": 0.007166999988839962,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 44.86745799999335,
+				"opMedian": 46.68908300000476,
+				"componentMin": 44.45829199999571,
+				"componentMedian": 45.84545799998159,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 264828,
+					"blocksMapIterations": 0,
+					"textFullReads": 50233,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 50000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.04870800000207964,
+				"opMedian": 0.1526249999878928,
+				"componentMin": 0.0038340000028256327,
+				"componentMedian": 0.011375000001862645,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 57.297458000000915,
+				"opMedian": 58.209708000009414,
+				"componentMin": 57.10854199998721,
+				"componentMedian": 58.0367499999993,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 158259,
+					"blocksMapIterations": 0,
+					"textFullReads": 50158,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 50000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.005290999994031154,
+				"opMedian": 0.005957999994279817,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.005040999996708706,
+				"opMedian": 0.005999999993946403,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 50000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.3555000000051223,
+				"opMedian": 0.6240839999954915,
+				"componentMin": 0.0017499999958090484,
+				"componentMedian": 0.005417000007582828,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 58.14712500000314,
+				"opMedian": 59.88437499999418,
+				"componentMin": 57.33604199999536,
+				"componentMedian": 59.10545899999852,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 158459,
+					"blocksMapIterations": 0,
+					"textFullReads": 50228,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 50000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.5990410000085831,
+				"opMedian": 0.8953329999931157,
+				"componentMin": 0.0035420000058365986,
+				"componentMedian": 0.010291999991750345,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 61.92837500000314,
+				"opMedian": 64.1807919999992,
+				"componentMin": 60.600582999992184,
+				"componentMedian": 63.087707999991835,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 158714,
+					"blocksMapIterations": 0,
+					"textFullReads": 50228,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 50000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.2977089999913005,
+				"opMedian": 0.5666250000067521,
+				"componentMin": 0.0013329999928828329,
+				"componentMedian": 0.004333999997470528,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 57.77491699998791,
+				"opMedian": 60.42174999999406,
+				"componentMin": 57.244833999997354,
+				"componentMedian": 59.61129199998686,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 158331,
+					"blocksMapIterations": 0,
+					"textFullReads": 50152,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "F",
+			"size": 50000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.35141699999803677,
+				"opMedian": 0.6514999999926658,
+				"componentMin": 0.0027919999993173406,
+				"componentMedian": 0.008332999990670942,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 58.756832999992184,
+				"opMedian": 59.828999999997905,
+				"componentMin": 57.67554199999722,
+				"componentMedian": 58.809416999996756,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 158488,
+					"blocksMapIterations": 0,
+					"textFullReads": 50233,
+					"orderArrayReads": 0,
+					"documentWalks": 1
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 50000,
+			"row": "keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.03941599999961909,
+				"opMedian": 0.06095800000184681,
+				"componentMin": 0.0017500000103609636,
+				"componentMedian": 0.0034580000065034255,
+				"counts": {
+					"blockOrderReads": 1,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 0,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 17.732833000001847,
+				"opMedian": 18.160209000008763,
+				"componentMin": 17.4668340000062,
+				"componentMedian": 17.89783400000306,
+				"counts": {
+					"blockOrderReads": 52501,
+					"blocksMapReads": 62,
+					"blocksMapIterations": 52500,
+					"textFullReads": 9,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 50000,
+			"row": "caret-move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.004832999999052845,
+				"opMedian": 0.005666999990353361,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.004832999999052845,
+				"opMedian": 0.005583000005572103,
+				"componentMin": 0,
+				"componentMedian": 0,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 19,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 50000,
+			"row": "insert-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.34641699999338016,
+				"opMedian": 3.0927499999961583,
+				"componentMin": 0.002334000004339032,
+				"componentMedian": 0.0076249999983701855,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 18.072125000006054,
+				"opMedian": 20.970167000006768,
+				"componentMin": 17.151167000003625,
+				"componentMedian": 17.68712499999674,
+				"counts": {
+					"blockOrderReads": 52574,
+					"blocksMapReads": 46,
+					"blocksMapIterations": 52572,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 50000,
+			"row": "move-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.520833999995375,
+				"opMedian": 3.269709000000148,
+				"componentMin": 0.00245800000266172,
+				"componentMedian": 0.007749999989755452,
+				"counts": {
+					"blockOrderReads": 2,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 0,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 18.327957999994396,
+				"opMedian": 21.032082999998238,
+				"componentMin": 17.207458000004408,
+				"componentMedian": 17.70945799999754,
+				"counts": {
+					"blockOrderReads": 52574,
+					"blocksMapReads": 301,
+					"blocksMapIterations": 52572,
+					"textFullReads": 7,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 50000,
+			"row": "delete-block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.2923750000045402,
+				"opMedian": 20.888416000001598,
+				"componentMin": 0.0015420000127051026,
+				"componentMedian": 0.008749999993597157,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 31,
+					"blocksMapIterations": 0,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.2776249999878928,
+				"opMedian": 20.959875000000466,
+				"componentMin": 0.0010830000101123005,
+				"componentMedian": 0.006957999998121522,
+				"counts": {
+					"blockOrderReads": 52501,
+					"blocksMapReads": 131,
+					"blocksMapIterations": 52500,
+					"textFullReads": 2,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "G",
+			"size": 50000,
+			"row": "split",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.38575000000128057,
+				"opMedian": 3.1277910000062548,
+				"componentMin": 0.003041999996639788,
+				"componentMedian": 0.007499999992433004,
+				"counts": {
+					"blockOrderReads": 3,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 0,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 18.395166999995126,
+				"opMedian": 21.47775000000547,
+				"componentMin": 17.454457999992883,
+				"componentMedian": 18.27683299999626,
+				"counts": {
+					"blockOrderReads": 52575,
+					"blocksMapReads": 78,
+					"blocksMapIterations": 52572,
+					"textFullReads": 13,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 50000,
+			"row": "paint after keystroke",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0008749999979045242,
+				"opMedian": 0.001041999988956377,
+				"componentMin": 0.0008749999979045242,
+				"componentMedian": 0.001041999988956377,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.0009169999975711107,
+				"opMedian": 0.0010830000101123005,
+				"componentMin": 0.0009169999975711107,
+				"componentMedian": 0.0010830000101123005,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 50000,
+			"row": "paint after caret move",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.000291000003926456,
+				"opMedian": 0.00033299998904112726,
+				"componentMin": 0.000291000003926456,
+				"componentMedian": 0.00033299998904112726,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.0009579999896232039,
+				"opMedian": 0.0010409999958937988,
+				"componentMin": 0.0009579999896232039,
+				"componentMedian": 0.0010409999958937988,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 50000,
+			"row": "repaint, D5 range over half the document",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.0003330000035930425,
+				"opMedian": 0.0004589999880408868,
+				"componentMin": 0.0003330000035930425,
+				"componentMedian": 0.0004589999880408868,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 0.16895900000235997,
+				"opMedian": 0.1798339999950258,
+				"componentMin": 0.16895900000235997,
+				"componentMedian": 0.1798339999950258,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 3,
+					"blocksMapIterations": 0,
+					"textFullReads": 1,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		},
+		{
+			"cache": "H",
+			"size": 50000,
+			"row": "repaint, block selection of every root block",
+			"runs": 31,
+			"incremental": {
+				"opMin": 0.025750000000698492,
+				"opMedian": 0.03445800000918098,
+				"componentMin": 0.025750000000698492,
+				"componentMedian": 0.03445800000918098,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			},
+			"naive": {
+				"opMin": 7.853625000003376,
+				"opMedian": 9.738041999997222,
+				"componentMin": 7.853625000003376,
+				"componentMedian": 9.738041999997222,
+				"counts": {
+					"blockOrderReads": 0,
+					"blocksMapReads": 0,
+					"blocksMapIterations": 0,
+					"textFullReads": 0,
+					"orderArrayReads": 0,
+					"documentWalks": 0
+				}
+			}
+		}
+	]
+}

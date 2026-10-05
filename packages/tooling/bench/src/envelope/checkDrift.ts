@@ -41,7 +41,7 @@ export function parseDriftCheckArgs(args: readonly string[]): {
  * stays same-class and gated. A missing fresh record exits 1.
  */
 export async function runEnvelopeDriftCheck(
-	args: { freshPath?: string } = {},
+	args: { freshPath?: string; committedPath?: string } = {},
 ): Promise<DriftCheckResult> {
 	if (args.freshPath) {
 		try {
@@ -61,7 +61,7 @@ export async function runEnvelopeDriftCheck(
 				message: error instanceof Error ? error.message : String(error),
 			};
 		}
-		const committed = await loadCommittedEnvelope();
+		const committed = await loadCommittedEnvelope(args.committedPath);
 		const drift = compareEnvelopeDrift(fresh, committed);
 		return {
 			exitCode: drift.ok ? 0 : 1,

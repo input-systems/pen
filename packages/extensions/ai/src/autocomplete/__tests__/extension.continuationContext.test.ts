@@ -1,37 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { createEditor, getInlineCompletionController } from "@input/pen-core";
-import { FIELD_EDITOR_SLOT_KEY } from "@input/pen-types";
-import { defineExtension } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
-import {
-	autocompleteExtension,
-	createAutocompleteProvider,
-	getAutocompleteController,
-} from "../index";
-
-async function waitForCondition(
-	check: () => boolean,
-	maxTicks = 20,
-): Promise<void> {
-	for (let tick = 0; tick < maxTicks; tick += 1) {
-		if (check()) {
-			return;
-		}
-		await Promise.resolve();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-	}
-	throw new Error("Condition was not met in time.");
-}
+import { autocompleteExtension, getAutocompleteController } from "../index";
+import { fieldEditorSlot, waitForCondition } from "./extension.testHelpers";
 
 describe("@input/pen-ai/autocomplete: continuation context", () => {
 	it("preserves a leading newline when a continuation starts with markdown blocks", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -47,23 +23,7 @@ describe("@input/pen-ai/autocomplete: continuation context", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;
@@ -116,15 +76,10 @@ describe("@input/pen-ai/autocomplete: continuation context", () => {
 	});
 
 	it("builds continuation context from the newly inserted block after structured accept", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
 		let callCount = 0;
 		let secondPrompt = "";
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -157,23 +112,7 @@ describe("@input/pen-ai/autocomplete: continuation context", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;
@@ -212,13 +151,8 @@ describe("@input/pen-ai/autocomplete: continuation context", () => {
 	});
 
 	it("treats multiline prose continuations as appended paragraph blocks", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -234,23 +168,7 @@ describe("@input/pen-ai/autocomplete: continuation context", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;
@@ -306,14 +224,9 @@ describe("@input/pen-ai/autocomplete: continuation context", () => {
 	});
 
 	it("converts deep single-line prose continuations into appended paragraph blocks", async () => {
-		let activeEditor: ReturnType<typeof createEditor> | null = null;
 		let callCount = 0;
-		const fieldEditor = {
-			focusBlockId: null as string | null,
-			isEditing: true,
-			isFocused: true,
-			isComposing: false,
-		};
+		const { fieldEditor, extension: fieldEditorSlotExtension } =
+			fieldEditorSlot();
 		const editor = createEditor({
 			schema: defaultSchema,
 			extensions: [
@@ -347,23 +260,7 @@ describe("@input/pen-ai/autocomplete: continuation context", () => {
 						},
 					},
 				}),
-				defineExtension({
-					name: "test-field-editor-slot",
-					activateClient: async ({ editor: nextEditor }) => {
-						activeEditor = nextEditor;
-						nextEditor.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							fieldEditor,
-						);
-					},
-					deactivateClient: async () => {
-						activeEditor?.internals.assignSlot(
-							FIELD_EDITOR_SLOT_KEY,
-							null,
-						);
-						activeEditor = null;
-					},
-				}),
+				fieldEditorSlotExtension,
 			],
 		});
 		const blockId = editor.firstBlock()!.id;

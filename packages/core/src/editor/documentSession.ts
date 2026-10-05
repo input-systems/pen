@@ -129,6 +129,18 @@ class DocumentSessionImpl implements DocumentSession {
 		return scope?.awareness ?? null;
 	}
 
+	ensureAwareness(
+		scopeId: string,
+		factory: (doc: CRDTDocument) => Awareness,
+	): Awareness {
+		const entry = this._getScopeEntry(scopeId);
+		if (!entry) {
+			throw new Error(`Unknown document scope: ${scopeId}`);
+		}
+		entry.awareness ??= factory(entry.scope.doc);
+		return entry.awareness;
+	}
+
 	observe(scopeId: string, callback: ScopeListener): Unsubscribe {
 		const listeners =
 			this._listenersByScope.get(scopeId) ?? new Set<ScopeListener>();

@@ -32,7 +32,6 @@ import { AppHandleImpl } from "./appHandleImpl";
 import {
 	arrayValues,
 	getChildrenArray,
-	getDeltaFragments,
 	getMapEntries,
 	getPropsMap,
 	resolveText,
@@ -149,23 +148,8 @@ class BlockHandleImpl implements TableBlockHandle {
 			);
 		}
 
-		for (const [id, rawBlockMap] of this._doc.blocks.entries()) {
-			if (!isCRDTMap(rawBlockMap)) continue;
-			const children = getChildrenArray(rawBlockMap);
-			if (!children) continue;
-			for (let i = 0; i < children.length; i++) {
-				if (children.get(i) === this._id) {
-					return new BlockHandleImpl(
-						id,
-						this._doc,
-						this._crdtDoc,
-						this._registry,
-					);
-				}
-			}
-		}
-
-		return null;
+		// Children-array nesting: the block whose `children` lists this id.
+		return this.layoutParent();
 	}
 
 	get children(): readonly BlockHandle[] {
@@ -341,16 +325,10 @@ class BlockHandleImpl implements TableBlockHandle {
 		}));
 	}
 
+	/** Logical length: each character and each inline embed is one offset (N1). */
 	length(): number {
 		const content = getTextProp(this.blockMap, "content");
-		if (!content) {
-			return 0;
-		}
-		const text = content.toString();
-		if (!text) {
-			return 0;
-		}
-		return content.length;
+		return content ? content.length : 0;
 	}
 
 	as<K extends BlockCapabilityKey>(

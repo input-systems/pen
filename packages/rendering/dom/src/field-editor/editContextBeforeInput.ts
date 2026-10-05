@@ -10,6 +10,7 @@ import {
 import type { Command, Editor } from "@input/pen-types";
 import { mapEditContextBeforeInput } from "./beforeinputMap";
 import {
+	applyBeforeInputPolicy,
 	dispatchAndActivate,
 	type FieldEditorCommandTarget,
 } from "./commandDispatch";
@@ -53,24 +54,8 @@ export function handleEditContextBeforeInput(options: {
 	const mapping = mapEditContextBeforeInput(event.inputType);
 
 	if ("policy" in mapping) {
-		switch (mapping.policy) {
-			case "allow":
-				return;
-			case "block":
-				event.preventDefault();
-				editor.internals.emit("diagnostic", {
-					code: mapping.code,
-					level: "warn",
-					source: "beforeinput",
-					message: `unhandled beforeinput inputType: ${event.inputType}`,
-					inputType: event.inputType,
-				});
-				return;
-			default: {
-				const _exhaustive: never = mapping;
-				return _exhaustive;
-			}
-		}
+		applyBeforeInputPolicy(editor, event, mapping);
+		return;
 	}
 
 	event.preventDefault();

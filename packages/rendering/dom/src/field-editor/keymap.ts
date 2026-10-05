@@ -124,7 +124,8 @@ function detectKeymapPlatform(): KeymapPlatform {
 	return "linux";
 }
 
-function matchesKey(pattern: string, event: KeymapEvent): boolean {
+/** Matches a `mod-shift-z` style key pattern; `mod` is Cmd on Apple platforms, Ctrl elsewhere. */
+export function matchesKey(pattern: string, event: KeymapEvent): boolean {
 	const parts = pattern.split("-").map((part) => part.toLowerCase());
 	const key = parts.pop()?.toLowerCase() ?? "";
 

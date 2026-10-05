@@ -52,16 +52,21 @@
   },
   "dependencies": {
     "@input/pen-core": "workspace:^",
-    "@input/pen-types": "workspace:^"
+    "@input/pen-types": "workspace:^",
+    "@input/pen-yjs": "workspace:^"
+  },
+  "peerDependencies": {
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6"
   },
   "devDependencies": {
     "@input/pen-core": "workspace:*",
     "@input/pen-schema": "workspace:*",
-    "@input/pen-yjs": "workspace:*",
     "@input/pen-test": "workspace:*",
     "@input/pen-undo": "workspace:*",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "yjs": "^13.6.32"
   }
 }

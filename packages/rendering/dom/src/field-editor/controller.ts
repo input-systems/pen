@@ -2,19 +2,17 @@ import type {
 	BlockSchema,
 	Editor,
 	FieldEditorFocusOptions,
+	SelectionOrigin,
 } from "@input/pen-types";
 import type { FieldEditorStore } from "./store";
 import type { EditorSelectAllBehavior } from "../constants/selectAll";
-import type {
-	FieldEditorSelectionSnapshot,
-	FieldEditorSelectionSource,
-} from "./selectionAuthority";
+import type { PendingMarkController } from "./pendingMarkController";
 import type {
 	DomSelectionReadDecision,
-	GestureEventKind,
-	GestureWindowState,
 	ReaderSelection,
+	SelectionReader,
 } from "./selectionReader";
+import type { S2ExceptionKind, SelectionProjector } from "./selectionProjector";
 
 export type FieldEditorFocusReason =
 	| "activate"
@@ -106,6 +104,18 @@ type FieldEditorSelectionState = Pick<
 export interface FieldEditorRootHandle {
 	setRootElement(element: HTMLElement | null): void;
 	setFocused(focused: boolean): void;
+	/**
+	 * The renderer `readonly` prop (O5), read by the overlay. Not the
+	 * `pen.ariaReadOnly` facet (AX1).
+	 */
+	setReadOnly(readonly: boolean): void;
+	readonly isReadOnly: boolean;
+	/**
+	 * D5: the S2 exception in effect for the current record version, or null
+	 * (the projector's pure state read). The overlay draws it; focus stays
+	 * on the sink while it holds (HOST9).
+	 */
+	getSubstituteState(): S2ExceptionKind | null;
 	setFocusPolicy(focusPolicy: PenFocusPolicy | undefined): void;
 	setSelectAllBehavior(behavior: EditorSelectAllBehavior): void;
 	deactivate(): void;
@@ -113,11 +123,13 @@ export interface FieldEditorRootHandle {
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	commitProgrammaticTextSelection(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	focusTextSelection(
 		blockId: string,
@@ -125,9 +137,34 @@ export interface FieldEditorRootHandle {
 		focusOffset: number,
 		options?: PenFieldEditorFocusOptions,
 	): Promise<boolean>;
+	/**
+	 * Projects the current record as an activation (P, S2): the native range
+	 * in its surface, with focus. For focus entering the root with a
+	 * multi-block text range, which no single-block call can express.
+	 */
+	focusSelection(): void;
 }
 
-export interface FieldEditorDomController extends FieldEditorSelectionState {
+/**
+ * pen-dom's own sub-controllers. Backends, gestures and host helpers inside
+ * pen-dom call them directly. Every member is stripped from the published
+ * types (`stripInternal`), so hosts use the session methods. A controller a
+ * host builds against the published types has none of them, so every
+ * caller reads them optionally and falls back to the behaviour it had before
+ * the parts existed: no gesture notification, the marks at the insert
+ * position, a projection after a decoration rebuild.
+ */
+export interface FieldEditorParts {
+	/** @internal S1: the one reader of the DOM selection for this root. */
+	readonly reader?: SelectionReader;
+	/** @internal P, S1: the one writer of the DOM selection for this root. */
+	readonly projector?: SelectionProjector;
+	/** @internal Marks toggled at a collapsed caret, applied to the next insert. */
+	readonly pendingMarks?: PendingMarkController;
+}
+
+export interface FieldEditorDomController
+	extends FieldEditorSelectionState, FieldEditorParts {
 	setComposing(composing: boolean): void;
 	requestDomFocus(
 		target: HTMLElement,
@@ -135,78 +172,60 @@ export interface FieldEditorDomController extends FieldEditorSelectionState {
 		options?: FocusOptions,
 		policyOptions?: PenFieldEditorFocusOptions,
 	): boolean;
-	requestActivation(
-		target: HTMLElement,
-		reason: FieldEditorFocusReason,
-		options?: PenFieldEditorFocusOptions,
-	): boolean;
 	requestRootFocus(
 		target: HTMLElement,
 		reason: FieldEditorFocusReason,
 		options?: FocusOptions,
 	): boolean;
-	shouldHandleDomSelectionChange(isApplyingSelection: number): boolean;
-	resetBackendSelectionAuthority(): void;
-	setBackendSelectionAuthority(
-		source: FieldEditorSelectionSource,
-		selection: FieldEditorSelectionSnapshot | null,
-	): void;
-	getBackendSelectionAuthority(
-		source: FieldEditorSelectionSource,
-		blockId?: string | null,
-	): FieldEditorSelectionSnapshot | null;
-	hasBackendSelectionAuthority(source: FieldEditorSelectionSource): boolean;
-	clearBackendSelectionAuthority(source: FieldEditorSelectionSource): void;
-	withBackendSelectionWrite<T>(write: () => T): T;
-	getBackendSelectionApplicationDepth(): number;
-	setEditContextSelectionSnapshot(
-		selection: FieldEditorSelectionSnapshot | null,
-	): void;
-	getEditContextSelectionSnapshot(
-		blockId?: string | null,
-	): FieldEditorSelectionSnapshot | null;
-	notifyGestureEvent?(eventKind: GestureEventKind): void;
-	getGestureWindows?(): GestureWindowState;
-	isAdmissibleGestureRead?(): boolean;
-	isProjectionInFlight?(): boolean;
-	requestDivergenceProjection?(): void;
 	/**
-	 * Whether a field rebuild may write the selection back into the DOM.
-	 * False while a native control that is not this field owns focus (HOST9):
-	 * setting a DOM selection inside the field would move focus with it.
+	 * P3: a reconcile rebuilt these blocks' DOM; project the authority now
+	 * when one of them is the mounted projection target. Reconciles never
+	 * save or restore the native range themselves.
 	 */
-	shouldProjectSelectionAfterReconcile?(): boolean;
+	projectAfterRebuild?(blockIds: readonly string[]): void;
+	/**
+	 * W3.R5: run the reader on the live selection now. Input handlers call it
+	 * and then read the authority instead of mapping the DOM themselves.
+	 */
+	syncDomSelectionRead?(): void;
 	readDomSelection?(proposal: ReaderSelection): DomSelectionReadDecision;
+	/** A cross-block text selection with its gesture's origin (S3). */
 	applyDocumentTextSelection(
 		anchor: { blockId: string; offset: number },
 		focus: { blockId: string; offset: number },
+		origin: SelectionOrigin,
 	): void;
 	applyDomTextSelection(
 		anchor: { blockId: string; offset: number },
 		focus: { blockId: string; offset: number },
-		options?: {
-			focusBlockId?: string;
-		},
+		origin: SelectionOrigin,
 	): void;
-	resolveInsertMarks(
-		ytext: { toDelta(): unknown[] },
-		offset: number,
-	): Record<string, unknown | null> | undefined;
+	/** A text-input caret write; origin defaults to `keyboard`, `ime` while composing (S3). */
 	syncTextSelection(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		origin?: SelectionOrigin,
+	): void;
+	/** The edited cell's caret write (W3.R18): `CellSelection.text`, origin as `syncTextSelection`. */
+	syncCellTextSelection(
+		cell: ActiveCellCoord,
+		anchorOffset: number,
+		focusOffset: number,
+		origin?: SelectionOrigin,
 	): void;
 	notifyDomReconciled(blockId?: string): void;
 	activateTextSelection(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	commitProgrammaticTextSelection(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	deactivate(): void;
 }
@@ -216,6 +235,12 @@ export interface FieldEditorKeyboardController extends Pick<
 	"focusBlockId" | "inputMode"
 > {
 	readonly activeCellCoord: ActiveCellCoord | null;
+	syncCellTextSelection?(
+		cell: ActiveCellCoord,
+		anchorOffset: number,
+		focusOffset: number,
+		origin?: SelectionOrigin,
+	): void;
 	/** Which rung `Mod-a` enters the T1 ladder on, from the interaction model. */
 	readonly selectAllBehavior: EditorSelectAllBehavior;
 	activateCell(blockId: string, row: number, col: number): void;
@@ -223,18 +248,13 @@ export interface FieldEditorKeyboardController extends Pick<
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	commitProgrammaticTextSelection?(
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
-	): void;
-	commitCellTextSelection?(
-		blockId: string,
-		row: number,
-		col: number,
-		anchorOffset: number,
-		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	deactivate(): void;
 }
@@ -252,6 +272,7 @@ export interface FieldEditorTableNavigationController {
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
 	deactivate(): void;
 }
@@ -270,7 +291,10 @@ export interface FieldEditorTransferController {
 		blockId: string,
 		anchorOffset: number,
 		focusOffset: number,
+		options?: FieldEditorFocusOptions,
 	): void;
+	/** @internal The reader's gesture windows, for the paste caret's origin (S3). */
+	readonly reader?: Pick<SelectionReader, "windows">;
 }
 
 export type FieldEditorInputController = FieldEditorDomController &
@@ -281,22 +305,22 @@ export type FieldEditorSession = FieldEditorStore &
 	FieldEditorInputController &
 	FieldEditorTableNavigationController &
 	FieldEditorEscapeController & {
-		beginPointerSelection(): void;
-		endPointerSelection(): void;
-		notifyGestureEvent(eventKind: GestureEventKind): void;
-		isAdmissibleGestureRead(): boolean;
 		readDomSelection(proposal: ReaderSelection): DomSelectionReadDecision;
 		suspendForPointerSelection(): void;
 		getPendingMarks(): Readonly<Record<string, unknown | null>>;
 		togglePendingMark(markType: string): boolean;
 		clearPendingMarks(): void;
 		collapseSelectionToAnchor(): void;
-		collapseSelectionToPoint(point: {
-			blockId: string;
-			offset: number;
-		}): void;
+		collapseSelectionToPoint(
+			point: {
+				blockId: string;
+				offset: number;
+			},
+			origin?: SelectionOrigin,
+		): void;
 		onFocusLifecycle(listener: PenFocusLifecycleListener): () => void;
 		waitForAttachment(blockId?: string | null): Promise<boolean>;
+		syncDomSelectionRead(): void;
 		ackBlockMounted(blockId: string, element: HTMLElement): void;
 		delegate(blockSchema: BlockSchema): boolean;
 	};

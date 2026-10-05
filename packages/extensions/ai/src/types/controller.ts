@@ -10,7 +10,12 @@ import type {
 	TextSelection,
 	ToolRuntime,
 } from "@input/pen-types";
-import type { AIToolBudgetLimits, AIToolConfirmFn, AIToolTurn } from "../tools";
+import type {
+	AIToolBudgetLimits,
+	AIToolConfirmFn,
+	AIToolTurn,
+	AIUnconfirmedDestructivePolicy,
+} from "../tools";
 import type { EditDocumentPreviewUpdate } from "../runtime/editDocumentPreview";
 import type {
 	AIMutationPreference,
@@ -230,6 +235,8 @@ export interface AgenticLoopOptions {
 	maxSteps?: number;
 	allowedMutatingTools?: readonly string[];
 	confirm?: AIToolConfirmFn;
+	/** AIB3: a destructive call with no `confirm` resolver. Default `"allow"`. */
+	unconfirmedDestructive?: AIUnconfirmedDestructivePolicy;
 	toolBudget?: Partial<AIToolBudgetLimits>;
 	toolTurn?: AIToolTurn;
 	signal?: AbortSignal;

@@ -3,66 +3,47 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { defaultSchema } from "@input/pen-schema";
 import type { Editor } from "@input/pen-types";
-import {
-	handleFieldEditorPointerActivate,
-	type FieldEditorPointerTarget,
-} from "../host/pointerActivation";
+import { handleFieldEditorPointerActivate } from "../host/pointerActivation";
 import { DATA_ATTRS } from "../utils/dataAttributes";
 
-function mouseEvent(
-	target: EventTarget,
-	init: MouseEventInit = {},
-): MouseEvent {
-	const event = new MouseEvent("mousedown", {
-		bubbles: true,
-		button: 0,
-		clientX: 0,
-		clientY: 0,
-		...init,
-	});
-	Object.defineProperty(event, "target", { value: target });
-	return event;
-}
+type StubBlocks = Record<string, { type: string; length?: number }>;
 
-function stubEditor(
-	blocks: Record<string, { type: string; length?: number }>,
-): Editor {
+afterEach(() => {
+	document.body.replaceChildren();
+});
+
+function stubEditor(blocks: StubBlocks): Editor {
 	return {
 		schema: defaultSchema,
 		getBlock(blockId: string) {
 			const block = blocks[blockId];
-			if (!block) {
-				return null;
-			}
-			return {
-				type: block.type,
-				length: () => block.length ?? 0,
-			};
+			return block ? { type: block.type, length: () => block.length ?? 0 } : null;
 		},
 	} as unknown as Editor;
 }
 
-function createTarget(snapshot: {
-	isEditing: boolean;
-	focusBlockId: string | null;
-}): {
-	fieldEditor: FieldEditorPointerTarget;
-	activations: Array<{
-		blockId: string;
-		anchorOffset: number;
-		focusOffset: number;
-	}>;
-	attached: HTMLElement[];
-} {
-	const activations: Array<{
-		blockId: string;
-		anchorOffset: number;
-		focusOffset: number;
-	}> = [];
+/**
+ * Dispatches a primary-button mousedown on `target` through the activation
+ * handler and records what it activated and attached.
+ */
+function activate(
+	shell: { root: HTMLElement; blocksHost: HTMLElement },
+	target: EventTarget,
+	blocks: StubBlocks,
+	options: {
+		init?: MouseEventInit;
+		snapshot?: { isEditing: boolean; focusBlockId: string | null };
+		readonly?: boolean;
+	} = {},
+) {
+	const activations: Array<{ blockId: string; anchorOffset: number; focusOffset: number }> = [];
 	const attached: HTMLElement[] = [];
-	return {
-		activations,
-		attached,
+	const event = new MouseEvent("mousedown", { bubbles: true, button: 0, clientX: 0, clientY: 0, ...options.init });
+	Object.defineProperty(event, "target", { value: target });
+	const snapshot = options.snapshot ?? { isEditing: false, focusBlockId: null };
+	const handled = handleFieldEditorPointerActivate({
+		event,
+		editor: stubEditor(blocks),
 		fieldEditor: {
 			getSnapshot: () => snapshot,
 			activateTextSelection(blockId, anchorOffset, focusOffset) {
@@ -72,318 +53,233 @@ function createTarget(snapshot: {
 				attached.push(element);
 			},
 		},
-	};
+		root: shell.root,
+		blocksHost: shell.blocksHost,
+		readonly: options.readonly,
+	});
+	return { handled, activations, attached, event };
 }
 
-describe("handleFieldEditorPointerActivate", () => {
-	afterEach(() => {
-		document.body.replaceChildren();
-	});
+function createBlock(blockId: string, type?: string): { block: HTMLElement; inline: HTMLElement } {
+	const block = document.createElement("div");
+	block.setAttribute(DATA_ATTRS.editorBlock, "");
+	block.setAttribute(DATA_ATTRS.blockId, blockId);
+	if (type) block.setAttribute(DATA_ATTRS.blockType, type);
+	const inline = document.createElement("span");
+	inline.setAttribute(DATA_ATTRS.inlineContent, "");
+	block.append(inline);
+	return { block, inline };
+}
 
-	function mountShell(
-		blockId: string,
-		type = "paragraph",
-	): {
-		root: HTMLElement;
-		blocksHost: HTMLElement;
-		block: HTMLElement;
-		inline: HTMLElement;
-	} {
+function stubRect(element: HTMLElement, top: number, bottom: number): void {
+	element.getBoundingClientRect = () =>
+		({ x: 0, y: top, top, bottom, left: 0, right: 200, width: 200, height: bottom - top }) as DOMRect;
+}
+
+const P1 = { p1: { type: "paragraph", length: 4 } };
+const NOT_ACTIVATED = { handled: false, activations: [] };
+
+describe("handleFieldEditorPointerActivate", () => {
+	function mountShell(blockId: string, type = "paragraph") {
 		const root = document.createElement("div");
 		const blocksHost = document.createElement("div");
-		const block = document.createElement("div");
-		block.setAttribute(DATA_ATTRS.editorBlock, "");
-		block.setAttribute(DATA_ATTRS.blockId, blockId);
-		block.setAttribute(DATA_ATTRS.blockType, type);
-		const inline = document.createElement("span");
-		inline.setAttribute(DATA_ATTRS.inlineContent, "");
-		block.append(inline);
+		const { block, inline } = createBlock(blockId, type);
 		blocksHost.append(block);
 		root.append(blocksHost);
 		document.body.append(root);
 		return { root, blocksHost, block, inline };
 	}
 
-	it("does not activate when the editor is read-only", () => {
-		const { root, blocksHost, inline } = mountShell("p1");
-		const target = createTarget({ isEditing: false, focusBlockId: null });
-		const handled = handleFieldEditorPointerActivate({
-			event: mouseEvent(inline),
-			editor: stubEditor({ p1: { type: "paragraph", length: 4 } }),
-			fieldEditor: target.fieldEditor,
-			root,
-			blocksHost,
-			readonly: true,
-		});
-		expect(handled).toBe(false);
-		expect(target.activations).toEqual([]);
+	it.each([
+		["the editor is read-only", { readonly: true }],
+		["a non-primary button is pressed", { init: { button: 2 } }],
+		["the block is already being edited", { snapshot: { isEditing: true, focusBlockId: "p1" } }],
+	])("does not activate when %s", (_name, options) => {
+		const shell = mountShell("p1");
+		expect(activate(shell, shell.inline, P1, options)).toMatchObject(NOT_ACTIVATED);
 	});
 
-	it("does not activate on a non-primary button", () => {
-		const { root, blocksHost, inline } = mountShell("p1");
-		const target = createTarget({ isEditing: false, focusBlockId: null });
-		const handled = handleFieldEditorPointerActivate({
-			event: mouseEvent(inline, { button: 2 }),
-			editor: stubEditor({ p1: { type: "paragraph", length: 4 } }),
-			fieldEditor: target.fieldEditor,
-			root,
-			blocksHost,
-		});
-		expect(handled).toBe(false);
-		expect(target.activations).toEqual([]);
-	});
+	it.each([
+		["a toggle", "toggle", 6],
+		["a callout", "callout", 0],
+	])("activates a nested layout child of %s, not the parent container", (_name, type, length) => {
+		const shell = mountShell("parent", type);
+		const child = createBlock("child");
+		shell.block.append(child.block);
 
-	it("activates a nested layout child, not the parent container", () => {
-		const {
-			root,
-			blocksHost,
-			block: parent,
-		} = mountShell("parent", "toggle");
-		const child = document.createElement("div");
-		child.setAttribute(DATA_ATTRS.editorBlock, "");
-		child.setAttribute(DATA_ATTRS.blockId, "child");
-		const childInline = document.createElement("span");
-		childInline.setAttribute(DATA_ATTRS.inlineContent, "");
-		child.append(childInline);
-		parent.append(child);
-
-		const target = createTarget({ isEditing: false, focusBlockId: null });
-		const handled = handleFieldEditorPointerActivate({
-			event: mouseEvent(childInline),
-			editor: stubEditor({
-				parent: { type: "toggle", length: 0 },
-				child: { type: "paragraph", length: 6 },
-			}),
-			fieldEditor: target.fieldEditor,
-			root,
-			blocksHost,
+		const result = activate(shell, child.inline, {
+			parent: { type, length: 0 },
+			child: { type: "paragraph", length },
 		});
 
-		expect(handled).toBe(true);
-		expect(target.activations).toEqual([
-			{ blockId: "child", anchorOffset: 6, focusOffset: 6 },
-		]);
-		expect(target.attached).toEqual([childInline]);
-	});
-
-	it("activates a callout child the same way", () => {
-		const {
-			root,
-			blocksHost,
-			block: parent,
-		} = mountShell("callout", "callout");
-		const child = document.createElement("div");
-		child.setAttribute(DATA_ATTRS.editorBlock, "");
-		child.setAttribute(DATA_ATTRS.blockId, "inside");
-		const childInline = document.createElement("span");
-		childInline.setAttribute(DATA_ATTRS.inlineContent, "");
-		child.append(childInline);
-		parent.append(child);
-
-		const target = createTarget({ isEditing: false, focusBlockId: null });
-		const handled = handleFieldEditorPointerActivate({
-			event: mouseEvent(childInline),
-			editor: stubEditor({
-				callout: { type: "callout", length: 0 },
-				inside: { type: "paragraph", length: 0 },
-			}),
-			fieldEditor: target.fieldEditor,
-			root,
-			blocksHost,
-		});
-
-		expect(handled).toBe(true);
-		expect(target.activations[0]?.blockId).toBe("inside");
+		expect(result.handled).toBe(true);
+		expect(result.activations).toEqual([{ blockId: "child", anchorOffset: length, focusOffset: length }]);
+		expect(result.attached).toEqual([child.inline]);
 	});
 
 	it("does not activate when the click lands on the gap between blocks", () => {
-		const { root, blocksHost } = mountShell("p1");
-		const target = createTarget({ isEditing: false, focusBlockId: null });
-		const handled = handleFieldEditorPointerActivate({
-			event: mouseEvent(blocksHost),
-			editor: stubEditor({ p1: { type: "paragraph", length: 4 } }),
-			fieldEditor: target.fieldEditor,
-			root,
-			blocksHost,
-		});
-		expect(handled).toBe(false);
-		expect(target.activations).toEqual([]);
+		const shell = mountShell("p1");
+		expect(activate(shell, shell.blocksHost, P1)).toMatchObject(NOT_ACTIVATED);
 	});
 
 	it("does not activate a table or image block", () => {
-		const { root, blocksHost, block: table } = mountShell("tbl", "table");
-		const image = document.createElement("div");
-		image.setAttribute(DATA_ATTRS.editorBlock, "");
-		image.setAttribute(DATA_ATTRS.blockId, "img");
-		blocksHost.append(image);
+		const shell = mountShell("tbl", "table");
+		const image = createBlock("img").block;
+		image.replaceChildren();
+		shell.blocksHost.append(image);
+		const blocks = { tbl: { type: "table" }, img: { type: "image" } };
 
-		const editor = stubEditor({
-			tbl: { type: "table" },
-			img: { type: "image" },
-		});
-		const tableTarget = createTarget({
-			isEditing: false,
-			focusBlockId: null,
-		});
-		expect(
-			handleFieldEditorPointerActivate({
-				event: mouseEvent(table),
-				editor,
-				fieldEditor: tableTarget.fieldEditor,
-				root,
-				blocksHost,
-			}),
-		).toBe(false);
-		expect(tableTarget.activations).toEqual([]);
-
-		const imageTarget = createTarget({
-			isEditing: false,
-			focusBlockId: null,
-		});
-		expect(
-			handleFieldEditorPointerActivate({
-				event: mouseEvent(image),
-				editor,
-				fieldEditor: imageTarget.fieldEditor,
-				root,
-				blocksHost,
-			}),
-		).toBe(false);
-		expect(imageTarget.activations).toEqual([]);
+		expect(activate(shell, shell.block, blocks)).toMatchObject(NOT_ACTIVATED);
+		expect(activate(shell, image, blocks)).toMatchObject(NOT_ACTIVATED);
 	});
 
 	it("does not activate through an ignore-pointer-gesture descendant", () => {
-		const { root, blocksHost, block } = mountShell("p1");
+		const shell = mountShell("p1");
 		const ignored = document.createElement("button");
 		ignored.setAttribute(DATA_ATTRS.ignorePointerGesture, "");
-		block.append(ignored);
-
-		const target = createTarget({ isEditing: false, focusBlockId: null });
-		const handled = handleFieldEditorPointerActivate({
-			event: mouseEvent(ignored),
-			editor: stubEditor({ p1: { type: "paragraph", length: 4 } }),
-			fieldEditor: target.fieldEditor,
-			root,
-			blocksHost,
-		});
-		expect(handled).toBe(false);
-		expect(target.activations).toEqual([]);
+		shell.block.append(ignored);
+		expect(activate(shell, ignored, P1)).toMatchObject(NOT_ACTIVATED);
 	});
 
-	it("does not re-activate the block already being edited", () => {
-		const { root, blocksHost, inline } = mountShell("p1");
-		const target = createTarget({ isEditing: true, focusBlockId: "p1" });
-		const handled = handleFieldEditorPointerActivate({
-			event: mouseEvent(inline),
-			editor: stubEditor({ p1: { type: "paragraph", length: 4 } }),
-			fieldEditor: target.fieldEditor,
-			root,
-			blocksHost,
-		});
-		expect(handled).toBe(false);
-		expect(target.activations).toEqual([]);
-	});
-
-	it("activates a paragraph inside a table cell, not the table", () => {
-		const { root, blocksHost } = mountShell("tbl", "table");
-		const table = blocksHost.querySelector(
-			`[${DATA_ATTRS.editorBlock}]`,
-		) as HTMLElement;
+	it("activates a paragraph inside a table cell, not the table, and not from the cell chrome", () => {
+		const shell = mountShell("tbl", "table");
 		const cell = document.createElement("div");
 		cell.setAttribute(DATA_ATTRS.tableCell, "");
-		const paragraph = document.createElement("div");
-		paragraph.setAttribute(DATA_ATTRS.editorBlock, "");
-		paragraph.setAttribute(DATA_ATTRS.blockId, "cell-p");
-		const cellInline = document.createElement("span");
-		cellInline.setAttribute(DATA_ATTRS.inlineContent, "");
-		paragraph.append(cellInline);
-		cell.append(paragraph);
-		table.append(cell);
+		const paragraph = createBlock("cell-p");
+		cell.append(paragraph.block);
+		shell.block.append(cell);
+		const blocks = { tbl: { type: "table" }, "cell-p": { type: "paragraph", length: 3 } };
 
-		const target = createTarget({ isEditing: false, focusBlockId: null });
-		const handled = handleFieldEditorPointerActivate({
-			event: mouseEvent(cellInline),
-			editor: stubEditor({
-				tbl: { type: "table" },
-				"cell-p": { type: "paragraph", length: 3 },
-			}),
-			fieldEditor: target.fieldEditor,
-			root,
-			blocksHost,
-		});
+		const result = activate(shell, paragraph.inline, blocks);
+		expect(result.handled).toBe(true);
+		expect(result.activations).toEqual([{ blockId: "cell-p", anchorOffset: 3, focusOffset: 3 }]);
+		expect(result.attached).toEqual([paragraph.inline]);
 
-		expect(handled).toBe(true);
-		expect(target.activations).toEqual([
-			{ blockId: "cell-p", anchorOffset: 3, focusOffset: 3 },
-		]);
-		expect(target.attached).toEqual([cellInline]);
-	});
-
-	it("does not activate when the click lands on table cell chrome", () => {
-		const { root, blocksHost, block: table } = mountShell("tbl", "table");
-		const cell = document.createElement("div");
-		cell.setAttribute(DATA_ATTRS.tableCell, "");
-		table.append(cell);
-
-		const target = createTarget({ isEditing: false, focusBlockId: null });
-		const handled = handleFieldEditorPointerActivate({
-			event: mouseEvent(cell),
-			editor: stubEditor({ tbl: { type: "table" } }),
-			fieldEditor: target.fieldEditor,
-			root,
-			blocksHost,
-		});
-
-		expect(handled).toBe(false);
-		expect(target.activations).toEqual([]);
+		expect(activate(shell, cell, blocks)).toMatchObject(NOT_ACTIVATED);
 	});
 
 	it("does not activate a nested editor root, even with a colliding block id", () => {
-		const { root, blocksHost, block } = mountShell("p1");
-		root.setAttribute(DATA_ATTRS.editorRoot, "");
+		const shell = mountShell("p1");
+		shell.root.setAttribute(DATA_ATTRS.editorRoot, "");
 		const nestedRoot = document.createElement("div");
 		nestedRoot.setAttribute(DATA_ATTRS.editorRoot, "");
 		nestedRoot.setAttribute(DATA_ATTRS.readonly, "");
-		const nestedBlock = document.createElement("div");
-		nestedBlock.setAttribute(DATA_ATTRS.editorBlock, "");
-		nestedBlock.setAttribute(DATA_ATTRS.blockId, "p1");
-		const nestedInline = document.createElement("span");
-		nestedInline.setAttribute(DATA_ATTRS.inlineContent, "");
-		nestedBlock.append(nestedInline);
-		nestedRoot.append(nestedBlock);
-		block.append(nestedRoot);
+		const nested = createBlock("p1");
+		nestedRoot.append(nested.block);
+		shell.block.append(nestedRoot);
 
-		const target = createTarget({ isEditing: false, focusBlockId: null });
-		const handled = handleFieldEditorPointerActivate({
-			event: mouseEvent(nestedInline),
-			editor: stubEditor({ p1: { type: "paragraph", length: 4 } }),
-			fieldEditor: target.fieldEditor,
-			root,
-			blocksHost,
-		});
-
-		expect(handled).toBe(false);
-		expect(target.activations).toEqual([]);
+		expect(activate(shell, nested.inline, P1)).toMatchObject(NOT_ACTIVATED);
 	});
 
 	it("activates from a text-node target via the parent element", () => {
-		const { root, blocksHost, inline } = mountShell("p1");
+		const shell = mountShell("p1");
 		const text = document.createTextNode("Hello");
-		inline.append(text);
-		const target = createTarget({ isEditing: false, focusBlockId: null });
-		const handled = handleFieldEditorPointerActivate({
-			event: mouseEvent(text),
-			editor: stubEditor({ p1: { type: "paragraph", length: 5 } }),
-			fieldEditor: target.fieldEditor,
-			root,
-			blocksHost,
+		shell.inline.append(text);
+
+		const result = activate(shell, text, { p1: { type: "paragraph", length: 5 } });
+
+		expect(result.handled).toBe(true);
+		expect(result.activations).toHaveLength(1);
+		expect(result.activations[0]?.blockId).toBe("p1");
+		expect(result.activations[0]?.anchorOffset).toBe(result.activations[0]?.focusOffset);
+		expect(result.attached).toEqual([shell.inline]);
+	});
+
+	it.each([
+		["a double click", { detail: 2 }],
+		["a shift-click", { shiftKey: true, detail: 1 }],
+	])("O1: leaves %s on a chip in the field already being edited to the browser", (_name, init) => {
+		const shell = mountShell("p1");
+		const host = document.createElement("span");
+		host.setAttribute(DATA_ATTRS.inlineAtomHost, "");
+		const chip = document.createElement("span");
+		chip.setAttribute(DATA_ATTRS.inlineAtom, "");
+		chip.contentEditable = "false";
+		chip.textContent = "@Ada";
+		host.append(chip);
+		shell.inline.append("Hello ", host, " world");
+
+		const result = activate(shell, chip, { p1: { type: "paragraph", length: 13 } }, {
+			init: { cancelable: true, ...init },
+			snapshot: { isEditing: true, focusBlockId: "p1" },
 		});
-		expect(handled).toBe(true);
-		expect(target.activations).toHaveLength(1);
-		expect(target.activations[0]?.blockId).toBe("p1");
-		expect(target.activations[0]?.anchorOffset).toBe(
-			target.activations[0]?.focusOffset,
-		);
-		expect(target.attached).toEqual([inline]);
+
+		expect(result).toMatchObject(NOT_ACTIVATED);
+		expect(result.event.defaultPrevented).toBe(false);
+	});
+});
+
+describe("handleFieldEditorPointerActivate host chrome", () => {
+	const BLOCKS = { p1: { type: "paragraph", length: 4 }, p2: { type: "paragraph", length: 7 } };
+	const ACTIVATED_LAST = { handled: true, activations: [{ blockId: "p2", anchorOffset: 7, focusOffset: 7 }] };
+
+	/** Two 20px blocks at 0–20 and 20–40 inside a taller host. */
+	function mountTallEditor() {
+		const root = document.createElement("div");
+		root.setAttribute(DATA_ATTRS.editorRoot, "");
+		const content = document.createElement("div");
+		const blocksHost = document.createElement("div");
+		const first = createBlock("p1").block;
+		first.replaceChildren();
+		const last = createBlock("p2");
+		blocksHost.append(first, last.block);
+		content.append(blocksHost);
+		root.append(content);
+		document.body.append(root);
+		stubRect(first, 0, 20);
+		stubRect(last.block, 20, 40);
+		/** Moves both blocks down so a click at the top lands above them. */
+		const shiftDown = () => {
+			stubRect(first, 40, 60);
+			stubRect(last.block, 60, 80);
+		};
+		return { root, blocksHost, first, last: last.block, lastInline: last.inline, shiftDown };
+	}
+
+	it("activates the last text block when the click is below all blocks on the host", () => {
+		const shell = mountTallEditor();
+		const result = activate(shell, shell.blocksHost, BLOCKS, { init: { clientY: 80 } });
+		expect(result).toMatchObject(ACTIVATED_LAST);
+		expect(result.attached).toEqual([shell.lastInline]);
+	});
+
+	it("activates the last text block when the click lands on a tall editor root", () => {
+		const shell = mountTallEditor();
+		expect(activate(shell, shell.root, BLOCKS, { init: { clientY: 120 } })).toMatchObject(ACTIVATED_LAST);
+	});
+
+	it("activates the first text block when the click is above all blocks", () => {
+		const shell = mountTallEditor();
+		shell.shiftDown();
+		const result = activate(shell, shell.blocksHost, BLOCKS, { init: { clientY: 10 } });
+		expect(result.handled).toBe(true);
+		expect(result.activations[0]?.blockId).toBe("p1");
+		expect(result.activations[0]?.anchorOffset).toBe(result.activations[0]?.focusOffset);
+	});
+
+	it("does not activate from a host click that lands between two blocks", () => {
+		const shell = mountTallEditor();
+		expect(activate(shell, shell.blocksHost, BLOCKS, { init: { clientY: 20 } })).toMatchObject(NOT_ACTIVATED);
+	});
+
+	it("HOST6: a click on a list group wrapper is host chrome", () => {
+		const shell = mountTallEditor();
+		const group = document.createElement("div");
+		group.setAttribute(DATA_ATTRS.listGroup, "");
+		group.setAttribute("role", "list");
+		group.append(shell.first, shell.last);
+		shell.blocksHost.append(group);
+		const blocks = { p1: { type: "bulletListItem", length: 4 }, p2: { type: "bulletListItem", length: 7 } };
+		const click = (clientY: number) => activate(shell, group, blocks, { init: { clientY } });
+
+		// below the last item activates it at its end
+		expect(click(80)).toMatchObject(ACTIVATED_LAST);
+		// the gap between items stays inactive
+		expect(click(20)).toMatchObject(NOT_ACTIVATED);
+		// above the first item activates it at its start
+		shell.shiftDown();
+		const above = click(10);
+		expect(above.handled).toBe(true);
+		expect(above.activations[0]?.blockId).toBe("p1");
 	});
 });

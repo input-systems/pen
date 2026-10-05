@@ -1,8 +1,20 @@
+import { SCALE3_SYNCED_PEER_POINTS } from "../constants/scale3";
 import { SCALE1_MEASUREMENTS, type EnvelopeRungId } from "../constants/scale1";
 
 export type FixtureVerdict = "agrees" | "name-overstates" | "wrong-subject";
 export type CountTrust = "trusted" | "untrusted";
-export type ClockTrust = "load-taken" | "untrustworthy" | "not-a-clock";
+/**
+ * `record`: the clock is the envelope record's sample, and its trust follows
+ * the record's load state (`loadTaken`), so no date or load claim is
+ * hard-coded here. `not-gated`: a clock is recorded beside a count gate and
+ * never compared.
+ */
+export type ClockTrust =
+	| "record"
+	| "not-gated"
+	| "load-taken"
+	| "untrustworthy"
+	| "not-a-clock";
 
 export interface FixtureAuditRow {
 	id: string;
@@ -37,10 +49,10 @@ export const SCALE1_FIXTURE_AUDIT: readonly FixtureAuditRow[] = [
 			"100 mixed heading/code/paragraph blocks. Timed work is one `insert-text` on the middle block. Construction is outside the clock.",
 		verdict: "agrees",
 		countTrust: "trusted",
-		clockTrust: "load-taken",
+		clockTrust: "record",
 		floorKind: "empty-timer",
 		howMeasured:
-			"count: blockOrder.length === 100; one insert-text. Wall is load-taken 2026-08-20 minus empty-timer floor; construction outside the clock",
+			"count: blockOrder.length === 100; one insert-text. Wall is the record's p50 minus empty-timer floor; construction outside the clock",
 	},
 	{
 		id: "blocks-1000",
@@ -50,10 +62,10 @@ export const SCALE1_FIXTURE_AUDIT: readonly FixtureAuditRow[] = [
 			"1,000 mixed blocks. Timed work is one `insert-text` on the middle block. Construction is outside the clock.",
 		verdict: "agrees",
 		countTrust: "trusted",
-		clockTrust: "load-taken",
+		clockTrust: "record",
 		floorKind: "empty-timer",
 		howMeasured:
-			"count: blockOrder.length === 1000; one insert-text. Wall is load-taken 2026-08-20 minus empty-timer floor; construction outside the clock",
+			"count: blockOrder.length === 1000; one insert-text. Wall is the record's p50 minus empty-timer floor; construction outside the clock",
 	},
 	{
 		id: "blocks-5000",
@@ -63,10 +75,10 @@ export const SCALE1_FIXTURE_AUDIT: readonly FixtureAuditRow[] = [
 			"5,000 mixed blocks. Timed work is one `insert-text` on the middle block. Construction is outside the clock.",
 		verdict: "agrees",
 		countTrust: "trusted",
-		clockTrust: "load-taken",
+		clockTrust: "record",
 		floorKind: "empty-timer",
 		howMeasured:
-			"count: blockOrder.length === 5000; one insert-text. Wall is load-taken 2026-08-20 minus empty-timer floor; construction outside the clock",
+			"count: blockOrder.length === 5000; one insert-text. Wall is the record's p50 minus empty-timer floor; construction outside the clock",
 	},
 	{
 		id: "long-block",
@@ -76,10 +88,10 @@ export const SCALE1_FIXTURE_AUDIT: readonly FixtureAuditRow[] = [
 			"One paragraph of 100,000 `A` characters. Timed work is one `insert-text` at offset 100000.",
 		verdict: "agrees",
 		countTrust: "trusted",
-		clockTrust: "load-taken",
+		clockTrust: "record",
 		floorKind: "empty-timer",
 		howMeasured:
-			"count: textContent().length === 100000; one insert-text. Wall is load-taken 2026-08-20 minus empty-timer floor; construction outside the clock",
+			"count: textContent().length === 100000; one insert-text. Wall is the record's p50 minus empty-timer floor; construction outside the clock",
 	},
 	{
 		id: "nesting-10",
@@ -89,10 +101,10 @@ export const SCALE1_FIXTURE_AUDIT: readonly FixtureAuditRow[] = [
 			"Ten nested callouts as the only top-level tree (empty-editor default paragraph removed). Timed work is one `insert-text` on the innermost block.",
 		verdict: "agrees",
 		countTrust: "trusted",
-		clockTrust: "load-taken",
+		clockTrust: "record",
 		floorKind: "empty-timer",
 		howMeasured:
-			"count: measureNestingDepth === 10; one insert-text. Wall is load-taken 2026-08-20 minus empty-timer floor",
+			"count: measureNestingDepth === 10; one insert-text. Wall is the record's p50 minus empty-timer floor",
 	},
 	{
 		id: "table-50x20",
@@ -102,10 +114,10 @@ export const SCALE1_FIXTURE_AUDIT: readonly FixtureAuditRow[] = [
 			"A 50-row × 20-column table as the only top-level block. Timed work is one `insert-table-cell-text` on the last cell.",
 		verdict: "agrees",
 		countTrust: "trusted",
-		clockTrust: "load-taken",
+		clockTrust: "record",
 		floorKind: "empty-timer",
 		howMeasured:
-			"count: 50 rows × 20 cols; one insert-table-cell-text. Wall is load-taken 2026-08-20 minus empty-timer floor",
+			"count: 50 rows × 20 cols; one insert-table-cell-text. Wall is the record's p50 minus empty-timer floor",
 	},
 	{
 		id: "concurrentPeers-2",
@@ -115,10 +127,10 @@ export const SCALE1_FIXTURE_AUDIT: readonly FixtureAuditRow[] = [
 			"Shared-seed fork so peer B can receive peer A's insert (the independently-populated fixture could not). Timed work is peer A `insert-text` plus `sync()`. Peer B does not write during the clock.",
 		verdict: "name-overstates",
 		countTrust: "trusted",
-		clockTrust: "untrustworthy",
+		clockTrust: "record",
 		floorKind: "empty-sync",
 		howMeasured:
-			"count: 2 peers and B observation asserted before the clock. Wall is load-taken 2026-08-20 (1.49ms vs later isolated 0.198ms) minus empty-sync floor",
+			"count: 2 peers and B observation asserted before the clock. Wall is the record's A insert + sync p50 minus empty-sync floor",
 	},
 ];
 
@@ -146,13 +158,39 @@ export const RELATED_FIXTURE_AUDIT: readonly FixtureAuditRow[] = [
 		fixture: "`createScale3Editor` remote-caret-count axis",
 		claimedSubject: "keystroke with 8 remote-caret decorations",
 		actualSubject:
-			"Eight `data-pen-remote-caret` decorations on the multiplayer stand-in. No second Y.Doc, no sync. N-synced-peer scaling is unmeasured.",
+			"Eight `data-pen-remote-caret` decorations on the multiplayer stand-in. No second Y.Doc, no sync; synced-peer scaling is the `scale3.keystroke.synced-peers.*` axis.",
 		verdict: "agrees",
 		countTrust: "trusted",
 		clockTrust: "untrustworthy",
 		floorKind: "empty-timer",
 		howMeasured:
-			"count: 8 remote-caret decorations. Clock is a keystroke median on a single editor. N-synced-peer scaling is not a SCALE3 measurement",
+			"count: 8 remote-caret decorations. Clock is a keystroke median on a single editor; synced peers are measured on their own axis",
+	},
+	...SCALE3_SYNCED_PEER_POINTS.map(
+		(peers): FixtureAuditRow => ({
+			id: `scale3.keystroke.synced-peers.${peers}`,
+			fixture: "`createScale3PeerSession` synced-peer-count axis",
+			claimedSubject: `one keystroke fanned out to ${peers} synced peers`,
+			actualSubject: `${peers} real forked Y.Docs at 1,000 blocks, each with the real \`multiplayerExtension\`; the typist's keystroke resolves ${peers - 1} remote carets and is delivered to ${peers - 1} peers.`,
+			verdict: "agrees",
+			countTrust: "trusted",
+			clockTrust: "not-gated",
+			floorKind: "empty-sync",
+			howMeasured: `count: deliveries, remote commits, blocks per remote commit, remote carets and observing peers against \`baselines/scale3-peers.json\`; clocks recorded by \`bench:scale3:peers\``,
+		}),
+	),
+	{
+		id: "scale3.realistic",
+		fixture: "`createScale3RealisticEditor`",
+		claimedSubject: "keystroke with the real AI and search providers",
+		actualSubject:
+			"Real `aiExtension` with 8 staged suggestions and real `searchExtension` with one match. AI suggestions, autocomplete and multiplayer remain stand-ins.",
+		verdict: "agrees",
+		countTrust: "trusted",
+		clockTrust: "not-gated",
+		floorKind: "unmeasurable",
+		howMeasured:
+			"count: `ScanCounts` per keystroke at 100, 1,000 and 5,000 blocks against `baselines/scale3-realistic.counts.json`; clocks recorded there by `bench:scale3:realistic`",
 	},
 	{
 		id: "createLargeDocument",

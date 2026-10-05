@@ -33,6 +33,15 @@ async function readSelectionType(page: Page): Promise<string | null> {
 	return page.evaluate(() => window.__penConformance.selection?.type ?? null);
 }
 
+async function readCellTextFocus(page: Page): Promise<number | null> {
+	return page.evaluate(() => {
+		const selection = window.__penConformance.selection;
+		return selection?.type === "cell"
+			? (selection.text?.focus ?? null)
+			: null;
+	});
+}
+
 scenario(
 	"T6: ArrowLeft in an edited cell is a caret command and moves the cell caret",
 	async (s, page) => {
@@ -76,10 +85,18 @@ scenario(
 		const probe = await readKeyProbe(page);
 		const arrow = probe.find((entry) => entry.key === "ArrowLeft");
 		const selectionType = await readSelectionType(page);
+		const textFocus = await readCellTextFocus(page);
 
 		await test.info().attach("t6-cell-edit-arrow", {
 			body: JSON.stringify(
-				{ loadavg: loads, before, after, probe, selectionType },
+				{
+					loadavg: loads,
+					before,
+					after,
+					probe,
+					selectionType,
+					textFocus,
+				},
 				null,
 				2,
 			),
@@ -120,5 +137,13 @@ scenario(
 				`selectionType=${selectionType}`,
 			),
 		).toBe("cell");
+		expect(
+			textFocus,
+			formatCheckReport(
+				"T6: the moved cell caret is the authority's CellSelection.text",
+				textFocus !== null && textFocus === after ? "passed" : "failed",
+				`text.focus=${textFocus} native=${after}`,
+			),
+		).toBe(after);
 	},
 );

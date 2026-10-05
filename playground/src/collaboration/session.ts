@@ -1,8 +1,5 @@
-import {
-	createYjsProviderSession,
-	getYjsAwareness,
-	getYjsDoc,
-} from "@input/pen-yjs";
+import { createYjsProviderSession, getYjsDoc } from "@input/pen-yjs";
+import { getYjsAwareness } from "@input/pen-yjs/awareness";
 import { multiplayerExtension } from "@input/pen-multiplayer";
 import { generateId, type Extension } from "@input/pen-types";
 import { WebsocketProvider } from "y-websocket";

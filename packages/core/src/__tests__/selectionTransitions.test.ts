@@ -4,7 +4,6 @@ import {
 	arrowFromBlockSelection,
 	clickSelectableBlock,
 	convertPointerDrag,
-	escalateCoveredTextToBlocks,
 	escalateSelectAll,
 	transitionCellSelection,
 	type SelectionState,
@@ -359,9 +358,22 @@ describe("selection transitions", () => {
 			);
 
 			expect(next?.type).toBe("text");
-			expect(escalateCoveredTextToBlocks(flatDoc, next)?.type).toBe(
-				"block",
-			);
+			expect(escalateSelectAll(flatDoc, next)?.type).toBe("block");
+		});
+
+		type Point = [blockId: string, offset: number];
+		it.each<[string, Point, Point, [Point, Point]]>([
+			["a structural focus covers the block in the drag direction (forward)", ["p2", 2], ["img", 0], [["p2", 2], ["img", 1]]],
+			["a structural focus covers the block in the drag direction (backward)", ["p3", 1], ["img", 1], [["p3", 1], ["img", 0]]],
+			["a structural anchor covers from the drag's start side", ["img", 1], ["p3", 2], [["img", 0], ["p3", 2]]],
+			["within one block the focus is clamped, not covered", ["p1", 2], ["p1", 99], [["p1", 2], ["p1", 8]]],
+		])("T2: %s", (_name, [anchorId, anchorOffset], [focusId, focusOffset], [from, to]) => {
+			expect(
+				convertPointerDrag(flatDoc, text({ blockId: anchorId, offset: anchorOffset }), {
+					blockId: focusId,
+					offset: focusOffset,
+				}),
+			).toEqual(text({ blockId: from[0], offset: from[1] }, { blockId: to[0], offset: to[1] }));
 		});
 	});
 
@@ -372,11 +384,6 @@ describe("selection transitions", () => {
 				{ blockId: "p2", offset: 5 },
 			);
 
-			expect(escalateCoveredTextToBlocks(flatDoc, covered)).toEqual({
-				type: "block",
-				blockIds: ["p1", "p2"],
-				head: "p2",
-			});
 			expect(escalateSelectAll(flatDoc, covered)).toEqual({
 				type: "block",
 				blockIds: ["p1", "p2"],
@@ -384,21 +391,23 @@ describe("selection transitions", () => {
 			});
 		});
 
-		it("T3: partial multi-block text stays text; single whole-block does not flip here", () => {
-			const partial = text(
-				{ blockId: "p1", offset: 2 },
+		it("T3: the pointer path never flips partial or whole-block text", () => {
+			const partial = convertPointerDrag(
+				flatDoc,
+				text({ blockId: "p1", offset: 2 }),
 				{ blockId: "p2", offset: 1 },
 			);
-			const single = text(
-				{ blockId: "p1", offset: 0 },
+			const single = convertPointerDrag(
+				flatDoc,
+				text({ blockId: "p1", offset: 0 }),
 				{ blockId: "p1", offset: 8 },
 			);
 
-			expect(escalateCoveredTextToBlocks(flatDoc, partial)).toEqual(
-				partial,
+			expect(partial).toEqual(
+				text({ blockId: "p1", offset: 2 }, { blockId: "p2", offset: 1 }),
 			);
-			expect(escalateCoveredTextToBlocks(flatDoc, single)).toEqual(
-				single,
+			expect(single).toEqual(
+				text({ blockId: "p1", offset: 0 }, { blockId: "p1", offset: 8 }),
 			);
 		});
 	});
