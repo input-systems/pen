@@ -59,19 +59,21 @@ describe("block notifier (COL4 dangling entries)", () => {
 		unsubscribe();
 	});
 
-	it("COL4: a block that died while the notifier was detached is skipped once it reads again", () => {
+	it("COL4: a dead block stays skipped after the notifier detaches and re-attaches", () => {
 		const { a, b } = createPeers();
 		const notifier = createBlockNotifier(b);
+		const first = notifier.subscribeDocument(() => {});
 		a.apply([{ type: "delete-block", blockId: "victim" }], { origin: "user" });
 		b.apply([{ type: "move-block", blockId: "victim", position: "first" }], { origin: "user" });
 		deliver(a, b);
+		first();
+		expect(notifier.diagnostics.sourceSubscriptions, "detached").toBe(0);
 		expect(b.documentState.blockOrder, "remote commits do not normalize").toContain("victim");
 
-		expect(notifier.getDocumentSnapshot().rootIds).not.toContain("victim");
-		const unsubscribe = notifier.subscribeDocument(() => {});
+		const again = notifier.subscribeListSegments(null, () => {});
 		expect(notifier.getDocumentSnapshot().rootIds).not.toContain("victim");
 		expect(notifier.getListSegments(null)).not.toContainEqual({ kind: "block", blockId: "victim" });
-		unsubscribe();
+		again();
 	});
 
 	it("COL4: a dead block re-inserted while the notifier was detached is back in rootIds", () => {

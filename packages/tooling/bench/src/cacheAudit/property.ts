@@ -466,7 +466,8 @@ function multiListedIds(editor: Editor): Set<string> {
  * repairs it, a duplicate is unkeyable, a block has one list slice for two
  * lists, and only the attached notifier tracks which entries died. The
  * comparison resumes once the list is repaired. Root ids are compared live.
- * With `subscribedBlocks`, only those blocks are compared (a partial mount).
+ * With `subscribedBlocks`, only those blocks are compared (a partial mount);
+ * with `detaches`, root ids are compared live on both sides.
  */
 function checkNotifier(
 	editor: Editor,
@@ -475,6 +476,7 @@ function checkNotifier(
 	internals: AuditInternals,
 	label = "C",
 	subscribedBlocks: ReadonlySet<string> | null = null,
+	detaches = false,
 ): string[] {
 	const fresh = internals.createBlockNotifier(editor);
 	const problems: string[] = [];
@@ -492,9 +494,18 @@ function checkNotifier(
 			...document(fresh),
 			rootIds: document(fresh).rootIds.filter(live),
 		};
+		// A notifier that was detached when a concurrent delete killed an
+		// entry draws it, as a fresh mount does, until a local pass removes
+		// it; it must still list every live root.
+		const incrementalDocument = detaches
+			? {
+					...document(notifier),
+					rootIds: document(notifier).rootIds.filter(live),
+				}
+			: document(notifier);
 		const documentDifference = firstDifference(
 			`${label} document snapshot`,
-			document(notifier),
+			incrementalDocument,
 			naiveDocument,
 		);
 		if (documentDifference) problems.push(documentDifference);
@@ -636,6 +647,8 @@ interface ChurnMount {
 	effects(): string;
 	/** Every subscription whose current value differs from the last one it was notified of. */
 	missedNotifications(): string[];
+	/** Releases every subscription now and stays detached through the next operation. */
+	detach(): string;
 	readonly notifier: AuditBlockNotifier;
 	readonly blocks: ReadonlySet<string>;
 	readonly parents: ReadonlySet<string | null>;
@@ -782,6 +795,14 @@ function createChurnMount(
 				`subscribed ${blockSubscriptions.size} blocks, segments ${JSON.stringify([...segmentSubscriptions.keys()])}`,
 			);
 			return `churn ${notes.join(", ")}`;
+		},
+		detach() {
+			releaseAll();
+			// `effects` of this step counts it down; the next step stays detached.
+			detachedFor = 2;
+			pendingBlocks = [];
+			pendingParents = [];
+			return "churn release all mid-op";
 		},
 		missedNotifications() {
 			const missed: string[] = [];
@@ -1298,6 +1319,9 @@ export function createPropertyCase(
 				trace.push("deliver remote → local");
 				harness.deliver(1, 0);
 				if (rng.chance(0.5)) {
+					// The churn notifier saw the entry die; it hears the undo
+					// only once it re-attaches.
+					if (rng.chance(0.5)) trace.push(churn.detach());
 					const manager = editor.facet(
 						undoManagerFacet,
 					) as UndoManager | null;
@@ -1419,6 +1443,7 @@ export function createPropertyCase(
 					internals,
 					"C churn",
 					new Set(churn.blocks),
+					true,
 				),
 				...checkDecorations(editor),
 				...checkSuggestions(editor),

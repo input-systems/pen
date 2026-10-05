@@ -148,11 +148,6 @@ class BlockNotifierImpl implements BlockNotifier {
 	 * the block map entry names no structural change, so renderers skip these.
 	 */
 	private readonly _deadIds = new Set<string>();
-	/**
-	 * Whether `_deadIds` has followed every commit since it was last read
-	 * from core. Detached, the notifier hears none, so attaching re-reads it.
-	 */
-	private _deadIdsTracked = false;
 	private _sharedReadContext: EventContext | null = null;
 	private _deliveries = 0;
 	private readonly _fanout = emptyFanout();
@@ -346,7 +341,6 @@ class BlockNotifierImpl implements BlockNotifier {
 		this._sharedReadContext = null;
 		this._completion = null;
 		this._completionBlockId = null;
-		this._deadIdsTracked = false;
 		this._clearEntries();
 		// Detached, nothing keeps a list current; a subscribed one re-reads.
 		for (const parentId of [...this._segments.keys()]) this._dropSegments(parentId);
@@ -578,30 +572,19 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _liveRootIds(): readonly string[] {
 		this._rootIdsGeneration = this._editor.documentState.generation;
 		const rootIds = getRootBlockIds(this._editor);
-		if (this._deadIdsTracked) this._reviveDeadIds();
-		else this._readDeadIds(rootIds);
+		this._reviveDeadIds();
 		this._coreRootIds = this._deadIds.size === 0 ? rootIds : null;
 		if (this._deadIds.size === 0) return rootIds;
 		return rootIds.filter((id) => !this._deadIds.has(id));
 	}
 
 	/**
-	 * Every root entry core's preorder skips because its block is gone (COL4),
-	 * read when the notifier attaches: detached, it heard none of the commits
-	 * that killed or revived one. O(roots) of index lookups, no block reads.
-	 */
-	private _readDeadIds(rootIds: readonly string[]): void {
-		const state = this._editor.documentState;
-		this._deadIds.clear();
-		for (const id of rootIds) {
-			if (state.preorderIndexOf(id) < 0) this._deadIds.add(id);
-		}
-		this._deadIdsTracked = true;
-	}
-
-	/**
 	 * Forgets every dead id core no longer lists or holds a block for again:
-	 * a remote write can revive one without naming it (COL4). O(dead ids).
+	 * a remote write or an undo can revive one without naming it, and one
+	 * kept across a detach may have revived meanwhile (COL4). O(dead ids).
+	 * An entry that died while the notifier was detached is not found: that
+	 * would read every root block on attach (SCALE6), and a fresh mount draws
+	 * it the same way until the next local pass removes it.
 	 */
 	private _reviveDeadIds(): boolean {
 		let changed = false;
