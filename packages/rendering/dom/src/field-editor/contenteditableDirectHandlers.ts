@@ -79,7 +79,11 @@ const insertText: DirectHandler = (
 function boundaryDelete(
 	command: typeof deleteBackward | typeof deleteForward,
 	granularity: "word" | "line",
-	boundary: (ytext: FieldEditorTextLike, caret: number, editor: Editor) => number,
+	boundary: (
+		ytext: FieldEditorTextLike,
+		caret: number,
+		editor: Editor,
+	) => number,
 ): DirectHandler {
 	return (_event, editor, ytext, fe, _element, backend) => {
 		const resolved = resolveUndispatchedDelete(
@@ -145,12 +149,16 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 		if (!resolved) return;
 		const { blockId, range } = resolved;
 
-		const target = applyDeleteBehavior(editor, {
-			blockId,
-			ytext,
-			range,
-			direction: "backward",
-		});
+		// A cell's text is not the table block's: block-level delete
+		// would select on the table and clear the cell, so it edits inline.
+		const target = isCellEditing(editor, fe)
+			? null
+			: applyDeleteBehavior(editor, {
+					blockId,
+					ytext,
+					range,
+					direction: "backward",
+				});
 		if (target) {
 			activateDeleteTarget(editor, fe, target);
 			return;
@@ -186,14 +194,23 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 		if (!resolved) return;
 		const { blockId, range } = resolved;
 
-		const target = applyDeleteBehavior(editor, {
-			blockId,
-			ytext,
-			range,
-			direction: "forward",
-		});
+		// A cell's text is not the table block's: block-level delete
+		// would select on the table and clear the cell, so it edits inline.
+		const target = isCellEditing(editor, fe)
+			? null
+			: applyDeleteBehavior(editor, {
+					blockId,
+					ytext,
+					range,
+					direction: "forward",
+				});
 		if (target) {
 			activateDeleteTarget(editor, fe, target);
+			return;
+		}
+
+		if (range.start !== range.end) {
+			deleteInlineRange(backend, blockId, range);
 			return;
 		}
 

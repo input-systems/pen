@@ -8,7 +8,10 @@ import type {
 } from "@input/pen-types";
 import { generateId } from "@input/pen-types";
 import { usesInlineTextSelection } from "../schema/fieldEditorCapabilities";
-import { resolveCellSelectionMatrix } from "./cellSelection";
+import {
+	resolveCellSelectionCoord,
+	resolveCellSelectionMatrix,
+} from "./cellSelection";
 
 import type { EditorSelectionMutationContext } from "./editorImplContext";
 import { resolvePosition } from "./applySharedHelpers";
@@ -207,6 +210,30 @@ export function deleteEditorSelection(
 		if (!block) return;
 		const table = block.as("table");
 		if (!table) return;
+		// An in-cell range (A1) deletes that range, not the cell's text.
+		if (sel.text) {
+			const coord = resolveCellSelectionCoord(block, sel, sel.anchor);
+			if (!coord) return;
+			const from = Math.min(sel.text.anchor, sel.text.focus);
+			const to = Math.max(sel.text.anchor, sel.text.focus);
+			if (to > from) {
+				self.apply(
+					[
+						{
+							type: "splice-text",
+							blockId: sel.blockId,
+							cell: { row: coord.row, col: coord.col },
+							from,
+							to,
+							insert: "",
+						},
+					],
+					options,
+				);
+			}
+			self.setSelection({ ...sel, text: { anchor: from, focus: from } });
+			return;
+		}
 		const ops: DocumentOp[] = [];
 		for (const rowCells of resolveCellSelectionMatrix(block, sel)) {
 			for (const cellCoord of rowCells) {

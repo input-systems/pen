@@ -226,7 +226,12 @@ function isDocumentSelection(
 function isSelectionThatOverridesActiveTextEditingKey(
 	selection: KeyboardRoutingSelection,
 ): boolean {
-	return selection?.type === "cell" || isMultiBlock(selection ?? null);
+	// A cell selection with `text` is one cell being edited (A1, T6): its
+	// field owns the text editing keys, as it does for a single-block range.
+	if (selection?.type === "cell") {
+		return selection.text === undefined;
+	}
+	return isMultiBlock(selection ?? null);
 }
 
 function isCollapsedSelectAll(event: KeyboardEvent): boolean {

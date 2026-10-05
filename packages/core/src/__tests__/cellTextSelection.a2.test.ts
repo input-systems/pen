@@ -318,4 +318,56 @@ describe("A5: a table props or meta change is not a structure change", () => {
 		expect(recordOf(editor).origin).toBe("mapped");
 		editor.destroy();
 	});
+
+	it("A1: deleteSelection on an edited cell's range deletes only that range", () => {
+		const editor = createTableEditor();
+		editCell(editor, 4, 1);
+
+		editor.deleteSelection();
+
+		expect(
+			editor
+				.getBlock(TABLE_ID)!
+				.as("table")!
+				.tableCell(0, 0)!
+				.textContent(),
+		).toBe("aa");
+		expect(editor.selection).toMatchObject({
+			type: "cell",
+			text: { anchor: 1, focus: 1 },
+		});
+		editor.destroy();
+	});
+
+	it("A1: deleteSelection on an edited cell's caret leaves the cell's text", () => {
+		const editor = createTableEditor();
+		editCell(editor, 2);
+
+		editor.deleteSelection();
+
+		expect(
+			editor
+				.getBlock(TABLE_ID)!
+				.as("table")!
+				.tableCell(0, 0)!
+				.textContent(),
+		).toBe("alpha");
+		editor.destroy();
+	});
+
+	it("A1: deleteSelection on a grid cell selection clears the cell", () => {
+		const editor = createTableEditor();
+		editor.selectCell(TABLE_ID, 0, 0);
+
+		editor.deleteSelection();
+
+		expect(
+			editor
+				.getBlock(TABLE_ID)!
+				.as("table")!
+				.tableCell(0, 0)!
+				.textContent(),
+		).toBe("");
+		editor.destroy();
+	});
 });

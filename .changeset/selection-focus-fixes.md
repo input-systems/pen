@@ -40,6 +40,7 @@ Selection, focus and pointer fixes across React, Vue and vanilla `mountEditor`:
   - `CellSelection.text` is in `@input/pen-types`, and an edited cell keeps DOM focus (W3.R18).
   - `Mod-b`/`i`/`u` in a cell fail closed on keydown in every browser (FE6).
   - A table props/meta change no longer resets an edited cell.
+  - Backspace and Delete in an edited cell delete the range or one character instead of clearing the cell. `editor.deleteSelection()` on a `CellSelection` with `text` deletes only that range (A1, T6).
 - **Positioned chrome:** the selection toolbar, AI prompt and slash/suggestion menus position from the editor selection, not the live DOM range. `DomScheduler.measureNow` drops geometry stale since the last commit (SCH2).
 - **Focus and activation:**
   - Shift+Tab out of the editor works in Firefox.

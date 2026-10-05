@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { CellSelection } from "@input/pen-types";
 import { describe, expect, it, vi } from "vitest";
 import {
 	DEFAULT_SELECT_ALL_BEHAVIOR,
@@ -185,6 +186,40 @@ describe("@input/pen-dom public helpers", () => {
 			new KeyboardEvent("keydown", { key: "a", bubbles: true }),
 		);
 		expect(shouldHandleMultiBlockText).toBe(true);
+
+		// T6/A1: an edited cell's Backspace belongs to its field, while a
+		// grid selection's Backspace still clears cells at the document.
+		const routeBackspace = (selection: CellSelection): boolean => {
+			let routed = false;
+			activeFieldSurface.addEventListener(
+				"keydown",
+				(event) => {
+					routed = shouldHandleEditorKeyboardEvent({
+						root,
+						event,
+						selection,
+					});
+				},
+				{ once: true },
+			);
+			activeFieldSurface.dispatchEvent(
+				new KeyboardEvent("keydown", {
+					key: "Backspace",
+					bubbles: true,
+				}),
+			);
+			return routed;
+		};
+		const gridCell: CellSelection = {
+			type: "cell",
+			blockId: "table-1",
+			anchor: { row: 0, col: 0 },
+			head: { row: 0, col: 0 },
+		};
+		expect(
+			routeBackspace({ ...gridCell, text: { anchor: 4, focus: 2 } }),
+		).toBe(false);
+		expect(routeBackspace(gridCell)).toBe(true);
 
 		expect(
 			shouldHandleEditorKeyboardEvent({

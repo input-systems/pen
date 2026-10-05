@@ -187,7 +187,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 101 -> 102: suites/overlays/ov3-rtl-binding.spec.ts (OV2/OV3, binding-rendered carets in an RTL host).
 	// 104 -> 102: scenarios/{m2-arrow-swap,m5-vertical-no-swap}.spec.ts merged into
 	// suites/bidi/{live-rules,m2-shift-word,m5-vertical-no-swap}.spec.ts (same M2/M5 scenarios).
-	const expectedPlaywrightSpecs = 102;
+	// 102 -> 103: suites/selection/t6-cell-editing-delete.spec.ts (T6/A1, Backspace and Delete in an edited cell).
+	const expectedPlaywrightSpecs = 103;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,
