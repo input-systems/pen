@@ -67,7 +67,7 @@ export class DocumentStateImpl implements DocumentState {
 	/** Blocks whose `children` array a transaction since the last `incrementalUpdate` edited, created or dropped. */
 	private _childArrayEdits = new Set<string>();
 	private _generation = 0;
-	/** Nested preorder, built on first read; root edits patch it, `children` edits drop it. */
+	/** Nested preorder, built on first read; root and `children` edits patch it span by span. */
 	private _preorder: Preorder | null = null;
 	private _preorderSnapshot: readonly string[] | null = null;
 	/**

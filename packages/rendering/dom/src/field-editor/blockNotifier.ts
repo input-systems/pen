@@ -622,7 +622,7 @@ class BlockNotifierImpl implements BlockNotifier {
 		siblings: readonly string[],
 		span: ChangedSpan,
 		context: EventContext,
-	): readonly BlockListSegment[] | null {
+	): readonly BlockListSegment[] {
 		let from = span.from;
 		let to = span.to;
 		for (const blockId of context.listItems.keys()) {
@@ -631,7 +631,7 @@ class BlockNotifierImpl implements BlockNotifier {
 			from = Math.min(from, at);
 			to = Math.max(to, at);
 		}
-		return patchSegmentRange(previous, span.previous, siblings, from, to, span.shift, context);
+		return patchSegmentRange(previous, siblings, from, to, span.shift, context);
 	}
 
 	// ── List semantics (AX1) ─────────────────────────────────
@@ -1176,69 +1176,49 @@ function coalesce(segments: readonly BlockListSegment[]): BlockListSegment[] {
 	return out;
 }
 
-/** Each segment list's block-to-segment map, built on first patch and handed on to the list a patch returns. */
-const segmentIndexes = new WeakMap<readonly BlockListSegment[], Map<string, BlockListSegment>>();
-
-function segmentIds(segment: BlockListSegment): readonly string[] {
-	return segment.kind === "block" ? [segment.blockId] : segment.blockIds;
-}
-
-function segmentIndexOf(segments: readonly BlockListSegment[]): Map<string, BlockListSegment> {
-	let index = segmentIndexes.get(segments);
-	if (!index) {
-		index = new Map();
-		for (const segment of segments) for (const blockId of segmentIds(segment)) index.set(blockId, segment);
-		segmentIndexes.set(segments, index);
-	}
-	return index;
-}
-
-/** Where `blockId` sits in its segment. O(the segment). */
-function offsetIn(segment: BlockListSegment, blockId: string): number {
-	return segment.kind === "block" ? 0 : segment.blockIds.indexOf(blockId);
-}
-
 /**
  * `patchSegments` over only the segments new positions `[from, to]` reach,
  * where `[from, to]` covers the changed span and every block the run walk
- * read: positions before `from` are `previousIds`', and positions after `to`
- * are `previousIds`' shifted by `shift`. The window's edges are found through
- * the block-to-segment map and the segments outside it are kept by identity,
- * so the cost is the window, not the list (SCALE2). Returns `previous` when
- * the window's segments are unchanged, or null when `previous` does not cover
- * `previousIds` one block per position.
+ * read: positions before `from` are the previous list's, and positions after
+ * `to` are the previous list's shifted by `shift`. The window's edges are
+ * found by one pass over the segment lengths up to it, with nothing built
+ * per list, and the segments outside it are kept by identity (SCALE2).
+ * Returns `previous` when the window's segments are unchanged.
  */
 function patchSegmentRange(
 	previous: readonly BlockListSegment[],
-	previousIds: readonly string[],
 	siblings: readonly string[],
 	from: number,
 	to: number,
 	shift: number,
 	context: EventContext,
-): readonly BlockListSegment[] | null {
-	const index = segmentIndexOf(previous);
-	if (index.size !== previousIds.length) return null;
+): readonly BlockListSegment[] {
 	const previousTo = to - shift;
+	// The first segment ending after `from`, and the last starting at or
+	// before `previousTo`, in previous positions.
 	let first = previous.length;
-	let firstStart = previousIds.length;
-	if (from < previousIds.length) {
-		const blockId = previousIds[from] as string;
-		const segment = index.get(blockId);
-		if (!segment) return null;
-		first = previous.indexOf(segment);
-		firstStart = from - offsetIn(segment, blockId);
+	let firstStart = 0;
+	let last = -1;
+	let lastEnd = 0;
+	let start = 0;
+	for (let k = 0; k < previous.length; k += 1) {
+		if (first < previous.length && start > previousTo) break;
+		const end = start + segmentLength(previous[k] as BlockListSegment);
+		if (first === previous.length && end > from) {
+			first = k;
+			firstStart = start;
+		}
+		if (start <= previousTo) {
+			last = k;
+			lastEnd = end;
+		}
+		start = end;
 	}
-	let last = first - 1;
-	let lastEnd = firstStart;
-	if (previousTo >= firstStart) {
-		const blockId = previousIds[previousTo] as string;
-		const segment = index.get(blockId);
-		if (!segment) return null;
-		last = previous.indexOf(segment, Math.max(first, 0));
-		lastEnd = previousTo + segmentLength(segment) - offsetIn(segment, blockId);
+	if (first === previous.length) firstStart = start;
+	if (last < first) {
+		last = first - 1;
+		lastEnd = firstStart;
 	}
-	if (first < 0 || last < first - 1) return null;
 	// One neighbour each side joins the window, so a group the edit rejoined
 	// across its seam merges as `getListSegments` would.
 	const windowStart = first > 0 ? first - 1 : first;
@@ -1252,12 +1232,5 @@ function patchSegmentRange(
 	if (segmentsEqual(replaced, next)) return previous;
 	const patched = previous.slice();
 	patched.splice(windowStart, windowEnd - windowStart, ...next);
-	// The map moves to the patched list: the window's blocks are re-pointed.
-	for (const segment of replaced) {
-		for (const blockId of segmentIds(segment)) if (index.get(blockId) === segment) index.delete(blockId);
-	}
-	for (const segment of next) for (const blockId of segmentIds(segment)) index.set(blockId, segment);
-	segmentIndexes.delete(previous);
-	segmentIndexes.set(patched, index);
 	return patched;
 }
