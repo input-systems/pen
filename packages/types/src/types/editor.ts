@@ -14,7 +14,7 @@ import type {
 	DocumentScope,
 	DocumentProfile,
 } from "./crdt";
-import type { EditorAnchors } from "./anchors";
+import type { Anchor, EditorAnchors } from "./anchors";
 import type { ChangeSummary, Point } from "./changes";
 import type { Facet, FacetOutput } from "./facets";
 import type {
@@ -489,4 +489,14 @@ export interface EditorInternals {
 	assignSlot: (key: string, value: unknown) => void;
 	getBlockText(blockId: string): unknown;
 	getCellText(blockId: string, row: number, col: number): unknown;
+	/**
+	 * The anchors the selection authority holds for the current selection's
+	 * anchor and focus (AS1), both null when it holds none, as for a text
+	 * endpoint on a divider or table. A consumer that keeps them across
+	 * commits repairs its copies itself (AN14).
+	 */
+	selectionAnchors(): {
+		readonly from: Anchor | null;
+		readonly to: Anchor | null;
+	};
 }

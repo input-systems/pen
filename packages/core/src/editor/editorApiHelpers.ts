@@ -160,6 +160,7 @@ export function getEditorInternals(editor: EditorImplRuntime): EditorInternals {
 			if (!rowMap || !isCRDTMap(rowMap)) return null;
 			return getCellTextFromRow(rowMap, col);
 		},
+		selectionAnchors: () => self._selection.heldAnchors,
 	};
 }
 

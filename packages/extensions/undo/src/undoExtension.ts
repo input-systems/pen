@@ -135,7 +135,7 @@ export function undoExtension(options?: UndoExtensionOptions): Extension {
 			let afterCaptureVersion = 0;
 			const driftById = new Map<string, CursorDrift>();
 			let driftSeq = 0;
-			let liveCaret: DriftPair | null = mintDrift(
+			let liveCaret: DriftPair | null = heldDrift(
 				ctx.editor,
 				ctx.editor.selection,
 			);
@@ -143,7 +143,7 @@ export function undoExtension(options?: UndoExtensionOptions): Extension {
 				if (manager?._isHistoryOperation) {
 					return;
 				}
-				liveCaret = mintDrift(ctx.editor, record.state);
+				liveCaret = heldDrift(ctx.editor, record.state);
 			});
 			function driftIdOf(stackItem: CRDTUndoStackItem): string | null {
 				return stackItem.getMeta<string>(DRIFT_ID_KEY) ?? null;
@@ -226,7 +226,7 @@ export function undoExtension(options?: UndoExtensionOptions): Extension {
 					const existing = driftById.get(id) ?? emptyDrift();
 					driftById.set(id, {
 						...existing,
-						after: mintDrift(ctx.editor, ctx.editor.selection),
+						after: heldDrift(ctx.editor, ctx.editor.selection),
 					});
 				});
 			}
@@ -483,25 +483,24 @@ function emptyDrift(): CursorDrift {
 	return { before: null, after: null };
 }
 
-function mintDrift(
+/**
+ * The selection authority's own anchors for a text selection (AS1), held as
+ * drift. They carry the assoc undo needs, and the authority already declines
+ * an endpoint with no text to anchor, such as a divider or table, so undo
+ * mints nothing per selection change.
+ */
+function heldDrift(
 	editor: Editor,
 	selection: SelectionState | SelectionRecordState,
 ): DriftPair | null {
 	if (selection?.type !== "text") {
 		return null;
 	}
-	const collapsed =
-		selection.anchor.blockId === selection.focus.blockId &&
-		selection.anchor.offset === selection.focus.offset;
-	const anchor = editor.anchors.create(
-		selection.anchor,
-		collapsed ? 1 : -1,
-	);
-	const focus = editor.anchors.create(selection.focus, 1);
-	if (!anchor || !focus) {
+	const { from, to } = editor.internals.selectionAnchors();
+	if (!from || !to) {
 		return null;
 	}
-	return { anchor, focus };
+	return { anchor: from, focus: to };
 }
 
 function repairDrift(

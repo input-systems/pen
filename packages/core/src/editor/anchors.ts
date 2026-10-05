@@ -110,12 +110,23 @@ function targetsEqual(left: AnchorTarget, right: AnchorTarget): boolean {
 }
 
 function mintingSite(): string | undefined {
-	const stack = new Error().stack;
+	return mintingSiteFrom(new Error().stack);
+}
+
+/**
+ * AN9: the first frame outside the anchor runtime. Bundled builds lose the
+ * `anchors.ts` file name, so the site helpers' own frames are skipped by name.
+ */
+export function mintingSiteFrom(stack: string | undefined): string | undefined {
 	if (!stack) {
 		return undefined;
 	}
 	for (const line of stack.split("\n").slice(1)) {
-		if (line.includes("anchors.ts") || line.includes("EditorAnchorsImpl")) {
+		if (
+			line.includes("anchors.ts") ||
+			line.includes("EditorAnchorsImpl") ||
+			line.includes("mintingSite")
+		) {
 			continue;
 		}
 		const trimmed = line.trim();

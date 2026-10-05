@@ -91,6 +91,11 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 		};
 	}
 
+	/** AS1: the anchors held for the current selection's endpoints. */
+	get heldAnchors(): { readonly from: Anchor | null; readonly to: Anchor | null } {
+		return { from: this._fromAnchor, to: this._toAnchor };
+	}
+
 	getSelection(): SelectionState {
 		return this._state;
 	}

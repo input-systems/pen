@@ -1,6 +1,7 @@
 import type { DiagnosticEvent } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
+import { mintingSiteFrom } from "../editor/anchors";
 import { createEditor as createCoreEditor } from "../index";
 import { createDefaultSchema } from "./fixtures/testSchema";
 
@@ -228,6 +229,20 @@ describe("editor.anchors AN9", () => {
 		expect(String(budget[0]?.site)).toContain("anchors.test.ts");
 		expect(editor.anchors.liveCount).toBe(5000);
 		editor.destroy();
+	});
+
+	it("AN9: the budget site names the caller in a bundled build, not the site helper", () => {
+		const bundled = [
+			"Error",
+			"    at mintingSite (file:///app/node_modules/@input/pen-core/dist/index.mjs:5426:17)",
+			"    at EditorAnchorsImpl._noteMint (file:///app/node_modules/@input/pen-core/dist/index.mjs:5600:20)",
+			"    at EditorAnchorsImpl.remint (file:///app/node_modules/@input/pen-core/dist/index.mjs:5480:10)",
+			"    at EditorAnchorsImpl.create (file:///app/node_modules/@input/pen-core/dist/index.mjs:5490:23)",
+			"    at mintDrift (file:///app/node_modules/@input/pen-undo/dist/index.mjs:485:32)",
+		].join("\n");
+		expect(mintingSiteFrom(bundled)).toBe(
+			"at mintDrift (file:///app/node_modules/@input/pen-undo/dist/index.mjs:485:32)",
+		);
 	});
 });
 

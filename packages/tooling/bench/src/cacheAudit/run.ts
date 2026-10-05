@@ -252,6 +252,11 @@ export async function runCacheAudit(internals: AuditInternals, options: AuditOpt
 						: measureCache(cache, audit, ops, internals, size, options.runs)),
 				);
 			}
+			const unexpected = audit.unexpectedDiagnostics();
+			if (unexpected.length > 0) {
+				const codes = unexpected.map((event) => `${event.code}: ${event.message}`).join("; ");
+				throw new Error(`cache audit: unexpected diagnostics at ${size} blocks: ${codes}`);
+			}
 		} finally {
 			audit.destroy();
 		}

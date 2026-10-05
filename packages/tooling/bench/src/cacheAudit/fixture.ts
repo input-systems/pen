@@ -10,6 +10,7 @@ import {
 	type TestEditor,
 } from "@input/pen-test";
 import { toolsExtension } from "@input/pen-tools";
+import type { DiagnosticEvent } from "@input/pen-types";
 import { undoExtension } from "@input/pen-undo";
 import type { AuditBlockNotifier, AuditInternals } from "./internals";
 
@@ -17,11 +18,21 @@ import type { AuditBlockNotifier, AuditInternals } from "./internals";
 const STAGED_SUGGESTIONS = 8;
 /** Matches exactly one block of the mixed fixture. */
 export const AUDIT_SEARCH_QUERY = "Block 42 ";
+/**
+ * Diagnostics an audit run may raise. Every caret write mints the authority's
+ * two anchors (AS1) and AN9's live count never decrements, so enough timed
+ * selection writes (a larger `--runs`) cross the 4,096 budget by churn, which
+ * AN9 states as intended. Anything else means the audit measured an invalid
+ * state, and the run fails.
+ */
+const EXPECTED_DIAGNOSTICS: ReadonlySet<string> = new Set(["anchor-budget"]);
 
 export interface AuditEditor {
 	readonly editor: TestEditor;
 	/** Subscribed like a non-virtualized renderer: every root block, the document and the root list. */
 	readonly notifier: AuditBlockNotifier;
+	/** Diagnostics outside `EXPECTED_DIAGNOSTICS`: any means the audit measured an invalid state. */
+	unexpectedDiagnostics(): readonly DiagnosticEvent[];
 	destroy(): void;
 }
 
@@ -58,6 +69,10 @@ export async function createAuditEditor(
 			searchExtension(),
 		],
 	});
+	const unexpected: DiagnosticEvent[] = [];
+	const unsubscribeDiagnostics = editor.on("diagnostic", (event) => {
+		if (!EXPECTED_DIAGNOSTICS.has(event.code)) unexpected.push(event);
+	});
 	editor.apply(mixedFixtureOps(rootCount), { origin: "system" });
 	// The test editor's `getBlock` throws for a missing block; the notifier
 	// reads a removed block and expects null, as the runtime returns.
@@ -80,8 +95,10 @@ export async function createAuditEditor(
 	return {
 		editor,
 		notifier,
+		unexpectedDiagnostics: () => unexpected,
 		destroy() {
 			for (const unsubscribe of unsubscribes) unsubscribe();
+			unsubscribeDiagnostics();
 			notifier.destroy();
 			void editor.destroy();
 		},
