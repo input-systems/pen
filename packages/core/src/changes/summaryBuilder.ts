@@ -566,6 +566,27 @@ function mapKeys(value: unknown): string[] {
 }
 
 /**
+ * Whether a block-map change replaced an indexed block's `children` array:
+ * the key set or removed, or the whole map replaced (an undo restoring a
+ * container a peer's array edit had written into) while the block stays. A
+ * map deleted outright reports its subtree through the removal.
+ */
+function replacesChildArray(
+	blockId: string,
+	keys: ReadonlySet<string>,
+	index: BlockIndexSnapshot,
+	blockExists: SummaryLookups["blockExists"],
+): boolean {
+	if (!index.typeById.has(blockId)) return false;
+	if (keys.has("children")) return true;
+	return (
+		keys.size === 0 &&
+		(index.childrenByParentId.get(blockId)?.length ?? 0) > 0 &&
+		(blockExists?.(blockId) ?? false)
+	);
+}
+
+/**
  * A `children` key replaced or removed on a block the index already held —
  * two peers' concurrent first-child inserts each create an array and Yjs
  * keeps one, an undo takes back the array a first child created, or an undo
@@ -582,16 +603,7 @@ function addReplacedChildArrays(
 	blockExists: SummaryLookups["blockExists"],
 ): void {
 	for (const [blockId, keys] of delta.blockMapChanges) {
-		if (!index.typeById.has(blockId)) continue;
-		// The whole map replaced (an undo restoring a container a peer's
-		// array edit had written into) drops the old map's array as well; a
-		// map deleted outright reports its subtree through the removal.
-		const replaced =
-			keys.has("children") ||
-			(keys.size === 0 &&
-				(index.childrenByParentId.get(blockId)?.length ?? 0) > 0 &&
-				(blockExists?.(blockId) ?? false));
-		if (!replaced) continue;
+		if (!replacesChildArray(blockId, keys, index, blockExists)) continue;
 		// An array edited in place reports its own delta.
 		if (delta.childArrayDeltas.has(blockId)) continue;
 		const pre = index.childrenByParentId.get(blockId) ?? [];

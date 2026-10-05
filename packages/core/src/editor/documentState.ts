@@ -43,6 +43,16 @@ type Preorder = { readonly list: PositionedList; readonly repeats: boolean };
 /** Ids the root order gained or lost since the last `incrementalUpdate`. */
 type RootEdits = { readonly inserted: Set<string>; readonly removed: Set<string> };
 
+/** What indexing a commit's named blocks found (`incrementalUpdate`). */
+interface NamedBlockIndexing {
+	structural: boolean;
+	/** Blocks that left the document; their spans leave the preorder. */
+	readonly forgotten: string[];
+	readonly touchedParents: Set<string>;
+	/** Parents whose preorder span must be re-walked: their arrays, and arrays whose entry's block map just arrived. */
+	readonly spanParents: Set<string>;
+}
+
 function rootOrderOf(ids: string[]): RootOrder {
 	const list = PositionedList.of([...ids]);
 	if (list) return { kind: "unique", list };
@@ -560,10 +570,7 @@ export class DocumentStateImpl implements DocumentState {
 		this._rootEdits = emptyRootEdits();
 		const arrayEdits = this._childArrayEdits;
 		this._childArrayEdits = new Set();
-		if (
-			this._doc.blockOrder.length !== this._rootIds().length ||
-			(this._arraysShareChild && arrayEdits.size > 0)
-		) {
+		if (this._outgrewIndex(arrayEdits)) {
 			this.rebuild();
 			return;
 		}
@@ -573,69 +580,97 @@ export class DocumentStateImpl implements DocumentState {
 				| CRDTMap<unknown>
 				| undefined;
 		const changedArrays = this._indexChildArrays(arrayEdits, read);
-		if (!changedArrays) {
+		const named = changedArrays && this._indexNamedBlocks(affectedBlocks, rootEdits, changedArrays, read);
+		const reordered = named && this._reorderTouched(named.touchedParents, changedArrays);
+		if (!named || reordered === "rebuild") {
 			this.rebuild();
 			return;
 		}
+		this._patchPreorderSpans(named.spanParents, [...named.forgotten, ...arrayEdits], read);
+		if (reordered || named.structural) this._generation++;
+	}
+
+	/**
+	 * Whether the held index cannot advance by this commit: the root order's
+	 * length left the held list's, or an array edit lands while two arrays
+	 * share a child (COL4).
+	 */
+	private _outgrewIndex(arrayEdits: ReadonlySet<string>): boolean {
+		if (this._doc.blockOrder.length !== this._rootIds().length) return true;
+		return this._arraysShareChild && arrayEdits.size > 0;
+	}
+
+	/**
+	 * Indexes each block a commit named or the root order gained or lost.
+	 * Returns what the preorder patch and reorder pass need, or null for a
+	 * rebuild.
+	 */
+	private _indexNamedBlocks(
+		affectedBlocks: readonly string[],
+		rootEdits: RootEdits,
+		changedArrays: ReadonlySet<string>,
+		read: (blockId: string) => CRDTMap<unknown> | undefined,
+	): NamedBlockIndexing | null {
 		const blockIds = new Set(affectedBlocks);
 		for (const blockId of rootEdits.inserted) blockIds.add(blockId);
 		for (const blockId of rootEdits.removed) blockIds.add(blockId);
-		let structural = changedArrays.size > 0;
-		const forgotten: string[] = [];
-		const touchedParents = new Set<string>();
-		/** Parents whose preorder span must be re-walked: their arrays, and arrays whose entry's block map just arrived. */
-		const spanParents = new Set(changedArrays);
+		const result: NamedBlockIndexing = {
+			structural: changedArrays.size > 0,
+			forgotten: [],
+			touchedParents: new Set(),
+			spanParents: new Set(changedArrays),
+		};
 		for (const blockId of blockIds) {
 			// Read once and handed to every check below (SCALE2 counts).
-			const blockMap = (
-				readBlock ? readBlock(blockId) : blocks.get(blockId)
-			) as CRDTMap<unknown> | undefined;
+			const blockMap = read(blockId);
 			const placed = this._placeRootEdit(blockId, blockMap, rootEdits);
-			if (placed === "rebuild") {
-				this.rebuild();
-				return;
-			}
+			if (placed === "rebuild") return null;
 			if (placed === "forgotten") {
 				// A removed root's span already left the preorder; a nested
 				// block leaves with its parent's patched span.
-				forgotten.push(blockId);
-				structural = true;
+				result.forgotten.push(blockId);
+				result.structural = true;
 				continue;
 			}
-			if (placed === "placed") structural = true;
-			if (this._needsRebuild(blockId, blockMap)) {
-				this.rebuild();
-				return;
-			}
+			if (placed === "placed") result.structural = true;
+			if (this._needsRebuild(blockId, blockMap)) return null;
 			const arrivedUnder = this._nestedArrival(blockId, blockMap);
 			if (arrivedUnder !== null) {
-				spanParents.add(arrivedUnder);
-				structural = true;
+				result.spanParents.add(arrivedUnder);
+				result.structural = true;
 			}
-			// A block without indexed children gaining an array is caught by
-			// `_childrenChanged`; only indexed parents can have reordered.
-			if (this._childIndex.has(blockId)) touchedParents.add(blockId);
-			const cachedParent = this._parentIndex.get(blockId);
-			if (cachedParent !== undefined) touchedParents.add(cachedParent);
+			this._noteTouchedParents(blockId, result.touchedParents);
 		}
+		return result;
+	}
+
+	/** The parents whose child order a named block can have moved: its own, and its parent's. */
+	private _noteTouchedParents(blockId: string, touchedParents: Set<string>): void {
+		// A block without indexed children gaining an array is caught by
+		// `_childrenChanged`; only indexed parents can have reordered.
+		if (this._childIndex.has(blockId)) touchedParents.add(blockId);
+		const cachedParent = this._parentIndex.get(blockId);
+		if (cachedParent !== undefined) touchedParents.add(cachedParent);
+	}
+
+	/** Re-orders each touched parent's children; whether any moved, or `"rebuild"`. */
+	private _reorderTouched(
+		touchedParents: ReadonlySet<string>,
+		changedArrays: ReadonlySet<string>,
+	): boolean | "rebuild" {
 		let reordered = false;
 		for (const parentId of touchedParents) {
 			const order = this._childOrderChange(parentId);
-			if (order === "rebuild") {
-				this.rebuild();
-				return;
-			}
-			if (order) {
-				this._childIndex.set(parentId, order);
-				reordered = true;
-				// Only an array the delta did not name can move the preorder.
-				if (!changedArrays.has(parentId) && this._arrayChildren.has(parentId)) {
-					this._dropPreorder();
-				}
+			if (order === "rebuild") return "rebuild";
+			if (!order) continue;
+			this._childIndex.set(parentId, order);
+			reordered = true;
+			// Only an array the delta did not name can move the preorder.
+			if (!changedArrays.has(parentId) && this._arrayChildren.has(parentId)) {
+				this._dropPreorder();
 			}
 		}
-		this._patchPreorderSpans(spanParents, [...forgotten, ...arrayEdits], read);
-		if (reordered || structural) this._generation++;
+		return reordered;
 	}
 
 	/**
@@ -826,35 +861,8 @@ export class DocumentStateImpl implements DocumentState {
 		rootEdits: RootEdits,
 	): "forgotten" | "placed" | "same" | "rebuild" {
 		const cachedParent = this._parentIndex.get(blockId);
-		if (!blockMap) {
-			// A dangling root entry (COL4) is the liveness checks' to judge.
-			if (this._inRootOrder(blockId)) return "same";
-			if (this._childIndex.has(blockId)) return "rebuild";
-			if (cachedParent === undefined) return "forgotten";
-			// A dangling `children` entry still lists it there.
-			if (this._arrayLists(cachedParent, blockId)) return "same";
-			this._parentIndex.delete(blockId);
-			this._setChildren(
-				cachedParent,
-				(this._childIndex.get(cachedParent) ?? []).filter(
-					(childId) => childId !== blockId,
-				),
-			);
-			return "forgotten";
-		}
-		// A `parentId` child that left the root order for no array (COL4,
-		// until the next local pass re-homes it) is ordered first among its
-		// parent's `parentId` children by the full build, by map iteration
-		// order among several: it rebuilds rather than guess that order. Its
-		// props are read only for a block the root order lost (SCALE2).
-		if (
-			rootEdits.removed.has(blockId) &&
-			!this._inRootOrder(blockId) &&
-			!(cachedParent !== undefined && this._arrayChildren.get(cachedParent)?.includes(blockId)) &&
-			readParentIdProp(blockMap) !== null
-		) {
-			return "rebuild";
-		}
+		if (!blockMap) return this._forgetUnstored(blockId, cachedParent);
+		if (this._leftForNoArray(blockId, blockMap, cachedParent, rootEdits)) return "rebuild";
 		if (!rootEdits.inserted.has(blockId)) return "same";
 		const parentId = readParentIdProp(blockMap);
 		if (parentId === null || (cachedParent !== undefined && cachedParent !== parentId)) {
@@ -864,6 +872,47 @@ export class DocumentStateImpl implements DocumentState {
 		this._placeParentIdChild(parentId, blockId);
 		this._leaveTopLevel(blockId);
 		return "placed";
+	}
+
+	/** `_placeRootEdit` for a block whose map is not stored. */
+	private _forgetUnstored(
+		blockId: string,
+		cachedParent: string | undefined,
+	): "forgotten" | "same" | "rebuild" {
+		// A dangling root entry (COL4) is the liveness checks' to judge.
+		if (this._inRootOrder(blockId)) return "same";
+		if (this._childIndex.has(blockId)) return "rebuild";
+		if (cachedParent === undefined) return "forgotten";
+		// A dangling `children` entry still lists it there.
+		if (this._arrayLists(cachedParent, blockId)) return "same";
+		this._parentIndex.delete(blockId);
+		this._setChildren(
+			cachedParent,
+			(this._childIndex.get(cachedParent) ?? []).filter(
+				(childId) => childId !== blockId,
+			),
+		);
+		return "forgotten";
+	}
+
+	/**
+	 * Whether a `parentId` child left the root order for no array (COL4,
+	 * until the next local pass re-homes it). The full build orders it first
+	 * among its parent's `parentId` children, by map iteration order among
+	 * several, so it rebuilds rather than guess that order. Its props are read
+	 * only for a block the root order lost (SCALE2).
+	 */
+	private _leftForNoArray(
+		blockId: string,
+		blockMap: CRDTMap<unknown>,
+		cachedParent: string | undefined,
+		rootEdits: RootEdits,
+	): boolean {
+		if (!rootEdits.removed.has(blockId) || this._inRootOrder(blockId)) return false;
+		if (cachedParent !== undefined && this._arrayChildren.get(cachedParent)?.includes(blockId)) {
+			return false;
+		}
+		return readParentIdProp(blockMap) !== null;
 	}
 
 	/**

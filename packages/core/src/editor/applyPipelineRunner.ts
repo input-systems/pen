@@ -882,17 +882,27 @@ function missingParentId(
 function namedParentIds(op: DocumentOp): string[] {
 	const parents: string[] = [];
 	if (op.type === "insert-block" || op.type === "move-block") {
-		const position = op.position;
-		if (typeof position === "object" && "parent" in position) {
-			parents.push(position.parent);
-		}
+		const parent = positionParent(op.position);
+		if (parent !== null) parents.push(parent);
 	}
 	if (op.type === "insert-block" || op.type === "set-props") {
-		const parentId = (op.props as Record<string, unknown> | undefined)
-			?.parentId;
-		if (typeof parentId === "string" && parentId !== "") parents.push(parentId);
+		const parentId = propsParentId(op.props);
+		if (parentId !== null) parents.push(parentId);
 	}
 	return parents;
+}
+
+/** The `children`-array parent a block position names, if any. */
+function positionParent(
+	position: Extract<DocumentOp, { type: "move-block" }>["position"],
+): string | null {
+	return typeof position === "object" && "parent" in position ? position.parent : null;
+}
+
+/** A non-empty `parentId` in an op's props, if any. */
+function propsParentId(props: unknown): string | null {
+	const parentId = (props as Record<string, unknown> | undefined)?.parentId;
+	return typeof parentId === "string" && parentId !== "" ? parentId : null;
 }
 
 function emitApplyBoundary(
