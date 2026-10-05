@@ -1,8 +1,8 @@
 ---
-"@input/pen-ai": patch
-"@input/pen-transport": patch
+"@input/pen-ai": minor
+"@input/pen-transport": minor
 ---
 
 Attribute each tool-call write to the call that issued it (AIB3). While calls overlapped, every write followed whichever call opened last: a read-only call's `editor.apply` landed under a newer mutating call's origin, undo group and op budget with no `ai-tool-read-only-mutation`, and the streaming target's `beginStreaming` / `appendDelta` and a parked writer's `append` / `splice` followed a different call than `apply` / `openTextStream`. `openAIToolCall()` now returns the call's own `context`, and `executeAITool()` and both transports run the handler with it: its editor (a view of the host's editor, no longer `===` to it), streaming target, stream writers and context methods carry the call's identity, so every write path refuses a read-only call's write and books a mutating call's write to that call. A write made through the shared editor that no call can be named for goes to the only open call, and with several open is refused while any of them is read-only. `StreamingTarget.disableActiveWriter()` is replaced by the `activeWriter` getter; it was internal to the write guard.
 
-Breaking: no
+Breaking: yes — tool handlers that compared `ctx.editor === editor` compare `ctx.editor.internals.adapter` (or the document) instead, because `ctx.editor` is now a per-call view; code that called `StreamingTarget.disableActiveWriter()` reads the `activeWriter` getter instead

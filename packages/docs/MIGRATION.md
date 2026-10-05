@@ -141,6 +141,13 @@ Every published package is in one `fixed` changeset group, so all of them move t
 - **Affected:** hosts that assign peer colours as CSS variables or modern colour functions.
 - **Do:** resolve the colour to hex or `rgb()` before passing it as `user.color`, or theme remote carets with the `--pen-peer-*` tokens instead.
 
+### `@input/pen-ai`
+
+**Tool handlers get a per-call editor view (AIB3).** `ctx.editor` inside a tool handler is now a view of the host's editor that carries the call's identity, so writes are attributed to the call that made them. It is no longer `===` the host's editor.
+
+- **Affected:** handlers that compare `ctx.editor === editor`, or code that called `StreamingTarget.disableActiveWriter()`.
+- **Do:** compare `ctx.editor.internals.adapter` (or the document) instead of identity; read `streamingTarget.activeWriter` instead of calling `disableActiveWriter()`.
+
 ### `@input/pen-dom`
 
 **Programmatic selection writes no longer take focus (HOST9).** `editor.setSelection`, `selectText` and other programmatic or collaborator writes update the selection without moving focus into the editor when focus is elsewhere (the page body, a host control, or another editor). Only user input (`pointer`, `keyboard`, `ime`), undo/redo `restore`, and the user's own edits move focus.
