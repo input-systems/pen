@@ -417,6 +417,37 @@ describe("cache property findings", () => {
 		expect(cacheProblems(local)).toEqual([]);
 	});
 
+	it("a deleted container's child that another entry still lists is moved there, not removed", () => {
+		const peers = fork(3, [...generateMixedBlockSpecs(ROOT_COUNT), callout("callout-a")]);
+		const [receiver, mover, deleter] = peers as [TestEditor, TestEditor, TestEditor];
+		mover.apply([
+			{ type: "move-block", blockId: "scale-block-8", position: { parent: "callout-a", index: 1 } },
+		]);
+		deleter.apply([
+			{ type: "move-block", blockId: "scale-block-8", position: { after: "scale-block-20" } },
+		]);
+		harness!.deliver(1, 0);
+		harness!.deliver(2, 0);
+		// The receiver lists scale-block-8 in callout-a and in the root order
+		// (COL4); the deleter, which never saw the first, deletes callout-a.
+		deleter.apply([{ type: "delete-block", blockId: "callout-a" }]);
+		const summaries: ChangeSummary[] = [];
+		const off = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		const touched = touchedProblems(receiver, () => harness!.deliver(2, 0));
+		off();
+		const types = summaries.flatMap((summary) =>
+			summary.structural.flatMap((change) =>
+				"blockId" in change && change.blockId === "scale-block-8" ? [change.type] : [],
+			),
+		);
+		expect(types).toEqual(["block-moved"]);
+		expect(touched).toEqual([]);
+		expect(receiver.documentState.preorderBlockIds()).toContain("scale-block-8");
+		expect(cacheProblems(receiver)).toEqual([]);
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },

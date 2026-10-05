@@ -359,11 +359,18 @@ function buildStructuralChanges(
 	// with it: those entries live in the removed block, so no array edit names
 	// them. Report each descendant the commit did not re-home elsewhere, so a
 	// per-block index drops it. Bounded by the removed subtree (SCALE2).
+	// A descendant another entry still lists (COL4: it sat in this array and
+	// in another one or the root order) stays, so it moves to that entry.
 	const reportRemovedDescendants = (blockId: string) => {
 		const children = index.childrenByParentId.get(blockId) ?? [];
 		for (let at = 0; at < children.length; at += 1) {
 			const childId = children[at]!;
 			if (insertedIds.has(childId) || childId === splitNewId) continue;
+			const survivor = survivingParent({ id: childId, parentId: blockId, index: at });
+			if (survivor !== undefined) {
+				reportMovedToSurvivor(childId, blockId, at, survivor);
+				continue;
+			}
 			reportRemoved(childId, blockId, at);
 		}
 	};
@@ -390,6 +397,26 @@ function buildStructuralChanges(
 		}
 		return undefined;
 	};
+	const reportMovedToSurvivor = (
+		blockId: string,
+		fromParentId: string | null,
+		fromIndex: number,
+		survivor: string | null,
+	) => {
+		if (reported.has(blockId)) return;
+		reported.add(blockId);
+		structural.push({
+			type: "block-moved",
+			blockId,
+			fromParentId,
+			fromIndex,
+			toParentId: survivor,
+			toIndex: Math.max(
+				0,
+				(index.childrenByParentId.get(survivor) ?? []).indexOf(blockId),
+			),
+		});
+	};
 
 	for (const item of removed) {
 		if (item.id === mergeSourceId) continue;
@@ -397,19 +424,7 @@ function buildStructuralChanges(
 		if (item.id === splitNewId) continue;
 		const survivor = survivingParent(item);
 		if (survivor !== undefined) {
-			structural.push({
-				type: "block-moved",
-				blockId: item.id,
-				fromParentId: item.parentId,
-				fromIndex: item.index,
-				toParentId: survivor,
-				toIndex: Math.max(
-					0,
-					(index.childrenByParentId.get(survivor) ?? []).indexOf(
-						item.id,
-					),
-				),
-			});
+			reportMovedToSurvivor(item.id, item.parentId, item.index, survivor);
 			continue;
 		}
 		reportRemoved(item.id, item.parentId, item.index);
