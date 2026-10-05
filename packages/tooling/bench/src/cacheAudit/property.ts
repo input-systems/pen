@@ -304,6 +304,8 @@ interface PassIndexLike {
 interface PassIndexEngine {
 	readonly passIndex: PassIndexLike | null;
 	buildPassIndex(): PassIndexLike;
+	readonly parentIdIndex: unknown;
+	buildParentIdIndex(): unknown;
 }
 
 /** The pass index's structure and every root's positions, as the pass reads them. */
@@ -585,16 +587,28 @@ function checkSearch(editor: Editor): string[] {
 	return difference ? [difference] : [];
 }
 
-/** G: a held normalization pass index against one built fresh from the document. */
+/** G: the held normalization pass index and Rule 10 `parentId` index against ones built fresh from the document. */
 function checkPassIndex(editor: Editor): string[] {
 	const engine = editor.internals.engine as unknown as PassIndexEngine;
-	if (engine.passIndex === null) return [];
-	const difference = firstDifference(
-		"G normalization pass index",
-		passIndexView(engine.passIndex),
-		passIndexView(engine.buildPassIndex()),
-	);
-	return difference ? [difference] : [];
+	const problems: string[] = [];
+	if (engine.passIndex !== null) {
+		const difference = firstDifference(
+			"G normalization pass index",
+			passIndexView(engine.passIndex),
+			passIndexView(engine.buildPassIndex()),
+		);
+		if (difference) problems.push(difference);
+	}
+	// Rule 10's `parentId` index, once a delete built it.
+	if (engine.parentIdIndex !== null) {
+		const difference = firstDifference(
+			"G normalization parentId index",
+			engine.parentIdIndex,
+			engine.buildParentIdIndex(),
+		);
+		if (difference) problems.push(difference);
+	}
+	return problems;
 }
 
 export interface PropertyCase {

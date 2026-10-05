@@ -18,6 +18,7 @@ import {
 } from "../editor/crdtShapes";
 import type { RawCommitDelta } from "@input/pen-yjs";
 import type { StoredBlockReader } from "../changes/blockIndex";
+import { ParentIdIndex } from "./parentIdIndex";
 import { NormalizePassIndex } from "./passIndex";
 
 export function sortDeltaAttributes(
@@ -109,6 +110,13 @@ export class SchemaEngineImpl implements SchemaEngine {
 	private readonly externalStructuralIds = new Set<string>();
 	private onDiagnostic: DiagnosticSink | undefined;
 	private passIndex: NormalizePassIndex | null = null;
+	/** Rule 10's `parentId` candidates, built on the first delete it handles. */
+	private parentIdIndex: ParentIdIndex | null = null;
+	/**
+	 * Blocks the open transaction's ops or pass may have written since the
+	 * last observed commit: their `parentId` can be newer than the index's.
+	 */
+	private readonly unobservedBlockIds = new Set<string>();
 	/** Whether this engine wrote structure since the last observed commit. */
 	private wroteStructure = false;
 
@@ -130,6 +138,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 
 	markDirty(blockId: string): void {
 		this.dirtyBlockIds.add(blockId);
+		this.unobservedBlockIds.add(blockId);
 	}
 
 	/**
@@ -147,6 +156,8 @@ export class SchemaEngineImpl implements SchemaEngine {
 	): void {
 		const wrote = this.wroteStructure;
 		this.wroteStructure = false;
+		this.parentIdIndex?.applyCommitDelta(delta, readBlock);
+		this.unobservedBlockIds.clear();
 		if (localApply || !this.passIndex) return;
 		if (wrote || !this.passIndex.applyCommitDelta(readBlock, delta)) {
 			this.invalidatePassIndex();
@@ -218,6 +229,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 
 			iterations++;
 			this.dirtyBlockIds.clear();
+			for (const blockId of snapshot) this.unobservedBlockIds.add(blockId);
 
 			this.doc.adapter.transact(this.crdtDoc, () => {
 				for (const blockId of snapshot) {
@@ -247,6 +259,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 
 	normalizeAll(): void {
 		this.invalidatePassIndex();
+		this.parentIdIndex = null;
 		for (const blockId of this.doc.blocks.keys()) {
 			this.dirtyBlockIds.add(blockId);
 		}
@@ -257,6 +270,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 		if (this.externalStructuralIds.size === 0) return;
 		const blockIds = [...this.externalStructuralIds];
 		this.externalStructuralIds.clear();
+		for (const blockId of blockIds) this.unobservedBlockIds.add(blockId);
 		this.doc.adapter.transact(this.crdtDoc, () => {
 			for (const blockId of blockIds) {
 				if (this.deferredBlockIds.has(blockId)) {
@@ -625,9 +639,17 @@ export class SchemaEngineImpl implements SchemaEngine {
 	}
 
 	// ── Rule 10: Orphan Promotion ───────────────────────────
+	// The candidates are the blocks the `parentId` index lists under the
+	// deleted id as of the last observed commit, plus every block the open
+	// transaction may have written since, so a delete reads its `parentId`
+	// children rather than every stored block (SCALE2).
 
 	private handleDeletedBlock(blockId: string): void {
-		for (const [id, rawBlockMap] of this.doc.blocks.entries()) {
+		this.parentIdIndex ??= this.buildParentIdIndex();
+		const candidates = new Set(this.parentIdIndex.childrenOf(blockId));
+		for (const id of this.unobservedBlockIds) candidates.add(id);
+		for (const id of candidates) {
+			const rawBlockMap = this.doc.blocks.get(id);
 			if (!isCRDTMap(rawBlockMap)) continue;
 			const props = getMapProp(rawBlockMap, "props");
 			if (!props) continue;
@@ -635,8 +657,14 @@ export class SchemaEngineImpl implements SchemaEngine {
 			if (parentId === blockId) {
 				props.delete?.("parentId");
 				this.dirtyBlockIds.add(id);
+				this.unobservedBlockIds.add(id);
 			}
 		}
+	}
+
+	/** The full read the held `parentId` index must equal; the cache property calls it too. */
+	private buildParentIdIndex(): ParentIdIndex {
+		return ParentIdIndex.build(this.doc);
 	}
 
 	// ── COL4: Parent-cycle break ─────────────────────────────
