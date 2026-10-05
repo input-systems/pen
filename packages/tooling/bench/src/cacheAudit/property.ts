@@ -503,6 +503,48 @@ function multiListedIds(editor: Editor): Set<string> {
 	);
 }
 
+interface NotifierDocument {
+	readonly rootIds: readonly string[];
+}
+
+function documentOf(notifier: AuditBlockNotifier): NotifierDocument {
+	return (
+		notifier as unknown as { getDocumentSnapshot(): NotifierDocument }
+	).getDocumentSnapshot();
+}
+
+/** A notifier's document snapshot with the root ids whose block is gone left out. */
+function liveDocument(
+	editor: Editor,
+	notifier: AuditBlockNotifier,
+): NotifierDocument {
+	return {
+		...documentOf(notifier),
+		rootIds: documentOf(notifier).rootIds.filter(
+			(id) => editor.getBlock(id) !== null,
+		),
+	};
+}
+
+/** What one `checkNotifier` pass compares, and how it labels what differs. */
+interface NotifierComparison {
+	readonly editor: Editor;
+	readonly notifier: AuditBlockNotifier;
+	readonly fresh: AuditBlockNotifier;
+	readonly label: string;
+	/** Whether a sibling list can be compared: no id twice, none dead, none listed elsewhere. */
+	keyable(parentId: string | null): boolean;
+	readonly multiListed: ReadonlySet<string>;
+}
+
+interface NotifierCheckOptions {
+	readonly label?: string;
+	/** Only these blocks are compared (a partial mount). */
+	readonly subscribedBlocks?: ReadonlySet<string> | null;
+	/** Root ids are compared live on both sides. */
+	readonly detaches?: boolean;
+}
+
 /**
  * C: block list slices, child ids and sibling-list segments against a fresh,
  * detached notifier. A sibling list holding an id twice, an id another array
@@ -511,93 +553,131 @@ function multiListedIds(editor: Editor): Set<string> {
  * repairs it, a duplicate is unkeyable, a block has one list slice for two
  * lists, and only the attached notifier tracks which entries died. The
  * comparison resumes once the list is repaired. Root ids are compared live.
- * With `subscribedBlocks`, only those blocks are compared (a partial mount);
- * with `detaches`, root ids are compared live on both sides.
  */
 function checkNotifier(
 	editor: Editor,
 	notifier: AuditBlockNotifier,
 	subscribedParents: ReadonlySet<string | null>,
 	internals: AuditInternals,
-	label = "C",
-	subscribedBlocks: ReadonlySet<string> | null = null,
-	detaches = false,
+	{ label = "C", subscribedBlocks = null, detaches = false }: NotifierCheckOptions = {},
 ): string[] {
 	const fresh = internals.createBlockNotifier(editor);
-	const problems: string[] = [];
 	try {
-		const document = (source: AuditBlockNotifier) =>
-			(
-				source as unknown as {
-					getDocumentSnapshot(): {
-						readonly rootIds: readonly string[];
-					};
-				}
-			).getDocumentSnapshot();
-		const live = (id: string) => editor.getBlock(id) !== null;
-		const naiveDocument = {
-			...document(fresh),
-			rootIds: document(fresh).rootIds.filter(live),
-		};
-		// A notifier that was detached when a concurrent delete killed an
-		// entry draws it, as a fresh mount does, until a local pass removes
-		// it; it must still list every live root.
-		const incrementalDocument = detaches
-			? {
-					...document(notifier),
-					rootIds: document(notifier).rootIds.filter(live),
-				}
-			: document(notifier);
-		const documentDifference = firstDifference(
-			`${label} document snapshot`,
-			incrementalDocument,
-			naiveDocument,
+		const documentProblems = checkNotifierDocument(
+			editor,
+			notifier,
+			fresh,
+			label,
+			detaches,
 		);
-		if (documentDifference) problems.push(documentDifference);
-		const siblings = (parentId: string | null) =>
-			parentId === null
-				? document(fresh).rootIds
-				: editor.documentState.childrenOf(parentId);
 		const multiListed = multiListedIds(editor);
-		const keyable = (parentId: string | null) => {
-			const list = siblings(parentId);
-			return (
-				new Set(list).size === list.length &&
-				list.every((id) => live(id) && !multiListed.has(id))
+		const keyable = (parentId: string | null) =>
+			isKeyableList(
+				editor,
+				parentId === null
+					? documentOf(fresh).rootIds
+					: editor.documentState.childrenOf(parentId),
+				multiListed,
 			);
+		const comparison: NotifierComparison = {
+			editor,
+			notifier,
+			fresh,
+			label,
+			keyable,
+			multiListed,
 		};
-		for (const parentId of subscribedParents) {
-			if (!keyable(parentId)) continue;
-			const difference = firstDifference(
-				`${label} list segments of ${parentId ?? "root"}`,
-				notifier.getListSegments(parentId),
-				fresh.getListSegments(parentId),
-			);
-			if (difference) problems.push(difference);
-		}
-		for (const blockId of editor.documentState.preorderBlockIds()) {
-			if (subscribedBlocks && !subscribedBlocks.has(blockId)) continue;
-			const view = (source: AuditBlockNotifier) => {
-				const read = notifierView(source, blockId) as Record<
-					string,
-					unknown
-				>;
-				return keyable(editor.documentState.parentOf(blockId)) &&
-					!multiListed.has(blockId)
-					? read
-					: { ...read, list: "unrepaired sibling list" };
-			};
-			const difference = firstDifference(
-				`${label} block snapshot ${blockId}`,
-				view(notifier),
-				view(fresh),
-			);
-			if (difference) problems.push(difference);
-		}
+		return [
+			...documentProblems,
+			...checkNotifierSegments(comparison, subscribedParents),
+			...checkNotifierBlocks(comparison, subscribedBlocks),
+		];
 	} finally {
 		fresh.destroy();
 	}
+}
+
+/**
+ * The document snapshot. A notifier that was detached when a concurrent
+ * delete killed an entry draws it, as a fresh mount does, until a local pass
+ * removes it; with `detaches` it must still list every live root.
+ */
+function checkNotifierDocument(
+	editor: Editor,
+	notifier: AuditBlockNotifier,
+	fresh: AuditBlockNotifier,
+	label: string,
+	detaches: boolean,
+): string[] {
+	const naive = liveDocument(editor, fresh);
+	const incremental = detaches
+		? liveDocument(editor, notifier)
+		: documentOf(notifier);
+	const difference = firstDifference(
+		`${label} document snapshot`,
+		incremental,
+		naive,
+	);
+	return difference ? [difference] : [];
+}
+
+function isKeyableList(
+	editor: Editor,
+	list: readonly string[],
+	multiListed: ReadonlySet<string>,
+): boolean {
+	return (
+		new Set(list).size === list.length &&
+		list.every((id) => editor.getBlock(id) !== null && !multiListed.has(id))
+	);
+}
+
+function checkNotifierSegments(
+	{ notifier, fresh, label, keyable }: NotifierComparison,
+	subscribedParents: ReadonlySet<string | null>,
+): string[] {
+	const problems: string[] = [];
+	for (const parentId of subscribedParents) {
+		if (!keyable(parentId)) continue;
+		const difference = firstDifference(
+			`${label} list segments of ${parentId ?? "root"}`,
+			notifier.getListSegments(parentId),
+			fresh.getListSegments(parentId),
+		);
+		if (difference) problems.push(difference);
+	}
 	return problems;
+}
+
+function checkNotifierBlocks(
+	comparison: NotifierComparison,
+	subscribedBlocks: ReadonlySet<string> | null,
+): string[] {
+	const { editor, notifier, fresh, label } = comparison;
+	const problems: string[] = [];
+	for (const blockId of editor.documentState.preorderBlockIds()) {
+		if (subscribedBlocks && !subscribedBlocks.has(blockId)) continue;
+		const difference = firstDifference(
+			`${label} block snapshot ${blockId}`,
+			comparedView(comparison, notifier, blockId),
+			comparedView(comparison, fresh, blockId),
+		);
+		if (difference) problems.push(difference);
+	}
+	return problems;
+}
+
+/** A block's view, with its list slice masked while its sibling list is unrepaired. */
+function comparedView(
+	{ editor, keyable, multiListed }: NotifierComparison,
+	source: AuditBlockNotifier,
+	blockId: string,
+): unknown {
+	const read = notifierView(source, blockId) as Record<string, unknown>;
+	return keyable(editor.documentState.parentOf(blockId)) &&
+		!multiListed.has(blockId)
+		? read
+		: { ...read, list: "unrepaired sibling list" };
 }
 
 /**
@@ -606,7 +686,7 @@ function checkNotifier(
  * no array reaches (a COL4 orphan); nothing renders them, so only preorder
  * blocks are compared.
  */
-export function checkDecorations(editor: Editor): string[] {
+function checkDecorations(editor: Editor): string[] {
 	const collector = (
 		editor as unknown as { _decorationCollector: DecorationCollectorLike }
 	)._decorationCollector;
@@ -777,6 +857,34 @@ function createChurnMount(
 		for (const parentId of [...segmentSubscriptions.keys()])
 			release(segmentSubscriptions, parentId);
 	};
+	/** Subscribes what `render` read and is still in the document. */
+	const subscribePending = (ids: ReadonlySet<string>) => {
+		for (const id of pendingBlocks) {
+			if (ids.has(id) && !blockSubscriptions.has(id)) subscribeBlock(id);
+		}
+		for (const parentId of pendingParents) {
+			if (parentId !== null && !ids.has(parentId)) continue;
+			if (!segmentSubscriptions.has(parentId)) subscribeParent(parentId);
+		}
+	};
+	/** Releases every subscription whose block left, and a random few more. */
+	const releaseSome = (ids: ReadonlySet<string>) => {
+		for (const id of [...blockSubscriptions.keys()]) {
+			if (!ids.has(id) || rng.chance(CHURN_RELEASE))
+				release(blockSubscriptions, id);
+		}
+		for (const parentId of [...segmentSubscriptions.keys()]) {
+			const gone = parentId !== null && !ids.has(parentId);
+			if (gone || rng.chance(CHURN_RELEASE))
+				release(segmentSubscriptions, parentId);
+		}
+	};
+	/** Now and then calls an already-released unsubscribe again. */
+	const callStaleUnsubscribe = (): boolean => {
+		if (released.length === 0 || !rng.chance(CHURN_STALE)) return false;
+		rng.pick(released)();
+		return true;
+	};
 	return {
 		notifier,
 		get blocks() {
@@ -812,30 +920,10 @@ function createChurnMount(
 				pendingParents = [];
 				return "churn detached";
 			}
-			const notes: string[] = [];
 			const ids = new Set(live());
-			for (const id of pendingBlocks) {
-				if (ids.has(id) && !blockSubscriptions.has(id)) subscribeBlock(id);
-			}
-			for (const parentId of pendingParents) {
-				if (parentId !== null && !ids.has(parentId)) continue;
-				if (!segmentSubscriptions.has(parentId)) subscribeParent(parentId);
-			}
-			for (const id of [...blockSubscriptions.keys()]) {
-				if (!ids.has(id) || rng.chance(CHURN_RELEASE))
-					release(blockSubscriptions, id);
-			}
-			for (const parentId of [...segmentSubscriptions.keys()]) {
-				if (
-					(parentId !== null && !ids.has(parentId)) ||
-					rng.chance(CHURN_RELEASE)
-				)
-					release(segmentSubscriptions, parentId);
-			}
-			if (released.length > 0 && rng.chance(CHURN_STALE)) {
-				rng.pick(released)();
-				notes.push("stale unsubscribe");
-			}
+			subscribePending(ids);
+			releaseSome(ids);
+			const notes = callStaleUnsubscribe() ? ["stale unsubscribe"] : [];
 			notes.push(
 				`subscribed ${blockSubscriptions.size} blocks, segments ${JSON.stringify([...segmentSubscriptions.keys()])}`,
 			);
@@ -1114,263 +1202,236 @@ export function createPropertyCase(
 		return ops;
 	};
 
+	/** Where `insert-root` lands: an end of the document now and then, else after a random root. */
+	const rootInsertPosition = (
+		target: Editor,
+	): Extract<DocumentOp, { type: "insert-block" }>["position"] => {
+		const roots = rootIds(target);
+		if (roots.length > 0 && !rng.chance(0.1)) return { after: rng.pick(roots) };
+		return rng.chance(0.5) ? "first" : "last";
+	};
+
+	/** One random write's ops per batchable op, each built against `target`'s current document. */
+	const opBuilders: Record<BatchableOp, (target: Editor) => DocumentOp[]> = {
+		keystroke: (target) => {
+			const blockId = rng.pick(textIds(target));
+			if (!blockId) return [];
+			const at = rng.int(textLength(target, blockId) + 1);
+			const insert = rng.pick(TYPED);
+			return [{ type: "splice-text", blockId, from: at, to: at, insert }];
+		},
+		"delete-text": (target) => {
+			const blockId = rng.pick(textIds(target));
+			if (!blockId) return [];
+			const length = textLength(target, blockId);
+			const from = rng.int(length + 1);
+			const to = Math.min(length, from + 1 + rng.int(4));
+			return [{ type: "splice-text", blockId, from, to, insert: "" }];
+		},
+		"insert-root": (target) => {
+			const position = rootInsertPosition(target);
+			return [
+				{
+					type: "insert-block",
+					blockId: newId("root"),
+					blockType: rng.pick(TEXT_TYPES),
+					props: { indent: rng.int(2) },
+					position,
+				},
+			];
+		},
+		"insert-children": (target) => {
+			const parent = rng.pick(containers(target, ...CHILDREN_CONTAINERS));
+			if (!parent) return [];
+			return [
+				{
+					type: "insert-block",
+					blockId: newId("child"),
+					blockType: rng.pick(LIST_TYPES),
+					props: { indent: rng.int(2) },
+					position: {
+						parent,
+						index: rng.int(target.documentState.childrenOf(parent).length + 1),
+					},
+				},
+			];
+		},
+		"insert-parent-id": (target) => {
+			const toggle = rng.pick(containers(target, "toggle"));
+			if (!toggle) return [];
+			const siblings = target.documentState.childrenOf(toggle);
+			const after =
+				siblings.length > 0 && rng.chance(0.5) ? rng.pick(siblings) : toggle;
+			return [
+				{
+					type: "insert-block",
+					blockId: newId("nested"),
+					blockType: rng.pick(TEXT_TYPES),
+					props: { parentId: toggle },
+					position: { after },
+				},
+			];
+		},
+		"move-root": (target) => {
+			const blockId = rng.pick(liveIds(target));
+			const roots = rootIds(target).filter(
+				(id) => !isAncestor(target, blockId ?? "", id),
+			);
+			if (!blockId || roots.length === 0) return [];
+			return moveOps(target, blockId, { after: rng.pick(roots) });
+		},
+		"move-children": (target) => {
+			const texts = textIds(target);
+			const parent = rng.pick(containers(target, ...CHILDREN_CONTAINERS));
+			const blockId = rng.pick(texts);
+			if (!parent || !blockId || isAncestor(target, blockId, parent)) return [];
+			return moveOps(target, blockId, {
+				parent,
+				index: rng.int(target.documentState.childrenOf(parent).length + 1),
+			});
+		},
+		"move-parent-id": (target) => {
+			const texts = textIds(target);
+			const toggle = rng.pick(containers(target, "toggle"));
+			const blockId = rng.pick(
+				texts.filter((id) => target.documentState.blockOrder.includes(id)),
+			);
+			if (!toggle || !blockId || isAncestor(target, blockId, toggle)) return [];
+			return [
+				{ type: "move-block", blockId, position: { after: toggle } },
+				{ type: "set-props", blockId, props: { parentId: toggle } },
+			];
+		},
+		"reorder-parent-id": (target) => {
+			// Several `parentId` siblings move in one apply, each after
+			// another sibling (or the toggle), so the held sibling order
+			// changes more than once in a transaction.
+			const toggle = rng.pick(
+				containers(target, "toggle").filter(
+					(id) => parentIdChildren(target, id).length >= 2,
+				),
+			);
+			if (!toggle) return [];
+			const siblings = parentIdChildren(target, toggle);
+			const ops: DocumentOp[] = [];
+			const moves = 2 + rng.int(2);
+			for (let move = 0; move < moves; move += 1) {
+				const blockId = rng.pick(siblings);
+				const others = siblings.filter((id) => id !== blockId);
+				const after = rng.chance(0.2) ? toggle : rng.pick(others);
+				ops.push({ type: "move-block", blockId, position: { after } });
+			}
+			return ops;
+		},
+		unparent: (target) => {
+			const blockId = rng.pick(
+				liveIds(target).filter((id) => {
+					const parentId = target.getBlock(id)?.props.parentId;
+					return typeof parentId === "string" && parentId !== "";
+				}),
+			);
+			if (!blockId) return [];
+			return [{ type: "set-props", blockId, props: { parentId: null } }];
+		},
+		"delete-block": (target) => {
+			const all = liveIds(target);
+			const blockId = rng.pick(all);
+			if (!blockId || all.length < 8) return [];
+			return [{ type: "delete-block", blockId }];
+		},
+		indent: (target) => {
+			const blockId = rng.pick(
+				liveIds(target).filter((id) =>
+					(LIST_TYPES as readonly string[]).includes(
+						target.getBlock(id)?.type ?? "",
+					),
+				),
+			);
+			if (!blockId) return [];
+			const indent = Number(target.getBlock(blockId)?.props.indent ?? 0);
+			const next = Math.max(
+				0,
+				Math.min(MAX_INDENT, indent + (rng.chance(0.5) ? 1 : -1)),
+			);
+			return [{ type: "set-props", blockId, props: { indent: next } }];
+		},
+		"type-change": (target) => {
+			const blockId = rng.pick(textIds(target));
+			if (!blockId) return [];
+			return [
+				{ type: "set-props", blockId, props: { type: rng.pick(TEXT_TYPES) } },
+			];
+		},
+		format: (target) => {
+			const blockId = rng.pick(textIds(target));
+			if (!blockId) return [];
+			const length = textLength(target, blockId);
+			if (length === 0) return [];
+			const from = rng.int(length);
+			return [
+				{
+					type: "format-text",
+					blockId,
+					from,
+					to: Math.min(length, from + 3),
+					marks: { bold: rng.chance(0.7) ? true : null },
+				},
+			];
+		},
+	};
+
 	/** One random write's ops on `target`, built against its current document. */
-	const buildOps = (target: Editor, op: BatchableOp): DocumentOp[] => {
+	const buildOps = (target: Editor, op: BatchableOp): DocumentOp[] =>
+		opBuilders[op](target);
+
+	const splitRandom = (target: Editor) => {
+		const blockId = rng.pick(textIds(target));
+		if (!blockId) return;
+		const offset = rng.int(textLength(target, blockId) + 1);
+		const newBlockId = newId("split");
+		trace.push(`${labelOf(target)} split ${blockId}@${offset} → ${newBlockId}`);
+		applySplitBlock(target, {
+			blockId,
+			offset,
+			newBlockId,
+			applyOptions: { origin: "user" },
+		});
+	};
+
+	const mergeRandom = (target: Editor) => {
 		const texts = textIds(target);
-		const all = liveIds(target);
-		switch (op) {
-			case "keystroke": {
-				const blockId = rng.pick(texts);
-				if (!blockId) return [];
-				const at = rng.int(textLength(target, blockId) + 1);
-				const insert = rng.pick(TYPED);
-				return [
-					{ type: "splice-text", blockId, from: at, to: at, insert },
-				];
-			}
-			case "delete-text": {
-				const blockId = rng.pick(texts);
-				if (!blockId) return [];
-				const length = textLength(target, blockId);
-				const from = rng.int(length + 1);
-				const to = Math.min(length, from + 1 + rng.int(4));
-				return [{ type: "splice-text", blockId, from, to, insert: "" }];
-			}
-			case "insert-root": {
-				const roots = rootIds(target);
-				const position =
-					roots.length === 0 || rng.chance(0.1)
-						? rng.chance(0.5)
-							? "first"
-							: "last"
-						: { after: rng.pick(roots) };
-				return [
-					{
-						type: "insert-block",
-						blockId: newId("root"),
-						blockType: rng.pick(TEXT_TYPES),
-						props: { indent: rng.int(2) },
-						position,
-					},
-				];
-			}
-			case "insert-children": {
-				const parent = rng.pick(containers(target, ...CHILDREN_CONTAINERS));
-				if (!parent) return [];
-				return [
-					{
-						type: "insert-block",
-						blockId: newId("child"),
-						blockType: rng.pick(LIST_TYPES),
-						props: { indent: rng.int(2) },
-						position: {
-							parent,
-							index: rng.int(
-								target.documentState.childrenOf(parent).length + 1,
-							),
-						},
-					},
-				];
-			}
-			case "insert-parent-id": {
-				const toggle = rng.pick(containers(target, "toggle"));
-				if (!toggle) return [];
-				const siblings = target.documentState.childrenOf(toggle);
-				const after =
-					siblings.length > 0 && rng.chance(0.5)
-						? rng.pick(siblings)
-						: toggle;
-				return [
-					{
-						type: "insert-block",
-						blockId: newId("nested"),
-						blockType: rng.pick(TEXT_TYPES),
-						props: { parentId: toggle },
-						position: { after },
-					},
-				];
-			}
-			case "move-root": {
-				const blockId = rng.pick(all);
-				const roots = rootIds(target).filter(
-					(id) => !isAncestor(target, blockId ?? "", id),
-				);
-				if (!blockId || roots.length === 0) return [];
-				return moveOps(target, blockId, { after: rng.pick(roots) });
-			}
-			case "move-children": {
-				const parent = rng.pick(containers(target, ...CHILDREN_CONTAINERS));
-				const blockId = rng.pick(texts);
-				if (!parent || !blockId || isAncestor(target, blockId, parent))
-					return [];
-				return moveOps(target, blockId, {
-					parent,
-					index: rng.int(
-						target.documentState.childrenOf(parent).length + 1,
-					),
-				});
-			}
-			case "move-parent-id": {
-				const toggle = rng.pick(containers(target, "toggle"));
-				const blockId = rng.pick(
-					texts.filter((id) =>
-						target.documentState.blockOrder.includes(id),
-					),
-				);
-				if (!toggle || !blockId || isAncestor(target, blockId, toggle))
-					return [];
-				return [
-					{
-						type: "move-block",
-						blockId,
-						position: { after: toggle },
-					},
-					{ type: "set-props", blockId, props: { parentId: toggle } },
-				];
-			}
-			case "reorder-parent-id": {
-				// Several `parentId` siblings move in one apply, each after
-				// another sibling (or the toggle), so the held sibling order
-				// changes more than once in a transaction.
-				const toggle = rng.pick(
-					containers(target, "toggle").filter(
-						(id) => parentIdChildren(target, id).length >= 2,
-					),
-				);
-				if (!toggle) return [];
-				const siblings = parentIdChildren(target, toggle);
-				const ops: DocumentOp[] = [];
-				const moves = 2 + rng.int(2);
-				for (let move = 0; move < moves; move += 1) {
-					const blockId = rng.pick(siblings);
-					const others = siblings.filter((id) => id !== blockId);
-					const after = rng.chance(0.2) ? toggle : rng.pick(others);
-					ops.push({ type: "move-block", blockId, position: { after } });
-				}
-				return ops;
-			}
-			case "unparent": {
-				const blockId = rng.pick(
-					all.filter((id) => {
-						const parentId = target.getBlock(id)?.props.parentId;
-						return typeof parentId === "string" && parentId !== "";
-					}),
-				);
-				if (!blockId) return [];
-				return [{ type: "set-props", blockId, props: { parentId: null } }];
-			}
-			case "delete-block": {
-				const blockId = rng.pick(all);
-				if (!blockId || all.length < 8) return [];
-				return [{ type: "delete-block", blockId }];
-			}
-			case "indent": {
-				const blockId = rng.pick(
-					all.filter((id) =>
-						(LIST_TYPES as readonly string[]).includes(
-							target.getBlock(id)?.type ?? "",
-						),
-					),
-				);
-				if (!blockId) return [];
-				const indent = Number(target.getBlock(blockId)?.props.indent ?? 0);
-				const next = Math.max(
-					0,
-					Math.min(MAX_INDENT, indent + (rng.chance(0.5) ? 1 : -1)),
-				);
-				return [{ type: "set-props", blockId, props: { indent: next } }];
-			}
-			case "type-change": {
-				const blockId = rng.pick(texts);
-				if (!blockId) return [];
-				return [
-					{
-						type: "set-props",
-						blockId,
-						props: { type: rng.pick(TEXT_TYPES) },
-					},
-				];
-			}
-			case "format": {
-				const blockId = rng.pick(texts);
-				if (!blockId) return [];
-				const length = textLength(target, blockId);
-				if (length === 0) return [];
-				const from = rng.int(length);
-				return [
-					{
-						type: "format-text",
-						blockId,
-						from,
-						to: Math.min(length, from + 3),
-						marks: { bold: rng.chance(0.7) ? true : null },
-					},
-				];
-			}
-			default: {
-				const unhandled: never = op;
-				return unhandled;
-			}
+		const sourceBlockId = rng.pick(texts);
+		if (!sourceBlockId) return;
+		const targetBlockId = texts[texts.indexOf(sourceBlockId) - 1];
+		if (!targetBlockId || isAncestor(target, sourceBlockId, targetBlockId)) return;
+		trace.push(`${labelOf(target)} merge ${sourceBlockId} into ${targetBlockId}`);
+		try {
+			applyMergeBlocks(target, {
+				targetBlockId,
+				sourceBlockId,
+				applyOptions: { origin: "user" },
+			});
+		} catch {
+			// See `apply`.
 		}
+	};
+
+	/** Applies one random op's batch; a keystroke puts the caret after what it typed. */
+	const writeBatch = (target: Editor, op: BatchableOp) => {
+		const ops = buildOps(target, op);
+		apply(target, ops);
+		const first = ops[0];
+		if (op !== "keystroke" || first?.type !== "splice-text") return;
+		if (typeof first.insert !== "string") return;
+		const at = first.from + first.insert.length;
+		target.selectText(first.blockId, at, at);
 	};
 
 	/** One random write on `target`: one op's batch, or a split or merge through its helper. */
 	const write = (target: Editor, op: BatchableOp | "split" | "merge") => {
-		const texts = textIds(target);
-		switch (op) {
-			case "split": {
-				const blockId = rng.pick(texts);
-				if (!blockId) return;
-				const offset = rng.int(textLength(target, blockId) + 1);
-				const newBlockId = newId("split");
-				trace.push(
-					`${labelOf(target)} split ${blockId}@${offset} → ${newBlockId}`,
-				);
-				applySplitBlock(target, {
-					blockId,
-					offset,
-					newBlockId,
-					applyOptions: { origin: "user" },
-				});
-				return;
-			}
-			case "merge": {
-				const sourceBlockId = rng.pick(texts);
-				if (!sourceBlockId) return;
-				const targetBlockId = texts[texts.indexOf(sourceBlockId) - 1];
-				if (
-					!targetBlockId ||
-					isAncestor(target, sourceBlockId, targetBlockId)
-				)
-					return;
-				trace.push(
-					`${labelOf(target)} merge ${sourceBlockId} into ${targetBlockId}`,
-				);
-				try {
-					applyMergeBlocks(target, {
-						targetBlockId,
-						sourceBlockId,
-						applyOptions: { origin: "user" },
-					});
-				} catch {
-					// See `apply`.
-				}
-				return;
-			}
-			default: {
-				const ops = buildOps(target, op);
-				apply(target, ops);
-				const first = ops[0];
-				if (
-					op === "keystroke" &&
-					first?.type === "splice-text" &&
-					typeof first.insert === "string"
-				) {
-					const at = first.from + first.insert.length;
-					target.selectText(first.blockId, at, at);
-				}
-			}
-		}
+		if (op === "split") splitRandom(target);
+		else if (op === "merge") mergeRandom(target);
+		else writeBatch(target, op);
 	};
 
 	const pickPeer = (): PeerState => rng.pick(peers);
@@ -1435,6 +1496,65 @@ export function createPropertyCase(
 		trace.push(
 			`${peer.label} ${op} → ${String(op === "undo" ? manager?.undo() : manager?.redo())}`,
 		);
+	};
+
+	/**
+	 * Two peers sync one way, then each moves one text block both hold with
+	 * `move`, at once. Returns the pair, or null when they share no text block.
+	 */
+	const race = (
+		move: (peer: PeerState, blockId: string) => void,
+	): [PeerState, PeerState] | null => {
+		const left = pickPeer();
+		const right = pickOtherPeer(left);
+		deliver(left, right);
+		const blockId = rng.pick(
+			textIds(left.editor).filter((id) => right.editor.getBlock(id)),
+		);
+		if (!blockId) return null;
+		for (const peer of [left, right]) move(peer, blockId);
+		return [left, right];
+	};
+
+	/** Two peers move one block to different root positions at once: the merge lists it in two root entries (COL4). */
+	const raceMoveRoot = () => {
+		const pair = race((peer, blockId) => {
+			const roots = rootIds(peer.editor).filter(
+				(id) => !isAncestor(peer.editor, blockId, id),
+			);
+			if (roots.length === 0) return;
+			apply(
+				peer.editor,
+				moveOps(peer.editor, blockId, { after: rng.pick(roots) }),
+			);
+		});
+		if (pair) exchange(...pair);
+	};
+
+	/** Two peers move one block into two different containers, then one or both undo the move. */
+	const raceMoveContainers = () => {
+		const pair = race((peer, blockId) => {
+			const parent = rng.pick(
+				containers(peer.editor, ...CHILDREN_CONTAINERS).filter(
+					(id) => !isAncestor(peer.editor, blockId, id),
+				),
+			);
+			if (!parent) return;
+			(peer.editor.facet(undoManagerFacet) as UndoManager | null)?.stopCapturing();
+			apply(
+				peer.editor,
+				moveOps(peer.editor, blockId, {
+					parent,
+					index: rng.int(peer.editor.documentState.childrenOf(parent).length + 1),
+				}),
+			);
+		});
+		if (!pair) return;
+		const [left, right] = pair;
+		exchange(left, right);
+		undoOrRedo(left, "undo");
+		if (rng.chance(0.5)) undoOrRedo(right, "undo");
+		if (rng.chance(0.5)) exchange(left, right);
 	};
 
 	const runOp = (op: PropertyOp): void => {
@@ -1523,70 +1643,12 @@ export function createPropertyCase(
 				trace.push("sync all");
 				harness.syncAll();
 				return;
-			case "race-move-root": {
-				// Two peers move one block to different root positions at once:
-				// the merge lists it in two root entries (COL4).
-				const left = pickPeer();
-				const right = pickOtherPeer(left);
-				deliver(left, right);
-				const blockId = rng.pick(
-					textIds(left.editor).filter((id) =>
-						right.editor.getBlock(id),
-					),
-				);
-				if (!blockId) return;
-				for (const peer of [left, right]) {
-					const roots = rootIds(peer.editor).filter(
-						(id) => !isAncestor(peer.editor, blockId, id),
-					);
-					if (roots.length === 0) continue;
-					apply(
-						peer.editor,
-						moveOps(peer.editor, blockId, { after: rng.pick(roots) }),
-					);
-				}
-				exchange(left, right);
+			case "race-move-root":
+				raceMoveRoot();
 				return;
-			}
-			case "race-move-containers": {
-				// Two peers move one block into two different containers, then
-				// one or both undo the move.
-				const left = pickPeer();
-				const right = pickOtherPeer(left);
-				deliver(left, right);
-				const blockId = rng.pick(
-					textIds(left.editor).filter((id) =>
-						right.editor.getBlock(id),
-					),
-				);
-				if (!blockId) return;
-				for (const peer of [left, right]) {
-					const parent = rng.pick(
-						containers(peer.editor, ...CHILDREN_CONTAINERS).filter(
-							(id) => !isAncestor(peer.editor, blockId, id),
-						),
-					);
-					if (!parent) continue;
-					(
-						peer.editor.facet(undoManagerFacet) as UndoManager | null
-					)?.stopCapturing();
-					apply(
-						peer.editor,
-						moveOps(peer.editor, blockId, {
-							parent,
-							index: rng.int(
-								peer.editor.documentState.childrenOf(parent)
-									.length + 1,
-							),
-						}),
-					);
-				}
-				exchange(left, right);
-				undoOrRedo(left, "undo");
-				if (rng.chance(0.5)) undoOrRedo(right, "undo");
-				if (rng.chance(0.5)) exchange(left, right);
+			case "race-move-containers":
+				raceMoveContainers();
 				return;
-			}
 			case "race-first-child": {
 				// Two peers insert the first child of an empty container at
 				// once; each creates the container's `children` array.
@@ -1755,9 +1817,11 @@ export function createPropertyCase(
 				peer.churn.notifier,
 				new Set(peer.churn.parents),
 				internals,
-				"C churn",
-				new Set(peer.churn.blocks),
-				true,
+				{
+					label: "C churn",
+					subscribedBlocks: new Set(peer.churn.blocks),
+					detaches: true,
+				},
 			),
 			...checkDecorations(editor),
 			...checkSuggestions(editor),
