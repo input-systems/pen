@@ -434,7 +434,15 @@ describe("SSE server handler", () => {
 		const parts = events.map((e) => JSON.parse(e.data) as PenStreamPart);
 		expect(parts.filter((p) => p.type === "error")).toHaveLength(0);
 		expect(apply).toHaveBeenCalled();
-		expect(apply.mock.calls[0]?.[1]).toEqual({ origin: "ai" });
+		// AIB4: the request's tool writes carry its one undo group.
+		const options = apply.mock.calls[0]?.[1] as {
+			origin: { type: string; groupId: string };
+			groupId: string;
+			undoGroupId: string;
+		};
+		expect(options.origin).toEqual({ type: "ai", groupId: expect.any(String) });
+		expect(options.undoGroupId).toBe(options.origin.groupId);
+		expect(options.groupId).toBe(options.origin.groupId);
 	});
 });
 

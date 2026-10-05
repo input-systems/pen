@@ -78,8 +78,11 @@ export function createSSEHandler(
 					pingTimer = setInterval(sendPing, pingInterval);
 
 					if (toolRuntime && body.toolCalls) {
+						// One request is one AI action: every tool write it makes
+						// joins one undo step (AIB4).
 						const turn = createAIToolTurn({
 							allowedMutatingTools,
+							groupId: generateId(),
 							...confirmPolicy,
 						});
 						for (const toolCall of body.toolCalls) {

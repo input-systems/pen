@@ -235,6 +235,43 @@ describe("@input/pen-transport ./direct", () => {
 		expect(parts[1]).toMatchObject({ type: "done" });
 	});
 
+	it("AIB4: every tool write of one request shares one undo group, and the next request gets its own", async () => {
+		const editor = createHeadlessEditor();
+		const apply = vi.spyOn(editor, "apply");
+		const seedId = "b1";
+		const toolRuntime = createMockToolRuntime(async (_name, _input, ctx) => {
+			ctx.editor.apply(
+				[{ type: "splice-text", blockId: seedId, from: 0, to: 0, insert: "x" }],
+				{ origin: "ai" },
+			);
+			return { applied: true };
+		});
+		const transport = directTransport({
+			toolRuntime,
+			editor,
+			allowedMutatingTools: ["insert_block"],
+		});
+		const twoCalls = makeRequest({
+			toolCalls: [
+				{ toolCallId: "tc-1", name: "insert_block", input: {} },
+				{ toolCallId: "tc-2", name: "insert_block", input: {} },
+			],
+		});
+
+		await collectParts(transport.stream(twoCalls));
+		await collectParts(transport.stream(twoCalls));
+
+		const groups = apply.mock.calls.map(
+			(call) => (call[1] as { undoGroupId?: string } | undefined)?.undoGroupId,
+		);
+		expect(groups).toHaveLength(4);
+		expect(groups[0]).toEqual(expect.any(String));
+		expect(groups[1]).toBe(groups[0]);
+		expect(groups[2]).toEqual(expect.any(String));
+		expect(groups[3]).toBe(groups[2]);
+		expect(groups[2]).not.toBe(groups[0]);
+	});
+
 	it("AIB2 tools receive the construction-time editor and can apply", async () => {
 		const editor = createHeadlessEditor();
 		const apply = vi.spyOn(editor, "apply");
@@ -278,6 +315,14 @@ describe("@input/pen-transport ./direct", () => {
 		expect(parts.filter((p) => p.type === "error")).toHaveLength(0);
 		expect(parts.filter((p) => p.type === "tool-output")).toHaveLength(1);
 		expect(apply).toHaveBeenCalled();
-		expect(apply.mock.calls[0]?.[1]).toEqual({ origin: "ai" });
+		// AIB4: the request's tool writes carry its one undo group.
+		const options = apply.mock.calls[0]?.[1] as {
+			origin: { type: string; groupId: string };
+			groupId: string;
+			undoGroupId: string;
+		};
+		expect(options.origin).toEqual({ type: "ai", groupId: expect.any(String) });
+		expect(options.undoGroupId).toBe(options.origin.groupId);
+		expect(options.groupId).toBe(options.origin.groupId);
 	});
 });

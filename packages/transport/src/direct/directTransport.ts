@@ -14,7 +14,7 @@ import {
 	type AIToolConfirmFn,
 	type AIUnconfirmedDestructivePolicy,
 } from "@input/pen-ai/tools";
-import { isAsyncIterable } from "@input/pen-types";
+import { generateId, isAsyncIterable } from "@input/pen-types";
 import { createTransportToolContext } from "../toolContext";
 
 export interface DirectTransportOptions {
@@ -56,8 +56,11 @@ export function directTransport(options: DirectTransportOptions): PenTransport {
 			const signal = controller.signal;
 
 			try {
+				// One request is one AI action: every tool write it makes joins
+				// one undo step (AIB4).
 				const turn = createAIToolTurn({
 					allowedMutatingTools,
+					groupId: generateId(),
 					...confirmPolicy,
 				});
 				for (const toolCall of request.toolCalls ?? []) {
