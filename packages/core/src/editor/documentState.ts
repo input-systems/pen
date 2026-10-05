@@ -62,6 +62,10 @@ export class DocumentStateImpl implements DocumentState {
 	private _rootEdits: RootEdits = emptyRootEdits();
 	private _parentIndex: Map<string, string>;
 	private _childIndex: Map<string, string[]>;
+	/** Each block's non-empty `children` array, entry for entry: the head of its `_childIndex` list. */
+	private _arrayChildren = new Map<string, readonly string[]>();
+	/** Blocks whose `children` array a transaction since the last `incrementalUpdate` edited, created or dropped. */
+	private _childArrayEdits = new Set<string>();
 	private _generation = 0;
 	/** Nested preorder, built on first read; root edits patch it, `children` edits drop it. */
 	private _preorder: Preorder | null = null;
@@ -348,9 +352,11 @@ export class DocumentStateImpl implements DocumentState {
 		this._dropTopLevel();
 		this._blockOrderSnapshot = null;
 		this._rootEdits = emptyRootEdits();
+		this._childArrayEdits = new Set();
 		const order = this._doc.blockOrder;
 		this._parentIndex = new Map();
 		this._childIndex = new Map();
+		this._arrayChildren = new Map();
 
 		const rootIds: string[] = [];
 		for (let i = 0; i < order.length; i++) {
@@ -381,6 +387,7 @@ export class DocumentStateImpl implements DocumentState {
 					childIds.push(childId);
 				}
 				this._childIndex.set(blockId, childIds);
+				this._arrayChildren.set(blockId, childIds.slice());
 			}
 		}
 
@@ -411,6 +418,8 @@ export class DocumentStateImpl implements DocumentState {
 		this._rootEdits = emptyRootEdits();
 		this._parentIndex.clear();
 		this._childIndex.clear();
+		this._arrayChildren.clear();
+		this._childArrayEdits.clear();
 		this._generation++;
 	}
 
@@ -519,6 +528,17 @@ export class DocumentStateImpl implements DocumentState {
 	}
 
 	/**
+	 * Records the blocks whose `children` array a transaction edited, created
+	 * or dropped (with the block map, or on its own), read from its delta.
+	 * Called for every transaction before its commit is dispatched; the next
+	 * `incrementalUpdate` indexes those arrays and patches their preorder
+	 * spans.
+	 */
+	noteChildArrayEdits(blockIds: Iterable<string>): void {
+		for (const blockId of blockIds) this._childArrayEdits.add(blockId);
+	}
+
+	/**
 	 * Indexes the blocks a commit named. `readBlock` is the commit's shared
 	 * block-map reader, when the change-summary source installed one.
 	 */
@@ -528,16 +548,28 @@ export class DocumentStateImpl implements DocumentState {
 	): void {
 		const rootEdits = this._rootEdits;
 		this._rootEdits = emptyRootEdits();
+		const arrayEdits = this._childArrayEdits;
+		this._childArrayEdits = new Set();
 		if (this._doc.blockOrder.length !== this._rootIds().length) {
+			this.rebuild();
+			return;
+		}
+		const blocks = this._doc.blocks as CRDTBlockMap;
+		const read = (blockId: string) =>
+			(readBlock ? readBlock(blockId) : blocks.get(blockId)) as
+				| CRDTMap<unknown>
+				| undefined;
+		const changedArrays = this._indexChildArrays(arrayEdits, read);
+		if (!changedArrays) {
 			this.rebuild();
 			return;
 		}
 		const blockIds = new Set(affectedBlocks);
 		for (const blockId of rootEdits.inserted) blockIds.add(blockId);
 		for (const blockId of rootEdits.removed) blockIds.add(blockId);
-		let structural = false;
+		let structural = changedArrays.size > 0;
+		const forgotten: string[] = [];
 		const touchedParents = new Set<string>();
-		const blocks = this._doc.blocks as CRDTBlockMap;
 		for (const blockId of blockIds) {
 			// Read once and handed to every check below (SCALE2 counts).
 			const blockMap = (
@@ -550,13 +582,12 @@ export class DocumentStateImpl implements DocumentState {
 			}
 			if (placed === "forgotten") {
 				// A removed root's span already left the preorder; a nested
-				// block's parent array changed under it.
-				if (this._preorder?.list.has(blockId)) this._dropPreorder();
+				// block leaves with its parent's patched span.
+				forgotten.push(blockId);
 				structural = true;
 				continue;
 			}
 			if (placed === "placed") structural = true;
-			this._dropPreorderIfChildrenTouched(blockId, blockMap);
 			if (this._needsRebuild(blockId, blockMap)) {
 				this.rebuild();
 				return;
@@ -577,10 +608,183 @@ export class DocumentStateImpl implements DocumentState {
 			if (order) {
 				this._childIndex.set(parentId, order);
 				reordered = true;
+				// Only an array the delta did not name can move the preorder.
+				if (!changedArrays.has(parentId) && this._arrayChildren.has(parentId)) {
+					this._dropPreorder();
+				}
 			}
 		}
-		if (reordered) this._dropPreorder();
+		this._patchPreorderSpans(changedArrays, [...forgotten, ...arrayEdits], read);
 		if (reordered || structural) this._generation++;
+	}
+
+	/**
+	 * Indexes each named block's `children` array against the one held: a
+	 * child the array lost leaves the parent index, a child it gained joins
+	 * it, and the parent's child list becomes the array followed by its
+	 * `parentId` children; a lost child the root order now holds joins the
+	 * top-level list. O(the named arrays). Returns the blocks whose array
+	 * changed, or null, for a rebuild, when an array lists an id twice, a
+	 * gained child is already indexed under another parent or sits in the
+	 * root order, or a lost child keeps a `parentId` that would place it on
+	 * the other route (COL4, RI6).
+	 */
+	private _indexChildArrays(
+		arrayEdits: ReadonlySet<string>,
+		read: (blockId: string) => CRDTMap<unknown> | undefined,
+	): Set<string> | null {
+		const lost: [childId: string, parentId: string][] = [];
+		const gained: [childId: string, parentId: string][] = [];
+		const nextArrays: [parentId: string, ids: string[]][] = [];
+		for (const parentId of arrayEdits) {
+			const previous = this._arrayChildren.get(parentId) ?? EMPTY_CHILD_IDS;
+			const array = read(parentId)?.get("children") as CRDTArray<string> | undefined;
+			const next: string[] = [];
+			for (let i = 0; i < (array?.length ?? 0); i++) next.push(array!.get(i));
+			if (next.length === previous.length && next.every((id, at) => previous[at] === id)) {
+				continue;
+			}
+			const cached = this._childIndex.get(parentId) ?? EMPTY_CHILD_IDS;
+			if (!previous.every((id, at) => cached[at] === id)) return null;
+			const kept = new Set(next);
+			if (kept.size !== next.length) return null;
+			const before = new Set(previous);
+			for (const childId of previous) if (!kept.has(childId)) lost.push([childId, parentId]);
+			for (const childId of next) if (!before.has(childId)) gained.push([childId, parentId]);
+			nextArrays.push([parentId, next]);
+		}
+		for (const [childId, parentId] of lost) {
+			if (this._parentIndex.get(childId) === parentId) this._parentIndex.delete(childId);
+		}
+		for (const [childId, parentId] of gained) {
+			if (this._parentIndex.has(childId) || this._inRootOrder(childId)) return null;
+			this._parentIndex.set(childId, parentId);
+		}
+		const roots = this._roots;
+		for (const [childId] of lost) {
+			if (this._parentIndex.has(childId)) continue;
+			const blockMap = read(childId);
+			if (blockMap && readParentIdProp(blockMap) !== null) return null;
+			// The root delta ran while the array still claimed it.
+			if (roots.kind === "unique" && roots.list.has(childId)) {
+				this._joinTopLevel(roots.list, childId, roots.list.indexOf(childId));
+			}
+		}
+		for (const [parentId, next] of nextArrays) {
+			const previous = this._arrayChildren.get(parentId) ?? EMPTY_CHILD_IDS;
+			const parentIdChildren = (this._childIndex.get(parentId) ?? EMPTY_CHILD_IDS).slice(previous.length);
+			this._setChildren(parentId, [...next, ...parentIdChildren]);
+			if (next.length > 0) this._arrayChildren.set(parentId, next);
+			else this._arrayChildren.delete(parentId);
+		}
+		return new Set(nextArrays.map(([parentId]) => parentId));
+	}
+
+	/**
+	 * Replaces the preorder span of each stored block whose `children` array
+	 * changed with a fresh walk of its subtree, deepest last-positioned first,
+	 * so an ancestor's walk overwrites any span patched inside it. O(the
+	 * patched subtrees). A span it cannot resolve, a walk that meets a block
+	 * the preorder holds elsewhere, or a removed block the patches left in
+	 * the preorder drops it for a rebuild on next read.
+	 */
+	private _patchPreorderSpans(
+		changedArrays: ReadonlySet<string>,
+		removable: readonly string[],
+		read: (blockId: string) => CRDTMap<unknown> | undefined,
+	): void {
+		const preorder = this._preorder;
+		if (!preorder || (changedArrays.size === 0 && removable.length === 0)) return;
+		this._preorderSnapshot = null;
+		if (preorder.repeats) {
+			this._dropPreorder();
+			return;
+		}
+		const list = preorder.list;
+		const spans: [start: number, parentId: string][] = [];
+		for (const parentId of changedArrays) {
+			if (!read(parentId)) continue;
+			const start = list.indexOf(parentId);
+			if (start >= 0) spans.push([start, parentId]);
+		}
+		spans.sort((left, right) => right[0] - left[0]);
+		for (const [, parentId] of spans) {
+			if (!this._patchSpan(list, parentId)) {
+				this._dropPreorder();
+				return;
+			}
+		}
+		for (const blockId of removable) {
+			if (list.has(blockId) && !read(blockId)) {
+				this._dropPreorder();
+				return;
+			}
+		}
+	}
+
+	private _patchSpan(list: PositionedList, parentId: string): boolean {
+		const start = list.indexOf(parentId);
+		if (start < 0) return true;
+		const end = this._spanEnd(list, parentId);
+		if (end <= start) return false;
+		const subtree = this._nestedSubtree(parentId);
+		if (!subtree) return false;
+		for (const id of subtree) {
+			const at = list.indexOf(id);
+			if (at >= 0 && (at < start || at >= end)) return false;
+		}
+		return list.splice(start, end - start, subtree) !== null;
+	}
+
+	/**
+	 * Where the preorder entry after `blockId`'s subtree sits: the next
+	 * sibling it holds in the nearest enclosing `children` array, else the
+	 * next root span. -1 for a block no array or root order reaches.
+	 */
+	private _spanEnd(list: PositionedList, blockId: string): number {
+		const roots = this._roots;
+		let current = blockId;
+		for (let depth = 0; depth <= this._parentIndex.size; depth += 1) {
+			if (this._inRootOrder(current)) {
+				if (roots.kind !== "unique") return -1;
+				return this._nextRootSpan(list, roots.list, roots.list.indexOf(current) + 1);
+			}
+			const parentId = this._parentIndex.get(current);
+			const siblings = parentId === undefined ? undefined : this._arrayChildren.get(parentId);
+			if (parentId === undefined || !siblings) return -1;
+			const index = siblings.indexOf(current);
+			if (index < 0) return -1;
+			for (let at = index + 1; at < siblings.length; at += 1) {
+				const position = list.indexOf(siblings[at]!);
+				if (position >= 0) return position;
+			}
+			current = parentId;
+		}
+		return -1;
+	}
+
+	/** `blockId` and its `children`-array descendants in preorder; null when the walk meets a block twice. */
+	private _nestedSubtree(blockId: string): string[] | null {
+		const ids: string[] = [];
+		const seen = new Set<string>();
+		const blocks = this._doc.blocks as CRDTBlockMap;
+		let repeated = false;
+		const visit = (id: string): void => {
+			if (repeated) return;
+			if (seen.has(id)) {
+				repeated = true;
+				return;
+			}
+			const blockMap = blocks.get(id);
+			if (!blockMap) return;
+			seen.add(id);
+			ids.push(id);
+			const children = blockMap.get("children") as CRDTArray<string> | undefined;
+			if (!children) return;
+			for (let i = 0; i < children.length; i++) visit(children.get(i));
+		};
+		visit(blockId);
+		return repeated ? null : ids;
 	}
 
 	/**
@@ -703,20 +907,6 @@ export class DocumentStateImpl implements DocumentState {
 			.get(blockId)
 			?.get("props") as CRDTMap<unknown> | undefined;
 		return props?.get?.("parentId") === parentId;
-	}
-
-	/** A children array can reorder, or vanish, without moving any block's parent. */
-	private _dropPreorderIfChildrenTouched(
-		blockId: string,
-		blockMap: CRDTMap<unknown> | undefined,
-	): void {
-		if (
-			this._preorder &&
-			(this._childIndex.has(blockId) ||
-				blockMap?.get("children") !== undefined)
-		) {
-			this._dropPreorder();
-		}
 	}
 
 	private _needsRebuild(

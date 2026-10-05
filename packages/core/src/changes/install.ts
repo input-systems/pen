@@ -24,6 +24,7 @@ export interface ChangeSummaryHost {
 	_storedBlocks: StoredBlockReader | null;
 	_documentState: {
 		applyRootDelta(delta: YArrayDelta, readBlock: StoredBlockReader): void;
+		noteChildArrayEdits(blockIds: Iterable<string>): void;
 	};
 	_unsubSummary: (() => void) | null;
 	_deferredCRDTEvent: CRDTEvent | null;
@@ -68,6 +69,7 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 				// The document index follows the root order transaction by
 				// transaction; its commit dispatch indexes the rest.
 				host._documentState.applyRootDelta(delta.blockOrderDelta, readBlock);
+				host._documentState.noteChildArrayEdits(childArrayEditIds(delta));
 				const summary = buildChangeSummary(
 					delta,
 					host._blockIndex.snapshot(),
@@ -155,6 +157,19 @@ function reshapesIndex(delta: RawCommitDelta): boolean {
 		if (keys.size === 0) return true;
 	}
 	return false;
+}
+
+/**
+ * Blocks whose `children` array a transaction edited, created, replaced, or
+ * took away with the block map. Read from the delta alone.
+ */
+function childArrayEditIds(delta: RawCommitDelta): Set<string> {
+	const blockIds = new Set<string>(delta.childArrayDeltas.keys());
+	for (const blockId of delta.arrivedChildArrays?.keys() ?? []) blockIds.add(blockId);
+	for (const [blockId, keys] of delta.blockMapChanges) {
+		if (keys.size === 0 || keys.has("children")) blockIds.add(blockId);
+	}
+	return blockIds;
 }
 
 /** Keys of a block map whose change can move the block in the tree. */
