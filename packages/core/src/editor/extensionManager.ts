@@ -1,9 +1,10 @@
-import type {
-	Extension,
-	CommitEvent,
-	Editor,
-	KeyBinding,
-	SchemaRegistry,
+import {
+	isPromiseLike,
+	type Extension,
+	type CommitEvent,
+	type Editor,
+	type KeyBinding,
+	type SchemaRegistry,
 } from "@input/pen-types";
 import { keymapFacet } from "../facets/coreFacets";
 import { sortExtensions } from "../facets/registry";
@@ -88,7 +89,7 @@ export class ExtensionManagerImpl {
 						getState: <T>(name: string): T | undefined =>
 							this._stateMap.get(name) as T | undefined,
 					});
-					if (activation && typeof activation.then === "function") {
+					if (isPromiseLike(activation)) {
 						pending.push(
 							activation.catch((error) => {
 								this._emitLifecycleDiagnostic(
@@ -126,10 +127,7 @@ export class ExtensionManagerImpl {
 			try {
 				if (ext.deactivateClient) {
 					const deactivation = ext.deactivateClient();
-					if (
-						deactivation &&
-						typeof deactivation.then === "function"
-					) {
+					if (isPromiseLike(deactivation)) {
 						pending.push(
 							deactivation.catch((error) => {
 								this._emitLifecycleDiagnostic(

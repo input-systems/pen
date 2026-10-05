@@ -1,4 +1,5 @@
 export type { Unsubscribe, Spacing, BorderDef } from "./utility";
+export { isPromiseLike } from "./utility";
 
 // ── Collaboration ───────────────────────────────────────────
 export type {
