@@ -9,5 +9,6 @@ Block notifier fixes:
 - A block a concurrent delete removed (COL4) and a later write re-inserted is back in the document snapshot's `rootIds`, including when the re-insert arrived while the notifier was detached.
 - A keystroke or caret move in a numbered list item keeps its `list` slice, ordinal included, instead of re-reading the whole numbered run (a 5,000-item run read about 12,500 blocks per keystroke).
 - A container subscribed only through `subscribeListSegments` re-segments when a `parentId`-route child is removed, re-parented or merged away, and a merge re-segments the array its source left (`sourceParentId`).
+- `getListSegments` read before `subscribeListSegments` (React reads in render and subscribes in an effect) is current once subscribed: a read attaches the notifier, a commit that touches an unsubscribed cached list drops it, and the notifier detaches at an event with no subscriber left. A subscribed list is no longer patched from a list cached before it subscribed.
 
 Breaking: no

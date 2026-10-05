@@ -61,8 +61,8 @@ interface EventContext {
 	readonly ordinals: Map<string, number>;
 	/** AX1 semantics of every item of each list run walked in this event. */
 	readonly semantics: Map<string, ListItemSemantics>;
-	/** Whether a block is a list item, for every sibling the run walk read. */
-	readonly listItems: Map<string, boolean>;
+	/** The block type of every sibling the run walk read (null for a missing block). */
+	readonly types: Map<string, string | null>;
 }
 
 /**
@@ -79,7 +79,7 @@ interface ChangedSpan {
 }
 
 function newContext(structural = false): EventContext {
-	return { structural, ordinals: new Map(), semantics: new Map(), listItems: new Map() };
+	return { structural, ordinals: new Map(), semantics: new Map(), types: new Map() };
 }
 
 const NUMBERED = "numberedListItem";
@@ -233,8 +233,7 @@ class BlockNotifierImpl implements BlockNotifier {
 			// A released unsubscribe called again must not drop a newer set.
 			if (set.size === 0 && this._segmentSubscribers.get(parentId) === set) {
 				this._segmentSubscribers.delete(parentId);
-				this._segments.delete(parentId);
-				this._setSegmentBasis(parentId, null);
+				this._dropSegments(parentId);
 			}
 			// After the channel is gone, so the last one out detaches.
 			this._detachIfIdle();
@@ -242,14 +241,17 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	getListSegments(parentId: string | null): readonly BlockListSegment[] {
+		// A read attaches, so a list read in render before its channel
+		// subscribes (React) is kept current, or dropped, by the commits
+		// between the two: a subscribed list is patched, an unsubscribed one
+		// is dropped by a commit that touches it, and every one by detaching.
+		// So a cached list is always current, and a render-before-subscribe
+		// read keeps its identity (useSyncExternalStore).
+		this._attach();
 		const cached = this._segments.get(parentId);
-		// Subscribed and attached, commits keep the cache current.
-		if (cached && this._segmentSubscribers.has(parentId) && this._sources.length > 0) return cached;
-		// Otherwise read now, keeping the previous identity while equal, so a
-		// render-before-subscribe read is stable (useSyncExternalStore).
+		if (cached) return cached;
 		const siblings = this._siblingsOf(parentId);
-		const next = getListSegments(this._editor, siblings);
-		const segments = cached && segmentsEqual(cached, next) ? cached : next;
+		const segments = getListSegments(this._editor, siblings);
 		this._storeSegments(parentId, segments, siblings);
 		return segments;
 	}
@@ -335,6 +337,19 @@ class BlockNotifierImpl implements BlockNotifier {
 		this._completion = null;
 		this._completionBlockId = null;
 		this._clearEntries();
+		// Detached, nothing keeps a list current; a subscribed one re-reads.
+		for (const parentId of [...this._segments.keys()]) this._dropSegments(parentId);
+	}
+
+	/**
+	 * At an event with no subscriber left, only reads kept the notifier
+	 * attached (render before subscribe); it detaches rather than keeping
+	 * them current, which bounds what a read holds (SCALE4).
+	 */
+	private _releaseIfIdle(): boolean {
+		if (this._hasSubscribers()) return false;
+		this._detach();
+		return true;
 	}
 
 	/** Extensions activate asynchronously; resolve the controller until one exists. */
@@ -350,6 +365,7 @@ class BlockNotifierImpl implements BlockNotifier {
 	// ── Sources ──────────────────────────────────────────────
 
 	private _onCommit(event: CommitEvent): void {
+		if (this._releaseIfIdle()) return;
 		this._resolveCompletion();
 		const { summary } = event;
 		const touched = summaryTouchedBlockIds(summary);
@@ -410,6 +426,7 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	private _onSelection(): void {
+		if (this._releaseIfIdle()) return;
 		const previous = this._selection;
 		const previousSelected = this._selected;
 		this._selection = this._editor.selection;
@@ -426,6 +443,7 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	private _onField(): void {
+		if (this._releaseIfIdle()) return;
 		const previous = this._store;
 		const next = this._fieldEditor?.getSnapshot() ?? null;
 		this._store = next;
@@ -438,10 +456,12 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	private _onDecorations(changed: readonly string[] | undefined): void {
+		if (this._releaseIfIdle()) return;
 		this._deliver("decorations", changed ?? [...this._entries.keys()]);
 	}
 
 	private _onCompletion(): void {
+		if (this._releaseIfIdle()) return;
 		const previous = this._completionBlockId;
 		const next = this._completion?.getState().visibleSuggestion?.blockId ?? null;
 		this._completionBlockId = next;
@@ -591,7 +611,12 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _refreshSegments(spans: ReadonlyMap<string | null, ChangedSpan | null>, context: EventContext): void {
 		for (const [parentId, span] of spans) {
 			const subscribers = this._segmentSubscribers.get(parentId);
-			if (!subscribers) continue;
+			// A list read without a subscriber is not patched; the next read
+			// re-reads it.
+			if (!subscribers) {
+				this._dropSegments(parentId);
+				continue;
+			}
 			const previous = this._segments.get(parentId);
 			const siblings = this._siblingsOf(parentId);
 			let next: readonly BlockListSegment[];
@@ -622,6 +647,11 @@ class BlockNotifierImpl implements BlockNotifier {
 	): void {
 		this._segments.set(parentId, segments);
 		this._setSegmentBasis(parentId, basis);
+	}
+
+	private _dropSegments(parentId: string | null): void {
+		this._segments.delete(parentId);
+		this._setSegmentBasis(parentId, null);
 	}
 
 	/** Records (or, with null, drops) the list a parent's cached segments cover. */
@@ -656,7 +686,7 @@ class BlockNotifierImpl implements BlockNotifier {
 	): readonly BlockListSegment[] {
 		let from = span.from;
 		let to = span.to;
-		for (const blockId of context.listItems.keys()) {
+		for (const blockId of context.types.keys()) {
 			const at = this._positionIn(parentId, siblings, blockId);
 			if (at < 0) continue;
 			from = Math.min(from, at);
@@ -668,12 +698,12 @@ class BlockNotifierImpl implements BlockNotifier {
 	// ── List semantics (AX1) ─────────────────────────────────
 
 	private _isListItem(blockId: string, context: EventContext): boolean {
-		let known = context.listItems.get(blockId);
-		if (known === undefined) {
-			known = isListItemType(this._editor.getBlock(blockId)?.type);
-			context.listItems.set(blockId, known);
+		let type = context.types.get(blockId);
+		if (type === undefined) {
+			type = this._editor.getBlock(blockId)?.type ?? null;
+			context.types.set(blockId, type);
 		}
-		return known;
+		return isListItemType(type);
 	}
 
 	/**
@@ -693,7 +723,8 @@ class BlockNotifierImpl implements BlockNotifier {
 		for (const [blockId, semantics] of getListItemSemantics(this._editor, run)) {
 			context.semantics.set(blockId, semantics);
 		}
-		for (const [blockId, ordinal] of numberedOrdinals(this._editor, run)) {
+		const typeOf = (blockId: string) => context.types.get(blockId) ?? null;
+		for (const [blockId, ordinal] of numberedOrdinals(this._editor, run, typeOf)) {
 			context.ordinals.set(blockId, ordinal);
 		}
 		return run;
@@ -1169,7 +1200,7 @@ function segmentRun(
 		const walked = context.semantics.get(blockId);
 		const groupKey = walked
 			? walked.groupKey
-			: context.listItems.has(blockId)
+			: context.types.has(blockId)
 				? null
 				: (previousGroup.get(blockId) ?? null);
 		if (groupKey === null) {

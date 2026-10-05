@@ -24,7 +24,55 @@ function createListEditor(): Editor {
 	return editor;
 }
 
+const insertAfterB2: DocumentOp = {
+	type: "insert-block",
+	blockId: "nb",
+	blockType: "bulletListItem",
+	props: {},
+	position: { after: "b2" },
+};
+
 describe("block notifier subscription lifetime", () => {
+	it("AX1: segments read before subscribing are current once subscribed", () => {
+		const editor = createListEditor();
+		const notifier = createBlockNotifier(editor);
+		// React reads in render and subscribes in a passive effect; a commit
+		// can land between the two.
+		notifier.getListSegments(null);
+		editor.apply([insertAfterB2], { origin: "user" });
+		const unsubscribe = notifier.subscribeListSegments(null, () => {});
+		expect(notifier.getListSegments(null)).toEqual(getListSegments(editor, getRootBlockIds(editor)));
+
+		// Later commits patch from a current list.
+		editor.apply([{ type: "set-props", blockId: "b1", props: { type: "paragraph" } }], { origin: "user" });
+		expect(notifier.getListSegments(null)).toEqual(getListSegments(editor, getRootBlockIds(editor)));
+		unsubscribe();
+	});
+
+	it("AX1: segments read before subscribing are current when another channel kept the notifier attached", () => {
+		const editor = createListEditor();
+		const notifier = createBlockNotifier(editor);
+		const block = notifier.subscribeBlock("b1", () => {});
+		notifier.getListSegments(null);
+		editor.apply([insertAfterB2], { origin: "user" });
+		const unsubscribe = notifier.subscribeListSegments(null, () => {});
+		expect(notifier.getListSegments(null)).toEqual(getListSegments(editor, getRootBlockIds(editor)));
+		unsubscribe();
+		block();
+	});
+
+	it("AX1: segments read without subscribing keep their identity while nothing changes them", () => {
+		const editor = createListEditor();
+		const notifier = createBlockNotifier(editor);
+		const block = notifier.subscribeBlock("b1", () => {});
+		const read = notifier.getListSegments(null);
+		editor.apply([{ type: "splice-text", blockId: "b1", from: 0, to: 0, insert: "x" }], { origin: "user" });
+		const unsubscribe = notifier.subscribeListSegments(null, () => {});
+		expect(notifier.getListSegments(null)).toBe(read);
+		unsubscribe();
+		block();
+	});
+
 	it("SCALE4: a stale segment unsubscribe leaves a newer subscriber on the same parent", () => {
 		const editor = createListEditor();
 		const notifier = createBlockNotifier(editor);

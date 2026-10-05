@@ -24,14 +24,19 @@ export function standaloneOrdinal(block: BlockHandle | null): number | null {
  * segments use) that starts at a run boundary. An item counts the numbered
  * items before it at its indent, back to a shallower item or its run's
  * start, from the nearest `start`; any other block ends a run. Values follow
- * `getNumberedListItemValue`. O(n).
+ * `getNumberedListItemValue`. O(n); `typeOf` lets a caller that already
+ * read the types skip re-reading the blocks that are not numbered.
  */
-export function numberedOrdinals(editor: Editor, siblingIds: readonly string[]): Map<string, number> {
+export function numberedOrdinals(
+	editor: Editor,
+	siblingIds: readonly string[],
+	typeOf: (blockId: string) => string | null = (blockId) => editor.getBlock(blockId)?.type ?? null,
+): Map<string, number> {
 	const ordinals = new Map<string, number>();
 	const lastByIndent = new Map<number, number>();
 	for (const id of siblingIds) {
-		const block = editor.getBlock(id);
-		if (block?.type !== NUMBERED) {
+		const block = typeOf(id) === NUMBERED ? editor.getBlock(id) : null;
+		if (!block) {
 			lastByIndent.clear();
 			continue;
 		}
