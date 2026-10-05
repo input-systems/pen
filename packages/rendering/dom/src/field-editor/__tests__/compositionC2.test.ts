@@ -105,14 +105,17 @@ describe("C2 EditContext rebase", () => {
 			editContext: true,
 		});
 		startComposition(inline);
-		insertX(editor, blockId, 5);
+		editor.apply(
+			[{ type: "splice-text", blockId, from: 5, to: 5, insert: "XX" }],
+			{ origin: "collaborator" },
+		);
 		expect(editContext.text).toBe("Hello world");
 		editContext.updateTextCalls.length = 0;
 
 		endComposition(inline, "");
 
-		expect(editContext.updateTextCalls).toEqual([[5, 5, "X"]]);
-		expect(text()).toBe("HelloX world");
+		expect(editContext.updateTextCalls).toEqual([[5, 5, "XX"]]);
+		expect(text()).toBe("HelloXX world");
 		expect(editContext.text).toBe(text());
 		expect(extractTextFromDOM(inline)).toBe(text());
 	});

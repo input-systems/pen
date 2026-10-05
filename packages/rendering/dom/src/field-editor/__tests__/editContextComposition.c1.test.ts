@@ -143,6 +143,7 @@ describe("C4 EditContext composition lifecycle", () => {
 			name: "an update that reaches past the composed text grows the replaced range",
 			selection: [5, 5],
 			updates: [[5, 5, "ka"], [4, 8, "化"]],
+			midDom: "Hell化world",
 			data: "化",
 			expected: "Hell化world",
 		},
@@ -153,10 +154,11 @@ describe("C4 EditContext composition lifecycle", () => {
 			data: "",
 			expected: "Hello world",
 		},
-	] as const)("C4: $name", ({ selection, updates, data, expected }) => {
+	] as const)("C4: $name", ({ selection, updates, data, expected, ...row }) => {
 		const { inline, editContext, text } = composeAt(selection[0], selection[1]);
 		for (const [start, end, typed] of updates) imeUpdate(editContext, start, end, typed);
 		expect(text()).toBe("Hello world");
+		if ("midDom" in row) expect(inline.textContent).toBe(row.midDom);
 		emitComposition(editContext, "compositionend", data);
 
 		expect(text()).toBe(expected);
@@ -177,12 +179,15 @@ describe("C4 EditContext composition lifecycle", () => {
 		const field = composeAt(11);
 		const { editor, inline, blockId, editContext, text } = field;
 		let previous = "";
-		for (const typed of ["n", "ni", "nih", "niha"]) {
+		for (const [index, typed] of ["n", "ni", "nih", "niha"].entries()) {
 			imeUpdate(editContext, 11, 11 + previous.length, typed);
 			previous = typed;
 			editor.apply(
 				[{ type: "splice-text", blockId, from: 0, to: 0, insert: "X" }],
 				{ origin: "collaborator" },
+			);
+			expect(text(), "C2: the composed text is not yet in the document").toBe(
+				`${"X".repeat(index + 1)}Hello world`,
 			);
 			expect(inline.textContent).toBe(`Hello world${typed}`);
 		}

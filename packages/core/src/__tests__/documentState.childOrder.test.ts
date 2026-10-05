@@ -319,10 +319,17 @@ describe("DocumentState children-array edits", () => {
 							? { type: "move-block", blockId: nested[Math.floor(random() * nested.length)]!, position: { parent, index } }
 							: { type: "insert-block", blockId: `n${step}`, blockType: "paragraph", props: {}, position: { parent, index } };
 				const before = rebuilds;
+				const preorder = state.preorderBlockIds();
 				editor.apply([op]);
 				if (op.type === "insert-block" && typeof op.position === "object" && "parent" in op.position) {
 					expect(rebuilds, `seed ${seed} step ${step} array insert rebuilt`).toBe(before);
 				}
+				if (op.type === "splice-text") {
+					// Identity-stable across a text edit, a container's own
+					// included: only a `children` array edit moves it.
+					expect(state.preorderBlockIds()).toBe(preorder);
+				}
+				expectIndexMatchesRebuild(editor, `seed ${seed} step ${step} ${JSON.stringify(op)}`);
 				const { doc, crdtDoc } = editor.internals;
 				const fresh = new DocumentStateImpl(doc, crdtDoc, editor.schema, state.documentProfile);
 				expect(read(state), `seed ${seed} step ${step} ${JSON.stringify(op)}`).toEqual(read(fresh));
