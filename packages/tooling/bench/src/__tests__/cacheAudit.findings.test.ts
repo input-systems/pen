@@ -502,6 +502,56 @@ describe("cache property findings", () => {
 		expect(cacheProblems(receiver)).toEqual([]);
 	});
 
+	it("a block losing one of two entries in the commit that deletes its map is removed, not moved, and leaves the notifier's root ids", () => {
+		const peers = fork(2, [...generateMixedBlockSpecs(20), callout("callout-a"), callout("callout-b")]);
+		const [receiver, author] = peers as [TestEditor, TestEditor];
+		const notifier = internals.createBlockNotifier(receiver);
+		const off = notifier.subscribeDocument(() => {});
+		// Both peers move x into a different callout at once: the merge
+		// lists it in both arrays (COL4).
+		receiver.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-b", index: 0 } },
+		]);
+		author.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-a", index: 0 } },
+		]);
+		harness!.deliver(0, 1);
+		harness!.deliver(1, 0);
+		// Both undo their move; deleting callout-b, which the author still
+		// lists it in, deletes its map.
+		for (const editor of peers) {
+			editor.undoManager.stopCapturing();
+			expect(editor.undoManager.undo()).toBe(true);
+		}
+		author.apply([{ type: "delete-block", blockId: "callout-b" }]);
+		// The receiver lists x in callout-a and, after its own undo, in the
+		// root order; the author lists it only in callout-b.
+		expect(receiver.documentState.blockOrder).toContain("scale-block-3");
+		expect(receiver.documentState.parentOf("scale-block-3")).toBe("callout-a");
+		const summaries: ChangeSummary[] = [];
+		const offCommit = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		// The author's undo drops the callout-a entry, and its delete takes
+		// x's map: the root entry is left naming no block, so x is removed
+		// where it sat rather than moved to the root entry.
+		harness!.deliver(1, 0);
+		offCommit();
+		const changes = summaries.flatMap((summary) =>
+			summary.structural.filter((change) => "blockId" in change && change.blockId === "scale-block-3"),
+		);
+		expect(changes).toEqual([
+			{ type: "block-removed", blockId: "scale-block-3", parentId: "callout-a", index: 0 },
+		]);
+		expect(receiver.getBlock("scale-block-3")).toBeNull();
+		expect(receiver.documentState.rootBlockIds()).toContain("scale-block-3");
+		const rootIds = (notifier as unknown as { getDocumentSnapshot(): { rootIds: readonly string[] } })
+			.getDocumentSnapshot().rootIds;
+		expect(rootIds).not.toContain("scale-block-3");
+		off();
+		notifier.destroy();
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },
