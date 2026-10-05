@@ -426,6 +426,8 @@ function precomputeQueued(
 	ahead: WeakMap<Y.Transaction, RawCommitDelta>,
 ): void {
 	const cleanups = (ydoc as unknown as YDocInternals)._transactionCleanups;
+	// A Yjs build without the field keeps the pre-read-ahead behaviour.
+	if (!Array.isArray(cleanups)) return;
 	for (let at = cleanups.indexOf(txn) + 1; at > 0 && at < cleanups.length; at += 1) {
 		const queued = cleanups[at]!;
 		if (queued.changed.size === 0 || ahead.has(queued)) continue;
