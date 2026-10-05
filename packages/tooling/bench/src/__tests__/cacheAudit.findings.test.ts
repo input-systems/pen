@@ -9,6 +9,7 @@ import type { ChangeSummary, CommitEvent, Editor } from "@input/pen-types";
 import { searchExtension, getSearchController } from "@input/pen-search";
 import { undoExtension } from "@input/pen-undo";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import * as Y from "yjs";
 import { loadAuditInternals, type AuditInternals } from "../cacheAudit/internals";
 import {
 	checkBlockIndex,
@@ -467,6 +468,37 @@ describe("cache property findings", () => {
 		expect(other.undoManager.undo()).toBe(true);
 		// The undo stores a new map for the container, without x's array.
 		expect(touchedProblems(receiver, () => harness!.deliver(1, 0))).toEqual([]);
+		expect(cacheProblems(receiver)).toEqual([]);
+	});
+
+	it("an entry whose block map arrives and is deleted in the same commit is reported removed", () => {
+		const peers = fork(3);
+		const [receiver, author, mover] = peers as [TestEditor, TestEditor, TestEditor];
+		author.apply([
+			{ type: "insert-block", blockId: "x", blockType: "paragraph", props: {}, position: { after: "scale-block-3" } },
+		]);
+		harness!.deliver(1, 2);
+		mover.apply([{ type: "move-block", blockId: "x", position: { after: "scale-block-20" } }]);
+		author.apply([{ type: "delete-block", blockId: "x" }]);
+		// One update carries x's map, its delete, and the mover's entry.
+		const since = harness!.stateVector(0);
+		const merged = Y.mergeUpdates([
+			harness!.encodeUpdate(1, since),
+			harness!.encodeUpdate(2, since),
+		]);
+		const summaries: ChangeSummary[] = [];
+		const off = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		harness!.applyUpdateTo(0, merged);
+		off();
+		const types = summaries.flatMap((summary) =>
+			summary.structural.flatMap((change) =>
+				"blockId" in change && change.blockId === "x" ? [change.type] : [],
+			),
+		);
+		expect(types).toEqual(["block-removed"]);
+		expect(receiver.documentState.blockOrder).toContain("x");
 		expect(cacheProblems(receiver)).toEqual([]);
 	});
 

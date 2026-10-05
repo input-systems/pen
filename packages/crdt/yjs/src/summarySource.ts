@@ -53,6 +53,12 @@ export interface RawCommitDelta {
 	 * array delta for an array created inside the transaction.
 	 */
 	readonly arrivedChildArrays?: ReadonlyMap<string, readonly string[]>;
+	/**
+	 * Block-map entries this transaction changed whose map is absent after
+	 * it: deleted, or stored and deleted within it. Read from the one block
+	 * map read the arrived-content pass makes.
+	 */
+	readonly absentBlockIds?: ReadonlySet<string>;
 	readonly appChanges: ReadonlySet<string>;
 	readonly metadataChanges: ReadonlySet<string>;
 }
@@ -291,7 +297,7 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 		}
 	}
 
-	addArrivedBlockContent(
+	const absentBlockIds = addArrivedBlockContent(
 		blocks,
 		entryChangedBlockIds,
 		textDeltas,
@@ -305,6 +311,7 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 		childArrayDeltas,
 		blockMapChanges,
 		arrivedChildArrays,
+		absentBlockIds,
 		appChanges,
 		metadataChanges,
 	};
@@ -320,16 +327,19 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
  * and nothing to pair it against when a peer split a block.
  *
  * The same holds for a `children` array the block arrived with: its entries
- * are returned per block, read from the one block map read.
+ * are returned per block, read from the one block map read. Returns the
+ * changed entries whose map that read found absent.
  */
 function addArrivedBlockContent(
 	blocks: Y.Map<Y.Map<unknown>>,
 	entryChangedBlockIds: ReadonlySet<string>,
 	textDeltas: Map<string, YTextDelta[]>,
 	arrivedChildArrays: Map<string, readonly string[]>,
-): void {
+): Set<string> {
+	const absent = new Set<string>();
 	for (const blockId of entryChangedBlockIds) {
 		const block = blocks.get(blockId);
+		if (!block) absent.add(blockId);
 		addArrivedChildren(arrivedChildArrays, blockId, block?.get("children"));
 		if (textDeltas.has(blockId)) continue;
 		const content = block?.get("content");
@@ -338,6 +348,7 @@ function addArrivedBlockContent(
 			snapshotTextDelta(content.toDelta() as YTextDeltaOp[]),
 		]);
 	}
+	return absent;
 }
 
 function addArrivedChildren(

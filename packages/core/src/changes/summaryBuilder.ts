@@ -207,15 +207,6 @@ function buildStructuralChanges(
 	const splitNewId =
 		structuralOrigin?.kind === "split" ? structuralOrigin.newBlockId : null;
 
-	// COL4: an inserted entry can name no block — an undo restoring an
-	// order entry a peer's delete orphaned, a peer's move re-inserting an
-	// entry for a block deleted here (once, or again beside an earlier such
-	// entry), or a move arriving with the delete of the block it moves. It is
-	// no insert and no move. One the index never held is reported removed
-	// where it sits; one it held is reported removed where it sat, by the
-	// removal or deleted-map paths below. Asked only for entries whose map
-	// neither arrived in the commit nor was stored, or was stored and left
-	// in it, so an ordinary insert or move reads nothing (SCALE2).
 	// A stored block whose entry an earlier commit removed without deleting
 	// it (COL4: an orphan the next pass re-homes, an out-of-order delivery
 	// whose re-insert lands late) brings its `children`-array subtree back
@@ -242,6 +233,16 @@ function buildStructuralChanges(
 		}
 	};
 
+	// COL4: an inserted entry can name no block — an undo restoring an
+	// order entry a peer's delete orphaned, a peer's move re-inserting an
+	// entry for a block deleted here (once, or again beside an earlier such
+	// entry), a move arriving with the delete of the block it moves, or an
+	// entry whose block map arrived and was deleted in the same commit. It is
+	// no insert and no move. One the index never held is reported removed
+	// where it sits; one it held is reported removed where it sat, by the
+	// removal or deleted-map paths below. A map that arrived in the commit
+	// is judged by the summary source's own read (`absentBlockIds`), so an
+	// ordinary insert or move reads nothing more (SCALE2).
 	const danglingInserted: ArrayInsert[] = [];
 	const inserted: ArrayInsert[] = [];
 	for (const item of edits.inserted) {
@@ -250,8 +251,11 @@ function buildStructuralChanges(
 		if (
 			blockExists &&
 			item.id !== splitNewId &&
-			(held ? mapChange?.size === 0 : mapChange === undefined) &&
-			!blockExists(item.id)
+			(held
+				? mapChange?.size === 0 && !blockExists(item.id)
+				: mapChange === undefined
+					? !blockExists(item.id)
+					: (delta.absentBlockIds?.has(item.id) ?? false))
 		) {
 			if (!held) danglingInserted.push(item);
 			continue;
