@@ -209,6 +209,8 @@ describe("SEC1 documentTree render path", () => {
 				getListSegments: () => rootSegments,
 				subscribeBlock: () => () => {},
 				getBlockSnapshot: () => blockSnapshot,
+				subscribeSurface: () => () => {},
+				getSurfaceSnapshot: () => ({ mode: "inactive", activeBlockIds: [] }),
 			},
 			// P4: the tree acks every block element it mounts.
 			ackBlockMounted: () => {},

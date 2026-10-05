@@ -20,6 +20,7 @@ import {
 } from "../utils/dataAttributes";
 import { resolveBlockTextAlignment } from "../utils/blockTextAlignment";
 import { isDomHTMLElement } from "../utils/domNodes";
+import { fieldEditorTextEntryAttrs } from "../utils/fieldEditorTextEntryAttrs";
 
 export interface DocumentTree {
 	readonly content: HTMLElement;
@@ -178,11 +179,25 @@ export function createDocumentTree(
 	const unsubscribeRoot = notifier.subscribeListSegments(null, syncRoots);
 	syncRoots();
 
+	// While expanded, the blocks host is this editor's field surface, as the
+	// React and Vue hosts mark it; unmarked, HOST9 would read focus on it as a
+	// foreign text control's.
+	const syncBlocksHostSurface = (): void => {
+		writeBlocksHostSurface(
+			editor,
+			blocksHost,
+			notifier.getSurfaceSnapshot().mode === "expanded",
+		);
+	};
+	const unsubscribeSurface = notifier.subscribeSurface(syncBlocksHostSurface);
+	syncBlocksHostSurface();
+
 	return {
 		content,
 		blocksHost,
 		sync,
 		destroy() {
+			unsubscribeSurface();
 			unsubscribeRoot();
 			for (const nodes of nodesByBlockId.values()) nodes.unsubscribe();
 			nodesByBlockId.clear();
@@ -391,6 +406,19 @@ function placeInOrder(parent: HTMLElement, elements: readonly HTMLElement[]): vo
 		const current = parent.children[index];
 		if (current !== element) parent.insertBefore(element, current ?? null);
 		index += 1;
+	}
+}
+
+function writeBlocksHostSurface(
+	editor: Editor,
+	blocksHost: HTMLElement,
+	expanded: boolean,
+): void {
+	setBooleanAttr(blocksHost, DATA_ATTRS.fieldEditorSurface, expanded);
+	for (const [name, value] of Object.entries(
+		fieldEditorTextEntryAttrs(expanded, editor),
+	)) {
+		setAttr(blocksHost, name, value == null ? null : String(value));
 	}
 }
 

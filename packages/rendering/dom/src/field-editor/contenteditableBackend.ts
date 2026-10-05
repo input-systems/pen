@@ -1,3 +1,4 @@
+import type { PenFieldEditorFocusOptions } from "./controller";
 import { getLogicalInlineText } from "./commandsShared";
 import type { InlineDecoration } from "@input/pen-types";
 import { extractTextFromDOM } from "./selectionBridge";
@@ -52,7 +53,11 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 		null;
 	protected deferredRemoteDeltas: Array<{ delta: FieldEditorDelta[] }> = [];
 
-	activate(element: HTMLElement, ytext: unknown): void {
+	activate(
+		element: HTMLElement,
+		ytext: unknown,
+		focusOptions?: PenFieldEditorFocusOptions,
+	): void {
 		const activeYText = ytext as FieldEditorTextLike;
 		this.ytext = activeYText;
 		this.attachEditableHost(element);
@@ -74,7 +79,12 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 
 		this.observeField(activeYText);
 		this.rebuildField();
-		this.updateSelection();
+		// HOST9: a passive attach leaves focus where it is; a native range
+		// written into an unfocused field would move focus with it. The next
+		// projection that finds focus in the editor writes it.
+		if (!focusOptions?.passive) {
+			this.updateSelection();
+		}
 		this.discardObservedMutations();
 	}
 

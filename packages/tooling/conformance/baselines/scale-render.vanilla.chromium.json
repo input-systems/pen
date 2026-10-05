@@ -120,10 +120,10 @@
 				"scan.textFullReads": 14,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
-				"notifier.deliveries": 5
+				"notifier.deliveries": 9
 			},
 			"shiftDown": {
-				"dom.mutationRecords": 22,
+				"dom.mutationRecords": 27,
 				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.outOfFlush": 1581,
 				"geometry.boundingClientRect.total": 1582,
@@ -137,7 +137,7 @@
 				"scan.textFullReads": 7,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 1,
-				"notifier.deliveries": 4
+				"notifier.deliveries": 6
 			},
 			"enterParagraph": {
 				"commit.affectedBlockIds": 2,
@@ -155,7 +155,7 @@
 				"scan.textFullReads": 26,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 2,
-				"notifier.deliveries": 8
+				"notifier.deliveries": 12
 			},
 			"enterNumbered": {
 				"commit.affectedBlockIds": 2,
@@ -173,7 +173,7 @@
 				"scan.textFullReads": 27,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 3,
-				"notifier.deliveries": 9
+				"notifier.deliveries": 13
 			},
 			"remoteInsert": {
 				"commit.affectedBlockIds": 1,
@@ -261,10 +261,10 @@
 				"scan.textFullReads": 14,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 2,
-				"notifier.deliveries": 5
+				"notifier.deliveries": 9
 			},
 			"shiftDown": {
-				"dom.mutationRecords": 22,
+				"dom.mutationRecords": 27,
 				"geometry.boundingClientRect.inFlush": 1,
 				"geometry.boundingClientRect.outOfFlush": 7881,
 				"geometry.boundingClientRect.total": 7882,
@@ -278,7 +278,7 @@
 				"scan.textFullReads": 7,
 				"scheduler.measureNow": 1,
 				"dom.blocksTouched": 1,
-				"notifier.deliveries": 4
+				"notifier.deliveries": 6
 			},
 			"enterParagraph": {
 				"commit.affectedBlockIds": 2,
@@ -296,7 +296,7 @@
 				"scan.textFullReads": 26,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 2,
-				"notifier.deliveries": 8
+				"notifier.deliveries": 12
 			},
 			"enterNumbered": {
 				"commit.affectedBlockIds": 2,
@@ -314,7 +314,7 @@
 				"scan.textFullReads": 27,
 				"scheduler.measureNow": 0,
 				"dom.blocksTouched": 3,
-				"notifier.deliveries": 9
+				"notifier.deliveries": 13
 			},
 			"remoteInsert": {
 				"commit.affectedBlockIds": 1,
@@ -1283,6 +1283,28 @@
 			"moved": [
 				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 252 !== 254",
 				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 440 !== 442"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "vanilla marks its expanded blocks host as the field surface (React/Vue parity): surface subscriber deliveries and five blocks-host attributes on expand",
+			"moved": [
+				"vanilla/scale-1k/caretDown/notifier.deliveries: 9 !== 5",
+				"vanilla/scale-1k/shiftDown/dom.mutationRecords: 27 !== 22",
+				"vanilla/scale-1k/shiftDown/notifier.deliveries: 6 !== 4",
+				"vanilla/scale-1k/enterParagraph/notifier.deliveries: 12 !== 8",
+				"vanilla/scale-1k/enterNumbered/notifier.deliveries: 13 !== 9"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "vanilla marks its expanded blocks host as the field surface (React/Vue parity): surface subscriber deliveries and five blocks-host attributes on expand",
+			"moved": [
+				"vanilla/scale-5k/caretDown/notifier.deliveries: 9 !== 5",
+				"vanilla/scale-5k/shiftDown/dom.mutationRecords: 27 !== 22",
+				"vanilla/scale-5k/shiftDown/notifier.deliveries: 6 !== 4",
+				"vanilla/scale-5k/enterParagraph/notifier.deliveries: 12 !== 8",
+				"vanilla/scale-5k/enterNumbered/notifier.deliveries: 13 !== 9"
 			]
 		}
 	]

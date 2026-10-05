@@ -1484,17 +1484,19 @@ export class FieldEditorImpl implements FieldEditorSession {
 
 	protected _syncBackendForSurfaceMode(): void {
 		if (!this._isEditing || !this._focusBlockId) return;
+		// HOST9: a surface switch for a record that is not this editor's to
+		// focus (a programmatic range while a host control holds focus)
+		// attaches the backend without moving focus into it. Read before the
+		// old backend detaches: tearing down an expanded host drops the focus
+		// it held to the body, and focus the editor dropped itself was still
+		// the editor's, so the new surface takes it back.
+		const attachOptions: PenFieldEditorFocusOptions =
+			this.projector.isFocusHeldElsewhere() ? { passive: true } : {};
 		const NextBackendClass = this._resolveBackendClass();
 		if (!this._backendLifecycle.hasBackend(NextBackendClass)) {
 			this._backendLifecycle.replace(NextBackendClass);
 			this._attachedElement = null;
 		}
-
-		// HOST9: a surface switch for a record that is not this editor's to
-		// focus (a programmatic range while a host control holds focus)
-		// attaches the backend without moving focus into it.
-		const attachOptions: PenFieldEditorFocusOptions =
-			this.projector.isFocusHeldElsewhere() ? { passive: true } : {};
 		if (this._mode === "expanded") {
 			const expandedHost = this._findExpandedHost();
 			this._attachedElement = null;
