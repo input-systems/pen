@@ -570,6 +570,8 @@ export class DocumentStateImpl implements DocumentState {
 		let structural = changedArrays.size > 0;
 		const forgotten: string[] = [];
 		const touchedParents = new Set<string>();
+		/** Parents whose preorder span must be re-walked: their arrays, and arrays whose entry's block map just arrived. */
+		const spanParents = new Set(changedArrays);
 		for (const blockId of blockIds) {
 			// Read once and handed to every check below (SCALE2 counts).
 			const blockMap = (
@@ -591,6 +593,11 @@ export class DocumentStateImpl implements DocumentState {
 			if (this._needsRebuild(blockId, blockMap)) {
 				this.rebuild();
 				return;
+			}
+			const arrivedUnder = this._nestedArrival(blockId, blockMap);
+			if (arrivedUnder !== null) {
+				spanParents.add(arrivedUnder);
+				structural = true;
 			}
 			// A block without indexed children gaining an array is caught by
 			// `_childrenChanged`; only indexed parents can have reordered.
@@ -614,7 +621,7 @@ export class DocumentStateImpl implements DocumentState {
 				}
 			}
 		}
-		this._patchPreorderSpans(changedArrays, [...forgotten, ...arrayEdits], read);
+		this._patchPreorderSpans(spanParents, [...forgotten, ...arrayEdits], read);
 		if (reordered || structural) this._generation++;
 	}
 
@@ -1022,6 +1029,23 @@ export class DocumentStateImpl implements DocumentState {
 	private _livenessMoved(blockId: string, stored: boolean): boolean {
 		if (!this._preorder || !this._inRootOrder(blockId)) return false;
 		return this._preorder.list.has(blockId) !== stored;
+	}
+
+	/**
+	 * The parent whose `children` array lists `blockId` when its block map
+	 * has just arrived after the entry (out-of-order delivery, COL4): the
+	 * preorder skipped the entry while the map was missing, so the parent's
+	 * span is re-walked. Null otherwise. Reads nothing new.
+	 */
+	private _nestedArrival(
+		blockId: string,
+		blockMap: CRDTMap<unknown> | undefined,
+	): string | null {
+		if (!blockMap || !this._preorder || this._inRootOrder(blockId)) return null;
+		if (this._preorder.list.has(blockId)) return null;
+		const parentId = this._parentIndex.get(blockId);
+		if (parentId === undefined) return null;
+		return this._arrayChildren.get(parentId)?.includes(blockId) ? parentId : null;
 	}
 
 	private _isIndexedNestedChild(

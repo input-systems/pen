@@ -15,6 +15,7 @@ import {
 	checkPassIndex,
 	checkSearch,
 	checkTouchedIds,
+	mergeStateVectors,
 	storedBlockStates,
 } from "../cacheAudit/property";
 
@@ -133,5 +134,43 @@ describe("cache property findings", () => {
 		harness!.deliver(0, 1);
 		expect(remote!.documentState.childrenOf("t")).toEqual(["c2", "c0", "c1"]);
 		expect(cacheProblems(remote!)).toEqual([]);
+	});
+
+	it("finding 3: a children entry whose block map arrives after it enters the preorder when the map lands", () => {
+		const [a, b, local] = fork(3, [
+			...generateMixedBlockSpecs(20),
+			{
+				id: "callout-a",
+				type: "callout",
+				content: "Box",
+				children: [{ id: "callout-a-1", type: "paragraph", content: "one" }],
+			},
+		]);
+		a!.apply([
+			{
+				type: "insert-block",
+				blockId: "x",
+				blockType: "paragraph",
+				props: {},
+				position: { after: "scale-block-3" },
+			},
+			{ type: "splice-text", blockId: "x", from: 0, to: 0, insert: "fox" },
+		]);
+		harness!.deliver(0, 1);
+		b!.apply([
+			{ type: "move-block", blockId: "x", position: { parent: "callout-a", index: 1 } },
+		]);
+		// b's own update, without what it learned from a: its children entry
+		// lands before the block map a wrote.
+		const since = mergeStateVectors([harness!.stateVector(2), harness!.stateVector(0)]);
+		harness!.applyUpdateTo(2, harness!.encodeUpdate(1, since));
+		expect(cacheProblems(local!)).toEqual([]);
+		const touched = touchedProblems(local!, () => harness!.deliver(0, 2));
+		expect(local!.documentState.childrenOf("callout-a")).toEqual(["callout-a-1", "x"]);
+		expect(local!.documentState.preorderIndexOf("x")).toBe(
+			local!.documentState.preorderIndexOf("callout-a-1") + 1,
+		);
+		expect(touched).toEqual([]);
+		expect(cacheProblems(local!)).toEqual([]);
 	});
 });
