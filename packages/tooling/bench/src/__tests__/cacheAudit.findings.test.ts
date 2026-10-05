@@ -268,6 +268,48 @@ describe("cache property findings", () => {
 		expect(cacheProblems(peers[1]!)).toEqual([]);
 	});
 
+	it("a root block that loses its last children entry rejoins the top-level list", () => {
+		const peers = fork(3, [
+			...generateMixedBlockSpecs(ROOT_COUNT),
+			callout("callout-a"),
+			callout("callout-b"),
+		]);
+		const [b, c, e] = peers as [TestEditor, TestEditor, TestEditor];
+		// b and e move one block to one place: b's root order lists it twice
+		// until a pass there repairs it, so it holds no positions.
+		for (const editor of [b, e]) {
+			editor.apply([
+				{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-9" } },
+			]);
+		}
+		b.undoManager.stopCapturing();
+		b.apply([
+			{ type: "move-block", blockId: "scale-block-1", position: { parent: "callout-b", index: 1 } },
+		]);
+		c.apply([
+			{ type: "move-block", blockId: "scale-block-1", position: { parent: "scale-block-34", index: 0 } },
+		]);
+		harness!.deliver(1, 0);
+		harness!.deliver(0, 1);
+		harness!.deliver(2, 0);
+		expect(b.documentState.blockOrder.filter((id) => id === "scale-block-5")).toHaveLength(2);
+		expect(b.documentState.rootBlockIds()).not.toContain("scale-block-1");
+		// b's undo puts the block back in the root order and out of
+		// callout-b; scale-block-34 still lists it.
+		b.undoManager.stopCapturing();
+		expect(b.undoManager.undo()).toBe(true);
+		expect(cacheProblems(b)).toEqual([]);
+		b.documentState.rootBlockIds();
+		// c's next pass keeps the lowest-id parent (callout-b) and drops the
+		// scale-block-34 entry; on b that leaves only the root entry.
+		c.apply([
+			{ type: "splice-text", blockId: "callout-a-1", from: 0, to: 0, insert: "o" },
+		]);
+		harness!.deliver(1, 0);
+		expect(cacheProblems(b)).toEqual([]);
+		expect(b.documentState.rootBlockIds()).toContain("scale-block-1");
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },

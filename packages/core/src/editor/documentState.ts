@@ -685,9 +685,13 @@ export class DocumentStateImpl implements DocumentState {
 			if (this._parentIndex.has(childId)) continue;
 			const blockMap = read(childId);
 			if (blockMap && readParentIdProp(blockMap) !== null) return null;
-			// The root delta ran while the array still claimed it.
+			// The root delta ran while the array still claimed it. A root
+			// order listing some id twice has no positions to join it at, so
+			// the top-level list is dropped and rebuilt on next read.
 			if (roots.kind === "unique" && roots.list.has(childId)) {
 				this._joinTopLevel(roots.list, childId, roots.list.indexOf(childId));
+			} else if (roots.kind === "repeated" && roots.index.has(childId)) {
+				this._dropTopLevel();
 			}
 		}
 		for (const [parentId, next] of nextArrays) {
