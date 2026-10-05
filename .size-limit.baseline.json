@@ -60,9 +60,9 @@
     {
       "name": "@input/pen-core",
       "path": "packages/core/dist/index.mjs",
-      "baselineBytes": 450501,
-      "limitBytes": 450501,
-      "note": "Re-recorded baseline 2026-10-03 (SCALE2, SCALE6; W2.R7, W2.R8, W2.R11). Recorded when size-limit joined the pull-request gates (W8.R6), which found core over its ceiling. Cumulative since the 2026-08-21 record, not measured per commit: core had already drifted to 429672 by 2026-08-26 (see pen-tools), and the W2 render-path work then added document-size-independent keystroke and caret paths (84691326), scoped decoration sources (6e57e4ac, ba13a293), structural commits that read only named blocks (58595a78), and the SCALE6 invariant rows (329a5d8b), with smaller PH0 changes (c8539a10, 07ae49aa). 405550 \u2192 450501. Byte total reproduced across two rebuilds."
+      "baselineBytes": 526970,
+      "limitBytes": 526970,
+      "note": "Re-recorded baseline 2026-10-05 (A1, A2, AS1, AN10, T6, OPB1, COL4, RI6, PR5, SCALE2, SCALE6, OB1). Cumulative since the 2026-10-03 record: CellSelection.text validation, anchoring and T6 motion (cbcf34e5), encodable-payload op validation (864b6644), per-commit COL4 cycle/duplicate/orphan repair and in-flight entry checks (1c2aa325, 689d3733), nesting-route and container-descendant delete rules (62326ed0), same-batch parent liveness (d87aa054), and the proportional structural indexes from the simplification plan (positionedList, parentIdIndex, incremental summary/pass/document/preorder indexes; a249fbac..fa49de63) that took structural commits from ~22 ms to ~0.1 ms at 10k blocks. 450501 -> 526970. Byte total reproduced across two rebuilds. Previously: Re-recorded baseline 2026-10-03 (SCALE2, SCALE6; W2.R7, W2.R8, W2.R11). Recorded when size-limit joined the pull-request gates (W8.R6), which found core over its ceiling. Cumulative since the 2026-08-21 record, not measured per commit: core had already drifted to 429672 by 2026-08-26 (see pen-tools), and the W2 render-path work then added document-size-independent keystroke and caret paths (84691326), scoped decoration sources (6e57e4ac, ba13a293), structural commits that read only named blocks (58595a78), and the SCALE6 invariant rows (329a5d8b), with smaller PH0 changes (c8539a10, 07ae49aa). 405550 \u2192 450501. Byte total reproduced across two rebuilds."
     },
     {
       "name": "@input/pen-yjs",
