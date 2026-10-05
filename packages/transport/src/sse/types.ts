@@ -38,7 +38,9 @@ export interface SSEServerOptions {
 	/**
 	 * A destructive call with no `confirm` resolver (AIB3): `"refuse"` is the
 	 * production setting for an external tool surface. Defaults to the
-	 * editor's `aiExtension({ unconfirmedDestructive })`, then `"allow"`.
+	 * editor's `aiExtension({ unconfirmedDestructive })`, then `"allow"`, so
+	 * a handler a client can reach runs `delete_block` and `write_document`
+	 * unless this, `aiExtension`, or `confirm` says otherwise.
 	 */
 	unconfirmedDestructive?: AIUnconfirmedDestructivePolicy;
 	onRequest?: (request: PenStreamRequest) => void;

@@ -85,6 +85,10 @@ A live `Editor` is passed at construction. `PenStreamRequest` is the wire body a
 
 Mutating `toolCalls` are default-deny. Set `allowedMutatingTools` to grant specific names; an un-allowlisted mutating call emits `tool-error` and does not run the handler or apply.
 
+Destructive calls are allowed by default. A granted tool whose call is destructive (`delete_block`, `write_document`, or an `edit_document` that removes content) runs when no `confirm` resolver is configured, with an `ai-tool-unconfirmed` diagnostic. A server that exposes the handler to clients should pass `unconfirmedDestructive: "refuse"`, or set it once on `aiExtension`, or provide `confirm`.
+
+Each request is one tool turn: the per-turn budgets (tool calls and document ops) and the undo group start fresh per request, so a client that splits its calls across requests is limited per request, not per conversation.
+
 ### Client example
 
 ```ts
@@ -114,14 +118,16 @@ const transport = sseTransport({
 
 ### Options — `createSSEHandler`
 
-| Option                 | Default  | Effect                                           |
-| ---------------------- | -------- | ------------------------------------------------ |
-| `toolRuntime`          | unset    | In-process tool execution                        |
-| `editor`               | unset    | In-process editor for `ToolContext`              |
-| `allowedMutatingTools` | `[]`     | Mutating tools the request may run. Default deny |
-| `onRequest`            | unset    | Called with each `PenStreamRequest`              |
-| `onError`              | unset    | Called with handler errors                       |
-| `pingInterval`         | `15_000` | Server ping interval in milliseconds             |
+| Option                   | Default                  | Effect                                                                                                                      |
+| ------------------------ | ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `toolRuntime`            | unset                    | In-process tool execution                                                                                                   |
+| `editor`                 | unset                    | In-process editor for `ToolContext`                                                                                         |
+| `allowedMutatingTools`   | `[]`                     | Mutating tools the request may run. Default deny                                                                            |
+| `confirm`                | editor's                 | Confirms destructive calls (AIB3)                                                                                           |
+| `unconfirmedDestructive` | editor's, then `"allow"` | A destructive call with no `confirm`: `"allow"` runs it with a diagnostic, `"refuse"` blocks it. Use `"refuse"` on a server |
+| `onRequest`              | unset                    | Called with each `PenStreamRequest`                                                                                         |
+| `onError`                | unset                    | Called with handler errors                                                                                                  |
+| `pingInterval`           | `15_000`                 | Server ping interval in milliseconds                                                                                        |
 
 ## Documentation
 
