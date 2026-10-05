@@ -3,49 +3,49 @@
 	"rule": "SCALE2",
 	"points": {
 		"enter.100": {
-			"blockOrderReads": 389,
-			"blocksMapReads": 126,
-			"blocksMapIterations": 431,
+			"blockOrderReads": 281,
+			"blocksMapReads": 20,
+			"blocksMapIterations": 323,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
 		"remoteInsert.100": {
-			"blockOrderReads": 216,
-			"blocksMapReads": 110,
-			"blocksMapIterations": 216,
+			"blockOrderReads": 108,
+			"blocksMapReads": 3,
+			"blocksMapIterations": 108,
 			"textFullReads": 1,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
 		"enter.1000": {
-			"blockOrderReads": 3686,
-			"blocksMapReads": 1071,
-			"blocksMapIterations": 4211,
+			"blockOrderReads": 2633,
+			"blocksMapReads": 20,
+			"blocksMapIterations": 3158,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
 		"remoteInsert.1000": {
-			"blockOrderReads": 2106,
-			"blocksMapReads": 1055,
-			"blocksMapIterations": 2106,
+			"blockOrderReads": 1053,
+			"blocksMapReads": 3,
+			"blocksMapIterations": 1053,
 			"textFullReads": 1,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
 		"enter.5000": {
-			"blockOrderReads": 18386,
-			"blocksMapReads": 5271,
-			"blocksMapIterations": 21011,
+			"blockOrderReads": 13133,
+			"blocksMapReads": 20,
+			"blocksMapIterations": 15758,
 			"textFullReads": 5,
 			"orderArrayReads": 0,
 			"documentWalks": 0
 		},
 		"remoteInsert.5000": {
-			"blockOrderReads": 10506,
-			"blocksMapReads": 5255,
-			"blocksMapIterations": 10506,
+			"blockOrderReads": 5253,
+			"blocksMapReads": 3,
+			"blocksMapIterations": 5253,
 			"textFullReads": 1,
 			"orderArrayReads": 0,
 			"documentWalks": 0
@@ -63,6 +63,10 @@
 		{
 			"date": "2026-10-04",
 			"reason": "apply validation checks the op type before block liveness, so an insert-block reads one blocks-map entry fewer (PR5 batch liveness)"
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2b: the change-summary block index advances by the commit's array deltas and the block maps it names instead of re-walking the document"
 		}
 	]
 }

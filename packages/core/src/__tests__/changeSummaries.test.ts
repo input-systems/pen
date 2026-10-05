@@ -564,9 +564,11 @@ describe("removed subtrees", () => {
 				}),
 				index,
 				1,
-				(blockId) => {
-					asked.push(blockId);
-					return blockId !== "x";
+				{
+					blockExists: (blockId) => {
+						asked.push(blockId);
+						return blockId !== "x";
+					},
 				},
 			);
 			expect(summary.structural).toEqual([
@@ -604,7 +606,7 @@ describe("removed subtrees", () => {
 				}),
 				index,
 				1,
-				() => true,
+				{ blockExists: () => true },
 			);
 			expect(summary.structural).toEqual([
 				{

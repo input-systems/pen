@@ -7,6 +7,7 @@ import type {
 
 import { affectedBlockIdsFromSummary } from "./affectedBlocks";
 import type { BlockIndexSnapshot } from "./blockIndex";
+import { sortIntoDocumentOrder } from "./documentOrder";
 import type {
 	BlockTextChange,
 	ChangeSummary,
@@ -24,14 +25,15 @@ export interface ChangeSummaryState {
 export function createChangeSummary(state: ChangeSummaryState): ChangeSummary {
 	const blockText = state.blockText;
 	const structural = state.structural;
+	const collected = affectedBlockIdsFromSummary({ blockText, structural });
 	return {
 		commitId: state.commitId,
 		blockText,
 		structural,
-		affectedBlockIds: affectedBlockIdsFromSummary(
-			{ blockText, structural },
-			state.index?.order,
-		),
+		affectedBlockIds:
+			state.index && collected.length > 1
+				? sortIntoDocumentOrder(state.index, collected)
+				: collected,
 	};
 }
 
@@ -50,11 +52,22 @@ export function logicalLengthFromStored(stored: string): number {
 	return stored.length;
 }
 
+/** Reads of the index and the document a summary may need beyond the snapshot. */
+export interface SummaryLookups {
+	/** Whether the block map is stored; asked only for entries that name no indexed block (COL4). */
+	readonly blockExists?: (blockId: string) => boolean;
+	/**
+	 * Whether the pre-commit index lists the id in more than one array entry
+	 * (COL4). Without it, a removal scans every array for another entry.
+	 */
+	readonly listedMoreThanOnce?: (blockId: string) => boolean;
+}
+
 export function buildChangeSummary(
 	delta: RawCommitDelta,
 	index: BlockIndexSnapshot,
 	commitId: number,
-	blockExists?: (blockId: string) => boolean,
+	lookups: SummaryLookups = {},
 ): ChangeSummary {
 	const structuralOrigin = readStructuralOrigin(delta.originTag);
 	const blockText = buildTextChanges(delta, index);
@@ -62,7 +75,7 @@ export function buildChangeSummary(
 		delta,
 		index,
 		structuralOrigin,
-		blockExists,
+		lookups,
 	);
 	return createChangeSummary({
 		commitId,
@@ -177,7 +190,7 @@ function buildStructuralChanges(
 	delta: RawCommitDelta,
 	index: BlockIndexSnapshot,
 	structuralOrigin: StructuralOriginTag | null,
-	blockExists: ((blockId: string) => boolean) | undefined,
+	{ blockExists, listedMoreThanOnce }: SummaryLookups,
 ): StructuralChange[] {
 	const structural: StructuralChange[] = [];
 	const { inserted, removed } = collectArrayEdits(delta, index);
@@ -294,6 +307,7 @@ function buildStructuralChanges(
 	// removes one entry leaves it in the other, where it now renders.
 	let listings: ReadonlyMap<string, readonly (string | null)[]> | null = null;
 	const survivingParent = (item: (typeof removed)[number]) => {
+		if (listedMoreThanOnce && !listedMoreThanOnce(item.id)) return undefined;
 		listings ??= parentListings(index);
 		for (const parentId of listings.get(item.id) ?? []) {
 			if (parentId === item.parentId) continue;

@@ -53,7 +53,11 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 					delta,
 					host._blockIndex.snapshot(),
 					0,
-					(blockId) => host._doc.blocks.has(blockId),
+					{
+						blockExists: (blockId) => host._doc.blocks.has(blockId),
+						listedMoreThanOnce: (blockId) =>
+							host._blockIndex.listedMoreThanOnce(blockId),
+					},
 				);
 				host._pendingSummary = summary;
 				// A local apply normalized inside its own transaction; any
@@ -67,16 +71,21 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 				// would read every block's text on every keystroke (SCALE2). An
 				// array edit, or a block map arriving or leaving, that reports no
 				// structural change (a duplicate entry's repair, an orphan whose
-				// parent a peer deleted; COL4) still reshapes the index.
+				// parent a peer deleted; COL4) still reshapes the index, which
+				// advances by the arrays and maps the delta names; a commit it
+				// cannot advance exactly is read back from the document.
 				if (summary.structural.length === 0 && !reshapesIndex(delta)) {
 					host._blockIndex.applyTextLengths(summary.blockText);
 				} else {
-					host._blockIndex.replace(
-						createBlockIndexSnapshotFromDocument(host._doc, {
-							lengths: host._blockIndex.snapshot().lengthById,
-							named: namedBlockIds(summary),
-						}),
-					);
+					const named = namedBlockIds(summary);
+					if (!host._blockIndex.applyStructure(host._doc, delta, named)) {
+						host._blockIndex.replace(
+							createBlockIndexSnapshotFromDocument(host._doc, {
+								lengths: host._blockIndex.snapshot().lengthById,
+								named,
+							}),
+						);
+					}
 				}
 				flushDeferredCRDTEvent(host);
 			},

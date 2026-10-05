@@ -23,7 +23,9 @@ describe("change-summary block index on structural commits", () => {
 				const held = heldIndex(editor);
 				const label = `seed ${seed} step ${step}`;
 				expect([...held.lengthById].sort(), label).toEqual([...fresh.lengthById].sort());
-				expect(held.order, label).toEqual(fresh.order);
+				expect(held.roots, label).toEqual(fresh.roots);
+				expect([...held.typeById].sort(), label).toEqual([...fresh.typeById].sort());
+				expect([...held.childrenByParentId].sort(), label).toEqual([...fresh.childrenByParentId].sort());
 				expect([...held.parentById].sort(), label).toEqual([...fresh.parentById].sort());
 			}
 			editor.destroy();

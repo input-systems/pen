@@ -20,7 +20,7 @@ describe("apply into a missing parent", () => {
 		expect(editor.documentState.preorderBlockIds()).toEqual(before);
 		// No block map entry outside the tree.
 		const swept = createBlockIndexSnapshotFromDocument(editor.internals.doc);
-		expect(swept.order).toEqual(before);
+		expect([...swept.typeById.keys()].sort()).toEqual([...before].sort());
 		editor.destroy();
 	});
 

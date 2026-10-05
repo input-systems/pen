@@ -89,45 +89,43 @@ function documentIndexSwitch(editor: Editor): CacheSwitch {
 }
 
 interface BlockIndexLike {
-	snapshot(): unknown;
 	applyTextLengths(blockText: unknown): void;
+	applyStructure(doc: unknown, delta: unknown, named: unknown): boolean;
 	replace(snapshot: unknown): void;
 }
 
 /**
  * B: naive rebuilds the change-summary block index from the document, text
  * lengths included, on every commit. Incremental advances lengths in place on
- * a text commit and reuses unnamed blocks' lengths on a structural one; its
- * clock runs from the last `snapshot()` read (the reuse build's input) to
- * `replace`. In naive mode the discarded reuse build still runs before the
- * full build, so only the component clock compares like with like.
+ * a text commit and advances the arrays and maps a structural commit names
+ * (`applyStructure`), replacing the index from the document only when it
+ * refuses (COL4). The clock covers those three methods in both modes.
  */
 function blockIndexSwitch(editor: Editor, internals: AuditInternals): CacheSwitch {
 	const clock = new Clock();
 	const state = { mode: "incremental" as AuditMode };
 	const index = internalsOf<BlockIndexLike>(editor, "_blockIndex");
 	const doc = editor.internals.doc as PenDocument;
-	let snapshotAt = 0;
-	const restores: (() => void)[] = [];
 	const replaceOriginal = index.replace.bind(index);
 	const fullRebuild = () => replaceOriginal(internals.createBlockIndexSnapshotFromDocument(doc));
-	restores.push(
-		patchMethod<() => unknown>(index, "snapshot", (original) => () => {
-			snapshotAt = performance.now();
-			return original();
-		}),
+	const restores = [
 		patchMethod<(blockText: unknown) => void>(index, "applyTextLengths", (original) => (blockText) =>
 			clock.time(() => (state.mode === "naive" ? fullRebuild() : original(blockText))),
 		),
-		patchMethod<(snapshot: unknown) => void>(index, "replace", (original) => (snapshot) => {
-			if (state.mode === "naive") {
-				clock.time(fullRebuild);
-				return;
-			}
-			clock.add(performance.now() - snapshotAt);
-			original(snapshot);
-		}),
-	);
+		patchMethod<(target: unknown, delta: unknown, named: unknown) => boolean>(
+			index,
+			"applyStructure",
+			(original) => (target, delta, named) =>
+				clock.time(() => {
+					if (state.mode === "incremental") return original(target, delta, named);
+					fullRebuild();
+					return true;
+				}),
+		),
+		patchMethod<(snapshot: unknown) => void>(index, "replace", (original) => (snapshot) =>
+			clock.time(() => original(snapshot)),
+		),
+	];
 	return makeSwitch(clock, restores, state);
 }
 

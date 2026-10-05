@@ -5,6 +5,7 @@ import {
 	emptyBlockIndexSnapshot,
 	type BlockIndexSnapshot,
 } from "./blockIndex";
+import { asMap, readStringArray, storedText } from "./readStored";
 import { logicalLengthFromStored } from "./summaryBuilder";
 
 /**
@@ -17,6 +18,11 @@ export interface ReusedBlockLengths {
 	readonly named: ReadonlySet<string>;
 }
 
+/**
+ * The block index read whole from the document: the naive build the
+ * incremental advance (`BlockIndex.applyStructure`) must equal, and the
+ * fallback it takes for a commit it does not advance in place.
+ */
 export function createBlockIndexSnapshotFromDocument(
 	doc: PenDocument,
 	reuse?: ReusedBlockLengths,
@@ -42,7 +48,8 @@ export function createBlockIndexSnapshotFromDocument(
 		}
 		const type = block.get("type");
 		typeById.set(id, typeof type === "string" ? type : "");
-		const cached = reuse && !reuse.named.has(id) ? reuse.lengths.get(id) : undefined;
+		const cached =
+			reuse && !reuse.named.has(id) ? reuse.lengths.get(id) : undefined;
 		lengthById.set(
 			id,
 			cached ?? logicalLengthFromStored(storedText(block.get("content"))),
@@ -65,49 +72,4 @@ export function createBlockIndexSnapshotFromDocument(
 		typeById,
 		childrenByParentId,
 	});
-}
-
-function asMap(value: unknown): { get(key: string): unknown } | null {
-	if (
-		value != null &&
-		typeof value === "object" &&
-		typeof (value as { get?: unknown }).get === "function"
-	) {
-		return value as { get(key: string): unknown };
-	}
-	return null;
-}
-
-function storedText(value: unknown): string {
-	if (
-		value != null &&
-		typeof value === "object" &&
-		typeof (value as { toString?: unknown }).toString === "function"
-	) {
-		return String((value as { toString: () => string }).toString());
-	}
-	return "";
-}
-
-function readStringArray(value: unknown): string[] {
-	if (value == null || typeof value !== "object") return [];
-	const arr = value as {
-		length?: number;
-		get?: (index: number) => unknown;
-		toArray?: () => unknown[];
-	};
-	if (typeof arr.toArray === "function") {
-		return arr
-			.toArray()
-			.filter((id): id is string => typeof id === "string");
-	}
-	if (typeof arr.length === "number" && typeof arr.get === "function") {
-		const out: string[] = [];
-		for (let i = 0; i < arr.length; i++) {
-			const id = arr.get(i);
-			if (typeof id === "string") out.push(id);
-		}
-		return out;
-	}
-	return [];
 }
