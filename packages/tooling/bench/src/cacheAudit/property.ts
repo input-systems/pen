@@ -196,11 +196,38 @@ export function storedBlockStates(editor: Editor): Map<string, string> {
 			JSON.stringify({
 				type: block.get("type"),
 				props: props?.toJSON?.() ?? null,
-				text: content?.toDelta?.() ?? null,
+				text: mergeRuns(content?.toDelta?.()),
 			}),
 		);
 	}
 	return states;
+}
+
+type DeltaRun = { insert?: unknown; attributes?: Record<string, unknown> };
+
+/**
+ * A text delta with adjacent string runs of equal attributes joined. A
+ * formatting marker a peer left around text another peer deleted splits a
+ * run in `toDelta()` without changing the text or its marks, and no commit
+ * names that.
+ */
+function mergeRuns(delta: unknown): unknown {
+	if (!Array.isArray(delta)) return null;
+	const runs: DeltaRun[] = [];
+	for (const run of delta as DeltaRun[]) {
+		const previous = runs[runs.length - 1];
+		if (
+			previous &&
+			typeof previous.insert === "string" &&
+			typeof run.insert === "string" &&
+			isDeepStrictEqual(previous.attributes ?? {}, run.attributes ?? {})
+		) {
+			runs[runs.length - 1] = { ...previous, insert: previous.insert + run.insert };
+			continue;
+		}
+		runs.push(run);
+	}
+	return runs;
 }
 
 function sortedEntries<K, V>(map: ReadonlyMap<K, V>): [string, V][] {
