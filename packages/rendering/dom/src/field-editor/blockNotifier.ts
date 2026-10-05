@@ -385,7 +385,9 @@ class BlockNotifierImpl implements BlockNotifier {
 		const indexMoved = this._rootIdsGeneration !== this._editor.documentState.generation;
 		const movedLists = summary.structural.length > 0 || indexMoved ? this._movedLists() : EMPTY_IDS;
 		const ids = new Set<string>([...touched, ...movedLists, ...this._namedParents(summary)]);
-		const context = newContext(summary.structural.length > 0, true);
+		// A repair that drops a duplicate entry names no structural change,
+		// yet moves the list semantics of the run it sat in (COL4).
+		const context = newContext(summary.structural.length > 0 || indexMoved, true);
 		if (context.structural) this._sharedReadContext = null;
 		const previousRootIds = this._document?.rootIds ?? null;
 		if (summary.structural.length > 0) {

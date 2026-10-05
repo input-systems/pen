@@ -645,6 +645,44 @@ describe("cache property findings", () => {
 		notifier.destroy();
 	});
 
+	it("a commit listener's write during an undo that relists a block re-reads the list slices its repair moved", () => {
+		const peers = fork(2, [
+			{ id: "p", type: "paragraph", content: "p" },
+			{ id: "a", type: "bulletListItem", props: { indent: 0 }, content: "a" },
+			{ id: "x", type: "bulletListItem", props: { indent: 0 }, content: "x" },
+			{ id: "q", type: "paragraph", content: "q" },
+			callout("callout-a"),
+		]);
+		const [mover, deleter] = peers as [TestEditor, TestEditor];
+		// COL4: a delete against a move leaves the deleter a dead entry.
+		deleter.apply([{ type: "delete-block", blockId: "x" }]);
+		mover.apply([{ type: "move-block", blockId: "x", position: { after: "q" } }]);
+		harness!.deliver(0, 1);
+		const notifier = internals.createBlockNotifier(deleter);
+		const offs = ["p", "a", "q"].map((id) => notifier.subscribeBlock(id, () => {}));
+		// The undo restores x beside a, and the move's entry still lists it:
+		// a listener reacting to the undo moves x into callout-a.
+		let fired = false;
+		const offCommit = deleter.on("commit", () => {
+			if (fired) return;
+			fired = true;
+			deleter.apply([
+				{ type: "move-block", blockId: "x", position: { parent: "callout-a", index: 0 } },
+			]);
+		});
+		deleter.undoManager.stopCapturing();
+		expect(deleter.undoManager.undo()).toBe(true);
+		offCommit();
+		expect(fired).toBe(true);
+		const fresh = internals.createBlockNotifier(deleter);
+		const list = (source: typeof notifier, id: string) =>
+			(source as unknown as { getBlockSnapshot(id: string): { list: unknown } }).getBlockSnapshot(id).list;
+		expect(list(notifier, "a")).toEqual(list(fresh, "a"));
+		fresh.destroy();
+		for (const off of offs) off();
+		notifier.destroy();
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },
