@@ -215,14 +215,18 @@ class BlockNotifierImpl implements BlockNotifier {
 			this._segmentSubscribers.set(parentId, subscribers);
 		}
 		const set = subscribers;
-		const unsubscribe = this._subscribeTo(set, onChange);
+		this._attach();
+		set.add(onChange);
 		return () => {
-			unsubscribe();
-			if (set.size === 0) {
+			set.delete(onChange);
+			// A released unsubscribe called again must not drop a newer set.
+			if (set.size === 0 && this._segmentSubscribers.get(parentId) === set) {
 				this._segmentSubscribers.delete(parentId);
 				this._segments.delete(parentId);
 				this._segmentBasis.delete(parentId);
 			}
+			// After the channel is gone, so the last one out detaches.
+			this._detachIfIdle();
 		};
 	}
 
