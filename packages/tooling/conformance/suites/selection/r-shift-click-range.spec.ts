@@ -235,6 +235,35 @@ for (const { suffix, url } of ATOM_SURFACES) {
 	);
 
 	scenario(
+		`R1 S2 T5 O1: a shift-click inside an atom extends from a block selection in another block${suffix}`,
+		async (s, page) => {
+			await s.load("atom-caret");
+			await page.evaluate(
+				(id) => window.__penConformance.selectBlocksById([id]),
+				ATOM.end,
+			);
+			await expect
+				.poll(() =>
+					page.evaluate(() => {
+						const state =
+							window.__penConformance.selectionRecord?.state ?? null;
+						return state?.type === "block" ? state.blockIds.join(",") : null;
+					}),
+				)
+				.toBe(ATOM.end);
+
+			// The anchor is the block selection's start; the atom in ac-mid is
+			// 6..7 left to right, so its right half is its logical end.
+			await clickInAtom(page, ATOM.mid, ATOM_RIGHT_HALF, true);
+			await expect
+				.poll(() => textSelection(page))
+				.toBe(`${ATOM.end}:0 -> ${ATOM.mid}:7`);
+			await expectDomMatchesAuthority(page);
+		},
+		{ url },
+	);
+
+	scenario(
 		`R1 S2 T5 O1: a shift-click inside an atom takes the side in its bidi run's direction, not the block's${suffix}`,
 		async (s, page) => {
 			await s.load("atom-caret");
