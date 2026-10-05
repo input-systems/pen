@@ -119,6 +119,12 @@ export class SchemaEngineImpl implements SchemaEngine {
 	private readonly unobservedBlockIds = new Set<string>();
 	/** Whether this engine wrote structure since the last observed commit. */
 	private wroteStructure = false;
+	/**
+	 * Open transactions this engine started itself. A commit observed while
+	 * one is open is the engine's own: every write in it advanced the pass
+	 * index as it was made, so the observer must not advance it again.
+	 */
+	private ownTransactions = 0;
 
 	constructor(
 		registry: SchemaRegistry,
@@ -143,11 +149,14 @@ export class SchemaEngineImpl implements SchemaEngine {
 
 	/**
 	 * A commit landed. A local apply's executors and this engine's repairs
-	 * advanced the pass index at each write, so it is current. Any other
-	 * commit (remote, undo) advances it by the commit's delta, in proportion
-	 * to what the commit touched; one this engine also wrote into outside an
-	 * apply (a deferred block's normalization) cannot be told apart from the
-	 * delta, so the index is dropped and rebuilt on next read.
+	 * advanced the pass index at each write, so it is current; so did every
+	 * write of a transaction the engine opened itself (`transactOwn`), which
+	 * is how a pass outside an apply — `normalizeAll`, a deferred block's
+	 * normalization when its stream closes — commits. Any other commit
+	 * (remote, undo) advances it by the commit's delta, in proportion to what
+	 * the commit touched; one the engine also wrote into without owning the
+	 * transaction cannot be told apart from the delta, so the index is
+	 * dropped and rebuilt on next read.
 	 */
 	observeCommit(
 		delta: RawCommitDelta,
@@ -158,7 +167,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 		this.wroteStructure = false;
 		this.parentIdIndex?.applyCommitDelta(delta, readBlock);
 		this.unobservedBlockIds.clear();
-		if (localApply || !this.passIndex) return;
+		if (localApply || this.ownTransactions > 0 || !this.passIndex) return;
 		if (wrote || !this.passIndex.applyCommitDelta(readBlock, delta)) {
 			this.invalidatePassIndex();
 		}
@@ -209,9 +218,27 @@ export class SchemaEngineImpl implements SchemaEngine {
 
 	undeferBlock(blockId: string): void {
 		this.deferredBlockIds.delete(blockId);
-		if (this.dirtyBlockIds.has(blockId)) {
-			this.normalizeBlock(blockId);
-			this.dirtyBlockIds.delete(blockId);
+		if (!this.dirtyBlockIds.has(blockId)) return;
+		this.dirtyBlockIds.delete(blockId);
+		this.unobservedBlockIds.add(blockId);
+		// A stream closes outside any apply: without a transaction each repair
+		// would commit on its own, and the observer would advance the pass
+		// index by a write the repair then notes again.
+		this.transactOwn(() => this.normalizeBlock(blockId));
+	}
+
+	/**
+	 * Runs `fn`'s writes as one transaction the engine owns, with the
+	 * `system` origin: inside an apply it joins the apply's transaction,
+	 * outside one it commits once, and the pass index — advanced by each
+	 * write's note — is not advanced again by that commit's delta.
+	 */
+	private transactOwn(fn: () => void): void {
+		this.ownTransactions += 1;
+		try {
+			this.doc.adapter.transact(this.crdtDoc, fn, "system");
+		} finally {
+			this.ownTransactions -= 1;
 		}
 	}
 
@@ -231,7 +258,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 			this.dirtyBlockIds.clear();
 			for (const blockId of snapshot) this.unobservedBlockIds.add(blockId);
 
-			this.doc.adapter.transact(this.crdtDoc, () => {
+			this.transactOwn(() => {
 				for (const blockId of snapshot) {
 					if (this.deferredBlockIds.has(blockId)) {
 						this.dirtyBlockIds.add(blockId);
@@ -271,7 +298,7 @@ export class SchemaEngineImpl implements SchemaEngine {
 		const blockIds = [...this.externalStructuralIds];
 		this.externalStructuralIds.clear();
 		for (const blockId of blockIds) this.unobservedBlockIds.add(blockId);
-		this.doc.adapter.transact(this.crdtDoc, () => {
+		this.transactOwn(() => {
 			for (const blockId of blockIds) {
 				if (this.deferredBlockIds.has(blockId)) {
 					this.externalStructuralIds.add(blockId);

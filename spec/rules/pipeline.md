@@ -6,7 +6,7 @@ These families govern the single durable write path. `ST` is the streaming write
 
 - ST1. Each flush of a `TextStreamWriter` is one pipeline commit with `source: "stream"`. Phase-1 hooks run once at `openTextStream` against a synthetic `stream-open` op, so suggest-mode and authorization policy veto or redirect a stream as a whole rather than per token.
 - ST2. The writer's write head is durable: it is held as an anchor, passed through the anchor repair step, and resolved before each flush splices. Concurrent local typing and collaborator edits cannot corrupt it, and there is no manual length tracking.
-- ST3. `deferNormalization` accumulates dirty marks across the stream through the engine's defer/undefer hooks; `close()` undefers and normalizes in a final commit.
+- ST3. `deferNormalization` accumulates dirty marks across the stream through the engine's defer/undefer hooks; `close()` undefers and normalizes in a final commit: one `system`-origin transaction the normalizer owns, never one untransacted write per repair, so each repair commits once and advances the normalizer's pass index once (SCALE2).
 - ST4. `openTextStream` closes the undo capture boundary, and every commit from one stream shares the origin's `groupId`, so a whole generation undoes as a single unit.
 - ST5. The generation protocol surface (`gen-start` / `gen-delta` / `gen-end`) in `@input/pen-ai/stream` is a `TextStreamWriter` client. It holds no direct `Y.Text` write and no `adapter.transact` call of its own; structural stream parts such as block inserts are ordinary applies sharing the stream's `groupId`.
 - ST6. Streaming flags and decorations hang off `commit` events with `source: "stream"`. There is no side channel.
