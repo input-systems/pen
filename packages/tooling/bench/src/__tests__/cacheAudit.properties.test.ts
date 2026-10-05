@@ -7,7 +7,13 @@ import { createPropertyCase } from "../cacheAudit/property";
  * recompute after every operation of a seeded random walk — keystrokes,
  * splits, merges, inserts, moves and deletes across the root, `children`
  * array and `parentId` routes, indent and type changes, undo and redo, AI
- * suggestions and remote peer commits.
+ * suggestions, remote peer commits and concurrent delete-against-move
+ * (COL4). A second block notifier mounts the way a remounting renderer does:
+ * it reads before it subscribes with an operation between, subscribes a
+ * churning subset (segment channels without their container's block),
+ * detaches for a few operations, and re-calls released unsubscribes; its
+ * subscribed slices and segments must equal a fresh notifier's, and every
+ * value that moved must have notified.
  *
  * PR runs walk 40 seeds; `PEN_FUZZ_NIGHTLY` walks 200. `PEN_FUZZ_SEED` moves
  * the first seed (a non-numeric nightly seed is hashed) and

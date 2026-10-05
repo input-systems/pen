@@ -40,9 +40,10 @@ import type { AuditBlockNotifier, AuditInternals } from "./internals";
 /**
  * Seeded randomized equivalence for the kept caches A–G (simplification plan
  * Phase 2): after every random operation, each incremental cache must equal
- * the naive full recompute it replaces. One peer carries the realistic stack
- * and a block notifier subscribed like a renderer without virtualization; a
- * second, bare peer makes the remote commits.
+ * the naive full recompute it replaces. One peer carries the realistic stack,
+ * a block notifier subscribed like a renderer without virtualization, and a
+ * second notifier whose subscriptions churn (`createChurnMount`); a second,
+ * bare peer makes the remote commits.
  */
 
 /** Root blocks of the mixed fixture; a multiple of 20, so it holds every slot kind once twice. */
@@ -82,6 +83,7 @@ export const PROPERTY_OPS = [
 	"ai-suggest",
 	"resolve-suggestion",
 	"select",
+	"concurrent-delete-move",
 ] as const;
 
 export type PropertyOp = (typeof PROPERTY_OPS)[number];
@@ -464,12 +466,15 @@ function multiListedIds(editor: Editor): Set<string> {
  * repairs it, a duplicate is unkeyable, a block has one list slice for two
  * lists, and only the attached notifier tracks which entries died. The
  * comparison resumes once the list is repaired. Root ids are compared live.
+ * With `subscribedBlocks`, only those blocks are compared (a partial mount).
  */
 function checkNotifier(
 	editor: Editor,
 	notifier: AuditBlockNotifier,
 	subscribedParents: ReadonlySet<string | null>,
 	internals: AuditInternals,
+	label = "C",
+	subscribedBlocks: ReadonlySet<string> | null = null,
 ): string[] {
 	const fresh = internals.createBlockNotifier(editor);
 	const problems: string[] = [];
@@ -488,7 +493,7 @@ function checkNotifier(
 			rootIds: document(fresh).rootIds.filter(live),
 		};
 		const documentDifference = firstDifference(
-			"C document snapshot",
+			`${label} document snapshot`,
 			document(notifier),
 			naiveDocument,
 		);
@@ -508,13 +513,14 @@ function checkNotifier(
 		for (const parentId of subscribedParents) {
 			if (!keyable(parentId)) continue;
 			const difference = firstDifference(
-				`C list segments of ${parentId ?? "root"}`,
+				`${label} list segments of ${parentId ?? "root"}`,
 				notifier.getListSegments(parentId),
 				fresh.getListSegments(parentId),
 			);
 			if (difference) problems.push(difference);
 		}
 		for (const blockId of editor.documentState.preorderBlockIds()) {
+			if (subscribedBlocks && !subscribedBlocks.has(blockId)) continue;
 			const view = (source: AuditBlockNotifier) => {
 				const read = notifierView(source, blockId) as Record<
 					string,
@@ -526,7 +532,7 @@ function checkNotifier(
 					: { ...read, list: "unrepaired sibling list" };
 			};
 			const difference = firstDifference(
-				`C block snapshot ${blockId}`,
+				`${label} block snapshot ${blockId}`,
 				view(notifier),
 				view(fresh),
 			);
@@ -611,6 +617,193 @@ function checkPassIndex(editor: Editor): string[] {
 	return problems;
 }
 
+/** Blocks and segment channels a churning mount reads before an operation and subscribes after it. */
+const CHURN_READS = 6;
+const CHURN_SEGMENT_READS = 2;
+/** Chance per step that every churn subscription is released, so the notifier detaches. */
+const CHURN_RELEASE_ALL = 0.1;
+/** Operations a released-all mount stays detached for, at most. */
+const CHURN_DETACHED_STEPS = 4;
+/** Chance per subscription per step that it is released. */
+const CHURN_RELEASE = 0.1;
+/** Chance per step that an already-called unsubscribe is called again. */
+const CHURN_STALE = 0.25;
+
+interface ChurnMount {
+	/** Reads a few blocks and segment lists the way a renderer reads before it subscribes. */
+	render(): string;
+	/** Subscribes what `render` read, releases some subscriptions, and re-calls a released one. */
+	effects(): string;
+	/** Every subscription whose current value differs from the last one it was notified of. */
+	missedNotifications(): string[];
+	readonly notifier: AuditBlockNotifier;
+	readonly blocks: ReadonlySet<string>;
+	readonly parents: ReadonlySet<string | null>;
+	destroy(): void;
+}
+
+interface ChurnSubscription {
+	readonly unsubscribe: Unsubscribe;
+	/** What the subscriber last read: at subscribe, then at each notification. */
+	seen: unknown;
+}
+
+/**
+ * A second notifier mounted the way a remounting or virtualizing renderer
+ * mounts: blocks and segment channels are read before they subscribe, with
+ * an operation between the two (React reads in render and subscribes in a
+ * passive effect); a random subset is subscribed, segment channels without
+ * their container's block; subscriptions churn, now and then all of them for
+ * a few operations, so the notifier detaches and re-attaches; and released
+ * unsubscribes are called again. Each subscriber re-reads when notified, so
+ * a value that moved without a notification is caught
+ * (`useSyncExternalStore`'s contract).
+ */
+function createChurnMount(
+	editor: Editor,
+	notifier: AuditBlockNotifier,
+	rng: Rng,
+): ChurnMount {
+	const blockSubscriptions = new Map<string, ChurnSubscription>();
+	const segmentSubscriptions = new Map<string | null, ChurnSubscription>();
+	const released: Unsubscribe[] = [];
+	let pendingBlocks: string[] = [];
+	let pendingParents: (string | null)[] = [];
+	let detachedFor = 0;
+	const read = notifier as unknown as {
+		getBlockSnapshot(id: string): unknown;
+	};
+	const live = () => editor.documentState.preorderBlockIds();
+	const containers = (): (string | null)[] => [
+		null,
+		...live().filter(
+			(id) => editor.documentState.childrenOf(id).length > 0,
+		),
+	];
+	const sample = <T>(items: readonly T[], count: number): T[] => {
+		const picked = new Set<T>();
+		for (let tries = 0; tries < count * 2 && picked.size < count; tries += 1)
+			if (items.length > 0) picked.add(rng.pick(items));
+		return [...picked];
+	};
+	const subscribeBlock = (id: string) => {
+		const subscription: ChurnSubscription = {
+			unsubscribe: notifier.subscribeBlock(id, () => {
+				subscription.seen = read.getBlockSnapshot(id);
+			}),
+			seen: undefined,
+		};
+		subscription.seen = read.getBlockSnapshot(id);
+		blockSubscriptions.set(id, subscription);
+	};
+	const subscribeParent = (parentId: string | null) => {
+		const subscription: ChurnSubscription = {
+			unsubscribe: notifier.subscribeListSegments(parentId, () => {
+				subscription.seen = notifier.getListSegments(parentId);
+			}),
+			seen: undefined,
+		};
+		subscription.seen = notifier.getListSegments(parentId);
+		segmentSubscriptions.set(parentId, subscription);
+	};
+	const release = <K>(subscriptions: Map<K, ChurnSubscription>, key: K) => {
+		const subscription = subscriptions.get(key);
+		if (!subscription) return;
+		subscription.unsubscribe();
+		released.push(subscription.unsubscribe);
+		subscriptions.delete(key);
+	};
+	const releaseAll = () => {
+		for (const id of [...blockSubscriptions.keys()])
+			release(blockSubscriptions, id);
+		for (const parentId of [...segmentSubscriptions.keys()])
+			release(segmentSubscriptions, parentId);
+	};
+	return {
+		notifier,
+		get blocks() {
+			return new Set(blockSubscriptions.keys());
+		},
+		get parents() {
+			return new Set(segmentSubscriptions.keys());
+		},
+		render() {
+			if (detachedFor === 0 && rng.chance(CHURN_RELEASE_ALL)) {
+				releaseAll();
+				detachedFor = 1 + rng.int(CHURN_DETACHED_STEPS);
+				return `churn release all for ${detachedFor} ops`;
+			}
+			if (detachedFor > 0) return "churn detached";
+			pendingBlocks = sample(
+				live().filter((id) => !blockSubscriptions.has(id)),
+				CHURN_READS,
+			);
+			pendingParents = sample(
+				containers().filter((id) => !segmentSubscriptions.has(id)),
+				CHURN_SEGMENT_READS,
+			);
+			for (const id of pendingBlocks) read.getBlockSnapshot(id);
+			for (const parentId of pendingParents)
+				notifier.getListSegments(parentId);
+			return `churn read ${JSON.stringify(pendingBlocks)} segments ${JSON.stringify(pendingParents)}`;
+		},
+		effects() {
+			if (detachedFor > 0) {
+				detachedFor -= 1;
+				pendingBlocks = [];
+				pendingParents = [];
+				return "churn detached";
+			}
+			const notes: string[] = [];
+			const ids = new Set(live());
+			for (const id of pendingBlocks) {
+				if (ids.has(id) && !blockSubscriptions.has(id)) subscribeBlock(id);
+			}
+			for (const parentId of pendingParents) {
+				if (parentId !== null && !ids.has(parentId)) continue;
+				if (!segmentSubscriptions.has(parentId)) subscribeParent(parentId);
+			}
+			for (const id of [...blockSubscriptions.keys()]) {
+				if (!ids.has(id) || rng.chance(CHURN_RELEASE))
+					release(blockSubscriptions, id);
+			}
+			for (const parentId of [...segmentSubscriptions.keys()]) {
+				if (
+					(parentId !== null && !ids.has(parentId)) ||
+					rng.chance(CHURN_RELEASE)
+				)
+					release(segmentSubscriptions, parentId);
+			}
+			if (released.length > 0 && rng.chance(CHURN_STALE)) {
+				rng.pick(released)();
+				notes.push("stale unsubscribe");
+			}
+			notes.push(
+				`subscribed ${blockSubscriptions.size} blocks, segments ${JSON.stringify([...segmentSubscriptions.keys()])}`,
+			);
+			return `churn ${notes.join(", ")}`;
+		},
+		missedNotifications() {
+			const missed: string[] = [];
+			for (const [id, subscription] of blockSubscriptions) {
+				if (read.getBlockSnapshot(id) !== subscription.seen)
+					missed.push(`C churn block ${id} changed without notifying`);
+			}
+			for (const [parentId, subscription] of segmentSubscriptions) {
+				if (notifier.getListSegments(parentId) !== subscription.seen)
+					missed.push(
+						`C churn list segments of ${parentId ?? "root"} changed without notifying`,
+					);
+			}
+			return missed;
+		},
+		destroy() {
+			releaseAll();
+			notifier.destroy();
+		},
+	};
+}
+
 export interface PropertyCase {
 	readonly editor: TestEditor;
 	/** Every write, delivery and history step so far, one per line. */
@@ -659,6 +852,12 @@ export function createPropertyCase(
 	const blockSubscriptions = new Map<string, Unsubscribe>();
 	const segmentSubscriptions = new Map<string | null, Unsubscribe>();
 	const documentSubscription = notifier.subscribeDocument(noop);
+	// Its own stream, so the operation walk is the same with or without it.
+	const churn = createChurnMount(
+		editor,
+		internals.createBlockNotifier(editor),
+		createRng(seed ^ 0x9e3779b9),
+	);
 
 	/** Mounts what a renderer would mount now: every block, and a segment list per sibling list. */
 	const remount = () => {
@@ -1076,6 +1275,37 @@ export function createPropertyCase(
 				harness.deliver(1, 0);
 				return;
 			}
+			case "concurrent-delete-move": {
+				// COL4: a local delete against a remote move leaves a dead order
+				// entry locally until the next local pass; an undo straight
+				// after brings the block back without a pass in between.
+				trace.push("deliver local → remote");
+				harness.deliver(0, 1);
+				const blockId = rng.pick(
+					rootIds(editor).filter((id) => remote.getBlock(id) !== null),
+				);
+				const roots = rootIds(remote).filter((id) => id !== blockId);
+				if (!blockId || roots.length === 0 || liveIds(editor).length < 8)
+					return;
+				apply(editor, [{ type: "delete-block", blockId }]);
+				apply(remote, [
+					{
+						type: "move-block",
+						blockId,
+						position: { after: rng.pick(roots) },
+					},
+				]);
+				trace.push("deliver remote → local");
+				harness.deliver(1, 0);
+				if (rng.chance(0.5)) {
+					const manager = editor.facet(
+						undoManagerFacet,
+					) as UndoManager | null;
+					manager?.stopCapturing();
+					trace.push(`local undo → ${String(manager?.undo())}`);
+				}
+				return;
+			}
 			case "sync-to-remote":
 				trace.push("deliver local → remote");
 				harness.deliver(0, 1);
@@ -1163,8 +1393,10 @@ export function createPropertyCase(
 			before = storedBlockStates(editor);
 			summaries.length = 0;
 			const op = rng.pick(PROPERTY_OPS);
+			trace.push(churn.render());
 			runOp(op);
 			remount();
+			trace.push(churn.effects());
 			return op;
 		},
 		check() {
@@ -1178,6 +1410,15 @@ export function createPropertyCase(
 					notifier,
 					new Set(segmentSubscriptions.keys()),
 					internals,
+				),
+				...churn.missedNotifications(),
+				...checkNotifier(
+					editor,
+					churn.notifier,
+					new Set(churn.parents),
+					internals,
+					"C churn",
+					new Set(churn.blocks),
 				),
 				...checkDecorations(editor),
 				...checkSuggestions(editor),
@@ -1193,6 +1434,7 @@ export function createPropertyCase(
 			for (const unsubscribe of segmentSubscriptions.values())
 				unsubscribe();
 			notifier.destroy();
+			churn.destroy();
 			harness.destroy();
 		},
 	};
