@@ -1,4 +1,21 @@
 {
   "$schema": "https://docs.fallow.tools/schema/fallowrc.json",
-  "entry": ["packages/tooling/conformance/harness/src/main.tsx"]
+  "entry": ["packages/tooling/conformance/harness/src/main.tsx"],
+  "ignoreDependencies": [
+    // Aliased TypeScript 7; never imported, but it owns the `tsc` binary that
+    // check-doc2-samples.mjs and the react d.ts test invoke by path.
+    "@typescript/native",
+    // Listed by packages/docs and packages/tooling/conformance without a direct
+    // import: turbo's `^build` must build them before HOST2 loads their dist/
+    // by path, docs' vite.config.ts reads its @input/pen* devDependencies, and
+    // check-doc2-samples typechecks samples against them.
+    "@input/pen-assets",
+    "@input/pen-autoformat",
+    "@input/pen-bench",
+    "@input/pen-ingest",
+    "@input/pen-markdown",
+    "@input/pen-search",
+    "@input/pen-snapshots",
+    "@input/pen-transport"
+  ]
 }
