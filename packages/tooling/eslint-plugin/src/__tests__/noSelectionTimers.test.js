@@ -146,7 +146,9 @@ describe("no-selection-timers (S4)", () => {
 				invalid: [],
 			});
 		}
-	});
+		// Linting every selection module runs past Vitest's 10 s default on the
+		// Release runner.
+	}, 60_000);
 
 	it("S4: microtask, promise, async, await, setter-calling scheduler callbacks and retry counters are banned", () => {
 		const file = "packages/rendering/dom/src/field-editor/focusController.ts";
