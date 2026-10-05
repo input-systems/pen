@@ -817,7 +817,8 @@ export class DocumentStateImpl implements DocumentState {
 	 * the root order gained under a `parentId` joins its parent's children in
 	 * root order. Returns `"forgotten"` for a removed block, `"placed"` when
 	 * the indexes changed, `"same"` when the checks that follow decide, and
-	 * `"rebuild"` for a removed block that still had children indexed.
+	 * `"rebuild"` for a removed block that still had children indexed, or a
+	 * `parentId` child that left the root order for no array.
 	 */
 	private _placeRootEdit(
 		blockId: string,
@@ -841,8 +842,20 @@ export class DocumentStateImpl implements DocumentState {
 			);
 			return "forgotten";
 		}
-		if (!rootEdits.inserted.has(blockId)) return "same";
 		const parentId = readParentIdProp(blockMap);
+		// A `parentId` child that left the root order for no array (COL4,
+		// until the next local pass re-homes it) is ordered first among its
+		// parent's `parentId` children by the full build, by map iteration
+		// order among several: it rebuilds rather than guess that order.
+		if (
+			parentId !== null &&
+			rootEdits.removed.has(blockId) &&
+			!this._inRootOrder(blockId) &&
+			!(cachedParent !== undefined && this._arrayChildren.get(cachedParent)?.includes(blockId))
+		) {
+			return "rebuild";
+		}
+		if (!rootEdits.inserted.has(blockId)) return "same";
 		if (parentId === null || (cachedParent !== undefined && cachedParent !== parentId)) {
 			return "same";
 		}

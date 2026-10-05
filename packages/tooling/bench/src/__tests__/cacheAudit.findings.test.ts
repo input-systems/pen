@@ -367,6 +367,27 @@ describe("cache property findings", () => {
 		expect(cacheProblems(receiver)).toEqual([]);
 	});
 
+	it("finding 6: a parentId child that loses its root entry is ordered as a rebuild orders it", () => {
+		const peers = fork(2, [
+			...generateMixedBlockSpecs(20),
+			{ id: "t", type: "toggle", props: { open: true }, content: "T" },
+			{ id: "c0", type: "paragraph", props: { parentId: "t" }, content: "zero" },
+			{ id: "c1", type: "paragraph", props: { parentId: "t" }, content: "one" },
+			{ id: "c2", type: "paragraph", props: { parentId: "t" }, content: "two" },
+		]);
+		const [local, remote] = peers as [TestEditor, TestEditor];
+		expect(local.documentState.childrenOf("t")).toEqual(["c0", "c1", "c2"]);
+		// A remote client removes c2's order entry and nothing else: the block
+		// keeps its map and `parentId` but sits in no array (COL4), until the
+		// next local pass re-homes it.
+		const order = remote.ydoc.getArray<string>("blockOrder");
+		remote.ydoc.transact(() => {
+			order.delete(order.toArray().indexOf("c2"), 1);
+		});
+		harness!.deliver(1, 0);
+		expect(cacheProblems(local)).toEqual([]);
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },
