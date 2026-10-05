@@ -40,6 +40,7 @@ import type {
 	EditContextTextUpdateEvent,
 } from "./editContextTypes";
 import { authorityOffsetsInBlock } from "./selectionReader";
+import { resolveFieldInsertMarks } from "./pendingMarkController";
 import { handleEditContextBeforeInput } from "./editContextBeforeInput";
 import { handleFieldEditorKeyDown } from "./keyHandling";
 import { isHistoryTransactionOrigin } from "./transactionOrigin";
@@ -299,7 +300,7 @@ export class EditContextBackend extends FieldInputBackendBase {
 			blockId,
 			this.modelText,
 		);
-		this.fieldEditor.reader.notifyGesture("compositionstart");
+		this.fieldEditor.reader?.notifyGesture("compositionstart");
 		this.fieldEditor.setComposing(true);
 		return this.composition;
 	}
@@ -437,7 +438,7 @@ export class EditContextBackend extends FieldInputBackendBase {
 			}
 		}
 		if (!detaching) {
-			this.fieldEditor.reader.notifyGesture("compositionend-completed");
+			this.fieldEditor.reader?.notifyGesture("compositionend-completed");
 		}
 	}
 
@@ -593,7 +594,9 @@ export class EditContextBackend extends FieldInputBackendBase {
 			blockId,
 			range,
 			text,
-			marks: this.fieldEditor.pendingMarks.resolveInsertMarks(
+			marks: resolveFieldInsertMarks(
+				this.fieldEditor.pendingMarks,
+				this.editor.schema,
 				this.ytext,
 				range.start,
 			),

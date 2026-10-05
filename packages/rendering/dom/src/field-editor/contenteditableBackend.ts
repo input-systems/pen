@@ -259,7 +259,7 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 	protected handleCompositionStart = (): void => {
 		if (this.compositionStartText != null) {
 			this.reconcileAfterComposition();
-			this.fieldEditor.reader.notifyGesture("compositionend-completed");
+			this.fieldEditor.reader?.notifyGesture("compositionend-completed");
 		}
 		this.isComposing = true;
 		this.ignoreBrowserMutations = false;
@@ -268,7 +268,7 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 		this.compositionStartRange = this.readCompositionStartRange();
 		this.deferredRemoteDeltas = [];
 		this.fieldEditor.setComposing(true);
-		this.fieldEditor.reader.notifyGesture("compositionstart");
+		this.fieldEditor.reader?.notifyGesture("compositionstart");
 	};
 
 	protected handleCompositionEnd = (event?: CompositionEvent): void => {
@@ -287,7 +287,7 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 
 		if (fieldIsQuiescent) {
 			this.reconcileAfterComposition();
-			this.fieldEditor.reader.notifyGesture("compositionend-completed");
+			this.fieldEditor.reader?.notifyGesture("compositionend-completed");
 		}
 	};
 
@@ -376,7 +376,7 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 	protected handleMutations = (_mutations: MutationRecord[]): void => {
 		if (!this.isComposing && this.compositionStartText != null) {
 			this.reconcileAfterComposition();
-			this.fieldEditor.reader.notifyGesture("compositionend-completed");
+			this.fieldEditor.reader?.notifyGesture("compositionend-completed");
 			return;
 		}
 		if (this.isComposing) return;
@@ -560,7 +560,9 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 	/** The reader's live range inside this field (S1). */
 	private liveFieldOffsets(): { start: number; end: number } | null {
 		const element = this.element;
-		return element ? this.fieldEditor.reader.fieldOffsets(element) : null;
+		return element
+			? (this.fieldEditor.reader?.fieldOffsets(element) ?? null)
+			: null;
 	}
 
 	// ── Clipboard events ──────────────────────────────────────
@@ -568,6 +570,6 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 	// R1: an active table cell carries `ignorePointerGesture`, so the root's
 	// capture listener skips it; this is the cell's only pointerdown notify.
 	protected handlePointerDown = (): void => {
-		this.fieldEditor.reader.notifyGesture("pointerdown");
+		this.fieldEditor.reader?.notifyGesture("pointerdown");
 	};
 }

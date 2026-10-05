@@ -19,6 +19,7 @@ import {
 import type { Command, Editor } from "@input/pen-types";
 import type { FieldEditorInputController } from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
+import { resolveFieldInsertMarks } from "./pendingMarkController";
 import {
 	applyDeleteBehavior,
 	applyEnterBehavior,
@@ -291,7 +292,12 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 			blockId,
 			range,
 			text: "\n",
-			marks: fe.pendingMarks.resolveInsertMarks(ytext, range.start),
+			marks: resolveFieldInsertMarks(
+				fe.pendingMarks,
+				editor.schema,
+				ytext,
+				range.start,
+			),
 		});
 	},
 
@@ -393,7 +399,12 @@ function insertTextOverRange(
 	if (backend.applyListInputRule({ blockId, range, text })) {
 		return;
 	}
-	const marks = fe.pendingMarks.resolveInsertMarks(ytext, range.start);
+	const marks = resolveFieldInsertMarks(
+		fe.pendingMarks,
+		editor.schema,
+		ytext,
+		range.start,
+	);
 	if (tryDispatchInsert(editor, fe, backend, blockId, range, text, marks)) {
 		return;
 	}

@@ -522,7 +522,7 @@ export function createPointerSelectionGestures<
 			try {
 				finalizePointerSelection();
 			} finally {
-				fieldEditor.reader.notifyGesture("pointerup");
+				fieldEditor.reader?.notifyGesture("pointerup");
 			}
 		};
 

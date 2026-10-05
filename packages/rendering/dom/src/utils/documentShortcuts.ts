@@ -63,7 +63,8 @@ export function bindEditorDocumentKeyDown(
 				root,
 				event,
 				selection: editor.selection,
-				hasMappedDomSelection: () => fieldEditor.reader.hasSelectionInRoot(),
+				hasMappedDomSelection: () =>
+					fieldEditor.reader?.hasSelectionInRoot() ?? false,
 			})
 		) {
 			return;

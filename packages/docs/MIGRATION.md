@@ -291,7 +291,7 @@ store.applyDomTextSelection(anchor, focus, "pointer");
   - `requestDivergenceProjection(read)`, `shouldProjectSelectionAfterReconcile()` (projector)
   - `requestActivation(target, reason, options)` (focus controller)
   - `resolveInsertMarks(ytext, offset)` (pending marks)
-- **Do:** drop the calls. pen-dom's root listeners, content gestures and backends already report pointer, context-menu, composition and drag gestures to the reader. Pending marks remain on `getPendingMarks` / `togglePendingMark` / `clearPendingMarks`. Focus goes through `requestDomFocus` / `requestRootFocus`, and a host renderer that rebuilt a field still calls `projectAfterRebuild(blockIds)`.
+- **Do:** drop the calls. pen-dom's root listeners, content gestures and backends already report pointer, context-menu, composition and drag gestures to the reader. Pending marks remain on `getPendingMarks` / `togglePendingMark` / `clearPendingMarks`. Focus goes through `requestDomFocus` / `requestRootFocus`, and a host renderer that rebuilt a field still calls `projectAfterRebuild(blockIds)`. A custom controller handed to a backend or to `attachContentGestures` needs nothing in their place: without pen-dom's own parts it reports no gestures, its inserts take the marks at the insert position, and a decoration rebuild projects the selection, as before.
 
 ### `@input/pen-react`
 

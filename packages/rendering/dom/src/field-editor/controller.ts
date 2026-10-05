@@ -148,15 +148,19 @@ export interface FieldEditorRootHandle {
 /**
  * pen-dom's own sub-controllers. Backends, gestures and host helpers inside
  * pen-dom call them directly. Every member is stripped from the published
- * types (`stripInternal`), so hosts use the session methods.
+ * types (`stripInternal`), so hosts use the session methods. A controller a
+ * host builds against the published types has none of them, so every
+ * caller reads them optionally and falls back to the behaviour it had before
+ * the parts existed: no gesture notification, the marks at the insert
+ * position, a projection after a decoration rebuild.
  */
 export interface FieldEditorParts {
 	/** @internal S1: the one reader of the DOM selection for this root. */
-	readonly reader: SelectionReader;
+	readonly reader?: SelectionReader;
 	/** @internal P, S1: the one writer of the DOM selection for this root. */
-	readonly projector: SelectionProjector;
+	readonly projector?: SelectionProjector;
 	/** @internal Marks toggled at a collapsed caret, applied to the next insert. */
-	readonly pendingMarks: PendingMarkController;
+	readonly pendingMarks?: PendingMarkController;
 }
 
 export interface FieldEditorDomController

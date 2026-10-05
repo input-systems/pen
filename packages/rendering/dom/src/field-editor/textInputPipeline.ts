@@ -7,6 +7,7 @@ import {
 	type InlineTextRange,
 	type InlineTextSelectionTarget,
 } from "./inlineTextTransaction";
+import { resolveFieldInsertMarks } from "./pendingMarkController";
 import type { TextDiffOp } from "./textDiff";
 
 type TextInputPipelineController = Pick<
@@ -74,7 +75,9 @@ export function applyInlineTextDiffInput(
 		diff: options.diff,
 		ytext: options.ytext,
 		resolveInsertMarks: (sourceText, offset) =>
-			options.fieldEditor.pendingMarks.resolveInsertMarks(
+			resolveFieldInsertMarks(
+				options.fieldEditor.pendingMarks,
+				options.editor.schema,
 				sourceText,
 				offset,
 			),

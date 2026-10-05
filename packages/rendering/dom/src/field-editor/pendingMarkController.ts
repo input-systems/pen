@@ -1,4 +1,4 @@
-import type { Editor } from "@input/pen-types";
+import type { Editor, SchemaRegistry } from "@input/pen-types";
 import { resolveMarksAtPosition } from "./markBoundary";
 import type { FieldEditorTextLike } from "./crdt";
 
@@ -109,4 +109,22 @@ export class PendingMarkController {
 		}
 		return nextMarks;
 	}
+}
+
+/**
+ * The marks the next insert at `offset` carries. A controller built against
+ * the published types has no pending-mark part (`FieldEditorParts` is
+ * internal); its inserts inherit the marks at the insert position, as they
+ * did before pending marks existed.
+ */
+export function resolveFieldInsertMarks(
+	pendingMarks: PendingMarkController | undefined,
+	schema: SchemaRegistry,
+	ytext: FieldEditorTextLike,
+	offset: number,
+): Record<string, unknown | null> | undefined {
+	if (pendingMarks) {
+		return pendingMarks.resolveInsertMarks(ytext, offset);
+	}
+	return resolveMarksAtPosition(ytext, offset, schema);
 }

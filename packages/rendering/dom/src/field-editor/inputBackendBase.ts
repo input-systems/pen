@@ -228,8 +228,11 @@ export abstract class FieldInputBackendBase extends InputBackendBase {
 		}
 		// a decoration can change while another control owns focus; writing
 		// the selection back into this field would drag focus along with it
+		// (a host-built controller has no projector part; it projects, as
+		// before the part existed)
 		const projectSelection =
-			this.fieldEditor.projector.shouldProjectSelectionAfterReconcile();
+			this.fieldEditor.projector?.shouldProjectSelectionAfterReconcile() ??
+			true;
 		this.inlineDecorationsSignature = next;
 		this.rebuildField();
 		if (projectSelection) {

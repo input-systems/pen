@@ -294,7 +294,7 @@ export class ExpandedContentEditableBackend extends InputBackendBase {
 		// engine composes in the start block's DOM; the reader does not take
 		// that caret as a selection, so the range stays the record.
 		this.fieldEditor.setComposing(true);
-		this.fieldEditor.reader.notifyGesture("compositionstart");
+		this.fieldEditor.reader?.notifyGesture("compositionstart");
 	};
 
 	protected handleCompositionEnd = (event: CompositionEvent): void => {
@@ -305,7 +305,7 @@ export class ExpandedContentEditableBackend extends InputBackendBase {
 		if (text && !dispatchEditorCommand(this.editor, insertText, { text })) {
 			this.editor.replaceSelection(text);
 		}
-		this.fieldEditor.reader.notifyGesture("compositionend-completed");
+		this.fieldEditor.reader?.notifyGesture("compositionend-completed");
 		if (!text) {
 			this.updateSelection();
 			return;
