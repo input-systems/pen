@@ -6,6 +6,7 @@ import type {
 	CRDTDocument,
 	CRDTMap,
 	DiagnosticEvent,
+	DocumentState,
 	Editor,
 	PenDocument,
 	SchemaRegistry,
@@ -21,9 +22,10 @@ import type { EditorAnchorsImpl } from "./anchors";
 import { resolveCellSelectionMatrix } from "./cellSelection";
 import { EventEmitter } from "./events";
 import {
+	cellStructureChanged,
 	mapSelectionState,
-	mintTextAnchors,
-	resolveHeldText,
+	mintSelectionAnchors,
+	resolveHeldSelection,
 } from "./selectionCommit";
 import {
 	clampNonTextPseudoOffset,
@@ -37,6 +39,7 @@ type CRDTBlockMap = CRDTMap<CRDTMap<unknown>>;
 
 const INVALID_BLOCK_CODE = "selection-invalid-block";
 const RESERVED_ORIGIN_CODE = "selection-reserved-origin";
+const INVALID_CELL_TEXT_CODE = "selection-invalid-cell-text";
 
 export interface SelectionAuthority {
 	readonly record: SelectionRecord;
@@ -60,6 +63,16 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 	private _editor: Editor | null = null;
 	private _fromAnchor: Anchor | null = null;
 	private _toAnchor: Anchor | null = null;
+	/**
+	 * What the last move-carrying commit repaired each held anchor into (AN14).
+	 * The authority repairs from the anchor's pre-commit target and then
+	 * resolves it, which overwrites that target; a consumer sharing the anchor
+	 * reads the repair here rather than repairing from the after-commit one.
+	 */
+	private _commitRepairs: {
+		readonly commitId: number;
+		readonly byAnchor: ReadonlyMap<Anchor, Anchor>;
+	} | null = null;
 
 	constructor(
 		doc: PenDocument,
@@ -88,6 +101,23 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 		};
 	}
 
+	/** AS1: the anchors held for the current selection's endpoints. */
+	get heldAnchors(): { readonly from: Anchor | null; readonly to: Anchor | null } {
+		return { from: this._fromAnchor, to: this._toAnchor };
+	}
+
+	/**
+	 * AN14: the anchor `anchor` was repaired into by commit `commitId`, when the
+	 * authority held it going into that commit; `undefined` otherwise.
+	 */
+	heldAnchorRepair(anchor: Anchor, commitId: number): Anchor | undefined {
+		const repairs = this._commitRepairs;
+		if (!repairs || repairs.commitId !== commitId) {
+			return undefined;
+		}
+		return repairs.byAnchor.get(anchor);
+	}
+
 	getSelection(): SelectionState {
 		return this._state;
 	}
@@ -113,13 +143,16 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 
 	onCommit(summary: ChangeSummary): void {
 		this._repairHeldAnchors(summary);
-		const resolved = resolveHeldText(
-			this._state,
-			this._fromAnchor,
-			this._toAnchor,
-			this._anchors,
-			this._doc,
-		);
+		// A table structure change re-addresses the grid (A5), so an edited
+		// cell's anchors are not resolved through it.
+		const resolved = cellStructureChanged(this._state, summary)
+			? undefined
+			: resolveHeldSelection(
+					this._state,
+					this._fromAnchor,
+					this._toAnchor,
+					this._anchors,
+				);
 		if (resolved !== undefined && !selectionEquals(this._state, resolved)) {
 			this._accept(resolved, "mapped", summary.commitId, { emit: false });
 			return;
@@ -155,7 +188,7 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 
 		if (sel.type === "text") {
 			const range = selectionToRange(this._doc, sel);
-			const blockIds = getSelectionBlockRange(this._doc, sel);
+			const blockIds = getSelectionBlockRange(this._rangeSource(), sel);
 			if (blockIds.length <= 1) {
 				const full = this._logicalText(sel.anchor.blockId);
 				const from = Math.min(sel.anchor.offset, sel.focus.offset);
@@ -210,7 +243,7 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 		}
 
 		if (sel.type === "text") {
-			return getSelectionBlockRange(this._doc, sel)
+			return getSelectionBlockRange(this._rangeSource(), sel)
 				.filter((id) => this._blockExists(id))
 				.map((id) => this._handle(id));
 		}
@@ -231,20 +264,35 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 			clampOffset: (blockId, offset) =>
 				this._clampOffset(blockId, offset),
 			tableGrid: (blockId) => this._tableGrid(blockId),
+			cellTextLength: (blockId, row, col) =>
+				this._handle(blockId)
+					.as("table")
+					?.tableCell(row, col)
+					?.length() ?? 0,
+			emitInvalidCellText: (blockId) =>
+				this._emitInvalidCellText(blockId),
 			doc: this._doc,
 		});
 		if (validated === undefined) {
 			return this.record;
 		}
-		if (selectionEquals(this._state, validated)) {
+		// D17: undo and redo map the selection in their own commit before the
+		// history restore writes it, so the restore often equals the mapped
+		// state. It still claims the record, or nothing scrolls it into view.
+		if (
+			selectionEquals(this._state, validated) &&
+			!(origin === "restore" && this._origin !== "restore")
+		) {
 			return this.record;
 		}
 		this._state = validated;
 		this._version += 1;
 		this._origin = origin;
 		this._commitId = commitId;
-		const minted = mintTextAnchors(validated, this._anchors, (blockId) =>
-			this._isNonTextBlock(blockId),
+		const minted = mintSelectionAnchors(
+			validated,
+			this._anchors,
+			(blockId) => this._isNonTextBlock(blockId),
 		);
 		this._fromAnchor = minted.from;
 		this._toAnchor = minted.to;
@@ -262,8 +310,22 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 		if (moves.length === 0) {
 			return;
 		}
-		this._fromAnchor = repairAnchor(this._editor, this._fromAnchor, moves);
-		this._toAnchor = repairAnchor(this._editor, this._toAnchor, moves);
+		const from = this._fromAnchor;
+		const to = this._toAnchor;
+		this._fromAnchor = repairAnchor(this._editor, from, moves);
+		this._toAnchor = repairAnchor(this._editor, to, moves);
+		this._commitRepairs = {
+			commitId: summary.commitId,
+			byAnchor: new Map([
+				[from, this._fromAnchor],
+				[to, this._toAnchor],
+			]),
+		};
+	}
+
+	/** The bound editor's cached preorder, or the document before binding. */
+	private _rangeSource(): DocumentState | PenDocument {
+		return this._editor?.documentState ?? this._doc;
 	}
 
 	private _isNonTextBlock(blockId: string): boolean {
@@ -346,6 +408,19 @@ export class SelectionAuthorityImpl implements SelectionAuthority {
 				? `selection references missing block "${blockId}"`
 				: "selection references no blocks",
 			remediation: "Pass block ids that exist in the current document.",
+			blockId,
+		});
+	}
+
+	private _emitInvalidCellText(blockId: string): void {
+		this._emitDiagnostic({
+			code: INVALID_CELL_TEXT_CODE,
+			level: "warn",
+			source: "core",
+			message:
+				"a cell selection carries text only when anchor equals head",
+			remediation:
+				"Write `text` on a single-cell selection, or drop it for a cell range.",
 			blockId,
 		});
 	}

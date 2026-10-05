@@ -27,6 +27,8 @@ export const DATA_ATTRS = {
 	editorBlocksHost: "data-pen-editor-blocks-host",
 	viewId: "data-pen-view-id",
 	editorBlock: "data-pen-editor-block",
+	/** AX1: the `role="list"` wrapper around one run of list items in a sibling list. */
+	listGroup: "data-pen-list-group",
 	inlineContent: "data-pen-inline-content",
 	inlineAtom: "data-pen-inline-atom",
 	inlineAtomHost: "data-pen-inline-atom-host",
@@ -70,7 +72,44 @@ export const DATA_ATTRS = {
 	tableCellCol: "data-cell-col",
 	overlayLayer: "data-pen-overlay-layer",
 	overlayItem: "data-pen-overlay-item",
+	overlayLabel: "data-pen-overlay-label",
+	multiplayerCaretLabel: "data-pen-multiplayer-caret-label",
 } as const;
 
 export const OVERLAY_LAYER_ATTR = DATA_ATTRS.overlayLayer;
 export const OVERLAY_ITEM_ATTR = DATA_ATTRS.overlayItem;
+
+/** The AX1 semantics a list item's block host carries. */
+interface ListItemAttributeSource {
+	readonly level: number;
+	readonly posinset: number;
+	readonly setsize: number;
+}
+
+/**
+ * AX1: `role="listitem"` and its position, for the item's `[data-pen-editor-block]`
+ * (never `[data-pen-list-item-layout]`, whose write order HB8 fixes). Null for
+ * a block that is not a list item.
+ */
+export function listItemHostAttributes(
+	item: ListItemAttributeSource | null | undefined,
+): Readonly<Record<string, string>> | null {
+	if (!item) return null;
+	return {
+		role: "listitem",
+		"aria-level": String(item.level),
+		"aria-posinset": String(item.posinset),
+		"aria-setsize": String(item.setsize),
+	};
+}
+
+/** AX1: the group wrapper is `div[data-pen-list-group][role="list"]`, with no inline style. */
+export const LIST_GROUP_ATTRIBUTES: Readonly<Record<string, string>> = Object.freeze({
+	[DATA_ATTRS.listGroup]: "",
+	role: "list",
+});
+
+/** The framework key of a list group wrapper; prefixed so it never equals a block id key. */
+export function listGroupKey(groupKey: string): string {
+	return `list:${groupKey}`;
+}

@@ -8,7 +8,7 @@ import {
 	shouldRenderContainerChildren,
 } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
-import type { Editor } from "@input/pen-types";
+import type { DocumentOp, Editor } from "@input/pen-types";
 import { createTestEditor } from "@input/pen-test";
 import { mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it } from "vitest";
@@ -63,82 +63,71 @@ function quoteRenderer(editor: Editor): PenBlockRenderer {
 		]);
 }
 
+type InsertBlockOp = Extract<DocumentOp, { type: "insert-block" }>;
+
+/** The two ways a child joins a container: its children array, or a parentId prop. */
+const CHILD_PLACEMENTS: Array<{
+	name: string;
+	text: string;
+	place(parentId: string): Pick<InsertBlockOp, "props" | "position">;
+}> = [
+	{
+		name: "the container's children array",
+		text: "quoted line",
+		place: (parentId) => ({
+			props: {},
+			position: { parent: parentId, index: 0 },
+		}),
+	},
+	{
+		name: "the parentId prop",
+		text: "sibling child",
+		place: (parentId) => ({
+			props: { parentId },
+			position: { after: parentId },
+		}),
+	},
+];
+
 describe("host-defined container rendering", () => {
-	it("passes children written to the children array into a host renderer", async () => {
-		const editor = createQuoteEditor();
+	it.each(CHILD_PLACEMENTS)(
+		"passes children written through $name into a host renderer",
+		({ text, place }) => {
+			const editor = createQuoteEditor();
 
-		editor.apply(
-			[
-				{
-					type: "insert-block",
-					blockId: "quoted-line",
-					blockType: "paragraph",
-					props: {},
-					position: { parent: "quote-1", index: 0 },
+			editor.apply(
+				[
+					{
+						type: "insert-block",
+						blockId: "child",
+						blockType: "paragraph",
+						...place("quote-1"),
+					},
+					{
+						type: "splice-text",
+						blockId: "child",
+						from: 0,
+						to: 0,
+						insert: text,
+					},
+				],
+				{ origin: "user" },
+			);
+
+			const wrapper = mount(PenEditor, {
+				attachTo: document.body,
+				props: {
+					editor,
+					renderers: { emailQuote: quoteRenderer(editor) },
 				},
-				{
-					type: "splice-text",
-					blockId: "quoted-line",
-					from: 0,
-					to: 0,
-					insert: "quoted line",
-				},
-			],
-			{ origin: "user" },
-		);
+			});
 
-		const wrapper = mount(PenEditor, {
-			attachTo: document.body,
-			props: {
-				editor,
-				renderers: { emailQuote: quoteRenderer(editor) },
-			},
-		});
+			const children = wrapper.find("[data-quote-children]");
+			expect(children.exists()).toBe(true);
+			expect(children.text()).toContain(text);
 
-		const children = wrapper.find("[data-quote-children]");
-		expect(children.exists()).toBe(true);
-		expect(children.text()).toContain("quoted line");
-
-		wrapper.unmount();
-		editor.destroy();
-	});
-
-	it("passes children written through the parentId prop into a host renderer", async () => {
-		const editor = createQuoteEditor();
-
-		editor.apply(
-			[
-				{
-					type: "insert-block",
-					blockId: "sibling-child",
-					blockType: "paragraph",
-					props: { parentId: "quote-1" },
-					position: { after: "quote-1" },
-				},
-				{
-					type: "splice-text",
-					blockId: "sibling-child",
-					from: 0,
-					to: 0,
-					insert: "sibling child",
-				},
-			],
-			{ origin: "user" },
-		);
-
-		const wrapper = mount(PenEditor, {
-			attachTo: document.body,
-			props: {
-				editor,
-				renderers: { emailQuote: quoteRenderer(editor) },
-			},
-		});
-
-		const children = wrapper.find("[data-quote-children]");
-		expect(children.exists()).toBe(true);
-		expect(children.text()).toContain("sibling child");
-
-		wrapper.unmount();
-		editor.destroy();
-	});
+			wrapper.unmount();
+			editor.destroy();
+		},
+	);
 });

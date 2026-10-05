@@ -1,17 +1,21 @@
+import { buildTransitionSnapshot } from "@input/pen-core";
 import type { Editor, Point } from "@input/pen-types";
 import { getEditorBlockSelectionLength } from "../utils/blockSelectionSemantics";
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomHTMLElement, isDomNode } from "../utils/domNodes";
 import { getPreorderBlockIds } from "../utils/documentPreorder";
 import type { PointerInteractionModel } from "../utils/editorInteractionModel";
-import type { PointerSelectionGesture } from "../utils/pointerSelection";
+import {
+	resolvePointerSelectionIntent,
+	type PointerSelectionGesture,
+} from "../utils/pointerSelection";
 import type { RegionSelectionStore } from "../utils/regionSelection";
 import { normalizeSelectionFormation } from "../utils/selectionFormation";
 import type { FieldEditorSession } from "./controller";
 import { getBlockBoundaryPoint } from "./selectionBridge";
 
 export const EDITOR_ROOT_SELECTOR = "[data-pen-editor-root]";
-export const IGNORE_POINTER_GESTURE_SELECTOR =
-	"[data-pen-ignore-pointer-gesture]";
+const IGNORE_POINTER_GESTURE_SELECTOR = "[data-pen-ignore-pointer-gesture]";
 export const DRAG_THRESHOLD_PX = 3;
 
 export interface ContentGestureRegionGesture {
@@ -37,35 +41,27 @@ export interface ContentGesturesContext<
 	regionGestureRef: GestureSlot<ContentGestureRegionGesture | null>;
 	pointerGestureRef: GestureSlot<PointerSelectionGesture | null>;
 	pointerGestureVersionRef: GestureSlot<number>;
-	skipNextClickRef: GestureSlot<boolean>;
 	interactionModelRef: GestureSlot<InteractionModel>;
 	clearPointerSelectionState(): void;
 	blockSelectionEnabled: boolean;
 	runSync: (run: () => void) => void;
 }
 
-export function isWithinNestedEditorRoot(
+function isWithinNestedEditorRoot(
 	ctx: ContentGesturesContext,
-	target: EventTarget | null,
+	target: HTMLElement,
 ): boolean {
-	if (!(target instanceof Node)) {
-		return false;
-	}
-	const element =
-		target instanceof HTMLElement ? target : target.parentElement;
-	const targetRoot = element?.closest(
-		EDITOR_ROOT_SELECTOR,
-	) as HTMLElement | null;
+	const targetRoot = target.closest<HTMLElement>(EDITOR_ROOT_SELECTOR);
 	return targetRoot != null && targetRoot !== ctx.currentEditorRoot;
 }
 
-export function resolveEventTargetElement(
+function resolveEventTargetElement(
 	target: EventTarget | null,
 ): HTMLElement | null {
-	if (target instanceof HTMLElement) {
+	if (isDomHTMLElement(target)) {
 		return target;
 	}
-	if (target instanceof Node) {
+	if (isDomNode(target)) {
 		return target.parentElement;
 	}
 	return null;
@@ -123,9 +119,7 @@ export function getBoundaryPoint(
 	blockId: string,
 	side: "start" | "end",
 ): Point {
-	const root = ctx.gestureEl.closest(
-		EDITOR_ROOT_SELECTOR,
-	) as HTMLElement | null;
+	const root = ctx.currentEditorRoot;
 	return (
 		(root ? getBlockBoundaryPoint(root, blockId, side) : null) ?? {
 			blockId,
@@ -137,19 +131,17 @@ export function getBoundaryPoint(
 	);
 }
 
-export function getBlockIdRange(
+/** Whether `anchorBlockId` precedes or is `targetBlockId`; null unless both are in the document. */
+export function isPreorderForward(
 	ctx: ContentGesturesContext,
 	anchorBlockId: string,
 	targetBlockId: string,
-): string[] | null {
+): boolean | null {
 	const blockOrder = getPreorderBlockIds(ctx.editor);
 	const anchorIdx = blockOrder.indexOf(anchorBlockId);
 	const targetIdx = blockOrder.indexOf(targetBlockId);
 	if (anchorIdx < 0 || targetIdx < 0) return null;
-	return blockOrder.slice(
-		Math.min(anchorIdx, targetIdx),
-		Math.max(anchorIdx, targetIdx) + 1,
-	);
+	return anchorIdx <= targetIdx;
 }
 
 export function ensureEditorFocus(
@@ -157,18 +149,10 @@ export function ensureEditorFocus(
 	root: HTMLElement,
 ) {
 	const activeEl = root.ownerDocument?.activeElement;
-	if (activeEl instanceof Node && root.contains(activeEl)) return;
-	if (
-		typeof ctx.fieldEditor.requestRootFocus === "function" &&
-		!ctx.fieldEditor.requestRootFocus(root, "activate", {
-			preventScroll: true,
-		})
-	) {
-		return;
-	}
-	if (typeof ctx.fieldEditor.requestRootFocus !== "function") {
-		root.focus({ preventScroll: true });
-	}
+	if (isDomNode(activeEl) && root.contains(activeEl)) return;
+	ctx.fieldEditor.requestRootFocus(root, "activate", {
+		preventScroll: true,
+	});
 }
 
 export function activateCanonicalSelection(
@@ -182,9 +166,12 @@ export function activateCanonicalSelection(
 				anchorPoint.blockId,
 				anchorPoint.offset,
 				focusPoint.offset,
+				{ origin: "pointer" },
 			);
 		} else {
-			ctx.editor.selectTextRange(anchorPoint, focusPoint);
+			ctx.editor.selectTextRange(anchorPoint, focusPoint, {
+				origin: "pointer",
+			});
 			ctx.fieldEditor.activate(anchorPoint.blockId);
 		}
 		return;
@@ -194,22 +181,42 @@ export function activateCanonicalSelection(
 		anchor: anchorPoint,
 		focus: focusPoint,
 	});
-	if (normalizedSelection.type === "block") {
-		if (!ctx.blockSelectionEnabled) return;
-		ctx.gestureEl.ownerDocument?.getSelection()?.removeAllRanges();
-		ctx.editor.selectBlocks(normalizedSelection.blockIds);
-		ctx.fieldEditor.deactivate();
+	if (
+		isPreorderForward(
+			ctx,
+			normalizedSelection.anchor.blockId,
+			normalizedSelection.focus.blockId,
+		) === null
+	) {
 		return;
 	}
-
-	const selectedIds = getBlockIdRange(
-		ctx,
-		normalizedSelection.anchor.blockId,
-		normalizedSelection.focus.blockId,
-	);
-	if (!selectedIds) return;
 	ctx.fieldEditor.applyDocumentTextSelection(
 		normalizedSelection.anchor,
 		normalizedSelection.focus,
+		"pointer",
 	);
+}
+
+/**
+ * T5: a click that selects a block resolves through `clickSelectableBlock`.
+ * A structural block becomes a BlockSelection with its head; a text block
+ * that the interaction model selects whole is selected as a block.
+ */
+export function selectClickedBlock(
+	ctx: ContentGesturesContext,
+	blockId: string,
+): void {
+	const snapshot = buildTransitionSnapshot(ctx.editor, {
+		blockIds: [blockId],
+	});
+	const clicked = resolvePointerSelectionIntent(
+		snapshot,
+		{ anchor: null },
+		{ kind: "click", blockId, offset: 0 },
+	);
+	if (clicked?.type === "block") {
+		ctx.editor.setSelection(clicked, { origin: "pointer" });
+		return;
+	}
+	ctx.editor.selectBlock(blockId, { origin: "pointer" });
 }

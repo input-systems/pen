@@ -2,7 +2,7 @@ import { createEditor, defineExtension, urlPolicyFacet } from "@input/pen-core";
 import {
 	applyYjsAwarenessUpdate,
 	encodeYjsAwarenessUpdate,
-} from "@input/pen-yjs";
+} from "@input/pen-yjs/awareness";
 import { defaultSchema } from "@input/pen-schema";
 import { createTestDocument } from "@input/pen-test";
 import type { DiagnosticEvent, Editor } from "@input/pen-types";

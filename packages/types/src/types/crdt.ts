@@ -69,6 +69,15 @@ export interface CRDTAdapter {
 
 	getClientId(doc: CRDTDocument): number;
 
+	/**
+	 * Whether the blocks map holds a deletion for `blockId`, as opposed to
+	 * never having received it. Out-of-order delivery can land an order entry
+	 * one client wrote before the block map another client wrote, so only a
+	 * deleted block makes an entry dangling (COL4). An adapter without it
+	 * treats every absent block as deleted.
+	 */
+	isBlockDeleted?(doc: CRDTDocument, blockId: string): boolean;
+
 	getDocumentProfile?(doc: CRDTDocument): DocumentProfile | null;
 	setDocumentProfile?(doc: CRDTDocument, profile: DocumentProfile): void;
 
@@ -173,6 +182,16 @@ export interface DocumentSession {
 	listScopes(): readonly DocumentScope[];
 
 	getAwareness(scopeId?: string): Awareness | null;
+	/**
+	 * The scope's awareness, created once with `factory` when the scope has
+	 * none. Shared by every editor bound to the scope and destroyed with it.
+	 * Lets an extension (multiplayer) own awareness without the adapter
+	 * creating one for every document (API2).
+	 */
+	ensureAwareness?(
+		scopeId: string,
+		factory: (doc: CRDTDocument) => Awareness,
+	): Awareness;
 
 	observe(scopeId: string, callback: (event: CRDTEvent) => void): Unsubscribe;
 	observeAll(callback: (event: CRDTEvent) => void): Unsubscribe;
@@ -219,13 +238,28 @@ export interface UndoManagerOptions {
 	maxDepth?: number;
 }
 
+/** The undo step a tracked transaction joins (AIB4). */
+export interface CRDTUndoCaptureKey {
+	/** `group:<groupId>` for an explicit group, `origin:<type>` otherwise. */
+	readonly key: string;
+	/** Explicit keys stay open until undo or redo; others close on `stopCapturing()` or after the capture window. */
+	readonly explicit: boolean;
+}
+
 export interface CRDTUndoManager {
 	undo(): boolean;
 	redo(): boolean;
 	canUndo(): boolean;
 	canRedo(): boolean;
+	/** Closes every open non-explicit capture key. Explicit keys stay open. */
 	stopCapturing(): void;
+	/** Capture window, in ms, for non-explicit keys. */
 	setCaptureTimeout?(ms: number): void;
+	/**
+	 * Key for tracked transactions until the next call; returns the previous
+	 * key. `null` derives the key per transaction from its origin.
+	 */
+	setCaptureKey?(key: CRDTUndoCaptureKey | null): CRDTUndoCaptureKey | null;
 	addTrackedOrigin(originType: string): void;
 	removeTrackedOrigin(originType: string): void;
 	destroy(): void;

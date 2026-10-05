@@ -30,6 +30,9 @@ async function assertRtlLine(
 			if (!snap.text.includes(text)) {
 				return `text:${snap.text}`;
 			}
+			if (!/[֐-׿]/.test(snap.text)) {
+				return `not-hebrew:${snap.text}`;
+			}
 			if (snap.dir !== "rtl") {
 				return `dir:${snap.dir}`;
 			}

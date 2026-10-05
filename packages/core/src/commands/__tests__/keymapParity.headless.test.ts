@@ -31,7 +31,7 @@ function installUndo(editor: Editor): void {
 		canUndo: () => true,
 		canRedo: () => true,
 		stopCapturing: () => {},
-		syncExplicitUndoGroup: () => {},
+		withCapture: (_origin, _groupId, run) => run(),
 		setGroupTimeout: () => {},
 		registerTrackedOrigins: () => () => {},
 		onStackChange: () => () => {},

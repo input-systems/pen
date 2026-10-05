@@ -4,14 +4,15 @@ import type { FieldEditorTextLike } from "./crdt";
 import {
 	buildInlineTextDiffOps,
 	buildInlineTextEditTransaction,
-	type InlineTextDiffOp,
 	type InlineTextRange,
 	type InlineTextSelectionTarget,
 } from "./inlineTextTransaction";
+import { resolveFieldInsertMarks } from "./pendingMarkController";
+import type { TextDiffOp } from "./textDiff";
 
 type TextInputPipelineController = Pick<
 	FieldEditorInputController,
-	"setBackendSelectionAuthority" | "syncTextSelection" | "resolveInsertMarks"
+	"syncCellTextSelection" | "syncTextSelection" | "pendingMarks"
 >;
 
 export interface ApplyInlineTextInputOptions {
@@ -30,7 +31,7 @@ export interface ApplyInlineTextDiffInputOptions {
 	editor: Editor;
 	fieldEditor: TextInputPipelineController;
 	blockId: string;
-	diff: readonly InlineTextDiffOp[];
+	diff: readonly TextDiffOp[];
 	ytext: FieldEditorTextLike;
 	selection?: InlineTextSelectionTarget | null;
 	cellCoord?: ActiveCellCoord | null;
@@ -74,7 +75,12 @@ export function applyInlineTextDiffInput(
 		diff: options.diff,
 		ytext: options.ytext,
 		resolveInsertMarks: (sourceText, offset) =>
-			options.fieldEditor.resolveInsertMarks(sourceText, offset),
+			resolveFieldInsertMarks(
+				options.fieldEditor.pendingMarks,
+				options.editor.schema,
+				sourceText,
+				offset,
+			),
 		cellCoord: options.cellCoord,
 	});
 	if (ops.length === 0) {
@@ -100,14 +106,17 @@ function applyInlineTextOperations(
 	ops: readonly DocumentOp[],
 	selection: InlineTextSelectionTarget,
 ): void {
-	options.fieldEditor.setBackendSelectionAuthority("programmatic", selection);
-
 	if (ops.length > 0) {
 		options.editor.apply([...ops], { origin: "user" });
 	}
 
+	// W3.R18: the edited cell's caret is `CellSelection.text`.
 	if (options.cellCoord) {
-		options.fieldEditor.setBackendSelectionAuthority("cell", selection);
+		options.fieldEditor.syncCellTextSelection(
+			options.cellCoord,
+			selection.anchorOffset,
+			selection.focusOffset,
+		);
 		return;
 	}
 

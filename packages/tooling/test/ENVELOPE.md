@@ -12,7 +12,7 @@ Published next to the HOST3 runtime floor (`spec/rules/host.md`). Rule: SCALE1 (
 | Longest single block | 100,000 characters (`@input/pen-test` SCALE1 `envelopeLadder`) | — | 100,000 characters |
 | Nesting depth | 10 (`@input/pen-test` SCALE1 `envelopeLadder`) | — | 10 |
 | Table | 50 × 20 (`@input/pen-test` SCALE1 `envelopeLadder`) | — | 50 × 20 |
-| Concurrent peers | 2 (`@input/pen-test` `createTestCollaboration` + `assertPeerEditsSurvive`) | — | 2 |
+| Concurrent peers | 5 (`@input/pen-test` `createPeerHarness` + `assertPeerEditsSurvive`) | — | 5 |
 
 Grades: **verified** — a suite asserts behavior at this size on every run. **measured** — a benchmark records it, no pass/fail gate. **untested above** — the honest ceiling.
 

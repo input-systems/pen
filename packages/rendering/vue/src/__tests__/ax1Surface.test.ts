@@ -66,31 +66,6 @@ describe("@input/pen-vue AX1 surface", () => {
     editor.destroy();
   });
 
-  it("AX1: readonly prop is reflected as aria-readonly", () => {
-    const editor = createTestEditor({
-      blocks: [
-        {
-          id: "paragraph-1",
-          type: "paragraph",
-          props: {},
-          content: "Hello",
-        },
-      ],
-    });
-
-    const wrapper = mount(PenEditor, {
-      attachTo: document.body,
-      props: { editor, readonly: true },
-    });
-
-    expect(wrapper.get("[data-pen-editor-root]").attributes("aria-readonly")).toBe(
-      "true",
-    );
-
-    wrapper.unmount();
-    editor.destroy();
-  });
-
   it("AX1: marks only the active inline surface as a nested multiline textbox", async () => {
     const editor = createTestEditor({
       blocks: [

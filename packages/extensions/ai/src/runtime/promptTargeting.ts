@@ -60,7 +60,7 @@ export function parseParagraphReference(prompt: string): number | null {
 		: null;
 }
 
-export function resolveWordOrdinal(word: string): number | null {
+function resolveWordOrdinal(word: string): number | null {
 	switch (word) {
 		case "first":
 			return 1;

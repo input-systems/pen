@@ -214,12 +214,21 @@ export function createStreamingBlockCommitter(options: {
 			// reader is concerned, including the chunk held back for the
 			// closing call and anything a refused write left behind.
 			const pending = update.markdown.slice(next.committedText.length);
-			return {
+			const remainder = {
 				...update,
-				blockId: next.anchorBlockId,
 				text: toStreamingPreviewText(pending),
 				markdown: pending,
 			};
+			// Once a block is written, what is still arriving follows the
+			// last one written, wherever the operation was first placed.
+			return next.anchorBlockId === update.blockId
+				? remainder
+				: {
+						...remainder,
+						blockId: next.anchorBlockId,
+						blockIds: [next.anchorBlockId],
+						placement: "after",
+					};
 		},
 
 		reconcile(input) {

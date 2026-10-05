@@ -1,5 +1,5 @@
 {
-  "_comment": "SCH1 (spec/rules/dom.md): measurement sites in packages/rendering runtime src. Allowed kinds: geometry module (GeometryReader G1/G4) or a site that cannot move onto GeometryReader. Each entry needs file, enclosing symbol, and a reason that names why this site cannot move. Remove an entry in the same PR that deletes or reschedules the last call in that symbol.",
+  "_comment": "SCH1 (spec/rules/dom.md): measurement sites in packages/rendering runtime src. Allowed kinds: geometry module (GeometryReader G1/G4) or a site that cannot move onto GeometryReader. Each entry needs file, enclosing symbol, and a reason that names why this site cannot move. Remove an entry in the same PR that deletes or reschedules the last call in that symbol. HB2 (spec/rules/host.md): in the React and Vue bindings the rule also flags layout metrics (offset*/client*/scroll* reads, getComputedStyle, new ResizeObserver/IntersectionObserver); those entries carry an HB2 reason and, when a requirement removes the site, closedBy.",
   "entries": [
     {
       "file": "packages/rendering/dom/src/field-editor/contenteditableDomHelpers.ts",
@@ -127,16 +127,6 @@
       "reason": "Popover open path sets position from the suggestion element box in the same callback; not a block id."
     },
     {
-      "file": "packages/rendering/react/src/hooks/useSelectionToolbar.ts",
-      "symbol": "resolveNativeSelectionRect",
-      "reason": "Toolbar prefers the live window.Selection range so it can place before a root/GeometryReader is available; resolveSelectionRect is the GeometryReader fallback already."
-    },
-    {
-      "file": "packages/rendering/react/src/primitives/ai/contextualPromptGeometry.ts",
-      "symbol": "resolveLiveSelectionRect",
-      "reason": "Floating prompt tracks the live window.Selection range while the user is still selecting; snapshot rangeRects would lag the native range."
-    },
-    {
       "file": "packages/rendering/react/src/primitives/ai/contextualPromptPlacement.ts",
       "symbol": "measureLayout",
       "reason": "Flip/shift reads the prompt surface, content host, and scroll container boxes — chrome, not document blocks."
@@ -157,11 +147,6 @@
       "reason": "Dragenter/over hit-tests the editor root and content boxes; GeometryReader has no element-rect API. Already inside measureWithRoot."
     },
     {
-      "file": "packages/rendering/react/src/primitives/editor/caretOverlay.tsx",
-      "symbol": "readCaretRect",
-      "reason": "The overlay origin is the caret's containing block, not a document box GeometryReader owns. Already inside measureWithRoot with the caret rect, so a filtered ancestor's offset is subtracted in the same read."
-    },
-    {
       "file": "packages/rendering/react/src/primitives/selection-toolbar/content.tsx",
       "symbol": "SelectionToolbarContent",
       "reason": "Flip/shift measures the toolbar's own mounted box after it is in the DOM."
@@ -170,6 +155,47 @@
       "file": "packages/rendering/react/src/utils/blockDragPreview.ts",
       "symbol": "setBlockDragPreviewImage",
       "reason": "HTML5 dragstart sizes the ghost from the source block element before setDragImage."
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/inlineSuggestionControlUtils.ts",
+      "symbol": "findNearestScrollContainer",
+      "reason": "HB2 layout metric: getComputedStyle overflow and scrollHeight/clientHeight find the AI suggestion scroller when the user steps to an off-screen suggestion; runs in that navigation handler, not per frame.",
+      "closedBy": "W4.R14"
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/inlineSuggestionControlUtils.ts",
+      "symbol": "clampSuggestionControlLeft",
+      "reason": "HB2 layout metric: clientWidth clamps the inline accept/reject control inside its host inside the control's layout pass; React-only AI chrome with no pen-dom positioning API."
+    },
+    {
+      "file": "packages/rendering/react/src/hooks/inlineSuggestionControlUtils.ts",
+      "symbol": "clampSuggestionControlTop",
+      "reason": "HB2 layout metric: clientHeight clamps the inline accept/reject control inside its host inside the control's layout pass; React-only AI chrome with no pen-dom positioning API."
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/ai/contextualPromptPlacement.ts",
+      "symbol": "useContextualPromptPlacement",
+      "reason": "HB2 layout metric: a ResizeObserver on the prompt surface, host and container schedules the next placement in rAF; React-only AI chrome (W35 lists the contextual prompt as AI chrome with its own measurement)."
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/ai/contextualPromptSurface.tsx",
+      "symbol": "ContextualPromptSelectionOverlay",
+      "reason": "HB2 layout metric: a ResizeObserver on the host schedules the selection overlay's re-measure in rAF; React-only AI chrome (W35 lists the contextual prompt overlay as AI chrome with its own measurement)."
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/suggestion-menu/content.tsx",
+      "symbol": "SuggestionMenuContent",
+      "reason": "HB2 layout metric: a ResizeObserver on the open menu repositions it when its own content resizes; menu chrome, not block layout."
+    },
+    {
+      "file": "packages/rendering/react/src/primitives/toolbar/root.tsx",
+      "symbol": "moveRovingFocus",
+      "reason": "HB2 layout metric: getComputedStyle(root).direction flips ArrowLeft/ArrowRight for RTL in the toolbar's roving-focus key handler; reads a style, not geometry."
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/projectionScroll.ts",
+      "symbol": "viewportRect",
+      "reason": "W3.R15: the scroll container's viewport for projection scroll; called only from measureScrollPlan inside the projector's scheduler.read job, so it runs in a read phase."
     }
   ]
 }

@@ -3,7 +3,7 @@ import {
 	getLogicalNodeLength,
 	getLogicalTextContent,
 } from "../field-editor/inlineAtomDom";
-import { toLogicalOffset } from "../field-editor/offsetDomain";
+import { clampOffset } from "../utils/clampOffset";
 import { pointToEditorSelectionPoint } from "../field-editor/selectionBridge";
 import {
 	findBlockElement,
@@ -13,6 +13,7 @@ import { DATA_ATTRS } from "../utils/dataAttributes";
 import { snapToLogicalOffset } from "./geometryMeasure";
 import type { Point } from "./types";
 import { getDistanceToRect } from "./types";
+import { isDomHTMLElement } from "../utils/domNodes";
 
 export function measurePointAt(
 	root: HTMLElement,
@@ -82,9 +83,9 @@ function domToPoint(
 	}
 	return {
 		blockId,
-		offset: toLogicalOffset(
+		offset: clampOffset(
 			domPointToLogicalOffset(inlineEl, node, offset),
-			getLogicalTextContent(inlineEl),
+			getLogicalTextContent(inlineEl).length,
 		),
 	};
 }
@@ -161,10 +162,10 @@ export function listDomBlockIds(root: HTMLElement): readonly string[] {
 	});
 }
 
-function listDomBlockElements(root: HTMLElement): HTMLElement[] {
+export function listDomBlockElements(root: HTMLElement): HTMLElement[] {
 	return Array.from(
 		root.querySelectorAll(`[${DATA_ATTRS.editorBlock}]`),
 	).filter(
-		(element): element is HTMLElement => element instanceof HTMLElement,
+		isDomHTMLElement,
 	);
 }

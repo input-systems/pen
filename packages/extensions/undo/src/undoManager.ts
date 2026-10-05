@@ -1,12 +1,11 @@
 import type {
+  CRDTUndoCaptureKey,
   CRDTUndoManager,
   UndoManager,
   OpOrigin,
   Unsubscribe,
 } from "@input/pen-types";
 import { getOpOriginType } from "./origin";
-
-const EXPLICIT_GROUP_CAPTURE_TIMEOUT_MS = 2_147_483_647;
 
 export interface UndoManagerImplOptions {
   onListenerError?: (error: unknown) => void;
@@ -19,8 +18,7 @@ export class UndoManagerImpl implements UndoManager {
   private readonly _onListenerError?: (error: unknown) => void;
   private _idleTimer: ReturnType<typeof setTimeout> | null = null;
   private _groupTimeout = 1000;
-  private _baseCaptureTimeout = 1000;
-  private _explicitUndoGroupId: string | null = null;
+  private _lastCaptureExplicit = false;
   private _destroyed = false;
   _onCaptureBoundary: (() => void) | null = null;
   _isHistoryOperation = false;
@@ -41,8 +39,7 @@ export class UndoManagerImpl implements UndoManager {
     if (this._destroyed) {
       return false;
     }
-    this._explicitUndoGroupId = null;
-    this._crdtUndo.setCaptureTimeout?.(this._baseCaptureTimeout);
+    this._lastCaptureExplicit = false;
     this._clearIdleTimer();
     this._stopCapturingWithBoundary();
     this._isHistoryOperation = true;
@@ -57,8 +54,7 @@ export class UndoManagerImpl implements UndoManager {
     if (this._destroyed) {
       return false;
     }
-    this._explicitUndoGroupId = null;
-    this._crdtUndo.setCaptureTimeout?.(this._baseCaptureTimeout);
+    this._lastCaptureExplicit = false;
     this._clearIdleTimer();
     this._stopCapturingWithBoundary();
     this._isHistoryOperation = true;
@@ -81,36 +77,28 @@ export class UndoManagerImpl implements UndoManager {
     if (this._destroyed) {
       return;
     }
-    this._explicitUndoGroupId = null;
-    this._crdtUndo.setCaptureTimeout?.(this._baseCaptureTimeout);
     this._stopCapturingWithBoundary();
     this._clearIdleTimer();
     this._notifyListeners();
   }
 
-  syncExplicitUndoGroup(groupId: string | null): void {
-    if (this._destroyed) {
-      return;
+  withCapture<T>(origin: OpOrigin, groupId: string | null, run: () => T): T {
+    if (this._destroyed || !this._crdtUndo.setCaptureKey) {
+      return run();
     }
-    if (this._explicitUndoGroupId === groupId) {
-      if (groupId !== null) {
-        this._clearIdleTimer();
-      }
-      return;
-    }
-
-    if (this._explicitUndoGroupId !== null || groupId !== null) {
-      this._stopCapturingWithBoundary();
-    }
-
-    this._explicitUndoGroupId = groupId;
-    this._crdtUndo.setCaptureTimeout?.(
+    const key: CRDTUndoCaptureKey =
       groupId === null
-        ? this._baseCaptureTimeout
-        : EXPLICIT_GROUP_CAPTURE_TIMEOUT_MS,
-    );
-    this._clearIdleTimer();
-    this._notifyListeners();
+        ? { key: `origin:${getOpOriginType(origin)}`, explicit: false }
+        : { key: `group:${groupId}`, explicit: true };
+    const previous = this._crdtUndo.setCaptureKey(key);
+    try {
+      return run();
+    } finally {
+      this._crdtUndo.setCaptureKey(previous);
+      if (this.hasTrackedOrigin(origin)) {
+        this._lastCaptureExplicit = key.explicit;
+      }
+    }
   }
 
   setGroupTimeout(ms: number): void {
@@ -118,10 +106,7 @@ export class UndoManagerImpl implements UndoManager {
       return;
     }
     this._groupTimeout = ms;
-    this._baseCaptureTimeout = ms;
-    if (this._explicitUndoGroupId === null) {
-      this._crdtUndo.setCaptureTimeout?.(ms);
-    }
+    this._crdtUndo.setCaptureTimeout?.(ms);
   }
 
   registerTrackedOrigins(origins: OpOrigin[]): Unsubscribe {
@@ -163,7 +148,7 @@ export class UndoManagerImpl implements UndoManager {
   }
 
   resetIdleTimer(): void {
-    if (this._destroyed || this._explicitUndoGroupId !== null) {
+    if (this._destroyed || this._lastCaptureExplicit) {
       return;
     }
     this._clearIdleTimer();
@@ -188,8 +173,6 @@ export class UndoManagerImpl implements UndoManager {
       return;
     }
     this._destroyed = true;
-    this._crdtUndo.setCaptureTimeout?.(this._baseCaptureTimeout);
-    this._explicitUndoGroupId = null;
     this._clearIdleTimer();
     this._listeners.clear();
     this._crdtUndo.destroy();

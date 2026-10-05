@@ -2,11 +2,12 @@
  * AX2: one visually-hidden live region per editor root.
  * Rate-limit one per key per 500ms, latest wins.
  *
- * Announcement writes (`aria-live` + textContent) belong in
- * DomScheduler.write once wired. Construction of the region does not —
- * the node must exist before the first announce. The focus-sink writes
- * in focusSink.ts are likewise not schedulable; do not convert them
- * along with this file.
+ * Each announcement is one write job (`aria-live` + textContent) passed to
+ * `options.schedule`; the editor binding runs it in the DomScheduler write
+ * phase, the default runs it synchronously. Construction of the region is
+ * synchronous — the node must exist before the first announce. The
+ * focus-sink writes in focusSink.ts are likewise not schedulable; do not
+ * convert them along with this file.
  *
  * ARIA booleans stay the literal strings "true"/"false". Do not apply
  * the data-* present/absent spelling to `aria-atomic` (or any ARIA
@@ -35,11 +36,34 @@ type KeyGate = {
 	pending: PendingWrite | undefined;
 };
 
-export function createAnnouncer(root?: ParentNode): Announcer {
+export interface AnnouncerOptions {
+	/** Where the live region mounts. A Document mounts on body. */
+	readonly root?: ParentNode;
+	/** Runs one region write. Default: synchronously (headless tests, hosts without a scheduler). */
+	readonly schedule?: (write: () => void) => void;
+	/** Rate-limit clock. Default: `Date.now`. */
+	readonly now?: () => number;
+}
+
+const runNow = (write: () => void): void => write();
+
+export function createAnnouncer(options: AnnouncerOptions = {}): Announcer {
+	const { root } = options;
+	const schedule = options.schedule ?? runNow;
+	const now = options.now ?? Date.now;
 	const doc = resolveDocument(root);
 	const region = doc ? createLiveRegion(doc, root) : null;
 	const gates = new Map<string, KeyGate>();
 	let disposed = false;
+
+	/** One queued job; a job queued before `dispose` writes nothing. */
+	const queueWrite = (message: string, priority: AnnouncerPriority): void => {
+		schedule(() => {
+			if (!disposed) {
+				write(region, message, priority);
+			}
+		});
+	};
 
 	const flushPending = (gate: KeyGate): void => {
 		gate.timeout = undefined;
@@ -48,8 +72,8 @@ export function createAnnouncer(root?: ParentNode): Announcer {
 		if (pending === undefined || disposed) {
 			return;
 		}
-		write(region, pending.message, pending.priority);
-		gate.lastWrittenAt = Date.now();
+		gate.lastWrittenAt = now();
+		queueWrite(pending.message, pending.priority);
 	};
 
 	return {
@@ -58,7 +82,7 @@ export function createAnnouncer(root?: ParentNode): Announcer {
 				return;
 			}
 
-			const now = Date.now();
+			const at = now();
 			let gate = gates.get(key);
 			if (gate === undefined) {
 				gate = {
@@ -71,18 +95,20 @@ export function createAnnouncer(root?: ParentNode): Announcer {
 
 			if (
 				gate.lastWrittenAt === 0 ||
-				now - gate.lastWrittenAt >= ANNOUNCE_RATE_LIMIT_MS
+				at - gate.lastWrittenAt >= ANNOUNCE_RATE_LIMIT_MS
 			) {
-				write(region, message, priority);
-				gate.lastWrittenAt = now;
+				gate.lastWrittenAt = at;
+				queueWrite(message, priority);
 				return;
 			}
 
+			// The rate limit is milliseconds (AX2), and this is not a
+			// selection path (S4): the expiry timer stays, and it schedules.
 			gate.pending = { message, priority };
 			if (gate.timeout === undefined) {
 				gate.timeout = setTimeout(
 					() => flushPending(gate),
-					ANNOUNCE_RATE_LIMIT_MS - (now - gate.lastWrittenAt),
+					ANNOUNCE_RATE_LIMIT_MS - (at - gate.lastWrittenAt),
 				);
 			}
 		},
@@ -111,9 +137,7 @@ function write(
 	if (region === null) {
 		return;
 	}
-	// schedule this write in DomScheduler.write when wired
 	region.setAttribute("aria-live", priority);
-	// schedule this write in DomScheduler.write when wired
 	region.textContent = "";
 	region.textContent = message;
 }

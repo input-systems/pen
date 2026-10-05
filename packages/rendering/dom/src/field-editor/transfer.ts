@@ -55,11 +55,8 @@ export async function executeTransfer(
 		return false;
 	}
 
+	// `image-files` means there is at least one.
 	const files = getImageFiles(dataTransfer);
-	if (files.length === 0) {
-		return false;
-	}
-
 	const uploaded = await uploadImageFiles(files, assetProvider, { editor });
 	if (uploaded.length === 0) {
 		return true;
@@ -73,7 +70,7 @@ export async function executeTransfer(
 	);
 
 	if (lastInsertedBlockId) {
-		editor.selectBlock(lastInsertedBlockId);
+		editor.selectBlock(lastInsertedBlockId, { origin: "pointer" });
 	}
 
 	return true;

@@ -21,6 +21,7 @@ export type {
 	CellSelection,
 	SelectionOrigin,
 	SelectionRecordState,
+	SelectionWriteOptions,
 } from "./selection";
 
 // ── Document Range ──────────────────────────────────────────
@@ -175,6 +176,7 @@ export type {
 	LoadDocumentOptions,
 	CRDTDocument,
 	PenDocument,
+	CRDTUndoCaptureKey,
 	CRDTUndoManager,
 	CRDTUndoStackItem,
 	CRDTArray,
@@ -239,6 +241,8 @@ export {
 	type EditorViewMode,
 	type InteractionModel,
 	type SelectAllBehavior,
+	type DecorationUpdateScope,
+	type BlockScrollAlign,
 	HOOK_PRIORITY_AUTH,
 	HOOK_PRIORITY_SUGGEST,
 	HOOK_PRIORITY_INPUT_RULE,
@@ -251,6 +255,8 @@ export type {
 	ToolRegistry,
 	ToolRuntime,
 	ToolExecutionResult,
+	ToolAuthorityContext,
+	ToolDestructiveResolver,
 	ToolDefinition,
 	ToolContext,
 	ToolSchema,

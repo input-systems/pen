@@ -7,7 +7,15 @@ import { useBlockDragHandle } from "../../hooks/useBlockDragHandle";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { composeRefs } from "../../utils/composeRefs";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
+import {
+	captureFocusReturn,
+	restoreFocusReturn,
+	type FocusReturnToken,
+} from "@input/pen-dom";
+import { useFieldEditorContext } from "../../context/fieldEditorContext";
+import { resolveChromeEditorRoot } from "../../utils/aiDomScope";
 import { buildMoveBlockOps } from "./blockDragSession";
+import { isDomNode } from "@input/pen-dom/utils/domNodes";
 
 /** Command name (`spec/rules/commands.md`). Menu items dispatch this even when the command is not wired. */
 export const PEN_MOVE_BLOCK_UP = "pen.moveBlockUp";
@@ -26,6 +34,48 @@ const MOVE_ITEMS: ReadonlyArray<{
 	{ command: PEN_MOVE_BLOCK_DOWN, messageKey: "pen.blockHandle.moveDown" },
 ];
 
+/**
+ * AX3: a block handle menu move whose focus return is still owed. A move
+ * that regroups a list item re-keys or replaces its AX1 group wrapper, so
+ * the block and its handle remount (D7) in the commit that closes the menu,
+ * and the closing handle's own return never runs. The record outlives that
+ * handle; the remounted handle for the same block takes it in the same
+ * commit. It names the move's document commit, so a later commit (an undo
+ * that remounts the block) never takes focus with it.
+ */
+interface PendingHandleMove {
+	readonly blockId: string;
+	readonly commitId: number | null;
+}
+
+const pendingByEditor = new WeakMap<Editor, PendingHandleMove>();
+
+/** Records a handle-menu move of `blockId`. Call after the move applied. */
+function markHandleMove(editor: Editor, blockId: string): void {
+	pendingByEditor.set(editor, {
+		blockId,
+		commitId: editor.lastChangeSummary?.commitId ?? null,
+	});
+}
+
+/** Drops the record: the handle that moved its block returned focus itself. */
+function clearHandleMove(editor: Editor): void {
+	pendingByEditor.delete(editor);
+}
+
+/**
+ * Whether a handle mounting for `blockId` owes focus for the move just
+ * committed. Consumes the record when it does.
+ */
+function takeHandleMove(editor: Editor, blockId: string): boolean {
+	const pending = pendingByEditor.get(editor);
+	if (!pending || pending.blockId !== blockId) {
+		return false;
+	}
+	pendingByEditor.delete(editor);
+	return pending.commitId === (editor.lastChangeSummary?.commitId ?? null);
+}
+
 export interface BlockHandleProps extends AsChildProps {
 	blockId: string;
 	ref?: React.Ref<HTMLElement>;
@@ -40,13 +90,19 @@ export interface BlockHandleProps extends AsChildProps {
 export function EditorBlockHandle(props: BlockHandleProps) {
 	const { blockId, onMoveBlock, ref, ...rest } = props;
 	const { editor, readonly } = useEditorContext();
+	const fieldEditor = useFieldEditorContext();
 	const { props: dragProps } = useBlockDragHandle(blockId);
 	const handleRef = useRef<HTMLElement | null>(null);
 	const menuRef = useRef<HTMLDivElement | null>(null);
+	const focusReturnRef = useRef<FocusReturnToken | null>(null);
 	const [menuOpen, setMenuOpen] = useState(false);
 	const menuId = `pen-block-handle-menu-${blockId}`;
 
 	function closeMenu(): void {
+		// D15: a detached menu returns focus to its invoker, this handle.
+		const handle = handleRef.current;
+		const root = resolveChromeEditorRoot(editor, handle);
+		focusReturnRef.current = root ? captureFocusReturn(root, handle) : null;
 		setMenuOpen(false);
 	}
 
@@ -55,32 +111,46 @@ export function EditorBlockHandle(props: BlockHandleProps) {
 		setMenuOpen(true);
 	}
 
-	function restoreHandleFocus(): void {
-		const scope = handleRef.current?.ownerDocument ?? document;
-		scope
-			.querySelector<HTMLElement>(
-				`[data-pen-block-handle][data-block-id="${blockId}"]`,
-			)
-			?.focus();
-	}
-
 	function dispatchMove(command: BlockHandleMoveCommand): void {
 		if (onMoveBlock) {
 			onMoveBlock(command, blockId);
 		} else {
 			applyAdjacentMove(editor, blockId, command);
 		}
+		markHandleMove(editor, blockId);
 		closeMenu();
-		queueMicrotask(restoreHandleFocus);
 	}
 
-	const menuWasOpen = useRef(false);
+	// The move and the close commit together, so this runs after the
+	// block's node has moved: synchronous, no microtask (AX3, S4).
 	useIsomorphicLayoutEffect(() => {
-		if (menuWasOpen.current && !menuOpen) {
-			restoreHandleFocus();
+		const token = focusReturnRef.current;
+		if (menuOpen || !token) {
+			return;
 		}
-		menuWasOpen.current = menuOpen;
+		focusReturnRef.current = null;
+		clearHandleMove(editor);
+		restoreFocusReturn(token, fieldEditor, "target");
 	}, [menuOpen]);
+
+	// AX3: a move that regrouped this block remounted it, and this handle
+	// with it, in the commit that closed the old handle's menu. The old
+	// handle's return above never ran, so the new one returns focus to
+	// itself, in the same commit.
+	useIsomorphicLayoutEffect(() => {
+		if (!takeHandleMove(editor, blockId)) {
+			return;
+		}
+		const handle = handleRef.current;
+		const root = resolveChromeEditorRoot(editor, handle);
+		if (root) {
+			restoreFocusReturn(
+				captureFocusReturn(root, handle),
+				fieldEditor,
+				"target",
+			);
+		}
+	}, []);
 
 	function handleTriggerKeyDown(
 		event: React.KeyboardEvent<HTMLElement>,
@@ -110,7 +180,9 @@ export function EditorBlockHandle(props: BlockHandleProps) {
 				),
 			);
 			if (items.length === 0) return;
-			const from = items.indexOf(document.activeElement as HTMLElement);
+			const from = items.indexOf(
+				event.currentTarget.ownerDocument.activeElement as HTMLElement,
+			);
 			const delta = event.key === "ArrowDown" ? 1 : -1;
 			const next = items[(from + delta + items.length) % items.length];
 			next?.focus();
@@ -127,7 +199,7 @@ export function EditorBlockHandle(props: BlockHandleProps) {
 			const menu = menuRef.current;
 			const handle = handleRef.current;
 			const target = event.target;
-			if (!(target instanceof Node)) return;
+			if (!isDomNode(target)) return;
 			if (
 				(menu && menu.contains(target)) ||
 				(handle && handle.contains(target))

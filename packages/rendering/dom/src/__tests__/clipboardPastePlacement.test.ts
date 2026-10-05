@@ -154,6 +154,7 @@ describe("IOP9: parsed paste lands at the caret", () => {
 			ids[0],
 			10,
 			10,
+			{ origin: "keyboard" },
 		);
 	});
 
@@ -179,6 +180,7 @@ describe("IOP9: parsed paste lands at the caret", () => {
 			tailId,
 			5,
 			5,
+			{ origin: "keyboard" },
 		);
 	});
 
@@ -225,6 +227,7 @@ describe("IOP9: parsed paste lands at the caret", () => {
 			editor.documentState.blockOrder[1],
 			1,
 			1,
+			{ origin: "keyboard" },
 		);
 	});
 
@@ -422,6 +425,7 @@ describe("IOP9: Pen clipboard paste lands at the caret", () => {
 			ids[0],
 			10,
 			10,
+			{ origin: "keyboard" },
 		);
 	});
 

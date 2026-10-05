@@ -607,9 +607,9 @@ function isConsoleAllowed(rel) {
 	// suites/**/*.spec.ts. A module colocated there runs in the Playwright
 	// runner process and has no editor to emit a diagnostic on; its console
 	// output is the CI log a human reads when a browser assertion flakes.
-	// Narrow on purpose: this admits the 3 non-spec helper modules under those
-	// roots, one of which logs (suites/bidi/helpers.ts logLoad). It is not a
-	// sink and must not be listed as one.
+	// Narrow on purpose: this admits the non-spec helper modules under those
+	// roots, two of which log (suites/bidi/helpers.ts and suites/specHelpers.ts
+	// logLoad). Neither is a sink and must not be listed as one.
 	if (
 		rel.startsWith("packages/tooling/conformance/suites/") ||
 		rel.startsWith("packages/tooling/conformance/scenarios/")

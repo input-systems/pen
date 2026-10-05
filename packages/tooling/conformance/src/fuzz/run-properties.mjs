@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 const CONFORMANCE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 /**
- * Keep in sync with `parseFuzzSeed` in
- * packages/core/src/__tests__/changeSummaries.properties.test.ts.
+ * Keep in sync with `parseFuzzSeed` in every `*.properties.test.ts` suite
+ * (`vitest.nightly.ts` lists them: DUR3, I1, COL4 n-peer).
  * Nightly.yml logs `${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(date +%s)`;
  * `Number` of that string is NaN and the old `>>> 0` path collapsed every
  * night onto seed 0.

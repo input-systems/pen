@@ -1,0 +1,1311 @@
+{
+	"schemaVersion": 1,
+	"surface": "vanilla",
+	"browser": "chromium",
+	"fixtures": {
+		"scale-1k": {
+			"generator": "@input/pen-test generateMixedBlockSpecs + mixedFixtureOps",
+			"contentSha256": "93d3049d81d59e622d1ba0e932071adf538f9f2c99c5c696c3ccc7cafdf9b92f",
+			"identity": {
+				"rootCount": 1000,
+				"blockOrderLength": 1050,
+				"totalBlocks": 1050,
+				"tableCount": 1,
+				"composition": {
+					"heading": 49,
+					"paragraph": 400,
+					"bulletListItem": 150,
+					"numberedListItem": 150,
+					"checkListItem": 50,
+					"blockquote": 50,
+					"codeBlock": 50,
+					"toggle": 50,
+					"divider": 50,
+					"table": 1
+				}
+			}
+		},
+		"scale-5k": {
+			"generator": "@input/pen-test generateMixedBlockSpecs + mixedFixtureOps",
+			"contentSha256": "b0136c63dbaab76dff2c65852067b1fb9df5f937abc885cd19b99266eb9499e0",
+			"identity": {
+				"rootCount": 5000,
+				"blockOrderLength": 5250,
+				"totalBlocks": 5250,
+				"tableCount": 5,
+				"composition": {
+					"heading": 245,
+					"paragraph": 2000,
+					"bulletListItem": 750,
+					"numberedListItem": 750,
+					"checkListItem": 250,
+					"blockquote": 250,
+					"codeBlock": 250,
+					"toggle": 250,
+					"divider": 250,
+					"table": 5
+				}
+			}
+		}
+	},
+	"counts": {
+		"scale-1k": {
+			"mount": {
+				"commit.affectedBlockIds": 26,
+				"dom.mutationRecords": 10,
+				"listeners.invoked.commit": 1,
+				"listeners.invoked.diagnostic": 1,
+				"scan.blockOrderReads": 27,
+				"scan.blocksMapIterations": 1049,
+				"scan.blocksMapReads": 32291,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 2048,
+				"scheduler.measureNow": 0,
+				"notifier.deliveries": 0,
+				"listeners.live.commit": 7,
+				"listeners.live.selectionChange": 5,
+				"listeners.live.historyApplied": 3,
+				"listeners.live.diagnostic": 1,
+				"listeners.live.decorationsChange": 2,
+				"listeners.live.store": 1,
+				"listeners.live.total": 19,
+				"notifier.blockSubscribers": 1050,
+				"mount.blocksMounted": 1050
+			},
+			"keystroke": {
+				"commit.affectedBlockIds": 1,
+				"dom.mutationRecords": 4,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
+				"listeners.invoked.commit": 6,
+				"listeners.invoked.selectionChange": 5,
+				"scan.blockOrderReads": 1,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 83,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 10,
+				"scheduler.measureNow": 0,
+				"dom.blocksTouched": 1,
+				"notifier.deliveries": 2
+			},
+			"caretRight": {
+				"dom.mutationRecords": 3,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 1,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 66,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 10,
+				"scheduler.measureNow": 0,
+				"notifier.deliveries": 1
+			},
+			"caretDown": {
+				"dom.mutationRecords": 23,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.outOfFlush": 1581,
+				"geometry.boundingClientRect.total": 1582,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 6,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 132,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 14,
+				"scheduler.measureNow": 1,
+				"dom.blocksTouched": 2,
+				"notifier.deliveries": 9
+			},
+			"shiftDown": {
+				"dom.mutationRecords": 27,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.outOfFlush": 1581,
+				"geometry.boundingClientRect.total": 1582,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 3,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 131,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 7,
+				"scheduler.measureNow": 1,
+				"dom.blocksTouched": 1,
+				"notifier.deliveries": 6
+			},
+			"enterParagraph": {
+				"commit.affectedBlockIds": 2,
+				"dom.mutationRecords": 27,
+				"geometry.boundingClientRect.inFlush": 10,
+				"geometry.boundingClientRect.total": 10,
+				"listeners.invoked.commit": 6,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 7,
+				"scan.blockOrderReads": 3,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 252,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 26,
+				"scheduler.measureNow": 0,
+				"dom.blocksTouched": 2,
+				"notifier.deliveries": 12
+			},
+			"enterNumbered": {
+				"commit.affectedBlockIds": 2,
+				"dom.mutationRecords": 29,
+				"geometry.boundingClientRect.inFlush": 10,
+				"geometry.boundingClientRect.total": 10,
+				"listeners.invoked.commit": 6,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 7,
+				"scan.blockOrderReads": 3,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 440,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 27,
+				"scheduler.measureNow": 0,
+				"dom.blocksTouched": 3,
+				"notifier.deliveries": 13
+			},
+			"remoteInsert": {
+				"commit.affectedBlockIds": 1,
+				"dom.mutationRecords": 1,
+				"listeners.invoked.commit": 6,
+				"listeners.invoked.store": 1,
+				"scan.blockOrderReads": 2,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 166,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 7,
+				"scheduler.measureNow": 0,
+				"notifier.deliveries": 2
+			}
+		},
+		"scale-5k": {
+			"mount": {
+				"commit.affectedBlockIds": 130,
+				"dom.mutationRecords": 10,
+				"listeners.invoked.commit": 1,
+				"listeners.invoked.diagnostic": 1,
+				"scan.blockOrderReads": 135,
+				"scan.blocksMapIterations": 5245,
+				"scan.blocksMapReads": 161439,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 10240,
+				"scheduler.measureNow": 0,
+				"notifier.deliveries": 0,
+				"listeners.live.commit": 7,
+				"listeners.live.selectionChange": 5,
+				"listeners.live.historyApplied": 3,
+				"listeners.live.diagnostic": 1,
+				"listeners.live.decorationsChange": 2,
+				"listeners.live.store": 1,
+				"listeners.live.total": 19,
+				"notifier.blockSubscribers": 5250,
+				"mount.blocksMounted": 5250
+			},
+			"keystroke": {
+				"commit.affectedBlockIds": 1,
+				"dom.mutationRecords": 4,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
+				"listeners.invoked.commit": 6,
+				"listeners.invoked.selectionChange": 5,
+				"scan.blockOrderReads": 1,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 83,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 10,
+				"scheduler.measureNow": 0,
+				"dom.blocksTouched": 1,
+				"notifier.deliveries": 2
+			},
+			"caretRight": {
+				"dom.mutationRecords": 3,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.total": 1,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 1,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 66,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 10,
+				"scheduler.measureNow": 0,
+				"notifier.deliveries": 1
+			},
+			"caretDown": {
+				"dom.mutationRecords": 23,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.outOfFlush": 7881,
+				"geometry.boundingClientRect.total": 7882,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 6,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 132,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 14,
+				"scheduler.measureNow": 1,
+				"dom.blocksTouched": 2,
+				"notifier.deliveries": 9
+			},
+			"shiftDown": {
+				"dom.mutationRecords": 27,
+				"geometry.boundingClientRect.inFlush": 1,
+				"geometry.boundingClientRect.outOfFlush": 7881,
+				"geometry.boundingClientRect.total": 7882,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 3,
+				"scan.blockOrderReads": 0,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 131,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 7,
+				"scheduler.measureNow": 1,
+				"dom.blocksTouched": 1,
+				"notifier.deliveries": 6
+			},
+			"enterParagraph": {
+				"commit.affectedBlockIds": 2,
+				"dom.mutationRecords": 27,
+				"geometry.boundingClientRect.inFlush": 10,
+				"geometry.boundingClientRect.total": 10,
+				"listeners.invoked.commit": 6,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 7,
+				"scan.blockOrderReads": 3,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 252,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 26,
+				"scheduler.measureNow": 0,
+				"dom.blocksTouched": 2,
+				"notifier.deliveries": 12
+			},
+			"enterNumbered": {
+				"commit.affectedBlockIds": 2,
+				"dom.mutationRecords": 29,
+				"geometry.boundingClientRect.inFlush": 10,
+				"geometry.boundingClientRect.total": 10,
+				"listeners.invoked.commit": 6,
+				"listeners.invoked.selectionChange": 5,
+				"listeners.invoked.store": 7,
+				"scan.blockOrderReads": 3,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 440,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 27,
+				"scheduler.measureNow": 0,
+				"dom.blocksTouched": 3,
+				"notifier.deliveries": 13
+			},
+			"remoteInsert": {
+				"commit.affectedBlockIds": 1,
+				"dom.mutationRecords": 1,
+				"listeners.invoked.commit": 6,
+				"listeners.invoked.store": 1,
+				"scan.blockOrderReads": 2,
+				"scan.blocksMapIterations": 0,
+				"scan.blocksMapReads": 166,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 0,
+				"scan.textFullReads": 7,
+				"scheduler.measureNow": 0,
+				"notifier.deliveries": 2
+			}
+		}
+	},
+	"largeCounts": {
+		"scale-10k": {
+			"mount": {
+				"commit.affectedBlockIds": 260,
+				"dom.mutationRecords": 10,
+				"listeners.invoked.commit": 1,
+				"listeners.invoked.diagnostic": 1,
+				"scan.blockOrderReads": 84000,
+				"scan.blocksMapIterations": 41990,
+				"scan.blocksMapReads": 338164,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 10502,
+				"scan.textFullReads": 20480,
+				"scheduler.measureNow": 0,
+				"notifier.deliveries": 0,
+				"listeners.live.commit": 7,
+				"listeners.live.selectionChange": 5,
+				"listeners.live.historyApplied": 3,
+				"listeners.live.diagnostic": 1,
+				"listeners.live.decorationsChange": 2,
+				"listeners.live.store": 1,
+				"listeners.live.total": 19,
+				"notifier.blockSubscribers": 10500,
+				"mount.blocksMounted": 10500
+			}
+		},
+		"scale-50k": {
+			"mount": {
+				"commit.affectedBlockIds": 1300,
+				"dom.mutationRecords": 10,
+				"listeners.invoked.commit": 1,
+				"listeners.invoked.diagnostic": 1,
+				"scan.blockOrderReads": 1470000,
+				"scan.blocksMapIterations": 209950,
+				"scan.blocksMapReads": 1690804,
+				"scan.documentWalks": 0,
+				"scan.orderArrayReads": 52502,
+				"scan.textFullReads": 102400,
+				"scheduler.measureNow": 0,
+				"notifier.deliveries": 0,
+				"listeners.live.commit": 7,
+				"listeners.live.selectionChange": 5,
+				"listeners.live.historyApplied": 3,
+				"listeners.live.diagnostic": 1,
+				"listeners.live.decorationsChange": 2,
+				"listeners.live.store": 1,
+				"listeners.live.total": 19,
+				"notifier.blockSubscribers": 52500,
+				"mount.blocksMounted": 52500
+			}
+		}
+	},
+	"history": [
+		{
+			"date": "2026-10-02",
+			"reason": "initial record at 5bc267fe + W0 (renderer counts before W2)",
+			"moved": [
+				"initial record"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "initial record at 5bc267fe + W0 (renderer counts before W2)",
+			"moved": [
+				"vanilla/scale-5k/mount/commit.affectedBlockIds: new metric — re-record",
+				"vanilla/scale-5k/mount/dom.mutationRecords: new metric — re-record",
+				"vanilla/scale-5k/mount/listeners.invoked.commit: new metric — re-record",
+				"vanilla/scale-5k/mount/listeners.invoked.diagnostic: new metric — re-record",
+				"vanilla/scale-5k/mount/scan.blockOrderReads: new metric — re-record",
+				"vanilla/scale-5k/mount/scan.blocksMapIterations: new metric — re-record",
+				"vanilla/scale-5k/mount/scan.blocksMapReads: new metric — re-record",
+				"vanilla/scale-5k/mount/scan.documentWalks: new metric — re-record",
+				"vanilla/scale-5k/mount/scan.orderArrayReads: new metric — re-record",
+				"vanilla/scale-5k/mount/scan.textFullReads: new metric — re-record",
+				"vanilla/scale-5k/mount/scheduler.measureNow: new metric — re-record",
+				"vanilla/scale-5k/mount/listeners.live.commit: new metric — re-record",
+				"vanilla/scale-5k/mount/listeners.live.selectionChange: new metric — re-record",
+				"vanilla/scale-5k/mount/listeners.live.historyApplied: new metric — re-record",
+				"vanilla/scale-5k/mount/listeners.live.diagnostic: new metric — re-record",
+				"vanilla/scale-5k/mount/listeners.live.decorationsChange: new metric — re-record",
+				"vanilla/scale-5k/mount/listeners.live.store: new metric — re-record",
+				"vanilla/scale-5k/mount/listeners.live.total: new metric — re-record",
+				"vanilla/scale-5k/mount/mount.blocksMounted: new metric — re-record",
+				"vanilla/scale-5k/keystroke/commit.affectedBlockIds: new metric — re-record",
+				"vanilla/scale-5k/keystroke/dom.mutationRecords: new metric — re-record",
+				"vanilla/scale-5k/keystroke/listeners.invoked.commit: new metric — re-record",
+				"vanilla/scale-5k/keystroke/listeners.invoked.selectionChange: new metric — re-record",
+				"vanilla/scale-5k/keystroke/scan.blockOrderReads: new metric — re-record",
+				"vanilla/scale-5k/keystroke/scan.blocksMapIterations: new metric — re-record",
+				"vanilla/scale-5k/keystroke/scan.blocksMapReads: new metric — re-record",
+				"vanilla/scale-5k/keystroke/scan.documentWalks: new metric — re-record",
+				"vanilla/scale-5k/keystroke/scan.orderArrayReads: new metric — re-record",
+				"vanilla/scale-5k/keystroke/scan.textFullReads: new metric — re-record",
+				"vanilla/scale-5k/keystroke/scheduler.flushes: new metric — re-record",
+				"vanilla/scale-5k/keystroke/scheduler.measureNow: new metric — re-record",
+				"vanilla/scale-5k/keystroke/dom.blocksTouched: new metric — re-record",
+				"vanilla/scale-5k/caretRight/dom.mutationRecords: new metric — re-record",
+				"vanilla/scale-5k/caretRight/listeners.invoked.selectionChange: new metric — re-record",
+				"vanilla/scale-5k/caretRight/listeners.invoked.store: new metric — re-record",
+				"vanilla/scale-5k/caretRight/scan.blockOrderReads: new metric — re-record",
+				"vanilla/scale-5k/caretRight/scan.blocksMapIterations: new metric — re-record",
+				"vanilla/scale-5k/caretRight/scan.blocksMapReads: new metric — re-record",
+				"vanilla/scale-5k/caretRight/scan.documentWalks: new metric — re-record",
+				"vanilla/scale-5k/caretRight/scan.orderArrayReads: new metric — re-record",
+				"vanilla/scale-5k/caretRight/scan.textFullReads: new metric — re-record",
+				"vanilla/scale-5k/caretRight/scheduler.flushes: new metric — re-record",
+				"vanilla/scale-5k/caretRight/scheduler.measureNow: new metric — re-record",
+				"vanilla/scale-5k/caretRight/dom.blocksTouched: new metric — re-record",
+				"vanilla/scale-5k/caretDown/dom.mutationRecords: new metric — re-record",
+				"vanilla/scale-5k/caretDown/geometry.boundingClientRect.outOfFlush: new metric — re-record",
+				"vanilla/scale-5k/caretDown/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-5k/caretDown/listeners.invoked.selectionChange: new metric — re-record",
+				"vanilla/scale-5k/caretDown/listeners.invoked.store: new metric — re-record",
+				"vanilla/scale-5k/caretDown/scan.blockOrderReads: new metric — re-record",
+				"vanilla/scale-5k/caretDown/scan.blocksMapIterations: new metric — re-record",
+				"vanilla/scale-5k/caretDown/scan.blocksMapReads: new metric — re-record",
+				"vanilla/scale-5k/caretDown/scan.documentWalks: new metric — re-record",
+				"vanilla/scale-5k/caretDown/scan.orderArrayReads: new metric — re-record",
+				"vanilla/scale-5k/caretDown/scan.textFullReads: new metric — re-record",
+				"vanilla/scale-5k/caretDown/scheduler.flushes: new metric — re-record",
+				"vanilla/scale-5k/caretDown/scheduler.measureNow: new metric — re-record",
+				"vanilla/scale-5k/caretDown/dom.blocksTouched: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/dom.mutationRecords: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/geometry.boundingClientRect.outOfFlush: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/listeners.invoked.selectionChange: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/listeners.invoked.store: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/scan.blockOrderReads: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/scan.blocksMapIterations: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/scan.blocksMapReads: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/scan.documentWalks: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/scan.orderArrayReads: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/scan.textFullReads: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/scheduler.flushes: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/scheduler.measureNow: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/dom.blocksTouched: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/commit.affectedBlockIds: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/dom.mutationRecords: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/listeners.invoked.commit: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/listeners.invoked.selectionChange: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/listeners.invoked.store: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/scan.blockOrderReads: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapIterations: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/scan.documentWalks: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/scan.orderArrayReads: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/scan.textFullReads: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/scheduler.flushes: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/scheduler.measureNow: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/dom.blocksTouched: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/commit.affectedBlockIds: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/dom.mutationRecords: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/listeners.invoked.commit: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/listeners.invoked.selectionChange: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/listeners.invoked.store: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/scan.blockOrderReads: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapIterations: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/scan.documentWalks: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/scan.orderArrayReads: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/scheduler.flushes: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/scheduler.measureNow: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/dom.blocksTouched: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/commit.affectedBlockIds: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/dom.mutationRecords: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/listeners.invoked.commit: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/listeners.invoked.store: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/scan.blockOrderReads: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/scan.blocksMapIterations: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/scan.blocksMapReads: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/scan.documentWalks: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/scan.orderArrayReads: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/scan.textFullReads: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/scheduler.flushes: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/scheduler.measureNow: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/dom.blocksTouched: new metric — re-record"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R7 core keystroke reads; W2.R8/R9 scoped decorations; W2.R11 structural commits; W2.R12 geometry invalidation; W2.R1 notifier metrics",
+			"moved": [
+				"vanilla/scale-1k/mount/scan.blockOrderReads: 3675 !== 4725",
+				"vanilla/scale-1k/mount/scan.blocksMapIterations: 4199 !== 5248",
+				"vanilla/scale-1k/mount/scan.blocksMapReads: 22666 !== 23690",
+				"vanilla/scale-1k/mount/scan.textFullReads: 2048 !== 3022",
+				"vanilla/scale-1k/mount/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-1k/mount/notifier.blockSubscribers: new metric — re-record",
+				"vanilla/scale-1k/keystroke/scan.blockOrderReads: 1 !== 3151",
+				"vanilla/scale-1k/keystroke/scan.blocksMapIterations: 0 !== 3152",
+				"vanilla/scale-1k/keystroke/scan.blocksMapReads: 21492 !== 23589",
+				"vanilla/scale-1k/keystroke/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-1k/caretRight/scan.blockOrderReads: 0 !== 4200",
+				"vanilla/scale-1k/caretRight/scan.blocksMapReads: 28927 !== 31027",
+				"vanilla/scale-1k/caretRight/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-1k/caretDown/scan.blockOrderReads: 0 !== 5250",
+				"vanilla/scale-1k/caretDown/scan.blocksMapReads: 91472 !== 94622",
+				"vanilla/scale-1k/caretDown/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-1k/shiftDown/scan.blockOrderReads: 0 !== 3150",
+				"vanilla/scale-1k/shiftDown/scan.blocksMapReads: 49466 !== 51566",
+				"vanilla/scale-1k/shiftDown/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-1k/enterParagraph/scan.blockOrderReads: 3680 !== 11037",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapIterations: 4203 !== 7355",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 121729 !== 124879",
+				"vanilla/scale-1k/enterParagraph/scan.textFullReads: 18029 !== 19027",
+				"vanilla/scale-1k/enterParagraph/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-1k/enterNumbered/scan.blockOrderReads: 3690 !== 11047",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapIterations: 4203 !== 7355",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 121729 !== 124879",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 18029 !== 19027",
+				"vanilla/scale-1k/enterNumbered/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-1k/remoteInsert/scan.blockOrderReads: 2102 !== 3153",
+				"vanilla/scale-1k/remoteInsert/scan.blocksMapIterations: 2102 !== 3176",
+				"vanilla/scale-1k/remoteInsert/scan.blocksMapReads: 29091 !== 30139",
+				"vanilla/scale-1k/remoteInsert/scan.textFullReads: 4002 !== 5001",
+				"vanilla/scale-1k/remoteInsert/notifier.deliveries: new metric — re-record"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R7 core keystroke reads; W2.R8/R9 scoped decorations; W2.R11 structural commits; W2.R12 geometry invalidation; W2.R1 notifier metrics",
+			"moved": [
+				"vanilla/scale-5k/mount/scan.blockOrderReads: 28875 !== 34125",
+				"vanilla/scale-5k/mount/scan.blocksMapIterations: 20995 !== 26240",
+				"vanilla/scale-5k/mount/scan.blocksMapReads: 113330 !== 118450",
+				"vanilla/scale-5k/mount/scan.textFullReads: 10240 !== 15110",
+				"vanilla/scale-5k/mount/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-5k/mount/notifier.blockSubscribers: new metric — re-record",
+				"vanilla/scale-5k/keystroke/scan.blockOrderReads: 1 !== 15751",
+				"vanilla/scale-5k/keystroke/scan.blocksMapIterations: 0 !== 15748",
+				"vanilla/scale-5k/keystroke/scan.blocksMapReads: 107280 !== 117777",
+				"vanilla/scale-5k/keystroke/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-5k/caretRight/scan.blockOrderReads: 0 !== 21000",
+				"vanilla/scale-5k/caretRight/scan.blocksMapReads: 144507 !== 155007",
+				"vanilla/scale-5k/caretRight/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-5k/caretDown/scan.blockOrderReads: 0 !== 26250",
+				"vanilla/scale-5k/caretDown/scan.blocksMapReads: 457240 !== 472990",
+				"vanilla/scale-5k/caretDown/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/scan.blockOrderReads: 0 !== 15750",
+				"vanilla/scale-5k/shiftDown/scan.blocksMapReads: 247246 !== 257746",
+				"vanilla/scale-5k/shiftDown/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/scan.blockOrderReads: 18380 !== 55137",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapIterations: 21003 !== 36755",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 607889 !== 623639",
+				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 89957 !== 94951",
+				"vanilla/scale-5k/enterParagraph/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/scan.blockOrderReads: 18390 !== 55147",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapIterations: 21003 !== 36755",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 607889 !== 623639",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 89957 !== 94951",
+				"vanilla/scale-5k/enterNumbered/notifier.deliveries: new metric — re-record",
+				"vanilla/scale-5k/remoteInsert/scan.blockOrderReads: 10502 !== 15753",
+				"vanilla/scale-5k/remoteInsert/scan.blocksMapIterations: 10502 !== 15772",
+				"vanilla/scale-5k/remoteInsert/scan.blocksMapReads: 145283 !== 150531",
+				"vanilla/scale-5k/remoteInsert/scan.textFullReads: 19986 !== 24981",
+				"vanilla/scale-5k/remoteInsert/notifier.deliveries: new metric — re-record"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R3 React on the block notifier; W2.R7 DOM selection read and caret motion use a lazy normal-position snapshot",
+			"moved": [
+				"vanilla/scale-1k/keystroke/scan.blocksMapReads: 14055 !== 21492",
+				"vanilla/scale-1k/keystroke/scan.orderArrayReads: 1050 !== 2100",
+				"vanilla/scale-1k/keystroke/scan.textFullReads: 2011 !== 4007",
+				"vanilla/scale-1k/caretRight/scan.blocksMapReads: 14048 !== 28927",
+				"vanilla/scale-1k/caretRight/scan.orderArrayReads: 1050 !== 3150",
+				"vanilla/scale-1k/caretRight/scan.textFullReads: 2024 !== 6016",
+				"vanilla/scale-1k/caretDown/scan.blocksMapReads: 84035 !== 91472",
+				"vanilla/scale-1k/caretDown/scan.orderArrayReads: 6300 !== 7350",
+				"vanilla/scale-1k/caretDown/scan.textFullReads: 12013 !== 14009",
+				"vanilla/scale-1k/shiftDown/scan.blocksMapReads: 42034 !== 49466",
+				"vanilla/scale-1k/shiftDown/scan.orderArrayReads: 3150 !== 4200",
+				"vanilla/scale-1k/shiftDown/scan.textFullReads: 5995 !== 7989",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 114285 !== 121729",
+				"vanilla/scale-1k/enterParagraph/scan.orderArrayReads: 8408 !== 9459",
+				"vanilla/scale-1k/enterParagraph/scan.textFullReads: 16031 !== 18029",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 114285 !== 121729",
+				"vanilla/scale-1k/enterNumbered/scan.orderArrayReads: 8408 !== 9459",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 16031 !== 18029"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R3 React on the block notifier; W2.R7 DOM selection read and caret motion use a lazy normal-position snapshot",
+			"moved": [
+				"vanilla/scale-5k/keystroke/scan.blocksMapReads: 70051 !== 107280",
+				"vanilla/scale-5k/keystroke/scan.orderArrayReads: 5250 !== 10500",
+				"vanilla/scale-5k/keystroke/scan.textFullReads: 10003 !== 19991",
+				"vanilla/scale-5k/caretRight/scan.blocksMapReads: 70044 !== 144507",
+				"vanilla/scale-5k/caretRight/scan.orderArrayReads: 5250 !== 15750",
+				"vanilla/scale-5k/caretRight/scan.textFullReads: 10016 !== 29992",
+				"vanilla/scale-5k/caretDown/scan.blocksMapReads: 420011 !== 457240",
+				"vanilla/scale-5k/caretDown/scan.orderArrayReads: 31500 !== 36750",
+				"vanilla/scale-5k/caretDown/scan.textFullReads: 59965 !== 69953",
+				"vanilla/scale-5k/shiftDown/scan.blocksMapReads: 210022 !== 247246",
+				"vanilla/scale-5k/shiftDown/scan.orderArrayReads: 15750 !== 21000",
+				"vanilla/scale-5k/shiftDown/scan.textFullReads: 29971 !== 39957",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 570653 !== 607889",
+				"vanilla/scale-5k/enterParagraph/scan.orderArrayReads: 42008 !== 47259",
+				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 79967 !== 89957",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 570653 !== 607889",
+				"vanilla/scale-5k/enterNumbered/scan.orderArrayReads: 42008 !== 47259",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 79967 !== 89957"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe counts commit.affectedBlockIds once per commit, not once per listener",
+			"moved": [
+				"vanilla/scale-5k/keystroke/commit.affectedBlockIds: 1 !== 6",
+				"vanilla/scale-5k/enterParagraph/commit.affectedBlockIds: 2 !== 12",
+				"vanilla/scale-5k/enterNumbered/commit.affectedBlockIds: 2 !== 12",
+				"vanilla/scale-5k/remoteInsert/commit.affectedBlockIds: 1 !== 6"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe counts commit.affectedBlockIds once per commit, not once per listener",
+			"moved": [
+				"vanilla/scale-1k/keystroke/commit.affectedBlockIds: 1 !== 6",
+				"vanilla/scale-1k/enterParagraph/commit.affectedBlockIds: 2 !== 12",
+				"vanilla/scale-1k/enterNumbered/commit.affectedBlockIds: 2 !== 12",
+				"vanilla/scale-1k/remoteInsert/commit.affectedBlockIds: 1 !== 6"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R6: the vanilla tree updates only notified blocks",
+			"moved": [
+				"vanilla/scale-1k/mount/scan.blocksMapReads: 30820 !== 22666",
+				"vanilla/scale-1k/mount/scan.orderArrayReads: 1052 !== 1050",
+				"vanilla/scale-1k/mount/listeners.live.selectionChange: 5 !== 4",
+				"vanilla/scale-1k/mount/listeners.live.decorationsChange: 2 !== 1",
+				"vanilla/scale-1k/mount/listeners.live.total: 19 !== 17",
+				"vanilla/scale-1k/mount/notifier.blockSubscribers: 1050 !== 0",
+				"vanilla/scale-1k/keystroke/dom.mutationRecords: 3 !== 2105",
+				"vanilla/scale-1k/keystroke/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-1k/keystroke/scan.blocksMapReads: 97 !== 14055",
+				"vanilla/scale-1k/keystroke/scan.orderArrayReads: 2 !== 1050",
+				"vanilla/scale-1k/keystroke/scan.textFullReads: 16 !== 2011",
+				"vanilla/scale-1k/keystroke/dom.blocksTouched: 1 !== 1050",
+				"vanilla/scale-1k/keystroke/notifier.deliveries: 2 !== 0",
+				"vanilla/scale-1k/caretRight/dom.mutationRecords: 2 !== 2104",
+				"vanilla/scale-1k/caretRight/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-1k/caretRight/scan.blocksMapReads: 70 !== 14048",
+				"vanilla/scale-1k/caretRight/scan.orderArrayReads: 0 !== 1050",
+				"vanilla/scale-1k/caretRight/scan.textFullReads: 28 !== 2024",
+				"vanilla/scale-1k/caretRight/dom.blocksTouched: missing !== 1050",
+				"vanilla/scale-1k/caretRight/notifier.deliveries: 1 !== 0",
+				"vanilla/scale-1k/caretDown/dom.mutationRecords: 22 !== 12630",
+				"vanilla/scale-1k/caretDown/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-1k/caretDown/scan.blocksMapReads: 143 !== 84035",
+				"vanilla/scale-1k/caretDown/scan.orderArrayReads: 0 !== 6300",
+				"vanilla/scale-1k/caretDown/scan.textFullReads: 36 !== 12013",
+				"vanilla/scale-1k/caretDown/dom.blocksTouched: 2 !== 1050",
+				"vanilla/scale-1k/caretDown/notifier.deliveries: 5 !== 0",
+				"vanilla/scale-1k/shiftDown/dom.mutationRecords: 20 !== 6323",
+				"vanilla/scale-1k/shiftDown/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-1k/shiftDown/scan.blocksMapReads: 127 !== 42034",
+				"vanilla/scale-1k/shiftDown/scan.orderArrayReads: 0 !== 3150",
+				"vanilla/scale-1k/shiftDown/scan.textFullReads: 11 !== 5995",
+				"vanilla/scale-1k/shiftDown/dom.blocksTouched: 1 !== 1050",
+				"vanilla/scale-1k/shiftDown/notifier.deliveries: 4 !== 0",
+				"vanilla/scale-1k/enterParagraph/dom.mutationRecords: 23 !== 16851",
+				"vanilla/scale-1k/enterParagraph/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 2370 !== 114285",
+				"vanilla/scale-1k/enterParagraph/scan.orderArrayReads: 1053 !== 8408",
+				"vanilla/scale-1k/enterParagraph/scan.textFullReads: 48 !== 16031",
+				"vanilla/scale-1k/enterParagraph/dom.blocksTouched: 2 !== 1051",
+				"vanilla/scale-1k/enterParagraph/notifier.deliveries: 8 !== 0",
+				"vanilla/scale-1k/enterNumbered/dom.mutationRecords: 23 !== 16851",
+				"vanilla/scale-1k/enterNumbered/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 2790 !== 114285",
+				"vanilla/scale-1k/enterNumbered/scan.orderArrayReads: 1053 !== 8408",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 48 !== 16031",
+				"vanilla/scale-1k/enterNumbered/dom.blocksTouched: 2 !== 1051",
+				"vanilla/scale-1k/enterNumbered/notifier.deliveries: 8 !== 0",
+				"vanilla/scale-1k/remoteInsert/dom.mutationRecords: 1 !== 4209",
+				"vanilla/scale-1k/remoteInsert/scan.blocksMapReads: 1153 !== 29091",
+				"vanilla/scale-1k/remoteInsert/scan.orderArrayReads: 1053 !== 2102",
+				"vanilla/scale-1k/remoteInsert/scan.textFullReads: 7 !== 4002",
+				"vanilla/scale-1k/remoteInsert/dom.blocksTouched: missing !== 1051",
+				"vanilla/scale-1k/remoteInsert/notifier.deliveries: 2 !== 0"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W2.R6: the vanilla tree updates only notified blocks",
+			"moved": [
+				"vanilla/scale-5k/mount/scan.blocksMapReads: 154084 !== 113330",
+				"vanilla/scale-5k/mount/scan.orderArrayReads: 5252 !== 5250",
+				"vanilla/scale-5k/mount/listeners.live.selectionChange: 5 !== 4",
+				"vanilla/scale-5k/mount/listeners.live.decorationsChange: 2 !== 1",
+				"vanilla/scale-5k/mount/listeners.live.total: 19 !== 17",
+				"vanilla/scale-5k/mount/notifier.blockSubscribers: 5250 !== 0",
+				"vanilla/scale-5k/keystroke/dom.mutationRecords: 3 !== 10505",
+				"vanilla/scale-5k/keystroke/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-5k/keystroke/scan.blocksMapReads: 97 !== 70051",
+				"vanilla/scale-5k/keystroke/scan.orderArrayReads: 2 !== 5250",
+				"vanilla/scale-5k/keystroke/scan.textFullReads: 16 !== 10003",
+				"vanilla/scale-5k/keystroke/dom.blocksTouched: 1 !== 5250",
+				"vanilla/scale-5k/keystroke/notifier.deliveries: 2 !== 0",
+				"vanilla/scale-5k/caretRight/dom.mutationRecords: 2 !== 10504",
+				"vanilla/scale-5k/caretRight/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-5k/caretRight/scan.blocksMapReads: 70 !== 70044",
+				"vanilla/scale-5k/caretRight/scan.orderArrayReads: 0 !== 5250",
+				"vanilla/scale-5k/caretRight/scan.textFullReads: 28 !== 10016",
+				"vanilla/scale-5k/caretRight/dom.blocksTouched: missing !== 5250",
+				"vanilla/scale-5k/caretRight/notifier.deliveries: 1 !== 0",
+				"vanilla/scale-5k/caretDown/dom.mutationRecords: 22 !== 63030",
+				"vanilla/scale-5k/caretDown/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-5k/caretDown/scan.blocksMapReads: 143 !== 420011",
+				"vanilla/scale-5k/caretDown/scan.orderArrayReads: 0 !== 31500",
+				"vanilla/scale-5k/caretDown/scan.textFullReads: 36 !== 59965",
+				"vanilla/scale-5k/caretDown/dom.blocksTouched: 2 !== 5250",
+				"vanilla/scale-5k/caretDown/notifier.deliveries: 5 !== 0",
+				"vanilla/scale-5k/shiftDown/dom.mutationRecords: 20 !== 31523",
+				"vanilla/scale-5k/shiftDown/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-5k/shiftDown/scan.blocksMapReads: 127 !== 210022",
+				"vanilla/scale-5k/shiftDown/scan.orderArrayReads: 0 !== 15750",
+				"vanilla/scale-5k/shiftDown/scan.textFullReads: 11 !== 29971",
+				"vanilla/scale-5k/shiftDown/dom.blocksTouched: 1 !== 5250",
+				"vanilla/scale-5k/shiftDown/notifier.deliveries: 4 !== 0",
+				"vanilla/scale-5k/enterParagraph/dom.mutationRecords: 23 !== 84051",
+				"vanilla/scale-5k/enterParagraph/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 10770 !== 570653",
+				"vanilla/scale-5k/enterParagraph/scan.orderArrayReads: 5253 !== 42008",
+				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 48 !== 79967",
+				"vanilla/scale-5k/enterParagraph/dom.blocksTouched: 2 !== 5251",
+				"vanilla/scale-5k/enterParagraph/notifier.deliveries: 8 !== 0",
+				"vanilla/scale-5k/enterNumbered/dom.mutationRecords: 23 !== 84051",
+				"vanilla/scale-5k/enterNumbered/listeners.invoked.selectionChange: 5 !== 4",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 11190 !== 570653",
+				"vanilla/scale-5k/enterNumbered/scan.orderArrayReads: 5253 !== 42008",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 48 !== 79967",
+				"vanilla/scale-5k/enterNumbered/dom.blocksTouched: 2 !== 5251",
+				"vanilla/scale-5k/enterNumbered/notifier.deliveries: 8 !== 0",
+				"vanilla/scale-5k/remoteInsert/dom.mutationRecords: 1 !== 21009",
+				"vanilla/scale-5k/remoteInsert/scan.blocksMapReads: 5353 !== 145283",
+				"vanilla/scale-5k/remoteInsert/scan.orderArrayReads: 5253 !== 10502",
+				"vanilla/scale-5k/remoteInsert/scan.textFullReads: 7 !== 19986",
+				"vanilla/scale-5k/remoteInsert/dom.blocksTouched: missing !== 5251",
+				"vanilla/scale-5k/remoteInsert/notifier.deliveries: 2 !== 0"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe stops counting scheduler flushes (frame-timing dependent, CH9); W2.R6 vanilla tree",
+			"moved": [
+				"vanilla/scale-1k/keystroke/scheduler.flushes: missing !== 1",
+				"vanilla/scale-1k/caretRight/scheduler.flushes: missing !== 1",
+				"vanilla/scale-1k/caretDown/scheduler.flushes: missing !== 1",
+				"vanilla/scale-1k/shiftDown/scheduler.flushes: missing !== 1",
+				"vanilla/scale-1k/enterParagraph/scheduler.flushes: missing !== 1",
+				"vanilla/scale-1k/enterNumbered/scheduler.flushes: missing !== 1",
+				"vanilla/scale-1k/remoteInsert/scheduler.flushes: missing !== 1"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "Probe stops counting scheduler flushes (frame-timing dependent, CH9); W2.R6 vanilla tree",
+			"moved": [
+				"vanilla/scale-5k/keystroke/scheduler.flushes: missing !== 1",
+				"vanilla/scale-5k/caretRight/scheduler.flushes: missing !== 1",
+				"vanilla/scale-5k/caretDown/scheduler.flushes: missing !== 1",
+				"vanilla/scale-5k/shiftDown/scheduler.flushes: missing !== 1",
+				"vanilla/scale-5k/enterParagraph/scheduler.flushes: missing !== 1",
+				"vanilla/scale-5k/enterNumbered/scheduler.flushes: missing !== 1",
+				"vanilla/scale-5k/remoteInsert/scheduler.flushes: missing !== 1"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3.R1: projection read-back adds a bounded DOM-selection read per projection",
+			"moved": [
+				"vanilla/scale-1k/keystroke/scan.blocksMapReads: 108 !== 97",
+				"vanilla/scale-1k/keystroke/scan.textFullReads: 18 !== 16",
+				"vanilla/scale-1k/caretRight/scan.blocksMapReads: 92 !== 70",
+				"vanilla/scale-1k/caretRight/scan.textFullReads: 32 !== 28",
+				"vanilla/scale-1k/caretDown/scan.blocksMapReads: 165 !== 143",
+				"vanilla/scale-1k/caretDown/scan.textFullReads: 40 !== 36",
+				"vanilla/scale-1k/shiftDown/scan.blocksMapReads: 147 !== 127",
+				"vanilla/scale-1k/shiftDown/scan.textFullReads: 15 !== 11",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 2390 !== 2370",
+				"vanilla/scale-1k/enterParagraph/scan.textFullReads: 50 !== 48",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 2810 !== 2790",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 50 !== 48"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3.R1: projection read-back adds a bounded DOM-selection read per projection",
+			"moved": [
+				"vanilla/scale-5k/keystroke/scan.blocksMapReads: 108 !== 97",
+				"vanilla/scale-5k/keystroke/scan.textFullReads: 18 !== 16",
+				"vanilla/scale-5k/caretRight/scan.blocksMapReads: 92 !== 70",
+				"vanilla/scale-5k/caretRight/scan.textFullReads: 32 !== 28",
+				"vanilla/scale-5k/caretDown/scan.blocksMapReads: 165 !== 143",
+				"vanilla/scale-5k/caretDown/scan.textFullReads: 40 !== 36",
+				"vanilla/scale-5k/shiftDown/scan.blocksMapReads: 147 !== 127",
+				"vanilla/scale-5k/shiftDown/scan.textFullReads: 15 !== 11",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 10790 !== 10770",
+				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 50 !== 48",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 11210 !== 11190",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 50 !== 48"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 3b: reconciles stop saving/restoring the native range; P3 projects after a target rebuild (one projection + read-back per rebuilt keystroke/Enter), and the microtask divergence projection after unowned rebuilds is gone",
+			"moved": [
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 2400 !== 2390",
+				"vanilla/scale-1k/enterParagraph/scan.textFullReads: 55 !== 50",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 2820 !== 2810",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 55 !== 50"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 3b: reconciles stop saving/restoring the native range; P3 projects after a target rebuild (one projection + read-back per rebuilt keystroke/Enter), and the microtask divergence projection after unowned rebuilds is gone",
+			"moved": [
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 10800 !== 10790",
+				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 55 !== 50",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 11220 !== 11210",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 55 !== 50"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 6: the projector skips the write when the DOM and focus already agree (fewer full-text reads per action) and pays one read-back on caretRight",
+			"moved": [
+				"vanilla/scale-1k/keystroke/scan.textFullReads: 14 !== 18",
+				"vanilla/scale-1k/caretRight/scan.blocksMapReads: 101 !== 92",
+				"vanilla/scale-1k/caretRight/scan.textFullReads: 30 !== 32",
+				"vanilla/scale-1k/caretDown/scan.textFullReads: 32 !== 40",
+				"vanilla/scale-1k/enterParagraph/scan.textFullReads: 43 !== 55",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 43 !== 55"
+			]
+		},
+		{
+			"date": "2026-10-02",
+			"reason": "W3 step 6: the projector skips the write when the DOM and focus already agree (fewer full-text reads per action) and pays one read-back on caretRight",
+			"moved": [
+				"vanilla/scale-5k/keystroke/scan.textFullReads: 14 !== 18",
+				"vanilla/scale-5k/caretRight/scan.blocksMapReads: 101 !== 92",
+				"vanilla/scale-5k/caretRight/scan.textFullReads: 30 !== 32",
+				"vanilla/scale-5k/caretDown/scan.textFullReads: 32 !== 40",
+				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 43 !== 55",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 43 !== 55"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 17 (W3.R15): keyboard and local-typing projections measure the scroll container and the caret's block in a scheduler read phase to scroll into view (+1-2 getBoundingClientRect per action, all in-flush)",
+			"moved": [
+				"vanilla/scale-1k/keystroke/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/keystroke/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-1k/caretRight/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/caretRight/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-1k/caretDown/geometry.boundingClientRect.total: 1583 !== 1581",
+				"vanilla/scale-1k/caretDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/shiftDown/geometry.boundingClientRect.total: 1582 !== 1581",
+				"vanilla/scale-1k/shiftDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/enterParagraph/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/enterParagraph/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-1k/enterNumbered/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-1k/enterNumbered/geometry.boundingClientRect.total: new metric — re-record"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 17 (W3.R15): keyboard and local-typing projections measure the scroll container and the caret's block in a scheduler read phase to scroll into view (+1-2 getBoundingClientRect per action, all in-flush)",
+			"moved": [
+				"vanilla/scale-5k/keystroke/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/keystroke/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-5k/caretRight/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/caretRight/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-5k/caretDown/geometry.boundingClientRect.total: 7883 !== 7881",
+				"vanilla/scale-5k/caretDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/shiftDown/geometry.boundingClientRect.total: 7882 !== 7881",
+				"vanilla/scale-5k/shiftDown/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/enterParagraph/geometry.boundingClientRect.total: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/geometry.boundingClientRect.inFlush: new metric — re-record",
+				"vanilla/scale-5k/enterNumbered/geometry.boundingClientRect.total: new metric — re-record"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 16: cross-block reads form through core T2 (convertPointerDrag over a two-block scoped snapshot); shiftDown +16 map reads, +4 text reads, equal at 1k and 5k",
+			"moved": [
+				"vanilla/scale-1k/shiftDown/scan.blocksMapReads: 163 !== 147",
+				"vanilla/scale-1k/shiftDown/scan.textFullReads: 19 !== 15"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 16: cross-block reads form through core T2 (convertPointerDrag over a two-block scoped snapshot); shiftDown +16 map reads, +4 text reads, equal at 1k and 5k",
+			"moved": [
+				"vanilla/scale-5k/shiftDown/scan.blocksMapReads: 163 !== 147",
+				"vanilla/scale-5k/shiftDown/scan.textFullReads: 19 !== 15"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 1: the overlay layer is appended once at mount and its data-pen-overlay-selection-version is written once per selection change on Vue and vanilla; +1 dom.mutationRecords per action, equal at 1k and 5k",
+			"moved": [
+				"vanilla/scale-1k/mount/dom.mutationRecords: 10 !== 9",
+				"vanilla/scale-1k/keystroke/dom.mutationRecords: 4 !== 3",
+				"vanilla/scale-1k/caretRight/dom.mutationRecords: 3 !== 2",
+				"vanilla/scale-1k/caretDown/dom.mutationRecords: 23 !== 22",
+				"vanilla/scale-1k/shiftDown/dom.mutationRecords: 21 !== 20",
+				"vanilla/scale-1k/enterParagraph/dom.mutationRecords: 24 !== 23",
+				"vanilla/scale-1k/enterNumbered/dom.mutationRecords: 24 !== 23"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 1: the overlay layer is appended once at mount and its data-pen-overlay-selection-version is written once per selection change on Vue and vanilla; +1 dom.mutationRecords per action, equal at 1k and 5k",
+			"moved": [
+				"vanilla/scale-5k/mount/dom.mutationRecords: 10 !== 9",
+				"vanilla/scale-5k/keystroke/dom.mutationRecords: 4 !== 3",
+				"vanilla/scale-5k/caretRight/dom.mutationRecords: 3 !== 2",
+				"vanilla/scale-5k/caretDown/dom.mutationRecords: 23 !== 22",
+				"vanilla/scale-5k/shiftDown/dom.mutationRecords: 21 !== 20",
+				"vanilla/scale-5k/enterParagraph/dom.mutationRecords: 24 !== 23",
+				"vanilla/scale-5k/enterNumbered/dom.mutationRecords: 24 !== 23"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 3: the overlay is on by default; per action it reads the caret block's inline facts (+3 blocks-map reads, +1 text read), measures the caret and layer origin in the read phase (+2..+8 in-flush rect reads) and writes its plan (+1 mutation record); equal at 1k and 5k",
+			"moved": [
+				"vanilla/scale-1k/keystroke/scan.blocksMapReads: 111 !== 108",
+				"vanilla/scale-1k/keystroke/scan.textFullReads: 15 !== 14",
+				"vanilla/scale-1k/enterParagraph/dom.mutationRecords: 27 !== 24",
+				"vanilla/scale-1k/enterParagraph/geometry.boundingClientRect.inFlush: 11 !== 3",
+				"vanilla/scale-1k/enterParagraph/geometry.boundingClientRect.total: 11 !== 3",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 2403 !== 2400",
+				"vanilla/scale-1k/enterParagraph/scan.textFullReads: 44 !== 43",
+				"vanilla/scale-1k/enterNumbered/dom.mutationRecords: 27 !== 24",
+				"vanilla/scale-1k/enterNumbered/geometry.boundingClientRect.inFlush: 11 !== 3",
+				"vanilla/scale-1k/enterNumbered/geometry.boundingClientRect.total: 11 !== 3",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 2823 !== 2820",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 44 !== 43"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 3: the overlay is on by default; per action it reads the caret block's inline facts (+3 blocks-map reads, +1 text read), measures the caret and layer origin in the read phase (+2..+8 in-flush rect reads) and writes its plan (+1 mutation record); equal at 1k and 5k",
+			"moved": [
+				"vanilla/scale-5k/keystroke/scan.blocksMapReads: 111 !== 108",
+				"vanilla/scale-5k/keystroke/scan.textFullReads: 15 !== 14",
+				"vanilla/scale-5k/enterParagraph/dom.mutationRecords: 27 !== 24",
+				"vanilla/scale-5k/enterParagraph/geometry.boundingClientRect.inFlush: 11 !== 3",
+				"vanilla/scale-5k/enterParagraph/geometry.boundingClientRect.total: 11 !== 3",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 10803 !== 10800",
+				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 44 !== 43",
+				"vanilla/scale-5k/enterNumbered/dom.mutationRecords: 27 !== 24",
+				"vanilla/scale-5k/enterNumbered/geometry.boundingClientRect.inFlush: 11 !== 3",
+				"vanilla/scale-5k/enterNumbered/geometry.boundingClientRect.total: 11 !== 3",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 11223 !== 11220",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 44 !== 43"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 4 (N1): BlockHandle.length() reads Y.Text length instead of toString(); every action does fewer full text reads (-2 to -9), equal at 1k and 5k",
+			"moved": [
+				"vanilla/scale-1k/keystroke/scan.textFullReads: 13 !== 15",
+				"vanilla/scale-1k/caretRight/scan.textFullReads: 21 !== 30",
+				"vanilla/scale-1k/caretDown/scan.textFullReads: 29 !== 32",
+				"vanilla/scale-1k/shiftDown/scan.textFullReads: 11 !== 19",
+				"vanilla/scale-1k/enterParagraph/scan.textFullReads: 38 !== 44",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 38 !== 44"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 4 (N1): BlockHandle.length() reads Y.Text length instead of toString(); every action does fewer full text reads (-2 to -9), equal at 1k and 5k",
+			"moved": [
+				"vanilla/scale-5k/keystroke/scan.textFullReads: 13 !== 15",
+				"vanilla/scale-5k/caretRight/scan.textFullReads: 21 !== 30",
+				"vanilla/scale-5k/caretDown/scan.textFullReads: 29 !== 32",
+				"vanilla/scale-5k/shiftDown/scan.textFullReads: 11 !== 19",
+				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 38 !== 44",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 38 !== 44"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 5: the EditContext backend tests emptiness with Y.Text length instead of toString(); full text reads drop by 1 to 12 per action, equal at 1k and 5k",
+			"moved": [
+				"vanilla/scale-1k/keystroke/scan.textFullReads: 12 !== 13",
+				"vanilla/scale-1k/caretRight/scan.textFullReads: 13 !== 21",
+				"vanilla/scale-1k/caretDown/scan.textFullReads: 17 !== 29",
+				"vanilla/scale-1k/enterParagraph/scan.textFullReads: 26 !== 38",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 26 !== 38"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W35 step 5: the EditContext backend tests emptiness with Y.Text length instead of toString(); full text reads drop by 1 to 12 per action, equal at 1k and 5k",
+			"moved": [
+				"vanilla/scale-5k/keystroke/scan.textFullReads: 12 !== 13",
+				"vanilla/scale-5k/caretRight/scan.textFullReads: 13 !== 21",
+				"vanilla/scale-5k/caretDown/scan.textFullReads: 17 !== 29",
+				"vanilla/scale-5k/enterParagraph/scan.textFullReads: 26 !== 38",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 26 !== 38"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 22: identical endpoints are equivalent without a normal-position snapshot, and null/app/block/unedited-cell projections skip the text read-back; scan reads drop and stay flat 1k→5k",
+			"moved": [
+				"vanilla/scale-1k/keystroke/scan.blocksMapReads: 89 !== 111",
+				"vanilla/scale-1k/keystroke/scan.textFullReads: 10 !== 12",
+				"vanilla/scale-1k/caretRight/scan.blocksMapReads: 68 !== 101",
+				"vanilla/scale-1k/caretRight/scan.textFullReads: 10 !== 13",
+				"vanilla/scale-1k/caretDown/scan.blocksMapReads: 134 !== 165",
+				"vanilla/scale-1k/caretDown/scan.textFullReads: 14 !== 17",
+				"vanilla/scale-1k/shiftDown/scan.blocksMapReads: 133 !== 163",
+				"vanilla/scale-1k/shiftDown/scan.textFullReads: 7 !== 11",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 2363 !== 2403",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 2783 !== 2823"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W3 step 22: identical endpoints are equivalent without a normal-position snapshot, and null/app/block/unedited-cell projections skip the text read-back; scan reads drop and stay flat 1k→5k",
+			"moved": [
+				"vanilla/scale-5k/keystroke/scan.blocksMapReads: 89 !== 111",
+				"vanilla/scale-5k/keystroke/scan.textFullReads: 10 !== 12",
+				"vanilla/scale-5k/caretRight/scan.blocksMapReads: 68 !== 101",
+				"vanilla/scale-5k/caretRight/scan.textFullReads: 10 !== 13",
+				"vanilla/scale-5k/caretDown/scan.blocksMapReads: 134 !== 165",
+				"vanilla/scale-5k/caretDown/scan.textFullReads: 14 !== 17",
+				"vanilla/scale-5k/shiftDown/scan.blocksMapReads: 133 !== 163",
+				"vanilla/scale-5k/shiftDown/scan.textFullReads: 7 !== 11",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 10763 !== 10803",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 11183 !== 11223"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W6 step 3 (W6.R4/R5): AX1 list semantics. Structural commits walk the list runs around each change (+8 map reads on enterParagraph, +108 on remoteInsert next to a run, +113..152 on enterNumbered) and re-segment the touched sibling list; React and Vue sibling loops now hear the list-segment channel (+1 delivery per structural commit); Enter in a numbered item re-renders the set sibling whose aria-setsize moved (+1 block, D7); React list items hold one more block subscription; mount walks each list run once (+3 map reads per block on Vue and vanilla, +25 on React, whose first render reads the notifier detached). Keystroke and caret counts are unchanged.",
+			"moved": [
+				"vanilla/scale-1k/mount/scan.blocksMapReads: 33820 !== 30820",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 2371 !== 2363",
+				"vanilla/scale-1k/enterNumbered/dom.mutationRecords: 29 !== 27",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 2931 !== 2783",
+				"vanilla/scale-1k/enterNumbered/scan.textFullReads: 27 !== 26",
+				"vanilla/scale-1k/enterNumbered/dom.blocksTouched: 3 !== 2",
+				"vanilla/scale-1k/enterNumbered/notifier.deliveries: 9 !== 8",
+				"vanilla/scale-1k/remoteInsert/scan.blocksMapReads: 1261 !== 1153"
+			]
+		},
+		{
+			"date": "2026-10-03",
+			"reason": "W6 step 3 (W6.R4/R5): AX1 list semantics. Structural commits walk the list runs around each change (+8 map reads on enterParagraph, +108 on remoteInsert next to a run, +113..152 on enterNumbered) and re-segment the touched sibling list; React and Vue sibling loops now hear the list-segment channel (+1 delivery per structural commit); Enter in a numbered item re-renders the set sibling whose aria-setsize moved (+1 block, D7); React list items hold one more block subscription; mount walks each list run once (+3 map reads per block on Vue and vanilla, +25 on React, whose first render reads the notifier detached). Keystroke and caret counts are unchanged.",
+			"moved": [
+				"vanilla/scale-5k/mount/scan.blocksMapReads: 169084 !== 154084",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 10771 !== 10763",
+				"vanilla/scale-5k/enterNumbered/dom.mutationRecords: 29 !== 27",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 11331 !== 11183",
+				"vanilla/scale-5k/enterNumbered/scan.textFullReads: 27 !== 26",
+				"vanilla/scale-5k/enterNumbered/dom.blocksTouched: 3 !== 2",
+				"vanilla/scale-5k/enterNumbered/notifier.deliveries: 9 !== 8",
+				"vanilla/scale-5k/remoteInsert/scan.blocksMapReads: 5461 !== 5353"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "Merge of main (76f2fadd): bindSurfaceTabStop flips the active surface's tabIndex on focus and blur (AX1, Firefox Shift+Tab), so a shift-down extend that moves focus to the next block's surface records one more attribute mutation",
+			"moved": [
+				"vanilla/scale-1k/shiftDown/dom.mutationRecords: 22 !== 21"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "Merge of main (76f2fadd): bindSurfaceTabStop flips the active surface's tabIndex on focus and blur (AX1, Firefox Shift+Tab), so a shift-down extend that moves focus to the next block's surface records one more attribute mutation",
+			"moved": [
+				"vanilla/scale-5k/shiftDown/dom.mutationRecords: 22 !== 21"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "b4c8dc03 scrolls a projected selection once per measure: a version projected twice in one turn (selection-change then activation) no longer queues a duplicate scroll measure, so keystroke and caret moves read one bounding rect instead of two",
+			"moved": [
+				"vanilla/scale-1k/caretRight/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"vanilla/scale-1k/caretRight/geometry.boundingClientRect.total: 1 !== 2",
+				"vanilla/scale-1k/caretDown/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"vanilla/scale-1k/caretDown/geometry.boundingClientRect.total: 1582 !== 1583",
+				"vanilla/scale-1k/enterParagraph/geometry.boundingClientRect.inFlush: 10 !== 11",
+				"vanilla/scale-1k/enterParagraph/geometry.boundingClientRect.total: 10 !== 11",
+				"vanilla/scale-1k/enterNumbered/geometry.boundingClientRect.inFlush: 10 !== 11",
+				"vanilla/scale-1k/enterNumbered/geometry.boundingClientRect.total: 10 !== 11"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "b4c8dc03 scrolls a projected selection once per measure: a version projected twice in one turn (selection-change then activation) no longer queues a duplicate scroll measure, so keystroke and caret moves read one bounding rect instead of two",
+			"moved": [
+				"vanilla/scale-5k/caretRight/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"vanilla/scale-5k/caretRight/geometry.boundingClientRect.total: 1 !== 2",
+				"vanilla/scale-5k/caretDown/geometry.boundingClientRect.inFlush: 1 !== 2",
+				"vanilla/scale-5k/caretDown/geometry.boundingClientRect.total: 7882 !== 7883",
+				"vanilla/scale-5k/enterParagraph/geometry.boundingClientRect.inFlush: 10 !== 11",
+				"vanilla/scale-5k/enterParagraph/geometry.boundingClientRect.total: 10 !== 11",
+				"vanilla/scale-5k/enterNumbered/geometry.boundingClientRect.inFlush: 10 !== 11",
+				"vanilla/scale-5k/enterNumbered/geometry.boundingClientRect.total: 10 !== 11"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "d87aa054 and 864b6644 validate apply parent targets and op shapes before reading block liveness, so an insert reads one blocks-map entry fewer (Enter -1 per op, mount -5 at 1k / -25 at 5k); no count rises",
+			"moved": [
+				"vanilla/scale-1k/mount/scan.blocksMapReads: 33815 !== 33820",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 2370 !== 2371",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 2930 !== 2931"
+			]
+		},
+		{
+			"date": "2026-10-04",
+			"reason": "d87aa054 and 864b6644 validate apply parent targets and op shapes before reading block liveness, so an insert reads one blocks-map entry fewer (Enter -1 per op, mount -5 at 1k / -25 at 5k); no count rises",
+			"moved": [
+				"vanilla/scale-5k/mount/scan.blocksMapReads: 169059 !== 169084",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 10770 !== 10771",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 11330 !== 11331"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2b: structural commits advance the summary, pass and document indexes by what they touched; a keystroke reads each named block map once per commit",
+			"moved": [
+				"vanilla/scale-1k/mount/scan.blockOrderReads: 27 !== 3675",
+				"vanilla/scale-1k/mount/scan.blocksMapIterations: 1049 !== 4199",
+				"vanilla/scale-1k/mount/scan.blocksMapReads: 32791 !== 33815",
+				"vanilla/scale-1k/keystroke/scan.blocksMapReads: 87 !== 89",
+				"vanilla/scale-1k/enterParagraph/scan.blockOrderReads: 3 !== 3680",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapIterations: 0 !== 4203",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 270 !== 2370",
+				"vanilla/scale-1k/enterNumbered/scan.blockOrderReads: 3 !== 3690",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapIterations: 0 !== 4203",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 830 !== 2930",
+				"vanilla/scale-1k/remoteInsert/scan.blockOrderReads: 2 !== 2102",
+				"vanilla/scale-1k/remoteInsert/scan.blocksMapIterations: 0 !== 2102",
+				"vanilla/scale-1k/remoteInsert/scan.blocksMapReads: 211 !== 1261"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2b: structural commits advance the summary, pass and document indexes by what they touched; a keystroke reads each named block map once per commit",
+			"moved": [
+				"vanilla/scale-5k/mount/scan.blockOrderReads: 135 !== 28875",
+				"vanilla/scale-5k/mount/scan.blocksMapIterations: 5245 !== 20995",
+				"vanilla/scale-5k/mount/scan.blocksMapReads: 163939 !== 169059",
+				"vanilla/scale-5k/keystroke/scan.blocksMapReads: 87 !== 89",
+				"vanilla/scale-5k/enterParagraph/scan.blockOrderReads: 3 !== 18380",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapIterations: 0 !== 21003",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 270 !== 10770",
+				"vanilla/scale-5k/enterNumbered/scan.blockOrderReads: 3 !== 18390",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapIterations: 0 !== 21003",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 830 !== 11330",
+				"vanilla/scale-5k/remoteInsert/scan.blockOrderReads: 2 !== 10502",
+				"vanilla/scale-5k/remoteInsert/scan.blocksMapIterations: 0 !== 10502",
+				"vanilla/scale-5k/remoteInsert/scan.blocksMapReads: 211 !== 5461"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2c: root ids and the empty-document placeholder read core's top-level list instead of copying blockOrder, the block notifier stops scanning every cached snapshot, and children-array edits stop rebuilding the document index; every count that moved went down",
+			"moved": [
+				"vanilla/scale-1k/mount/scan.orderArrayReads: 0 !== 1052",
+				"vanilla/scale-1k/keystroke/scan.orderArrayReads: 0 !== 2",
+				"vanilla/scale-1k/enterParagraph/scan.orderArrayReads: 0 !== 1053",
+				"vanilla/scale-1k/enterNumbered/scan.orderArrayReads: 0 !== 1053",
+				"vanilla/scale-1k/remoteInsert/scan.orderArrayReads: 0 !== 1053"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Phase 2c: root ids and the empty-document placeholder read core's top-level list instead of copying blockOrder, the block notifier stops scanning every cached snapshot, and children-array edits stop rebuilding the document index; every count that moved went down",
+			"moved": [
+				"vanilla/scale-5k/mount/scan.orderArrayReads: 0 !== 5252",
+				"vanilla/scale-5k/keystroke/scan.orderArrayReads: 0 !== 2",
+				"vanilla/scale-5k/enterParagraph/scan.orderArrayReads: 0 !== 5253",
+				"vanilla/scale-5k/enterNumbered/scan.orderArrayReads: 0 !== 5253",
+				"vanilla/scale-5k/remoteInsert/scan.orderArrayReads: 0 !== 5253"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Undo holds the selection authority's AS1 anchors as its drift pair instead of minting a second pair per selection change; every count that moved went down",
+			"moved": [
+				"vanilla/scale-1k/keystroke/scan.blocksMapReads: 83 !== 87",
+				"vanilla/scale-1k/caretRight/scan.blocksMapReads: 66 !== 68",
+				"vanilla/scale-1k/caretDown/scan.blocksMapReads: 132 !== 134",
+				"vanilla/scale-1k/shiftDown/scan.blocksMapReads: 131 !== 133",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 266 !== 270",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 826 !== 830"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Undo holds the selection authority's AS1 anchors as its drift pair instead of minting a second pair per selection change; every count that moved went down",
+			"moved": [
+				"vanilla/scale-5k/keystroke/scan.blocksMapReads: 83 !== 87",
+				"vanilla/scale-5k/caretRight/scan.blocksMapReads: 66 !== 68",
+				"vanilla/scale-5k/caretDown/scan.blocksMapReads: 132 !== 134",
+				"vanilla/scale-5k/shiftDown/scan.blocksMapReads: 131 !== 133",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 266 !== 270",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 826 !== 830"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes: reads attach the notifier, so a render-before-subscribe mount reads blocks through the shared run context and kept root ids (React mount -41%); list slices keep across non-structural events; numbered ordinals come from the AX1 run walk with block types read once (Enter in a numbered run or paragraph and a remote insert read fewer blocks). Decreases only.",
+			"moved": [
+				"vanilla/scale-1k/mount/scan.blocksMapReads: 32291 !== 32791",
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 254 !== 266",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 442 !== 826",
+				"vanilla/scale-1k/remoteInsert/scan.blocksMapReads: 166 !== 211"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes: reads attach the notifier, so a render-before-subscribe mount reads blocks through the shared run context and kept root ids (React mount -41%); list slices keep across non-structural events; numbered ordinals come from the AX1 run walk with block types read once (Enter in a numbered run or paragraph and a remote insert read fewer blocks). Decreases only.",
+			"moved": [
+				"vanilla/scale-5k/mount/scan.blocksMapReads: 161439 !== 163939",
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 254 !== 266",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 442 !== 826",
+				"vanilla/scale-5k/remoteInsert/scan.blocksMapReads: 166 !== 211"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes on top of the parentId sibling sort lower enter block reads by 2",
+			"moved": [
+				"vanilla/scale-1k/enterParagraph/scan.blocksMapReads: 252 !== 254",
+				"vanilla/scale-1k/enterNumbered/scan.blocksMapReads: 440 !== 442"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "Block notifier review fixes on top of the parentId sibling sort lower enter block reads by 2",
+			"moved": [
+				"vanilla/scale-5k/enterParagraph/scan.blocksMapReads: 252 !== 254",
+				"vanilla/scale-5k/enterNumbered/scan.blocksMapReads: 440 !== 442"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "vanilla marks its expanded blocks host as the field surface (React/Vue parity): surface subscriber deliveries and five blocks-host attributes on expand",
+			"moved": [
+				"vanilla/scale-1k/caretDown/notifier.deliveries: 9 !== 5",
+				"vanilla/scale-1k/shiftDown/dom.mutationRecords: 27 !== 22",
+				"vanilla/scale-1k/shiftDown/notifier.deliveries: 6 !== 4",
+				"vanilla/scale-1k/enterParagraph/notifier.deliveries: 12 !== 8",
+				"vanilla/scale-1k/enterNumbered/notifier.deliveries: 13 !== 9"
+			]
+		},
+		{
+			"date": "2026-10-05",
+			"reason": "vanilla marks its expanded blocks host as the field surface (React/Vue parity): surface subscriber deliveries and five blocks-host attributes on expand",
+			"moved": [
+				"vanilla/scale-5k/caretDown/notifier.deliveries: 9 !== 5",
+				"vanilla/scale-5k/shiftDown/dom.mutationRecords: 27 !== 22",
+				"vanilla/scale-5k/shiftDown/notifier.deliveries: 6 !== 4",
+				"vanilla/scale-5k/enterParagraph/notifier.deliveries: 12 !== 8",
+				"vanilla/scale-5k/enterNumbered/notifier.deliveries: 13 !== 9"
+			]
+		}
+	]
+}

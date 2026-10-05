@@ -2,25 +2,28 @@
 
 HOST4 (`spec/rules/host.md`): `EditContext` is newer than the HOST3 browser floor. The field editor detects it and falls back; it does not require it. Browser floors live in the root `README.md` support table.
 
-Selection of the backend is `_resolveBackendClass` in `src/field-editor/fieldEditorImpl.ts`. The named split is `FIELD_EDITOR_BACKEND_SPLIT` in that file. Detection and fallback are unchanged by this document.
+Selection of the backend is `_resolveBackendClass` in `src/field-editor/fieldEditorImpl.ts`; its doc comment states the split. Detection and fallback are unchanged by this document.
 
 ## One spine, three input technologies
 
 There are not three parallel implementations. The lifecycle is shared and a backend owns only the input technology it speaks (FE1/FE2):
 
 - `BackendLifecycleController` (`backendLifecycleController.ts`) owns which backend exists: create, replace on a surface-mode or element change, deactivate.
+- `InputBackendBase` (`inputBackendBase.ts`) owns what every backend holds while attached — element, attachment, editor, field editor — and the contenteditable host and input-event bindings; its `FieldInputBackendBase` adds the single-field state (`Y.Text`, observer, decoration signature), the field rebuild, the delta patch, and the decoration-change rebuild. A backend class extends one of them and adds its input technology (CS5).
 - `BackendAttachment` (`backendAttachment.ts`) owns what a backend holds while attached. Listeners, observers, and subscriptions are bound through it, and one `release()` undoes them — so teardown is total by construction rather than by a mirrored block of `removeEventListener` calls per backend. See `FIELD-EDITOR-TEARDOWN.md`.
 - `bindBackendTransferEvents` (`backendTransferEvents.ts`) owns clipboard and drag, which are identical in every backend: copy and cut go through the transfer path, drag is refused at both ends.
 - `inlineDecorationsForBlock` (`utils/inlineDecorations.ts`) owns which inline decorations a block renders.
 - `DomScheduler` owns frames. No backend calls `requestAnimationFrame` (FE3), and the field editor feeds every commit to the root's scheduler so geometry caches follow the document (FE4).
+- The selection reader (`selectionReader.ts`) owns reading the DOM selection and the projector (`selectionProjector.ts`) owns writing it (S1). A backend's `updateSelection()` is the one place it writes the authority's record into its own input technology (a native range, or the EditContext selection), and the projector calls it. Backends keep no selection state of their own besides the FE9 typing caret: no stamp store, write depth, echo predicate or stale-caret guard (W3.R10).
+- A passive or `domFocus: false` attach passes its focus options to the backend's `activate()`, so the backend's own focus request leaves focus where it is. There is no suppression flag.
 
 What is left in each backend is its delta:
 
-| Backend | Owns |
-| --- | --- |
-| `editContextBackend.ts` | The `EditContext` object and its `textupdate` / `textformatupdate` / `characterboundsupdate` plumbing, EditContext selection sync, composition-cancel on Escape, clipboard paste as a `paste` event |
-| `contenteditableBackend.ts` | `beforeinput` dispatch through `DIRECT_HANDLERS`, the composition-event path, the mutation watchdog that restores foreign DOM rewrites, DOM selection restore, table-cell branches |
-| `expandedContentEditableBackend.ts` | The multi-block editing host: one `contenteditable` on the blocks host, cross-block replace and delete, and the handoff back to a single-block backend when a split or a collapse ends expanded mode |
+| Backend                             | Owns                                                                                                                                                                                                                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `editContextBackend.ts`             | The `EditContext` object and its `textupdate` / `textformatupdate` / `characterboundsupdate` plumbing, the C4 composition phase (`compositionPhase`), the FE9 trusted typing caret, composition-cancel on Escape, clipboard paste as a `paste` event |
+| `contenteditableBackend.ts`         | `beforeinput` dispatch through `DIRECT_HANDLERS`, the composition-event path, the B1 mutation watchdog that restores foreign DOM rewrites (`ignoreBrowserMutations`, `lastWatchdogMismatch`), table-cell branches                                    |
+| `expandedContentEditableBackend.ts` | The multi-block editing host: one `contenteditable` on the blocks host, cross-block replace and delete, and the handoff back to a single-block backend when a split or a collapse ends expanded mode                                                 |
 
 ## Detection
 

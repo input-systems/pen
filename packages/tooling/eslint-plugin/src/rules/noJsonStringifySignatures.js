@@ -1,9 +1,12 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import {
+	allowlistLifecycleListeners,
+	allowlistSlots,
+	consumeAllowlistSlot,
+	loadAllowlistEntries,
+	missingAllowlistField as missingRequiredField,
+} from "./allowlistLint.js";
 import {
 	enclosingSymbol,
-	posixFilename,
 	propertyName,
 	repoRelativeFilename,
 } from "./lintPaths.js";
@@ -14,36 +17,13 @@ import {
  * sites live on the allowlist.
  */
 
-const DEFAULT_ALLOWLIST_PATH = path.join(
-	path.dirname(fileURLToPath(import.meta.url)),
-	"../../../../../scripts/json-stringify-allowlist.json",
-);
+const ALLOWLIST_PATH = "scripts/json-stringify-allowlist.json";
+const REQUIRED_FIELDS = ["file", "symbol", "reason"];
 
-function loadAllowlist(filePath) {
-	try {
-		const parsed = JSON.parse(readFileSync(filePath, "utf8"));
-		return Array.isArray(parsed.entries) ? parsed.entries : [];
-	} catch {
-		return [];
-	}
-}
+const committedAllowlist = loadAllowlistEntries(ALLOWLIST_PATH);
 
-const committedAllowlist = loadAllowlist(DEFAULT_ALLOWLIST_PATH);
-
-export function missingAllowlistField(entry) {
-	if (!entry || typeof entry !== "object") {
-		return "file";
-	}
-	if (typeof entry.file !== "string" || entry.file.trim().length === 0) {
-		return "file";
-	}
-	if (typeof entry.symbol !== "string" || entry.symbol.trim().length === 0) {
-		return "symbol";
-	}
-	if (typeof entry.reason !== "string" || entry.reason.trim().length === 0) {
-		return "reason";
-	}
-	return null;
+function missingAllowlistField(entry) {
+	return missingRequiredField(entry, REQUIRED_FIELDS);
 }
 
 function isJsonStringify(node) {
@@ -87,57 +67,22 @@ export const noJsonStringifySignatures = {
 		const filename = context.filename ?? context.getFilename();
 		const relative = repoRelativeFilename(filename);
 		const allowlist = context.options[0]?.allowlist ?? committedAllowlist;
-		const slots = allowlist
-			.filter((entry) => !missingAllowlistField(entry))
-			.filter((entry) => posixFilename(entry.file) === relative)
-			.map((entry) => ({ ...entry, used: false }));
-
-		function consume(symbol) {
-			const slot = slots.find((entry) => entry.symbol === symbol);
-			if (!slot) {
-				return false;
-			}
-			slot.used = true;
-			return true;
-		}
+		const slots = allowlistSlots(allowlist, relative, missingAllowlistField);
 
 		return {
-			Program() {
-				for (const entry of allowlist) {
-					const field = missingAllowlistField(entry);
-					if (!field) {
-						continue;
-					}
-					if (
-						typeof entry?.file === "string" &&
-						posixFilename(entry.file) !== relative
-					) {
-						continue;
-					}
-					context.report({
-						loc: { line: 1, column: 0 },
-						messageId: "incompleteAllowlist",
-						data: { field },
-					});
-				}
-			},
-			"Program:exit"() {
-				for (const slot of slots) {
-					if (!slot.used) {
-						context.report({
-							loc: { line: 1, column: 0 },
-							messageId: "unusedAllowlist",
-							data: { file: slot.file, symbol: slot.symbol },
-						});
-					}
-				}
-			},
+			...allowlistLifecycleListeners(context, {
+				allowlist,
+				relative,
+				slots,
+				missingField: missingAllowlistField,
+				orphanMessageId: "unusedAllowlist",
+			}),
 			CallExpression(node) {
 				if (!isJsonStringify(node.callee)) {
 					return;
 				}
 				const symbol = enclosingSymbol(node);
-				if (consume(symbol)) {
+				if (consumeAllowlistSlot(slots, symbol)) {
 					return;
 				}
 				context.report({

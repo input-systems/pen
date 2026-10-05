@@ -1,11 +1,25 @@
-import { createRequire } from "node:module";
 import js from "@eslint/js";
 import pen from "@input/pen-eslint-plugin";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-const require = createRequire(import.meta.url);
-const selectionTimers = require("./packages/tooling/eslint-plugin/src/rules/no-selection-timers-allowlist.json");
+// HB2: layout metrics the React and Vue bindings may not read outside the
+// allowlist. Rect and hit-test reads are SCH1's base set in every renderer.
+const BINDING_LAYOUT_METRIC_NAMES = [
+	"offsetTop",
+	"offsetLeft",
+	"offsetWidth",
+	"offsetHeight",
+	"clientTop",
+	"clientWidth",
+	"clientHeight",
+	"scrollTop",
+	"scrollWidth",
+	"scrollHeight",
+	"getComputedStyle",
+	"ResizeObserver",
+	"IntersectionObserver",
+];
 
 // CH2 (spec/rules/reliability.md): this config is where the repo's structural
 // invariants are enforced. It is permissive on purpose — a rule that would demand mass
@@ -24,6 +38,8 @@ export default tseslint.config(
 		ignores: [
 			"**/dist/**",
 			"**/.generated/**",
+			// Local agent worktrees (gitignored) carry full repo copies.
+			".claude/**",
 			"**/node_modules/**",
 			"**/coverage/**",
 			"**/.turbo/**",
@@ -43,19 +59,13 @@ export default tseslint.config(
 		rules: {
 			"pen/no-html-injection-sinks": "error",
 
-			// S4: selection paths get no timers. Scope is the in-config
-			// module list (focus, offsetDomain, caretPositions, v1 backend/IME
-			// offenders) plus a basename-contains-`selection` fail-closed net so a
-			// new selectionReader.ts cannot silently escape. sessionReconciler is
-			// outOfScope — a flush coalescer, not a selection module.
-			// Do not add a `files:` glob; the rule self-scopes from this list.
-			"pen/no-selection-timers": [
-				"error",
-				{
-					modules: selectionTimers.modules,
-					outOfScope: selectionTimers.outOfScope,
-				},
-			],
+			// S4: selection paths get no timers, microtask or promise
+			// deferrals, async/await, setter-calling scheduler callbacks, or
+			// retry counters. Scope is the rule's module list plus a
+			// basename-contains-`selection` net so a new selectionReader.ts
+			// cannot silently escape. No allowlist.
+			// Do not add a `files:` glob; the rule self-scopes.
+			"pen/no-selection-timers": "error",
 
 			// HOST4: crypto.randomUUID is secure-context-only, so it throws on plain-HTTP origins
 			// and on Safari < 15.4. generateId owns the feature test and fallback (F24).
@@ -71,8 +81,8 @@ export default tseslint.config(
 		},
 	},
 	{
-		// SCH1 / RI1: geometry reads stay scheduled; marks never introduce
-		// bidi-override. Allowlists live in scripts/.
+		// SCH1 / RI1: geometry reads stay scheduled (allowlist in scripts/);
+		// marks never introduce bidi-override (no allowlist).
 		files: ["packages/rendering/**/*.{ts,tsx,js,jsx}"],
 		ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
 		rules: {
@@ -110,7 +120,7 @@ export default tseslint.config(
 	},
 	{
 		// API4: no @input/pen-* import through /src/, /dist/, or an
-		// unpublished subpath. Allowlist: scripts/pen-deep-imports-allowlist.json.
+		// unpublished subpath. No allowlist.
 		files: [
 			"packages/**/*.{ts,tsx,js,jsx,mjs,cjs}",
 			"examples/**/*.{ts,tsx,js,jsx,mjs,cjs}",
@@ -222,6 +232,74 @@ export default tseslint.config(
 		},
 	},
 	{
+		// S1: one selection writer. Outside the projector, every DOM selection
+		// or EditContext selection write is an error; there is no allowlist.
+		// The rule self-scopes to the renderer sources.
+		files: ["packages/rendering/**/src/**/*.{ts,tsx}"],
+		rules: {
+			"pen/no-dom-selection-write": "error",
+		},
+	},
+	{
+		// W3.R16: focus is a projection concern. In pen-dom only
+		// field-editor/focusController.ts calls HTMLElement.focus; there is no
+		// allowlist. The rule self-scopes to pen-dom.
+		files: ["packages/rendering/dom/src/**/*.{ts,tsx}"],
+		rules: {
+			"pen/no-direct-dom-focus": "error",
+		},
+	},
+	{
+		// S1: one selection reader. Outside selectionReader.ts, every
+		// getSelection(), selectionchange listener and live-selection mapping
+		// call is an error; there is no allowlist. The rule self-scopes to the
+		// renderer sources.
+		files: ["packages/rendering/**/src/**/*.{ts,tsx}"],
+		rules: {
+			"pen/no-dom-selection-read": "error",
+		},
+	},
+	{
+		// S3: pen-dom and pen-undo selection-setter calls name their origin.
+		// Host-API forwarding is listed with a reason in
+		// scripts/selection-origin-allowlist.json; an entry with no live call
+		// fails (I15).
+		files: [
+			"packages/rendering/dom/src/**/*.{ts,tsx}",
+			"packages/extensions/undo/src/**/*.{ts,tsx}",
+		],
+		ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
+		rules: {
+			"pen/require-selection-origin": "error",
+		},
+	},
+	{
+		// OV3: React and Vue overlay bindings (caret, selection rect, overlay
+		// layout and paint hooks) measure nothing and run no frame driver;
+		// there is no allowlist. The rule self-scopes by basename.
+		files: [
+			"packages/rendering/react/src/**/*.{ts,tsx}",
+			"packages/rendering/vue/src/**/*.{ts,tsx}",
+		],
+		rules: {
+			"pen/no-overlay-binding-measure": "error",
+		},
+	},
+	{
+		// SCALE2: function-form decorationsFacet sources recompute in full on
+		// every commit. Remaining sites are listed with a reason in
+		// scripts/unscoped-decoration-source-allowlist.json; an entry with no
+		// live site fails (I15).
+		files: [
+			"packages/core/src/**/*.{ts,tsx}",
+			"packages/extensions/**/src/**/*.{ts,tsx}",
+		],
+		ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
+		rules: {
+			"pen/no-unscoped-decoration-source": "error",
+		},
+	},
+	{
 		files: ["packages/core/src/editor/textSegmentation.ts"],
 		rules: {
 			// HOST4 sub-floor fallback: word ops degrade to whitespace runs here only.
@@ -270,6 +348,27 @@ export default tseslint.config(
 		ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
 		rules: {
 			"pen/no-framework-free-modules-in-renderers": "error",
+		},
+	},
+	{
+		// HB2: bindings stay glue. Layout metrics a binding would need to
+		// rebuild a window or a height map are measures here, on top of SCH1's
+		// rect and hit-test reads; and per-block editor subscriptions go
+		// through pen-dom's block notifier. Remaining sites are listed with a
+		// reason in scripts/unscheduled-measure-allowlist.json and
+		// scripts/binding-subscriptions-allowlist.json; an entry with no live
+		// site fails (I15).
+		files: [
+			"packages/rendering/react/src/**/*.{ts,tsx}",
+			"packages/rendering/vue/src/**/*.{ts,tsx}",
+		],
+		ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
+		rules: {
+			"pen/no-unscheduled-measure": [
+				"error",
+				{ extraNames: BINDING_LAYOUT_METRIC_NAMES },
+			],
+			"pen/no-binding-editor-subscriptions": "error",
 		},
 	},
 	{

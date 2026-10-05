@@ -83,9 +83,12 @@ describe("@input/pen-undo document state", () => {
 	it("ops that share a groupId collapse to one undo step", () => {
 		const { adapter, doc, manager } = createSession();
 
-		manager.syncExplicitUndoGroup("turn-1");
-		insertText(adapter, doc, "user-block", "Hello");
-		insertText(adapter, doc, "user-block", " world");
+		const write = (text: string) =>
+			manager.withCapture("user", "turn-1", () =>
+				insertText(adapter, doc, "user-block", text),
+			);
+		write("Hello");
+		write(" world");
 		expect(blockText(doc, "user-block")).toBe("Hello world");
 
 		expect(manager.undo()).toBe(true);
@@ -110,12 +113,13 @@ describe("@input/pen-undo document state", () => {
 	it("a new groupId starts a new undo step after a shared group", () => {
 		const { adapter, doc, manager } = createSession();
 
-		manager.syncExplicitUndoGroup("turn-1");
-		insertText(adapter, doc, "user-block", "Hello");
-		insertText(adapter, doc, "user-block", " world");
-
-		manager.syncExplicitUndoGroup("turn-2");
-		insertText(adapter, doc, "user-block", "!");
+		const write = (groupId: string, text: string) =>
+			manager.withCapture("user", groupId, () =>
+				insertText(adapter, doc, "user-block", text),
+			);
+		write("turn-1", "Hello");
+		write("turn-1", " world");
+		write("turn-2", "!");
 		expect(blockText(doc, "user-block")).toBe("Hello world!");
 
 		expect(manager.undo()).toBe(true);
@@ -178,7 +182,9 @@ describe("@input/pen-undo document state", () => {
 		expect(manager.redo()).toBe(false);
 		expect(blockText(doc, "user-block")).toBe("keep");
 		expect(() => manager.stopCapturing()).not.toThrow();
-		expect(() => manager.syncExplicitUndoGroup("after-destroy")).not.toThrow();
+		expect(
+			manager.withCapture("user", "after-destroy", () => "ran"),
+		).toBe("ran");
 		expect(() => manager.resetIdleTimer()).not.toThrow();
 		expect(() => manager.registerTrackedOrigins(["user"])()).not.toThrow();
 

@@ -5,10 +5,9 @@ import { buildFlowMarkdownRequestPrompt } from "../runtime/flowMarkdown";
 import { routeAIRequest } from "../runtime/router";
 import type { GenerationState } from "../types";
 import type { AIControllerImpl } from "./aiController";
+import { findRequestSession, startSeededGeneration } from "./generationStart";
 import {
-	beginGenerationSession,
 	buildSessionExecutionPrompt,
-	createAIStreamEvent,
 	EMPTY_TOOL_RUNTIME,
 	isLocalRequestedOperation,
 	resolveCommonSelectionMarks,
@@ -158,12 +157,7 @@ export async function executeGeneration(
 		replaceBlockIds: context?.replaceBlockIds,
 	});
 	const sessionTurnId = context?.sessionId ? generateId() : undefined;
-	const existingSession =
-		context?.sessionId != null
-			? (controller._state.sessions.find(
-					(session) => session.id === context.sessionId,
-				) ?? null)
-			: null;
+	const existingSession = findRequestSession(controller, context?.sessionId);
 	const executionPrompt = buildSessionExecutionPrompt(
 		existingSession,
 		prompt,
@@ -218,36 +212,15 @@ export async function executeGeneration(
 			},
 		},
 	};
-	if (context?.sessionId) {
-		beginGenerationSession(controller, {
-			sessionId: context.sessionId,
-			seedGeneration,
-			prompt,
-			target,
-			operation: requestedOperation,
-			sessionTurnId,
-			existingSession,
-		});
-	}
-	controller._setState({
-		status: "thinking",
-		activeGeneration: seedGeneration,
-		commandMenuOpen: false,
-		lastRoute: route.lane,
-		activeSessionId:
-			context?.sessionId ?? controller._state.activeSessionId,
+	startSeededGeneration(controller, {
+		seedGeneration,
+		sessionId: context?.sessionId,
+		prompt,
+		target,
+		operation: requestedOperation,
+		sessionTurnId,
+		existingSession,
 	});
-	controller._setStreamEvents([
-		createAIStreamEvent(seedGeneration, {
-			type: "generation-start",
-			prompt,
-			target: target.type,
-		}),
-		createAIStreamEvent(seedGeneration, {
-			type: "status",
-			status: "thinking",
-		}),
-	]);
 	const state: GenerationExecutionState = {
 		prompt,
 		target,

@@ -32,7 +32,7 @@ The monorepo is layered; dependencies point strictly downward:
 - Prefer non-fatal behavior in runtime paths: drop invalid input with a `diagnostic` event rather than throwing from hooks, observers, or extension code.
 - Normalization is incremental and idempotent; repeated passes must not produce new changes.
 - The `\u200B` empty-block sentinel is removed from storage (`spec/rules/empty-blocks.md` EM1–EM8). Do not add new code that tests for it. The two-seam confinement in `spec/rules/selection.md` §2 was the interim v2 position and is retired (I11 → I14).
-- Selection code is under redesign; do not add `requestAnimationFrame`/`setTimeout` retries, suppression flags, or intent counters to selection paths (`spec/rules/selection.md` S4). If a selection bug cannot be fixed without one, stop and surface it.
+- Selection has one reader and one writer in `@input/pen-dom` (`spec/rules/selection.md` S1); do not add `requestAnimationFrame`/`setTimeout` retries, suppression flags, or intent counters to selection paths (S4). If a selection bug cannot be fixed without one, stop and surface it.
 - Follow `.cursor/rules/*.mdc` for import style (extensionless), extension resilience, and headless React primitive conventions.
 
 ## Commands
@@ -62,7 +62,7 @@ For substantive changes run `pnpm build`, `pnpm typecheck`, and `pnpm test` befo
 
 ## Releases
 
-- Changesets drive versioning (`pnpm changeset`, `pnpm version-packages`). GitHub opens the Version Packages PR; publish locally with `pnpm release`. Any PR that changes a published package's behavior or API includes a changeset. The train is `0.x`; breaking is `minor`, additive is `patch`, and `major` is rejected until 1.0. The first published train is `0.1.0`.
+- Changesets drive versioning (`pnpm changeset`, `pnpm version-packages`). GitHub opens the Version Packages PR; publish locally with `pnpm release`. Any PR that changes a published package's behavior or API includes a changeset. The train is `0.x`; breaking is `minor`, additive is `patch`, and `major` is rejected until 1.0. The first published train was `0.1.0`.
 - Published packages ship dual ESM/CJS with `exports` maps, `files`, and `sideEffects: false`; keep manifests consistent (`sync-package-metadata.mjs` exists for shared fields).
 
 ## Agent Skills And Reviewers

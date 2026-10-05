@@ -10,17 +10,14 @@ import {
   DEFAULT_HTML_IMAGE_SRC_POLICY,
   type HtmlImportOptions,
 } from "./imageSrcPolicy";
+import { blocksToOps } from "@input/pen-core";
 import {
-  blocksToOps,
-  normalizePendingBlocksForImport,
-} from "@input/pen-core";
-import {
-  boundPendingBlocks,
+  boundIngestedBlocks,
   capRawHtmlSource,
-  createIngestReport,
   emitIngestReport,
   INGEST_MAX_TEXT_SIZE,
   IngestDropCounts,
+  normalizeIngestedBlocks,
   type IngestReport,
 } from "./ingestBounds";
 import { sanitizeHTML } from "./sanitize";
@@ -54,17 +51,10 @@ export function parseHtmlWithReport(
   report: IngestReport;
 } {
   const drops = new IngestDropCounts();
-  const parsedBlocks = parseCappedHtmlToBlocks(input, editor, drops);
-  const bounded = boundPendingBlocks(parsedBlocks, drops);
-  return {
-    blocks: bounded,
-    report: createIngestReport(
-      parsedBlocks.length,
-      bounded.length,
-      [],
-      drops,
-    ),
-  };
+  return boundIngestedBlocks(
+    parseCappedHtmlToBlocks(input, editor, drops),
+    drops,
+  );
 }
 
 function normalizeHtmlToBlocks(
@@ -75,44 +65,12 @@ function normalizeHtmlToBlocks(
   result: IngestReport;
 } {
   const drops = new IngestDropCounts();
-  const parsedBlocks = parseCappedHtmlToBlocks(input, editor, drops);
-  const bounded = boundPendingBlocks(parsedBlocks, drops);
-  const normalized = normalizePendingBlocksForImport(
-    bounded,
-    editor.documentProfile,
-    editor.schema,
-  );
-
-  for (const violation of normalized.violations) {
-    switch (violation.reason) {
-      case "unknown-block-type":
-        drops.add("unknown-block-type");
-        break;
-      case "flow-disallowed-block":
-        drops.add("profile-disallowed");
-        break;
-      default: {
-        const exhaustive: never = violation.reason;
-        throw new Error(exhaustive);
-      }
-    }
-  }
-
-  const droppedBlockTypes = [
-    ...new Set(normalized.violations.map((violation) => violation.blockType)),
-  ];
-  const result = createIngestReport(
-    parsedBlocks.length,
-    normalized.blocks.length,
-    droppedBlockTypes,
+  return normalizeIngestedBlocks(
+    parseCappedHtmlToBlocks(input, editor, drops),
+    editor,
     drops,
+    "import-html",
   );
-  emitIngestReport(editor, result, "import-html");
-
-  return {
-    blocks: normalized.blocks,
-    result,
-  };
 }
 
 export function parseHtmlToBlocks(

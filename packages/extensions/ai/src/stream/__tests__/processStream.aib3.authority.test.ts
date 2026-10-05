@@ -4,11 +4,14 @@ import {
 	getDocumentToolRuntime,
 } from "@input/pen-tools";
 import { defaultSchema } from "@input/pen-schema";
-import type { DiagnosticEvent, PenStreamPart } from "@input/pen-types";
+import type { PenStreamPart } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
+import { undoExtension } from "@input/pen-undo";
+import { aiExtension } from "../../extension";
 import { deltaStreamExtension } from "../deltaStreamExtension";
 import { processStream } from "../processStream";
+import { listenDiagnostics } from "./processStream.testHelpers";
 
 function createLiveEditor() {
 	return createEditor({
@@ -23,16 +26,6 @@ async function* createStream(
 	for (const part of parts) {
 		yield part;
 	}
-}
-
-function listenDiagnostics(
-	editor: ReturnType<typeof createEditor>,
-): DiagnosticEvent[] {
-	const diagnostics: DiagnosticEvent[] = [];
-	editor.on("diagnostic", (event) => {
-		diagnostics.push(event);
-	});
-	return diagnostics;
 }
 
 function documentTexts(editor: ReturnType<typeof createEditor>): string[] {
@@ -544,6 +537,71 @@ describe("AIB3 processStream tool authority", () => {
 
 		editor.destroy();
 	});
+	async function streamDeleteBlock(
+		editor: ReturnType<typeof createEditor>,
+		options: Parameters<typeof processStream>[2] = {},
+	) {
+		await editor.whenReady();
+		editor.apply(
+			[
+				{ type: "insert-block", blockId: "victim", blockType: "paragraph", props: {}, position: "last" },
+				{ type: "splice-text", blockId: "victim", from: 0, to: 0, insert: "keep me" },
+			],
+			{ origin: "user" },
+		);
+		const emitted: PenStreamPart[] = [];
+		await processStream(
+			createStream([
+				{
+					type: "tool-input-available",
+					toolCallId: "delete-1",
+					toolName: "delete_block",
+					input: { blockId: "victim" },
+				},
+			]),
+			editor,
+			{
+				allowedMutatingTools: ["delete_block"],
+				onPart: (part) => emitted.push(part),
+				...options,
+			},
+		);
+		return emitted
+			.filter((part) => part.type === "tool-error")
+			.map((part) => ("error" in part ? part.error : null));
+	}
+
+	it("AIB3: processStream applies aiExtension unconfirmedDestructive refuse to a streamed delete_block", async () => {
+		const editor = createEditor({
+			schema: defaultSchema,
+			extensions: [
+				undoExtension(),
+				toolsExtension(),
+				deltaStreamExtension(),
+				aiExtension({ unconfirmedDestructive: "refuse" }),
+			],
+		});
+		expect(await streamDeleteBlock(editor)).toEqual(["tool-refused"]);
+		expect(editor.getBlock("victim")?.textContent()).toBe("keep me");
+		editor.destroy();
+	});
+
+	it("AIB3: processStream takes an explicit unconfirmedDestructive refuse", async () => {
+		const editor = createLiveEditor();
+		expect(await streamDeleteBlock(editor, { unconfirmedDestructive: "refuse" })).toEqual([
+			"tool-refused",
+		]);
+		expect(editor.getBlock("victim")?.textContent()).toBe("keep me");
+		editor.destroy();
+	});
+
+	it("AIB3: processStream without a refuse policy still runs a granted delete_block", async () => {
+		const editor = createLiveEditor();
+		expect(await streamDeleteBlock(editor)).toEqual([]);
+		expect(editor.getBlock("victim")).toBeNull();
+		editor.destroy();
+	});
+
 });
 
 function documentSnapshot(editor: ReturnType<typeof createEditor>) {

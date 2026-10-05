@@ -84,4 +84,4 @@ AI subpaths (`@input/pen-ai/suggestions`, `/autocomplete`, `/skills`, `/tools`, 
 These are current behavior, not bugs to close in passing:
 
 - `pen.ariaReadOnly` (the facet) only sets `aria-readonly`. The renderer `readonly` prop is what declines typing. Package specs describe the split; they do not pick a winner.
-- The command registry and catalog are settled: dispatch keeps the D/K/B rules. Selection bridging inside `@input/pen-dom` is the one part of the surface still unsettled; package specs that mention that bridging mark it as such.
+- The command registry and catalog are settled: dispatch keeps the D/K/B rules. Selection bridging inside `@input/pen-dom` follows `spec/rules/selection.md`, with one reader and one writer.

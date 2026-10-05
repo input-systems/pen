@@ -21,14 +21,14 @@ import {
 import { isCollapsed } from "../selection/helpers";
 import {
 	blockSelectionResult,
-	buildNormalPositionSnapshot,
+	buildLazyNormalPositionSnapshot,
 	buildTransitionSnapshot,
 	collapsedAt,
 	documentOrderedTextPoints,
 	fromTransitionSelection,
 	getAdjacentVisibleBlockId,
-	getAtomRangeAtOffset,
 	getEditorLocale,
+	getInlineNodeRange,
 	getVisibleBlockIds,
 	isEditableTextBlock,
 	logicalInline,
@@ -38,7 +38,7 @@ import {
 	toTransitionSelection,
 } from "./helpers";
 import {
-	getCellCaretFocus,
+	editedCellSelection,
 	handleCellEditingCaret,
 	handleCellSelectionArrow,
 } from "./caretCellEditing";
@@ -125,7 +125,7 @@ export function handleGraphemeCaret(
 		return finishNonVertical(editor, atomSelection);
 	}
 
-	const snapshot = buildNormalPositionSnapshot(editor);
+	const snapshot = buildLazyNormalPositionSnapshot(editor);
 	const stepped = nextNormalPosition(snapshot, focus, direction);
 	const next = resolveStep(editor, focus, stepped, direction);
 	if (!next) {
@@ -287,7 +287,7 @@ export function handleDocEdge(
 	param: CaretMotionParam,
 	edge: "start" | "end",
 ): CommandResult | false {
-	if (getCellCaretFocus(editor)) {
+	if (editedCellSelection(editor)) {
 		return true;
 	}
 
@@ -384,7 +384,11 @@ function stepInlineAtom(
 	) {
 		const start = Math.min(selection.anchor.offset, selection.focus.offset);
 		const end = Math.max(selection.anchor.offset, selection.focus.offset);
-		const selectedAtom = getAtomRangeAtOffset(block, start);
+		const selectedAtom = getInlineNodeRange(editor, {
+			blockId: focus.blockId,
+			offset: start,
+			direction: "forward",
+		});
 		if (
 			selectedAtom &&
 			selectedAtom.start === start &&
@@ -401,31 +405,32 @@ function stepInlineAtom(
 		return undefined;
 	}
 
-	const probeOffset = direction === 1 ? focus.offset : focus.offset - 1;
-	if (probeOffset < 0) {
-		return undefined;
-	}
-	const atom = getAtomRangeAtOffset(block, probeOffset);
+	// The atom on the side of travel, exactly: between two adjacent atoms
+	// each direction selects its own neighbour (N preamble).
+	const atom = getInlineNodeRange(editor, {
+		blockId: focus.blockId,
+		offset: focus.offset,
+		direction: direction === 1 ? "forward" : "backward",
+	});
 	if (!atom) {
 		return undefined;
 	}
-	if (direction === 1 && atom.start !== focus.offset) {
-		return undefined;
-	}
-	if (direction === -1 && atom.end !== focus.offset) {
-		return undefined;
+	if (param.extend) {
+		// Extending keeps the anchor and moves the focus over the atom in the
+		// direction of travel, so a backward extend ends at the atom's start.
+		return {
+			selection: textSelectionResult(
+				readTextAnchor(editor) ?? focus,
+				{
+					blockId: focus.blockId,
+					offset: direction === 1 ? atom.end : atom.start,
+				},
+			),
+		};
 	}
 	return {
 		selection: textSelectionResult(
-			param.extend
-				? (readTextAnchor(editor) ?? {
-						blockId: focus.blockId,
-						offset: atom.start,
-					})
-				: {
-						blockId: focus.blockId,
-						offset: atom.start,
-					},
+			{ blockId: focus.blockId, offset: atom.start },
 			{ blockId: focus.blockId, offset: atom.end },
 		),
 	};

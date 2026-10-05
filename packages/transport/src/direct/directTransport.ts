@@ -3,8 +3,6 @@ import type {
 	PenStreamPart,
 	PenStreamRequest,
 	PenTransport,
-	Position,
-	ToolContext,
 	ToolRuntime,
 	Unsubscribe,
 } from "@input/pen-types";
@@ -12,8 +10,12 @@ import {
 	createAIToolTurn,
 	isAIToolCallDenied,
 	openAIToolCall,
+	resolveAIToolConfirmPolicy,
+	type AIToolConfirmFn,
+	type AIUnconfirmedDestructivePolicy,
 } from "@input/pen-ai/tools";
 import { generateId, isAsyncIterable } from "@input/pen-types";
+import { createTransportToolContext } from "../toolContext";
 
 export interface DirectTransportOptions {
 	toolRuntime: ToolRuntime;
@@ -26,11 +28,23 @@ export interface DirectTransportOptions {
 	 * Mutating tools the model may invoke on this transport. Default deny.
 	 */
 	allowedMutatingTools?: readonly string[];
+	/**
+	 * Confirms destructive tool calls (AIB3). Defaults to the editor's
+	 * `aiExtension({ confirm })`.
+	 */
+	confirm?: AIToolConfirmFn;
+	/**
+	 * A destructive call with no `confirm` resolver (AIB3): `"refuse"` is the
+	 * production setting for an external tool surface. Defaults to the
+	 * editor's `aiExtension({ unconfirmedDestructive })`, then `"allow"`.
+	 */
+	unconfirmedDestructive?: AIUnconfirmedDestructivePolicy;
 	onError?: (error: unknown) => void;
 }
 
 export function directTransport(options: DirectTransportOptions): PenTransport {
 	const { toolRuntime, editor, onError, allowedMutatingTools = [] } = options;
+	const confirmPolicy = resolveAIToolConfirmPolicy(editor, options);
 	const activeControllers = new Set<AbortController>();
 
 	const transport: PenTransport = {
@@ -42,7 +56,13 @@ export function directTransport(options: DirectTransportOptions): PenTransport {
 			const signal = controller.signal;
 
 			try {
-				const turn = createAIToolTurn({ allowedMutatingTools });
+				// One request is one AI action: every tool write it makes joins
+				// one undo step (AIB4).
+				const turn = createAIToolTurn({
+					allowedMutatingTools,
+					groupId: generateId(),
+					...confirmPolicy,
+				});
 				for (const toolCall of request.toolCalls ?? []) {
 					if (signal.aborted) break;
 
@@ -71,7 +91,7 @@ export function directTransport(options: DirectTransportOptions): PenTransport {
 						const result = toolRuntime.executeTool(
 							toolCall.name,
 							toolCall.input,
-							context,
+							opened.context,
 						);
 
 						const resolved = await result;
@@ -158,87 +178,6 @@ export function directTransport(options: DirectTransportOptions): PenTransport {
 	};
 
 	return transport;
-}
-
-function createTransportToolContext(
-	context: PenStreamRequest["context"],
-	emit: (part: PenStreamPart) => void,
-	editor: Editor | undefined,
-): ToolContext {
-	let activeZoneId: string | null = null;
-
-	return {
-		get editor(): Editor {
-			return requireTransportEditor(editor);
-		},
-		docId: context?.docId ?? "",
-		emit,
-		insertBlock(
-			blockType: string,
-			props: Record<string, unknown>,
-			position: Position,
-		): string {
-			const liveEditor = requireTransportEditor(editor);
-			const blockId = generateId();
-
-			emit({
-				type: "block-insert",
-				blockId,
-				blockType,
-				props,
-				position,
-			});
-
-			liveEditor.apply(
-				[{ type: "insert-block", blockId, blockType, props, position }],
-				{ origin: "ai" },
-			);
-
-			return blockId;
-		},
-		updateBlock(blockId: string, props: Record<string, unknown>): void {
-			const liveEditor = requireTransportEditor(editor);
-
-			emit({ type: "block-update", blockId, props });
-			liveEditor.apply([{ type: "set-props", blockId, props }], {
-				origin: "ai",
-			});
-		},
-		deleteBlock(blockId: string): void {
-			const liveEditor = requireTransportEditor(editor);
-
-			emit({ type: "block-delete", blockId });
-			liveEditor.apply([{ type: "delete-block", blockId }], {
-				origin: "ai",
-			});
-		},
-		beginStreaming(zoneId: string, blockId: string): void {
-			activeZoneId = zoneId;
-			emit({ type: "gen-start", zoneId, blockId });
-		},
-		appendDelta(delta: string): void {
-			if (!activeZoneId) {
-				throw new Error("appendDelta() called before beginStreaming()");
-			}
-			emit({ type: "gen-delta", zoneId: activeZoneId, delta });
-		},
-		endStreaming(status: "complete" | "cancelled" | "error"): void {
-			if (!activeZoneId) {
-				throw new Error(
-					"endStreaming() called before beginStreaming()",
-				);
-			}
-			emit({ type: "gen-end", zoneId: activeZoneId, status });
-			activeZoneId = null;
-		},
-	};
-}
-
-function requireTransportEditor(editor: Editor | undefined): Editor {
-	if (editor) {
-		return editor;
-	}
-	throw new Error("Transport tool context requires a valid editor");
 }
 
 async function* iterateUntilAborted(

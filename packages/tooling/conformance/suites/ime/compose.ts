@@ -13,40 +13,6 @@ export async function readSurfaceText(page: Page): Promise<string> {
 	);
 }
 
-export async function readDocumentText(page: Page): Promise<string> {
-	return page.evaluate(() => window.__penConformance.documentText);
-}
-
-export async function readBackend(page: Page): Promise<{
-	contentEditable: string;
-	hasEditContext: boolean;
-}> {
-	return page.evaluate(() => {
-		const surface = document.querySelector(
-			"[data-pen-field-editor-active-surface], [data-pen-inline-content]",
-		);
-		if (!(surface instanceof HTMLElement)) {
-			throw new Error("no active surface");
-		}
-		return {
-			contentEditable: surface.contentEditable,
-			hasEditContext: Boolean(
-				(surface as HTMLElement & { editContext?: unknown }).editContext,
-			),
-		};
-	});
-}
-
-export async function readFocusOffset(page: Page): Promise<number | null> {
-	return page.evaluate(() => {
-		const selection = window.__penConformance.selection;
-		if (selection?.type !== "text") {
-			return null;
-		}
-		return selection.focus.offset;
-	});
-}
-
 export async function replayCompositionStart(page: Page): Promise<void> {
 	await page.evaluate(() => {
 		const surface = document.querySelector(
@@ -131,4 +97,53 @@ export async function dispatchComposingKey(
 		surface.dispatchEvent(event);
 		return event.defaultPrevented;
 	}, key);
+}
+
+/**
+ * An Android virtual keyboard's non-composition key (Gboard's Backspace or
+ * Enter): `keydown` with `keyCode` 229 and `key` "Unidentified", then the
+ * `beforeinput` it really is, at whatever element owns focus after the
+ * keydown. Returns that element's kind.
+ */
+export async function dispatchUnidentifiedKeyThenInput(
+	page: Page,
+	inputType: string,
+): Promise<{ keydownTarget: string; inputTarget: string }> {
+	return page.evaluate((type) => {
+		const describe = (element: Element | null): string => {
+			if (!(element instanceof HTMLElement)) return "none";
+			if (element.hasAttribute("data-pen-focus-sink")) return "sink";
+			const block = element.closest("[data-block-id]");
+			return block
+				? `field:${block.getAttribute("data-block-id")}`
+				: element.contentEditable === "true"
+					? "host"
+					: element.tagName.toLowerCase();
+		};
+		const keydownTarget = document.activeElement ?? document.body;
+		const keydownTargetKind = describe(keydownTarget);
+		const keydown = new KeyboardEvent("keydown", {
+			key: "Unidentified",
+			bubbles: true,
+			cancelable: true,
+			composed: true,
+		});
+		for (const name of ["keyCode", "which"]) {
+			Object.defineProperty(keydown, name, { configurable: true, value: 229 });
+		}
+		keydownTarget.dispatchEvent(keydown);
+		const inputTarget = document.activeElement ?? document.body;
+		inputTarget.dispatchEvent(
+			new InputEvent("beforeinput", {
+				bubbles: true,
+				cancelable: true,
+				composed: true,
+				inputType: type,
+			}),
+		);
+		return {
+			keydownTarget: keydownTargetKind,
+			inputTarget: describe(inputTarget),
+		};
+	}, inputType);
 }

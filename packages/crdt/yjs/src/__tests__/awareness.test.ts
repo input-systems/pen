@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { applyYjsAwarenessUpdate, encodeYjsAwarenessUpdate } from "../index";
 import { yjsAdapter } from "../adapter";
 import { createYjsDocument } from "../document";
-import { createYjsAwareness } from "../awareness";
+import {
+	applyYjsAwarenessUpdate,
+	createYjsAwareness,
+	encodeYjsAwarenessUpdate,
+} from "../awareness";
 import { createPeerDoc } from "./createPeerDoc";
 
 describe("awareness", () => {

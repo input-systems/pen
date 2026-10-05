@@ -31,6 +31,7 @@ export {
 export { useAIActions } from "./useAIActions";
 export { useAISessionActions } from "./useAISessionActions";
 export { useFieldEditor } from "./useFieldEditor";
+export { useReducedMotion } from "./useReducedMotion";
 export {
 	useEditorFocusController,
 	useFocusController,

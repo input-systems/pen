@@ -111,6 +111,7 @@
 - BlockRenderContext
 - BlockRenderer
 - BlockSchema
+- BlockScrollAlign
 - BlockSelection
 - BlockSelectionRole
 - BlockSuggestion
@@ -139,6 +140,7 @@
 - CRDTDocument
 - CRDTEvent
 - CRDTMap
+- CRDTUndoCaptureKey
 - CRDTUndoManager
 - CRDTUndoStackItem
 - CreateEditorOptions
@@ -147,6 +149,7 @@
 - DateFormat
 - Decoration
 - DecorationSet
+- DecorationUpdateScope
 - DefaultAssoc
 - DefineCommand
 - DefineFacet
@@ -286,6 +289,7 @@
 - SelectionRecord
 - SelectionRecordState
 - SelectionState
+- SelectionWriteOptions
 - SelectOption
 - ServerConfig
 - ServerExtensionContext
@@ -307,8 +311,10 @@
 - TextSelection
 - TextSplice
 - TextStreamWriter
+- ToolAuthorityContext
 - ToolContext
 - ToolDefinition
+- ToolDestructiveResolver
 - ToolErrorPart
 - ToolExecutionResult
 - ToolInputAvailablePart

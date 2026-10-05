@@ -1,6 +1,7 @@
-import { affectedBlockIdsFromSummary } from "@input/pen-core";
-import { useRef, useSyncExternalStore } from "react";
+import { useCallback, useRef, useSyncExternalStore } from "react";
 import type { Editor } from "@input/pen-types";
+
+import { useBlockNotifier } from "./useBlockNotifier";
 
 interface BlockTextDelta {
 	insert: string | Record<string, unknown>;
@@ -23,31 +24,34 @@ const SSR_SNAPSHOT: BlockTextSnapshot = {
 	deltas: EMPTY_DELTAS,
 };
 
-export function useBlockTextSnapshot(
-	editor: Editor,
-	blockId: string,
-): BlockTextSnapshot {
-	const snapshotRef = useRef<BlockTextSnapshot>(createMissingSnapshot());
-
-	return useSyncExternalStore(
-		(callback) =>
-			editor.on("commit", (event) => {
-				if (
-					affectedBlockIdsFromSummary(event.summary).includes(blockId)
-				) {
-					callback();
-				}
-			}),
-		() => {
-			const nextSnapshot = getBlockTextSnapshot(editor, blockId);
-			if (blockTextSnapshotEqual(snapshotRef.current, nextSnapshot)) {
-				return snapshotRef.current;
-			}
-			snapshotRef.current = nextSnapshot;
-			return nextSnapshot;
-		},
-		() => SSR_SNAPSHOT,
+/**
+ * The block's text and deltas. Notified through the root's block notifier,
+ * and the text is re-read only when the block's revision moved since the
+ * last read, so a render for any other reason reads nothing (SCALE6).
+ */
+export function useBlockTextSnapshot(editor: Editor, blockId: string): BlockTextSnapshot {
+	const notifier = useBlockNotifier();
+	const cacheRef = useRef<{ revision: number; exists: boolean; snapshot: BlockTextSnapshot } | null>(null);
+	// Inside a root only: outside one there is no notifier and nothing renders.
+	const subscribe = useCallback(
+		(onChange: () => void) => notifier?.subscribeBlock(blockId, onChange) ?? (() => {}),
+		[notifier, blockId],
 	);
+	const getSnapshot = useCallback(() => {
+		const revision = editor.getBlockRevision(blockId);
+		const exists = editor.getBlock(blockId) != null;
+		const cached = cacheRef.current;
+		if (cached && cached.revision === revision && cached.exists === exists) return cached.snapshot;
+		const next = getBlockTextSnapshot(editor, blockId);
+		const snapshot = cached && blockTextSnapshotEqual(cached.snapshot, next) ? cached.snapshot : next;
+		cacheRef.current = { revision, exists, snapshot };
+		return snapshot;
+	}, [editor, blockId]);
+	return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+function getServerSnapshot(): BlockTextSnapshot {
+	return SSR_SNAPSHOT;
 }
 
 function getBlockTextSnapshot(

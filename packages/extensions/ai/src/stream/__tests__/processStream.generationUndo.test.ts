@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { undoExtension } from "@input/pen-undo";
 import { deltaStreamExtension } from "../deltaStreamExtension";
 import { processStream } from "../processStream";
+import { createStream } from "./processStream.testHelpers";
 
 function createDefaultEditor(options: Parameters<typeof createEditor>[0] = {}) {
 	return createEditor({
@@ -17,12 +18,6 @@ function createDefaultEditor(options: Parameters<typeof createEditor>[0] = {}) {
 			...(options.extensions ?? []),
 		],
 	});
-}
-
-async function* createStream(parts: PenStreamPart[]) {
-	for (const part of parts) {
-		yield part;
-	}
 }
 
 function visibleText(text: string): string {
@@ -215,7 +210,7 @@ describe("@input/pen-ai/stream processStream generation undo", () => {
 		editor.destroy();
 	});
 
-	it("keeps user edits inside the generation zone in the same undo group", async () => {
+	it("AIB4: user edits inside the generation zone are their own undo step", async () => {
 		const editor = createDefaultEditor();
 		const blockId = editor.firstBlock()!.id;
 
@@ -259,9 +254,14 @@ describe("@input/pen-ai/stream processStream generation undo", () => {
 			"user AI output",
 		);
 
+		// AIB4: the generation is one step and the user's typing is another;
+		// the generation wrote last, so it undoes first.
+		expect(editor.undoManager.undo()).toBe(true);
+		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe("user ");
 		expect(editor.undoManager.undo()).toBe(true);
 		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe("");
 
+		expect(editor.undoManager.redo()).toBe(true);
 		expect(editor.undoManager.redo()).toBe(true);
 		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe(
 			"user AI output",

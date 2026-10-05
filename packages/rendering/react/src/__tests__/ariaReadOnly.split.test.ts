@@ -41,26 +41,6 @@ function createTestEditor(ariaReadOnlyFacetValue?: boolean) {
 	});
 }
 
-function insertHello(editor: Editor): string {
-	const blockId = editor.firstBlock()!.id;
-	editor.apply(
-		[
-			{
-				type: "splice-text",
-				blockId,
-				from: 0,
-				to: 0,
-				insert: "hello",
-			},
-		],
-		{ origin: "user" },
-	);
-	return editor
-		.getBlock(blockId)!
-		.textContent()
-		.replace(/\u200B/g, "");
-}
-
 const fixtures: Array<{
 	container: HTMLElement;
 	editor: Editor;
@@ -116,76 +96,50 @@ async function pointerActivateInline(container: HTMLElement): Promise<void> {
 	const inline = container.querySelector("[data-pen-inline-content]");
 	expect(inline).toBeInstanceOf(HTMLElement);
 	await act(async () => {
-		inline?.dispatchEvent(
-			new MouseEvent("mousedown", {
-				bubbles: true,
-				cancelable: true,
-				button: 0,
-			}),
-		);
-		inline?.dispatchEvent(
-			new MouseEvent("mouseup", {
-				bubbles: true,
-				cancelable: true,
-				button: 0,
-			}),
-		);
-		inline?.dispatchEvent(
-			new MouseEvent("click", {
-				bubbles: true,
-				cancelable: true,
-				button: 0,
-			}),
-		);
+		for (const type of ["mousedown", "mouseup", "click"]) {
+			inline?.dispatchEvent(
+				new MouseEvent(type, { bubbles: true, cancelable: true, button: 0 }),
+			);
+		}
 	});
 }
 
+const ARIA_READONLY_CASES = [
+	{
+		name: "ariaReadOnly facet announces aria-readonly and still accepts typing",
+		facet: true,
+		readonly: undefined,
+		dataReadonly: false,
+		editing: true,
+	},
+	{
+		name: "readonly prop announces aria-readonly and declines typing",
+		facet: undefined,
+		readonly: true,
+		dataReadonly: true,
+		editing: false,
+	},
+	{
+		name: "ariaReadOnly facet plus readonly prop: prop wins for typing, both set aria-readonly",
+		facet: true,
+		readonly: true,
+		dataReadonly: true,
+		editing: false,
+	},
+] as const;
+
 describe("React pen.ariaReadOnly vs readonly prop", () => {
-	it("ariaReadOnly facet announces aria-readonly and still accepts typing", async () => {
-		const editor = createTestEditor(true);
-		const { container, host } = await renderEditor(editor);
-		expect(editor.facet(ariaReadOnlyFacet)).toBe(true);
-		expect(host.getAttribute("aria-readonly")).toBe("true");
-		expect(host.hasAttribute("data-readonly")).toBe(false);
+	it.each(ARIA_READONLY_CASES)(
+		"$name",
+		async ({ facet, readonly, dataReadonly, editing }) => {
+			const editor = createTestEditor(facet);
+			const { container, host } = await renderEditor(editor, readonly);
+			expect(editor.facet(ariaReadOnlyFacet)).toBe(facet === true);
+			expect(host.getAttribute("aria-readonly")).toBe("true");
+			expect(host.hasAttribute("data-readonly")).toBe(dataReadonly);
 
-		await pointerActivateInline(container);
-		expect(fieldEditor(editor)?.isEditing).toBe(true);
-		let text = "";
-		await act(async () => {
-			text = insertHello(editor);
-		});
-		expect(text).toBe("hello");
-	});
-
-	it("readonly prop announces aria-readonly and declines typing", async () => {
-		const editor = createTestEditor();
-		const { container, host } = await renderEditor(editor, true);
-		expect(editor.facet(ariaReadOnlyFacet)).toBe(false);
-		expect(host.getAttribute("aria-readonly")).toBe("true");
-		expect(host.getAttribute("data-readonly")).toBe("");
-
-		await pointerActivateInline(container);
-		expect(fieldEditor(editor)?.isEditing).toBe(false);
-		let text = "";
-		await act(async () => {
-			text = insertHello(editor);
-		});
-		expect(text).toBe("hello");
-	});
-
-	it("ariaReadOnly facet plus readonly prop: prop wins for typing, both set aria-readonly", async () => {
-		const editor = createTestEditor(true);
-		const { container, host } = await renderEditor(editor, true);
-		expect(editor.facet(ariaReadOnlyFacet)).toBe(true);
-		expect(host.getAttribute("aria-readonly")).toBe("true");
-		expect(host.getAttribute("data-readonly")).toBe("");
-
-		await pointerActivateInline(container);
-		expect(fieldEditor(editor)?.isEditing).toBe(false);
-		let text = "";
-		await act(async () => {
-			text = insertHello(editor);
-		});
-		expect(text).toBe("hello");
-	});
+			await pointerActivateInline(container);
+			expect(fieldEditor(editor)?.isEditing).toBe(editing);
+		},
+	);
 });

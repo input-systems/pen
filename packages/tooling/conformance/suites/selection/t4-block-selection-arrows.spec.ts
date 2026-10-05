@@ -1,39 +1,20 @@
-import { expect, test, type Page } from "@playwright/test";
-import { loadavg } from "node:os";
-import { getInlineOffsetPoint } from "../../src/domGeometry";
+import { expect, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
 import type { SerializedSelection } from "../../src/types";
+import {
+	attachLoadavg,
+	clickOffset,
+	readSelection,
+} from "../specHelpers";
 
 const TWO_P2_TEXT = "Delta echo foxtrot";
 const SELECT_ALL = process.platform === "darwin" ? "Meta+a" : "Control+a";
-
-async function clickOffset(
-	page: Page,
-	blockId: string,
-	offset: number,
-): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId, offset });
-	await page.mouse.click(point.x, point.y);
-}
-
-async function readSelection(page: Page): Promise<SerializedSelection> {
-	return page.evaluate(() => window.__penConformance.selection);
-}
 
 async function escalateToBlockSelection(page: Page): Promise<SerializedSelection> {
 	await page.keyboard.press(SELECT_ALL);
 	await page.keyboard.press(SELECT_ALL);
 	return readSelection(page);
-}
-
-function attachLoadavg(label: string, payload: unknown): Promise<void> {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return test.info().attach(label, {
-		body: JSON.stringify({ loadavg: loads, payload }, null, 2),
-		contentType: "application/json",
-	});
 }
 
 scenario(

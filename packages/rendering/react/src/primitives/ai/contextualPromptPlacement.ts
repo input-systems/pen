@@ -20,6 +20,7 @@ import type {
 	ContextualPromptPlacement,
 	UseContextualPromptPlacementOptions,
 } from "./contextualPromptTypes";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 
 const SESSION_VIEWPORT_PADDING = 8;
 
@@ -114,8 +115,8 @@ export function useContextualPromptPlacement(
 		const containerElement =
 			containerRef?.current ?? surfaceRef.current.parentElement ?? null;
 		if (
-			!(hostElement instanceof HTMLElement) ||
-			!(containerElement instanceof HTMLElement)
+			!isDomHTMLElement(hostElement) ||
+			!isDomHTMLElement(containerElement)
 		) {
 			setLayout(null);
 			return;
@@ -141,6 +142,7 @@ export function useContextualPromptPlacement(
 			const containerScrollTop = container.scrollTop;
 			const containerScrollLeft = container.scrollLeft;
 			const liveSelectionRect = resolveLiveSelectionRect(
+				editor,
 				host,
 				anchorState.selectionSnapshot,
 			);

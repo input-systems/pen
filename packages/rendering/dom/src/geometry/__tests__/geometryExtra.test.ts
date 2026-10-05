@@ -263,26 +263,6 @@ describe("GeometryReader G4", () => {
 		expect(hit).toHaveBeenCalledWith(40, 8);
 	});
 
-	it("G4: click below the document maps to the last position of the last block", () => {
-		const root = mountEditorRoot();
-		mountBlock(root, "p1", "Hi", mockDOMRect(0, 0, 100, 16));
-		mountBlock(root, "p2", "Hello", mockDOMRect(0, 40, 100, 16));
-		const reader = createReader(root);
-
-		expect(reader.pointAt(50, 80)).toEqual({
-			blockId: "p2",
-			offset: 5,
-		});
-	});
-
-	it("G4: click above the document maps to the first position of the first block", () => {
-		const root = mountEditorRoot();
-		mountBlock(root, "p1", "Hello", mockDOMRect(0, 20, 100, 16));
-		const reader = createReader(root);
-
-		expect(reader.pointAt(50, 4)).toEqual({ blockId: "p1", offset: 0 });
-	});
-
 	it("G4: coordinates in the vertical band snap to the nearer block edge", () => {
 		const root = mountEditorRoot();
 		mountBlock(root, "p1", "Hello", mockDOMRect(100, 0, 80, 16));

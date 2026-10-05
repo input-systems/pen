@@ -1,19 +1,7 @@
-import type { InlineSchema, PropSchema } from "@input/pen-types";
-import {
-	prop,
-	resolveSchema,
-} from "@input/pen-core";
+import type { InlineSchema } from "@input/pen-types";
+import { prop } from "@input/pen-core";
 import { escapeHtml } from "../escapeHtml";
-
-function resolveProps(
-  props: Record<string, unknown>,
-): Record<string, PropSchema> {
-  const resolved: Record<string, PropSchema> = {};
-  for (const [k, v] of Object.entries(props)) {
-    resolved[k] = resolveSchema(v);
-  }
-  return resolved;
-}
+import { resolveProps } from "./resolveProps";
 
 export const mention: InlineSchema = {
   type: "mention",

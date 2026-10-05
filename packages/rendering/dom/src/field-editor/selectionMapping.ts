@@ -4,6 +4,7 @@
  */
 
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomElement, isDomHTMLElement } from "../utils/domNodes";
 import {
 	getBlockSelectionRoleFromType,
 	getSelectionLengthForRole,
@@ -32,50 +33,40 @@ export interface DirectionalSelectionOffsets {
 export interface ResolveSelectionPointOptions {
 	preferredBoundary?: SelectionBoundary;
 	previousPoint?: SelectionPoint | null;
-}
-
-function fallbackCharacterOffset(
-	container: HTMLElement,
-	targetNode: Node,
-	targetOffset: number,
-): number {
-	return domPointToLogicalOffset(container, targetNode, targetOffset);
+	/** Which edge of a non-collapsed native range the point is. */
+	rangeEdge?: SelectionBoundary;
 }
 
 /**
- * Compute the character offset of a DOM point within an inline content container.
- * Uses DOM Range first so browser-native endpoints on mark wrapper elements map
- * to the same logical offsets as equivalent text-node endpoints.
+ * The logical offset of a DOM point within an inline content container.
+ * Public through `./field-editor/selectionBridge`; `domPointToLogicalOffset`
+ * is the implementation.
  */
 export function domPointToOffset(
 	container: HTMLElement,
 	targetNode: Node,
 	targetOffset: number,
 ): number {
-	if (targetNode !== container && !container.contains(targetNode)) {
-		return fallbackCharacterOffset(container, targetNode, targetOffset);
-	}
-
 	return domPointToLogicalOffset(container, targetNode, targetOffset);
 }
 
 export function getBlockSurfaceRole(
 	blockEl: HTMLElement,
 ): "editable-inline" | "structural" | "delegated" {
-	const role = blockEl.getAttribute(DATA_ATTRS.surfaceRole);
-	if (role === "structural" || role === "delegated") {
-		return role;
-	}
-
-	const typeRole = getBlockSelectionRoleFromType(
-		blockEl.getAttribute(DATA_ATTRS.blockType),
-	);
-	// a delegated block with one text surface of its own (a code block) holds
-	// text offsets until expanded mode stamps its role; a table's cells do not.
-	if (typeRole === "delegated" && ownsTextSurface(blockEl)) {
+	const stamped = blockEl.getAttribute(DATA_ATTRS.surfaceRole);
+	const role =
+		stamped === "structural" || stamped === "delegated"
+			? stamped
+			: getBlockSelectionRoleFromType(
+					blockEl.getAttribute(DATA_ATTRS.blockType),
+				);
+	// A delegated block with one text surface of its own (a code block) holds
+	// text offsets, as core's selection does, whether or not expanded mode
+	// has stamped it `delegated`; a table's cells do not.
+	if (role === "delegated" && ownsTextSurface(blockEl)) {
 		return "editable-inline";
 	}
-	return typeRole;
+	return role;
 }
 
 function ownsTextSurface(blockEl: HTMLElement): boolean {
@@ -150,7 +141,9 @@ export function resolveSelectionPoint(
 	options: ResolveSelectionPointOptions = {},
 ): SelectionPoint | null {
 	const blockEl = findBlockElement(node, root);
-	if (!blockEl) return null;
+	if (!blockEl) {
+		return resolveBlockGapPoint(root, node, offset, options.rangeEdge);
+	}
 	const blockId = blockEl.getAttribute("data-block-id");
 	if (!blockId) return null;
 
@@ -161,7 +154,7 @@ export function resolveSelectionPoint(
 			options.preferredBoundary ??
 			(inlineEl && inlineEl.contains(node)
 				? resolveBoundarySideFromOffset(
-						domPointToOffset(inlineEl, node, offset),
+						domPointToLogicalOffset(inlineEl, node, offset),
 						getBlockSelectionLength(blockEl),
 					)
 				: "start");
@@ -169,21 +162,68 @@ export function resolveSelectionPoint(
 	}
 
 	const inlineEl = findInlineContentElement(blockEl);
-	if (!inlineEl) return { blockId, offset: 0 };
-
-	if (!inlineEl.contains(node)) return { blockId, offset: 0 };
-
-	const charOffset = domPointToOffset(inlineEl, node, offset);
-	return { blockId, offset: charOffset };
+	if (!inlineEl?.contains(node)) return { blockId, offset: 0 };
+	return { blockId, offset: domPointToLogicalOffset(inlineEl, node, offset) };
 }
 
 /**
- * Convert DOM selection range to editor (blockId, offset) pairs.
+ * The inverse of `findDOMPoint` for a unit block (N2): the
+ * projector writes such a block's `0..1` extent as the gaps around its
+ * element, `(parent, index)` and `(parent, index + 1)`. A point in a gap
+ * between block elements maps to the unit block on its left at 1, else the
+ * unit block on its right at 0, else the nearer edge of a text block. The
+ * start of a range prefers the unit block on its right: a gap between two
+ * unit blocks is both "after the first" and "before the second", and the
+ * projector writes a range that starts at the second as that gap.
  */
-export function domSelectionToEditor(
+function resolveBlockGapPoint(
 	root: HTMLElement,
+	node: Node,
+	offset: number,
+	rangeEdge: SelectionBoundary | undefined,
+): SelectionPoint | null {
+	if (!isDomElement(node) || !root.contains(node)) return null;
+	const before = node.childNodes[offset - 1];
+	const after = node.childNodes[offset];
+	const blockBefore = asBlockElement(before);
+	const blockAfter = asBlockElement(after);
+	if (rangeEdge === "start" && blockAfter && isUnitBlockElement(blockAfter)) {
+		return getBoundaryPointForBlockElement(blockAfter, "start");
+	}
+	if (blockBefore && isUnitBlockElement(blockBefore)) {
+		return getBoundaryPointForBlockElement(blockBefore, "end");
+	}
+	if (blockAfter && isUnitBlockElement(blockAfter)) {
+		return getBoundaryPointForBlockElement(blockAfter, "start");
+	}
+	if (blockBefore) return getBoundaryPointForBlockElement(blockBefore, "end");
+	if (blockAfter) return getBoundaryPointForBlockElement(blockAfter, "start");
+	return null;
+}
+
+/** A block whose `0..1` extent the projector writes as the gaps around it (`findDOMPoint`). */
+function isUnitBlockElement(blockEl: HTMLElement): boolean {
+	return (
+		!findInlineContentElement(blockEl) ||
+		getBlockSurfaceRole(blockEl) !== "editable-inline"
+	);
+}
+
+function asBlockElement(node: Node | undefined): HTMLElement | null {
+	return isDomHTMLElement(node) && node.hasAttribute(DATA_ATTRS.editorBlock)
+		? node
+		: null;
+}
+
+/**
+ * Maps `sel` inside `root` to editor (blockId, offset) pairs. It reads only
+ * the `Selection` it is given; the reader's `domSelectionToEditor` supplies
+ * the live one (S1).
+ */
+export function mapDomSelectionToEditor(
+	root: HTMLElement,
+	sel: Selection | null,
 ): { anchor: SelectionPoint; focus: SelectionPoint } | null {
-	const sel = window.getSelection();
 	if (!sel || sel.rangeCount === 0) return null;
 
 	const anchorNode = sel.anchorNode;
@@ -191,9 +231,36 @@ export function domSelectionToEditor(
 	if (!anchorNode || !focusNode) return null;
 	if (!root.contains(anchorNode) || !root.contains(focusNode)) return null;
 
-	const anchor = resolveSelectionPoint(root, anchorNode, sel.anchorOffset);
-	const focus = resolveSelectionPoint(root, focusNode, sel.focusOffset);
+	const anchorEdge = anchorRangeEdge(sel);
+	const anchor = resolveSelectionPoint(root, anchorNode, sel.anchorOffset, {
+		rangeEdge: anchorEdge,
+	});
+	const focus = resolveSelectionPoint(root, focusNode, sel.focusOffset, {
+		rangeEdge: oppositeEdge(anchorEdge),
+	});
 	if (!anchor || !focus) return null;
 
 	return { anchor, focus };
+}
+
+/** The range edge the anchor is on; undefined for a collapsed selection. */
+function anchorRangeEdge(sel: Selection): SelectionBoundary | undefined {
+	if (
+		sel.anchorNode === sel.focusNode &&
+		sel.anchorOffset === sel.focusOffset
+	) {
+		return undefined;
+	}
+	const range = sel.getRangeAt(0);
+	return range.startContainer === sel.anchorNode &&
+		range.startOffset === sel.anchorOffset
+		? "start"
+		: "end";
+}
+
+function oppositeEdge(
+	edge: SelectionBoundary | undefined,
+): SelectionBoundary | undefined {
+	if (edge === undefined) return undefined;
+	return edge === "start" ? "end" : "start";
 }

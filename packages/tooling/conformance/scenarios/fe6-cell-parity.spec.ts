@@ -1,7 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { formatCheckReport } from "../src/checkReport";
 import { scenario } from "../src/scenario";
-import type { DocumentContentSnapshot } from "../src/types";
+import type { ScenarioApi } from "../src/types";
+import { snapshotBytes } from "../suites/specHelpers";
 
 /**
  * FE6: the cell-parity contract, in a real browser.
@@ -31,13 +32,12 @@ import type { DocumentContentSnapshot } from "../src/types";
 const TABLE_ID = "fe6-parity-table";
 const CELL_CAPABILITY_UNSUPPORTED = "cell-capability-unsupported";
 
-function snapshotBytes(snapshot: DocumentContentSnapshot): string {
-	return JSON.stringify(snapshot);
+/** A check-report message whose outcome is `ok`. */
+function check(label: string, ok: boolean, detail: string): string {
+	return formatCheckReport(label, ok ? "passed" : "failed", detail);
 }
 
-async function seedTable(
-	s: Parameters<Parameters<typeof scenario>[1]>[0],
-): Promise<void> {
+async function seedTable(s: ScenarioApi): Promise<void> {
 	await s.load("hello-world");
 	await s.apply([
 		{
@@ -148,60 +148,155 @@ scenario(
 
 		expect(
 			afterCaretMove,
-			formatCheckReport(
+			check(
 				"FE6: ArrowLeft moved the cell caret, so the insert landed before the last character",
-				afterCaretMove === "alphaYX" ? "passed" : "failed",
+				afterCaretMove === "alphaYX",
 				`cell text=${afterCaretMove}`,
 			),
 		).toBe("alphaYX");
-
 		expect(
 			activeAfterTab,
-			formatCheckReport(
+			check(
 				"FE6: Tab moved the field editor to the next cell",
-				activeAfterTab?.col === "1" ? "passed" : "failed",
+				activeAfterTab?.col === "1",
 				`active cell=${JSON.stringify(activeAfterTab)}`,
 			),
 		).toEqual({ row: "0", col: "1" });
-
+		const undone = afterUndo !== beforeUndo;
 		expect(
-			afterUndo !== beforeUndo,
-			formatCheckReport(
-				"FE6: undo reverted a cell edit",
-				afterUndo !== beforeUndo ? "passed" : "failed",
-				`${beforeUndo} → ${afterUndo}`,
-			),
+			undone,
+			check("FE6: undo reverted a cell edit", undone, `${beforeUndo} → ${afterUndo}`),
 		).toBe(true);
 	},
 );
 
-/**
- * Which browsers route the bold accelerator into the page as a `formatBold`
- * `beforeinput`, measured rather than assumed.
- *
- * Chromium and WebKit produce it. Firefox delivers the keydown and nothing
- * else, so a Firefox host has no native route to a mark toggle at all — the
- * intent never reaches Pen, and there is nothing for Pen to decline. (In a
- * paragraph even Chromium delivers nothing, because it is on EditContext there;
- * cells are always contenteditable, which is why this route exists in a cell.)
- *
- * The scenario asserts this per browser instead of skipping the engines that
- * lack the route. Skipping would mean a Chromium or WebKit regression that
- * silenced both the route and the diagnostic still passed. Pinning it means
- * drift in either direction is red: if a routing engine stops delivering
- * `formatBold`, or if Firefox starts, the claim fails and the contract gets
- * re-read.
- */
-const ENGINES_ROUTING_BOLD_ACCELERATOR = new Set(["chromium", "webkit"]);
+/** The native caret's offset inside the active cell, or null outside it. */
+async function readNativeCellOffset(page: Page): Promise<number | null> {
+	return page.evaluate(() => {
+		const surface = document.querySelector(
+			"[data-pen-field-editor-active-surface][data-cell-row][data-cell-col]",
+		);
+		const selection = surface?.ownerDocument.getSelection();
+		if (!(surface instanceof HTMLElement) || !selection?.rangeCount) {
+			return null;
+		}
+		const range = selection.getRangeAt(0);
+		if (!surface.contains(range.startContainer)) {
+			return null;
+		}
+		const prefix = surface.ownerDocument.createRange();
+		prefix.selectNodeContents(surface);
+		prefix.setEnd(range.startContainer, range.startOffset);
+		return prefix.toString().length;
+	});
+}
 
+async function readCellCaret(page: Page): Promise<{
+	text: { anchor: number; focus: number } | null;
+	native: number | null;
+	mismatches: number;
+}> {
+	const native = await readNativeCellOffset(page);
+	const state = await page.evaluate(() => {
+		const selection = window.__penConformance.selection;
+		return {
+			text: selection?.type === "cell" ? (selection.text ?? null) : null,
+			mismatches: window.__penConformance.diagnostics.filter(
+				(event) => event.code === "selection-projection-mismatch",
+			).length,
+		};
+	});
+	return { ...state, native };
+}
+
+scenario(
+	"FE6: the cell caret is the authority's CellSelection.text and S2 holds while editing",
+	async (s, page) => {
+		await seedTable(s);
+		await editCell(page, 0, 0);
+		const activated = await readCellCaret(page);
+
+		await page.keyboard.press("ArrowLeft");
+		await page.keyboard.press("ArrowLeft");
+		const moved = await readCellCaret(page);
+
+		await page.keyboard.type("Z");
+		const typed = await readCellCaret(page);
+
+		const box = await cellLocator(page, 0, 0).boundingBox();
+		if (!box) {
+			throw new Error("cell has no box");
+		}
+		await page.mouse.click(box.x + 2, box.y + box.height / 2);
+		const clicked = await readCellCaret(page);
+
+		const steps = { activated, moved, typed, clicked };
+		await test.info().attach("fe6-cell-caret-authority", {
+			body: JSON.stringify(steps, null, 2),
+			contentType: "application/json",
+		});
+
+		expect(
+			[activated.text, moved.text, typed.text],
+			check(
+				"FE6: activation, arrows and typing move CellSelection.text",
+				activated.text?.focus === 5 && moved.text?.focus === 3 && typed.text?.focus === 4,
+				JSON.stringify(steps),
+			),
+		).toEqual([
+			{ anchor: 5, focus: 5 },
+			{ anchor: 3, focus: 3 },
+			{ anchor: 4, focus: 4 },
+		]);
+		for (const [name, step] of Object.entries(steps)) {
+			expect(
+				step.native,
+				check(
+					`S2: the native caret shows CellSelection.text after ${name}`,
+					step.native !== null && step.native === step.text?.focus,
+					JSON.stringify(step),
+				),
+			).toBe(step.text?.focus);
+		}
+		expect(
+			clicked.text?.focus,
+			check(
+				"FE6: a click inside the edited cell writes CellSelection.text",
+				clicked.text?.focus === 0,
+				JSON.stringify(clicked),
+			),
+		).toBe(0);
+		expect(
+			clicked.mismatches,
+			check(
+				"FE6: editing a cell projects without a selection-projection-mismatch",
+				clicked.mismatches === 0,
+				`mismatches=${clicked.mismatches}`,
+			),
+		).toBe(0);
+	},
+);
+
+/**
+ * The bold accelerator inside an edited cell, on every engine.
+ *
+ * The field editor declines it on keydown, which every engine delivers, rather
+ * than waiting for a native `formatBold` `beforeinput`. That event is engine-
+ * and host-dependent: Chromium produces it inside a contenteditable, Firefox
+ * never does, and WebKit only does when the host application maps the key
+ * equivalent to a bold command (Safari's Format menu does; a bare WKWebView,
+ * which is what Playwright drives, does not). A decline that rode on that
+ * event was observable on one of the three conformance engines.
+ *
+ * Declining on keydown prevents the default, so no engine follows with a
+ * `formatBold` either; the scenario pins that too, because a native toggle
+ * arriving after the keydown would report the same decline twice.
+ */
 scenario(
 	"FE6: a mark toggle inside a cell fails closed and says so",
 	async (s, page) => {
 		const browserName = test.info().project.name;
-		const routeExists = ENGINES_ROUTING_BOLD_ACCELERATOR.has(browserName);
-		if (routeExists) {
-			s.expectDiagnostic(CELL_CAPABILITY_UNSUPPORTED);
-		}
+		s.expectDiagnostic(CELL_CAPABILITY_UNSUPPORTED);
 
 		await seedTable(s);
 		await editCell(page, 0, 0);
@@ -225,37 +320,25 @@ scenario(
 			);
 		});
 
-		const before = snapshotBytes(
-			await page.evaluate(() =>
-				window.__penConformance.documentSnapshot(),
-			),
-		);
+		const readBytes = async () =>
+			snapshotBytes(await page.evaluate(() => window.__penConformance.documentSnapshot()));
+		const before = await readBytes();
 		await page.keyboard.press("ControlOrMeta+b");
-		const after = snapshotBytes(
-			await page.evaluate(() =>
-				window.__penConformance.documentSnapshot(),
-			),
-		);
+		const after = await readBytes();
 
 		const inputTypes = await page.evaluate(
-			() =>
-				(window as unknown as { __fe6InputTypes: string[] })
-					.__fe6InputTypes,
+			() => (window as unknown as { __fe6InputTypes: string[] }).__fe6InputTypes,
 		);
-		const diagnostics = await page.evaluate(
-			() => window.__penConformance.diagnostics,
-		);
-		const declined = diagnostics.find(
+		const diagnostics = await page.evaluate(() => window.__penConformance.diagnostics);
+		const declines = diagnostics.filter(
 			(event) => event.code === CELL_CAPABILITY_UNSUPPORTED,
 		);
-		const routeDelivered = inputTypes.includes("formatBold");
+		const declined = declines[0];
 
 		await test.info().attach("fe6-cell-marks-decline", {
 			body: JSON.stringify(
 				{
 					browserName,
-					routeExists,
-					routeDelivered,
 					inputTypes,
 					changed: before !== after,
 					diagnostics,
@@ -266,62 +349,42 @@ scenario(
 			contentType: "application/json",
 		});
 
-		// True on every engine, route or no route: a cell never gains a mark.
 		expect(
 			after,
-			formatCheckReport(
+			check(
 				"FE6: a mark toggle leaves a cell's document bytes untouched",
-				before === after ? "passed" : "failed",
+				before === after,
 				before === after ? "unchanged" : "document changed",
 			),
 		).toBe(before);
 
-		// The label states the pin and the detail states the measurement, so a
-		// failure reads as the disagreement it is. Composing the label from
-		// `routeExists` alone printed "webkit does not route ... — inputTypes=
-		// ["formatBold"]", which contradicts its own evidence.
 		expect(
-			routeDelivered,
-			formatCheckReport(
-				`FE6: ${browserName} is pinned to ${routeExists ? "route" : "not route"} the bold accelerator into the page as formatBold`,
-				routeDelivered === routeExists ? "passed" : "failed",
-				`${browserName} ${routeDelivered ? "delivered" : "did not deliver"} formatBold; inputTypes=${JSON.stringify(inputTypes)}`,
+			inputTypes,
+			check(
+				"FE6: the declined accelerator is not followed by a native formatBold",
+				inputTypes.length === 0,
+				`${browserName} inputTypes=${JSON.stringify(inputTypes)}`,
 			),
-		).toBe(routeExists);
-
-		if (!routeExists) {
-			// Nothing asked, so nothing may claim to have declined.
-			expect(
-				declined,
-				formatCheckReport(
-					"FE6: no decline is reported where no toggle intent arrives",
-					declined ? "failed" : "passed",
-					`diagnostics=${JSON.stringify(diagnostics)}`,
-				),
-			).toBeUndefined();
-			return;
-		}
+		).toEqual([]);
 
 		expect(
-			declined ? declined.code : "missing",
-			formatCheckReport(
-				"FE6: the decline is observable, not silent",
-				declined ? "passed" : "failed",
-				`diagnostics=${JSON.stringify(diagnostics)}`,
+			declines.length,
+			check(
+				"FE6: the decline is observable, once, on every engine",
+				declines.length === 1,
+				`${browserName} diagnostics=${JSON.stringify(diagnostics)}`,
 			),
-		).toBe(CELL_CAPABILITY_UNSUPPORTED);
+		).toBe(1);
 
+		const message = declined?.message ?? "";
+		const expectedMessage = "marks are not supported inside a table cell";
 		expect(
-			declined?.message ?? "",
-			formatCheckReport(
+			message,
+			check(
 				"FE6: the diagnostic names the capability and the surface",
-				/marks are not supported inside a table cell/.test(
-					declined?.message ?? "",
-				)
-					? "passed"
-					: "failed",
+				message.includes(expectedMessage),
 				`message=${declined?.message}`,
 			),
-		).toContain("marks are not supported inside a table cell");
+		).toContain(expectedMessage);
 	},
 );

@@ -29,6 +29,13 @@ const PEN_SOURCE_ALIASES = {
 	"@input/pen-core": fileURLToPath(
 		new URL("../../../../packages/core/src/index.ts", import.meta.url),
 	),
+	// subpath before the bare specifier (see the @input/pen-ai note above)
+	"@input/pen-yjs/awareness": fileURLToPath(
+		new URL(
+			"../../../../packages/crdt/yjs/src/awareness.ts",
+			import.meta.url,
+		),
+	),
 	"@input/pen-yjs": fileURLToPath(
 		new URL("../../../../packages/crdt/yjs/src/index.ts", import.meta.url),
 	),
@@ -55,6 +62,9 @@ const PEN_SOURCE_ALIASES = {
 	),
 	"@input/pen": fileURLToPath(
 		new URL("../../../../packages/pen/src/index.ts", import.meta.url),
+	),
+	"@input/pen-vue": fileURLToPath(
+		new URL("../../../../packages/rendering/vue/src/index.ts", import.meta.url),
 	),
 	"@input/pen-react": fileURLToPath(
 		new URL(
@@ -88,7 +98,7 @@ export default defineConfig({
 	resolve: {
 		alias: PEN_SOURCE_ALIASES,
 		conditions: ["import", "module", "browser", "default"],
-		dedupe: ["react", "react-dom"],
+		dedupe: ["react", "react-dom", "vue"],
 	},
 	server: {
 		host: "127.0.0.1",

@@ -10,23 +10,10 @@ import type {
 } from "@input/pen-types";
 import { aiExtension, getAIController } from "../index";
 import { deltaStreamExtension } from "../stream";
+import { Annotation, annotationsFromRequest } from "./editChannel.testHelpers";
 
 const TITLE = "Quarterly Report";
 const BODY = "This report covers the third quarter.";
-const BLOCK_ANNOTATION_PATTERN = /<!-- block:(\S+) (\S+) -->/g;
-
-interface Annotation {
-	id: string;
-	type: string;
-}
-
-function annotationsFromRequest(request: { messages: unknown }): Annotation[] {
-	const serialized = JSON.stringify(request.messages);
-	return [...serialized.matchAll(BLOCK_ANNOTATION_PATTERN)].map((match) => ({
-		id: match[1]!,
-		type: match[2]!,
-	}));
-}
 
 function headingFromRequest(request: {
 	messages: unknown;

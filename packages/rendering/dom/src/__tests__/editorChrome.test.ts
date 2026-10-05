@@ -65,6 +65,12 @@ describe("HOST6: editor chrome stylesheet", () => {
 		expect(PEN_EDITOR_CHROME_STYLESHEET).toMatch(/min-height:\s*1em/);
 	});
 
+	it("OV2: positions the root at zero specificity so a host rule wins", () => {
+		expect(PEN_EDITOR_CHROME_STYLESHEET).toMatch(
+			/:where\(\[data-pen-editor-root\]\)\s*\{[^}]*position:\s*relative/,
+		);
+	});
+
 	it("adoptEditorChrome injects once and removes on the last release", () => {
 		const first = adoptEditorChrome(document);
 		const second = adoptEditorChrome(document);

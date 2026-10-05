@@ -4,6 +4,14 @@ import type { Editor, TableColumnSchema } from "@input/pen-types";
 import { generateId } from "@input/pen-types";
 import { useIsomorphicLayoutEffect } from "../hooks/useIsomorphicLayoutEffect";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
+import {
+	captureFocusReturn,
+	restoreFocusReturn,
+	type FocusReturnPreference,
+} from "@input/pen-dom";
+import { resolveChromeEditorRoot } from "../utils/aiDomScope";
+import { getAttachedFieldEditorSession } from "../utils/fieldEditor";
+import { isDomHTMLElement } from "@input/pen-dom/utils/domNodes";
 
 type MenuColumnType =
 	| "text"
@@ -60,7 +68,10 @@ function rovingTabIndex(activeIndex: number, itemIndex: number): number {
 
 /**
  * AX3 detached surface: `role="menu"`, roving tabindex, arrow keys move within.
- * Escape closes and restores the invoking control. Does not steal editor focus on open.
+ * Escape and every action close it and return focus to the invoking column
+ * header control (D15); delete removes that control, so focus goes to the
+ * editor surface. An outside mousedown returns nothing: the pointer chose
+ * the next target. Does not steal editor focus on open.
  */
 export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 	const {
@@ -94,13 +105,16 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 		updateColumns([...updated]);
 	}
 
-	function closeAndRestoreFocus() {
-		const menu = menuRef.current;
-		const menuHadFocus = !!menu && menu.contains(document.activeElement);
+	function closeAndReturnFocus(prefer: FocusReturnPreference = "target") {
 		onClose();
-		if (menuHadFocus) {
-			anchorEl.focus();
-		}
+		const root = resolveChromeEditorRoot(editor, anchorEl);
+		if (!root) return;
+		restoreFocusReturn(
+			captureFocusReturn(root, anchorEl),
+			getAttachedFieldEditorSession(editor),
+			prefer,
+			{ owner: menuRef.current },
+		);
 	}
 
 	function handleRovingFocus(event: React.FocusEvent<HTMLElement>) {
@@ -117,7 +131,7 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 		if (items.length === 0) return;
 
 		const focusedIndex = items.indexOf(
-			document.activeElement as HTMLElement,
+			menu.ownerDocument.activeElement as HTMLElement,
 		);
 		const from = focusedIndex >= 0 ? focusedIndex : activeIndex;
 		let next = from;
@@ -147,19 +161,20 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 			event.preventDefault();
 			event.stopPropagation();
 			setTitle(column.title);
-			closeAndRestoreFocus();
+			closeAndReturnFocus();
 			return;
 		}
 
 		const target = event.target;
 		if (
 			event.key === "Enter" &&
-			target instanceof HTMLInputElement &&
+			isDomHTMLElement(target) &&
+			target.tagName === "INPUT" &&
 			target.dataset.penColumnMenuItem !== undefined
 		) {
 			event.preventDefault();
 			commitTitle();
-			closeAndRestoreFocus();
+			closeAndReturnFocus();
 			return;
 		}
 
@@ -180,7 +195,7 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 			i === columnIndex ? { ...c, type: newType } : c,
 		);
 		updateColumns([...updated]);
-		onClose();
+		closeAndReturnFocus();
 	}
 
 	function handleInsertLeft() {
@@ -202,7 +217,7 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 			],
 			{ origin: "user" },
 		);
-		onClose();
+		closeAndReturnFocus();
 	}
 
 	function handleInsertRight() {
@@ -224,7 +239,7 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 			],
 			{ origin: "user" },
 		);
-		onClose();
+		closeAndReturnFocus();
 	}
 
 	function handleDelete() {
@@ -245,7 +260,8 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 			],
 			{ origin: "user" },
 		);
-		onClose();
+		// The invoking header goes with its column.
+		closeAndReturnFocus("surface");
 	}
 
 	useEffect(() => {
@@ -259,8 +275,11 @@ export function ColumnHeaderMenu(props: ColumnHeaderMenuProps) {
 				onClose();
 			}
 		};
-		document.addEventListener("mousedown", handler);
-		return () => document.removeEventListener("mousedown", handler);
+		// `pointerdown`, not `mousedown`: a control that cancels its
+		// pointerdown suppresses the compatibility mouse events.
+		const doc = anchorEl.ownerDocument;
+		doc.addEventListener("pointerdown", handler);
+		return () => doc.removeEventListener("pointerdown", handler);
 	}, [anchorEl, onClose, title]);
 
 	useIsomorphicLayoutEffect(() => {

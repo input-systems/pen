@@ -1,8 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
-import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
+import { clickOffset, logLoad } from "../specHelpers";
 
 const HELLO_ID = "hello-p1";
 const HELLO_MID = 5;
@@ -19,21 +18,6 @@ type NativeCaretBox = {
 	top: number;
 	height: number;
 };
-
-function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
-
-async function clickOffset(
-	page: Page,
-	blockId: string,
-	offset: number,
-): Promise<void> {
-	const point = await getInlineOffsetPoint(page, { blockId, offset });
-	await page.mouse.click(point.x, point.y);
-}
 
 async function readInlineShape(
 	page: Page,

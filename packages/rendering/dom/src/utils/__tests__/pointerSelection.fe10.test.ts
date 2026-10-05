@@ -37,10 +37,6 @@ function createParagraphEditor() {
 	return { editor, p1 };
 }
 
-function boundaryPoint(blockId: string, side: "start" | "end") {
-	return { blockId, offset: side === "start" ? 0 : 1 };
-}
-
 /**
  * The intra-block half of FE10. A drag that starts inside a field leaves the
  * range to the browser, and the mapped read at mouseup commits it. A drag
@@ -66,7 +62,6 @@ describe("resolvePointerDragSelection FE10", () => {
 		const resolved = resolvePointerDragSelection(editor, root, gesture, {
 			clientX: 600,
 			clientY: 40,
-			getBoundaryPoint: boundaryPoint,
 		});
 
 		expect(resolved).toEqual({
@@ -93,7 +88,6 @@ describe("resolvePointerDragSelection FE10", () => {
 		const resolved = resolvePointerDragSelection(editor, root, gesture, {
 			clientX: 600,
 			clientY: 40,
-			getBoundaryPoint: boundaryPoint,
 		});
 
 		expect(resolved).toBeNull();
@@ -117,7 +111,6 @@ describe("resolvePointerDragSelection FE10", () => {
 		const resolved = resolvePointerDragSelection(editor, root, gesture, {
 			clientX: 6,
 			clientY: 44,
-			getBoundaryPoint: boundaryPoint,
 		});
 
 		expect(resolved).toBeNull();

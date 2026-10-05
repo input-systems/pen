@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { createEditor } from "@input/pen-core";
-import { createDefaultSchema } from "@input/pen-schema";
 import {
 	INGEST_MAX_IMAGE_COUNT,
 	INGEST_MAX_NESTING_DEPTH,
@@ -11,14 +10,10 @@ import {
 	IngestDropCounts,
 } from "../ingestBounds";
 import { htmlImporter, parseHtmlWithReport } from "../importer";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
-
-const defaultRegistry = createDefaultSchema();
+import {
+	defaultRegistry,
+	noDefaultExtensionsPreset,
+} from "./importHtml.testHelpers";
 
 function createBareEditor() {
 	return createEditor({

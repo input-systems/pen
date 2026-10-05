@@ -1,8 +1,13 @@
 import type { CommitEvent } from "@input/pen-types";
+import { yjsAdapter } from "@input/pen-yjs";
+import type { CRDTDiagnostic } from "@input/pen-yjs";
 import { describe, expect, it } from "vitest";
 
 import { createDefaultSchema } from "./fixtures/testSchema";
-import { createEditor as createCoreEditor } from "../index";
+import {
+	createEditor as createCoreEditor,
+	createHeadlessEditor,
+} from "../index";
 
 const noDefaultExtensionsPreset = {
 	resolve() {
@@ -60,6 +65,21 @@ describe("origin normalization", () => {
 		expect(commits).toHaveLength(1);
 		expect(commits[0].origin).toEqual({ type: "collaborator" });
 		expect(commits[0].source).toBe("remote");
+
+		editor.destroy();
+	});
+
+	it("2.3: constructing a headless editor over yjsAdapter emits no diagnostics (no origin-less construction write)", () => {
+		const diagnostics: CRDTDiagnostic[] = [];
+		const editor = createHeadlessEditor({
+			crdt: yjsAdapter({
+				onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+			}),
+			schema: createDefaultSchema(),
+			preset: noDefaultExtensionsPreset,
+		});
+
+		expect(diagnostics).toEqual([]);
 
 		editor.destroy();
 	});

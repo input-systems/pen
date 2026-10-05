@@ -1,170 +1,68 @@
 // @vitest-environment jsdom
 
-import { createEditor } from "@input/pen-core";
-import { defaultSchema } from "@input/pen-schema";
 import { afterEach, describe, expect, it } from "vitest";
-import { DATA_ATTRS } from "../../utils/dataAttributes";
-import { FieldEditorImpl } from "../fieldEditorImpl";
-import type { EditContext } from "../editContextTypes";
+import {
+	cleanupMountedFields,
+	mountField,
+} from "./fieldEditorFixtures.testHelpers";
 
-class FakeEditContext implements EditContext {
-	text: string;
-	selectionStart: number;
-	selectionEnd: number;
-	private readonly listeners = new Map<string, Set<(event: Event) => void>>();
+afterEach(cleanupMountedFields);
 
-	constructor(options?: {
-		text?: string;
-		selectionStart?: number;
-		selectionEnd?: number;
-	}) {
-		this.text = options?.text ?? "";
-		this.selectionStart = options?.selectionStart ?? 0;
-		this.selectionEnd = options?.selectionEnd ?? 0;
-	}
-
-	updateText(start: number, end: number, text: string): void {
-		this.text = `${this.text.slice(0, start)}${text}${this.text.slice(end)}`;
-	}
-
-	updateSelection(start: number, end: number): void {
-		this.selectionStart = start;
-		this.selectionEnd = end;
-	}
-
-	updateCharacterBounds(): void {}
-
-	addEventListener(type: string, handler: (event: Event) => void): void {
-		const handlers = this.listeners.get(type) ?? new Set();
-		handlers.add(handler);
-		this.listeners.set(type, handlers);
-	}
-
-	removeEventListener(type: string, handler: (event: Event) => void): void {
-		this.listeners.get(type)?.delete(handler);
-	}
-}
-
-const fixtures: Array<{
-	editor: ReturnType<typeof createEditor>;
-	fieldEditor: FieldEditorImpl;
-	root: HTMLElement;
-}> = [];
-
-afterEach(() => {
-	while (fixtures.length > 0) {
-		const fixture = fixtures.pop();
-		if (!fixture) {
-			break;
-		}
-		fixture.fieldEditor.destroy();
-		fixture.root.remove();
-		fixture.editor.destroy();
-	}
-	delete (globalThis as { EditContext?: unknown }).EditContext;
-});
-
-function mountEditContextEditor(text: string) {
-	(
-		globalThis as typeof globalThis & {
-			EditContext: typeof FakeEditContext;
-		}
-	).EditContext = FakeEditContext;
-
-	const editor = createEditor({ schema: defaultSchema });
-	const fieldEditor = new FieldEditorImpl(editor);
-	const root = document.createElement("div");
-	root.setAttribute(DATA_ATTRS.editorRoot, "");
-	document.body.appendChild(root);
-	const blockId = editor.firstBlock()!.id;
-	editor.apply([
-		{ type: "splice-text", blockId, from: 0, to: 0, insert: text },
-	]);
-	const block = document.createElement("div");
-	block.setAttribute(DATA_ATTRS.editorBlock, "");
-	block.setAttribute(DATA_ATTRS.blockId, blockId);
-	const inline = document.createElement("div");
-	inline.setAttribute(DATA_ATTRS.inlineContent, "");
-	inline.textContent = text;
-	block.appendChild(inline);
-	root.appendChild(block);
-	fieldEditor.setRootElement(root);
-	fieldEditor.activate(blockId);
-	fixtures.push({ editor, fieldEditor, root });
-	return { editor, fieldEditor, root, blockId, inline };
-}
-
-describe("FE9 EditContext mapped caret after apply", () => {
-	it("FE9: programmatic splice drops textupdate authority and updates EditContext", () => {
-		const { editor, fieldEditor, blockId, inline } =
-			mountEditContextEditor("aa :sm bb");
-		const editContext = (
-			inline as HTMLElement & { editContext?: FakeEditContext }
-		).editContext;
-		expect(editContext).toBeDefined();
-
-		fieldEditor.activateTextSelection(blockId, 6, 6);
-		fieldEditor.setBackendSelectionAuthority("edit-context-textupdate", {
-			blockId,
-			anchorOffset: 6,
-			focusOffset: 6,
-		});
-		editContext!.updateSelection(6, 6);
-
-		editor.apply(
-			[
-				{
-					type: "splice-text",
-					blockId,
-					from: 3,
-					to: 6,
-					insert: "",
-				},
-			],
-			{ origin: "user" },
+describe("FE9 EditContext trusted typing caret", () => {
+	it("FE9: a mapped selectionChange clears the backend's trusted typing caret and the next textupdate inserts at the mapped caret", () => {
+		const { editor, fieldEditor, blockId, editContext, text } = mountField(
+			"hello world",
+			{ editContext: true },
 		);
 
-		expect(editor.getBlock(blockId)?.textContent()).toBe("aa  bb");
+		fieldEditor.activateTextSelection(blockId, 5, 5);
+		editContext.textUpdate(5, 5, "x");
+		expect(text()).toBe("hellox world");
+
+		editor.apply(
+			[{ type: "splice-text", blockId, from: 0, to: 3, insert: "" }],
+			{ origin: "user" },
+		);
 		expect(editor.selection).toMatchObject({
 			type: "text",
 			focus: { blockId, offset: 3 },
 		});
-		expect(
-			fieldEditor.getBackendSelectionAuthority(
-				"edit-context-textupdate",
-				blockId,
-			),
-		).toBeNull();
-		expect(editContext!.selectionStart).toBe(3);
-		expect(editContext!.selectionEnd).toBe(3);
+		expect(editContext.selectionStart).toBe(3);
+		expect(editContext.selectionEnd).toBe(3);
+
+		// a stale range: the pre-apply caret would put "y" at 6
+		editContext.textUpdate(6, 6, "y");
+		expect(text()).toBe("loxy world");
 	});
 
-	it("FE9: an ordinary selection change keeps textupdate authority", () => {
-		const { editor, fieldEditor, blockId, inline } =
-			mountEditContextEditor("aa :sm bb");
-		const editContext = (
-			inline as HTMLElement & { editContext?: FakeEditContext }
-		).editContext;
-		expect(editContext).toBeDefined();
+	it("FE9: ordinary typing keeps the trusted typing caret against a stale range", () => {
+		const { editor, fieldEditor, blockId, editContext, text } = mountField(
+			"hello world",
+			{ editContext: true },
+		);
 
-		fieldEditor.activateTextSelection(blockId, 6, 6);
-		fieldEditor.setBackendSelectionAuthority("edit-context-textupdate", {
-			blockId,
-			anchorOffset: 6,
-			focusOffset: 6,
-		});
-		editContext!.updateSelection(6, 6);
+		fieldEditor.activateTextSelection(blockId, 5, 5);
+		editContext.textUpdate(5, 5, "x");
+		// a stale range: the buffer still reports the pre-keystroke caret
+		editContext.textUpdate(5, 5, "y");
 
-		// not a mapped remap, so the stamp is still the last trusted typing
-		// caret that resolveEditContextTextUpdateRange needs when EditContext
-		// reports a stale range. clearing it on every projection loses that.
+		expect(text()).toBe("helloxy world");
+	});
+
+	it("FE9: a programmatic selectText clears the trusted typing caret and the next textupdate inserts at the new caret", () => {
+		const { editor, fieldEditor, blockId, editContext, text } = mountField(
+			"hello world",
+			{ editContext: true },
+		);
+
+		fieldEditor.activateTextSelection(blockId, 5, 5);
+		editContext.textUpdate(5, 5, "x");
+
 		editor.selectText(blockId, 2, 2);
+		expect(editContext.selectionStart).toBe(2);
+		// a stale range: the old trusted caret would put "y" at 6
+		editContext.textUpdate(9, 9, "y");
 
-		expect(
-			fieldEditor.getBackendSelectionAuthority(
-				"edit-context-textupdate",
-				blockId,
-			),
-		).toMatchObject({ anchorOffset: 6, focusOffset: 6 });
+		expect(text()).toBe("heyllox world");
 	});
 });

@@ -3,8 +3,15 @@ import {
 	SCALE1_FIXTURE_AUDIT,
 	type FixtureAuditRow,
 } from "../fixtures/audit";
-import type { EnvelopePointRecord, EnvelopeRecord } from "./compare";
+import type {
+	EnvelopePointRecord,
+	EnvelopeRecord,
+	EnvelopeRendererRow,
+} from "./compare";
 import { ENFORCEMENT_INVENTORY, type EnforcementRow } from "./enforcement";
+
+/** Concurrent peers are verified at five (W5.R8): the n-peer COL4 rows run at 2, 3 and 5. */
+const SCALE1_VERIFIED_PEER_COUNT = 5;
 
 export function renderEnvelopeMarkdown(record: EnvelopeRecord): string {
 	const statusLine =
@@ -16,11 +23,14 @@ export function renderEnvelopeMarkdown(record: EnvelopeRecord): string {
 		.map((point) => renderLadderRow(point, record))
 		.join("\n");
 	const auditRows = [...SCALE1_FIXTURE_AUDIT, ...RELATED_FIXTURE_AUDIT]
-		.map((row) => renderAuditRow(row))
+		.map((row) => renderAuditRow(row, record))
 		.join("\n");
 	const enforcementRows = ENFORCEMENT_INVENTORY.map((row) =>
 		renderEnforcementRow(row),
 	).join("\n");
+	const rendererRows = record.renderer
+		.map((row) => renderRendererRow(row))
+		.join("\n");
 
 	return `# Scale envelope
 
@@ -46,11 +56,19 @@ ${auditRows}
 | ---- | -------- | -------- | -------------- |
 ${axisRows}
 
-Verification for the ladder is headless (\`createTestEditor\`). No renderer suite yet asserts these sizes. Concurrent peers is verified for *survival of both inserts* (\`createTwoPeerHarness\`); the measured clock is A insert + sync, not concurrent A+B.
+Verification for the ladder is headless (\`createTestEditor\`). Renderer rows come from \`@input/pen-conformance\` \`scale-render\` in Chromium: block counts at 1,000 and 5,000 are verified on every conformance run, and the clocks below are measured with a Pen-removed floor on the named machine class. Concurrent peers is verified at five for *survival of every peer's insert on every peer* (\`createPeerHarness\` + \`assertPeerEditsSurvive\`) and measured at two; the measured row's count is the number of peers that observed every insert, not a constant, and its clock is A insert + sync, not concurrent A+B.
+
+## Renderer
+
+Generated from the conformance \`scale-render\` baselines by \`pnpm --filter @input/pen-bench run bench:envelope:renderer\`. Mount runs from the fixture load to the second frame after every block is mounted; keystroke and caret-down run from the \`keydown\` to the second frame after it. The floor is the same fixture with Pen removed (\`?surface=static\`). Median of 5 mounts and 20 keys; clocks are recorded, never gated (CH8).
+
+| Row | Surface | Root blocks | Total blocks | Grade | Mount p50 (ms) | Floor p50 (ms) | Keystroke→frame p50 (ms) | Caret down→frame p50 (ms) | Machine | Date |
+| --- | ------- | ----------- | ------------ | ----- | -------------- | -------------- | ------------------------ | ------------------------- | ------- | ---- |
+${rendererRows}
 
 ## Fixture ladder (counts)
 
-Counts are the durable measure and do not decay under load. Wall-clocks below are **load-taken ${record.producedOn}** and must be re-measured on a quiet machine. A row without a fixture count is not a measurement.
+Counts are the durable measure and do not decay under load. ${record.loadTaken ? `Wall-clocks below are **load-taken ${record.producedOn}** and must be re-measured on a quiet machine.` : `Wall-clocks below are a quiet-machine sample of ${record.producedOn}.`} A row without a fixture count is not a measurement.
 
 | Rung | Fixture | Count | Ops | Floor | Date | Load | Wall p50 (ms) | Trust |
 | ---- | ------- | ----- | --- | ----- | ---- | ---- | ------------- | ----- |
@@ -68,7 +86,7 @@ ${enforcementRows}
 
 ## Past the ceiling
 
-Past these sizes, per-commit decoration collection and full-document render degrade first — Pen does not virtualize (\`spec/rules/dom.md\`). Hosts that need larger documents window blocks themselves (\`packages/rendering/react/VIRTUALIZATION.md\`, SCALE5).
+Past these sizes, full-document mount, which stays linear in block count, degrades first — Pen does not virtualize (\`spec/rules/dom.md\`). A structural commit, core and block notifier alike, advances its indexes by what the commit touched (SCALE2, SCALE6), leaving only native array copies linear; \`CACHE-AUDIT.md\` records its cost at 1,000, 10,000 and 50,000 root blocks. Hosts that need larger documents window blocks themselves (\`packages/rendering/react/VIRTUALIZATION.md\`, SCALE5).
 `;
 }
 
@@ -110,9 +128,9 @@ function renderAxisRows(record: EnvelopeRecord): string {
 		],
 		[
 			"Concurrent peers",
-			"2 (`@input/pen-test` `createTwoPeerHarness` + `assertPeerEditsSurvive`)",
+			`${SCALE1_VERIFIED_PEER_COUNT} (\`@input/pen-test\` \`createPeerHarness\` + \`assertPeerEditsSurvive\`)`,
 			`${peers.size} (\`@input/pen-bench\` SCALE1 \`concurrentPeers-2\`, A insert + sync)`,
-			peers.size,
+			SCALE1_VERIFIED_PEER_COUNT,
 		],
 	];
 
@@ -130,23 +148,38 @@ function renderLadderRow(
 	const load = record.loadTaken
 		? `load-taken ${record.producedOn}`
 		: `quiet ${record.producedOn}`;
-	return `| \`${point.id}\` | ${audit.fixture} | ${point.count} ${point.countUnit} | ${point.opsApplied} | ${point.floorKind} ${fmt(point.floorP50Ms)}ms | ${record.producedOn} | ${load} | ${fmt(point.measuredP50Ms)} | ${renderTrust(audit)} |`;
+	return `| \`${point.id}\` | ${audit.fixture} | ${point.count} ${point.countUnit} | ${point.opsApplied} | ${point.floorKind} ${fmt(point.floorP50Ms)}ms | ${record.producedOn} | ${load} | ${fmt(point.measuredP50Ms)} | ${renderTrust(audit, record)} |`;
 }
 
-function renderTrust(row: FixtureAuditRow): string {
+function renderTrust(row: FixtureAuditRow, record: EnvelopeRecord): string {
 	const count =
 		row.countTrust === "trusted" ? "count-trusted" : "count-untrusted";
-	if (row.clockTrust === "not-a-clock") {
-		return count;
+	switch (row.clockTrust) {
+		case "not-a-clock":
+			return count;
+		case "not-gated":
+			return `${count}; clock recorded, not gated`;
+		case "untrustworthy":
+			return `${count}; clock untrustworthy`;
+		case "record":
+			return record.loadTaken ? `${count}; clock load-taken` : `${count}; clock quiet`;
+		case "load-taken":
+			return `${count}; clock load-taken`;
+		default: {
+			const unhandled: never = row.clockTrust;
+			return unhandled;
+		}
 	}
-	if (row.clockTrust === "untrustworthy") {
-		return `${count}; clock untrustworthy`;
-	}
-	return `${count}; clock load-taken`;
 }
 
-function renderAuditRow(row: FixtureAuditRow): string {
-	return `| ${row.fixture} | ${row.claimedSubject} | ${row.actualSubject} | ${row.verdict} | ${renderTrust(row)} | ${row.howMeasured} |`;
+function renderAuditRow(row: FixtureAuditRow, record: EnvelopeRecord): string {
+	return `| ${row.fixture} | ${row.claimedSubject} | ${row.actualSubject} | ${row.verdict} | ${renderTrust(row, record)} | ${row.howMeasured} |`;
+}
+
+function renderRendererRow(row: EnvelopeRendererRow): string {
+	const clock = (value: number | null) =>
+		value === null ? (row.mountTimedOut ? "timed out" : "—") : fmt(value);
+	return `| \`${row.id}\` | ${row.surface} | ${row.rootBlocks.toLocaleString("en-US")} | ${row.totalBlocks.toLocaleString("en-US")} | ${row.grade} | ${clock(row.mountP50Ms)} | ${clock(row.mountFloorP50Ms)} | ${clock(row.keystrokeToFrameP50Ms)} | ${clock(row.caretDownToFrameP50Ms)} | ${row.machineClass.split(" ")[0]} | ${row.recordedAt} |`;
 }
 
 function renderEnforcementRow(row: EnforcementRow): string {

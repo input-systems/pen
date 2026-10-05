@@ -147,6 +147,13 @@ describe("@input/pen-react history and multiplayer hooks", () => {
 				.querySelector("[data-pen-multiplayer-caret-overlay]")
 				?.getAttribute("data-cursor-count"),
 		).toBe("1");
+		// The remote caret and its label are painted by pen-dom's overlay in
+		// the next scheduler flush (OV1), not during React's render.
+		await act(async () => {
+			await new Promise<void>((resolve) =>
+				requestAnimationFrame(() => resolve()),
+			);
+		});
 		expect(
 			container.querySelector("[data-pen-multiplayer-caret-label]")
 				?.textContent,

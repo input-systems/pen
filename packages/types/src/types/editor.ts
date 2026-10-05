@@ -3,6 +3,7 @@ import type {
 	SelectionOrigin,
 	SelectionRecord,
 	SelectionState,
+	SelectionWriteOptions,
 } from "./selection";
 import type {
 	CRDTAdapter,
@@ -13,7 +14,7 @@ import type {
 	DocumentScope,
 	DocumentProfile,
 } from "./crdt";
-import type { EditorAnchors } from "./anchors";
+import type { Anchor, EditorAnchors } from "./anchors";
 import type { ChangeSummary, Point } from "./changes";
 import type { Facet, FacetOutput } from "./facets";
 import type {
@@ -24,7 +25,7 @@ import type {
 } from "./ops";
 import type { Decoration, DecorationSet } from "./decorations";
 import type { Extension } from "./extension";
-import type { BlockHandle, AppHandle } from "./handles";
+import type { BlockHandle } from "./handles";
 import type { Unsubscribe } from "./utility";
 import type { SchemaRegistry } from "./schema";
 import type { AssetProvider } from "./persistence";
@@ -77,6 +78,23 @@ export interface DocumentState {
 	 * which cannot see children-array children — they are not in `blockOrder`.
 	 */
 	childrenOf(blockId: string): readonly string[];
+	/**
+	 * Position in nested document order — each `blockOrder` entry followed by
+	 * its `children`-array descendants, the order `allBlocks()` yields — or -1
+	 * when absent. O(1) after the first read following a structural change.
+	 */
+	preorderIndexOf(blockId: string): number;
+	/** The same nested order, identity-stable until the next structural change. */
+	preorderBlockIds(): readonly string[];
+	/**
+	 * The top-level sibling list: `blockOrder` without the blocks a parent
+	 * claims (`parentOf` non-null), the list a renderer draws at the root.
+	 * Identity-stable until the next structural change, and kept by the edits
+	 * a commit makes rather than re-filtered from `blockOrder`.
+	 */
+	rootBlockIds(): readonly string[];
+	/** Position in {@link rootBlockIds}, or -1 when absent. */
+	rootBlockIndexOf(blockId: string): number;
 }
 
 // ── Undo Manager ────────────────────────────────────────────
@@ -87,8 +105,14 @@ export interface UndoManager {
 	canUndo(): boolean;
 	canRedo(): boolean;
 
+	/** Closes open non-explicit captures; never closes an explicit group (AIB4). */
 	stopCapturing(): void;
-	syncExplicitUndoGroup(groupId: string | null): void;
+	/**
+	 * Runs `run` with its tracked writes captured under `groupId`, or under the
+	 * origin's type when `groupId` is null. One group id is one undo step while
+	 * its step is on the stack (AIB4). Called by `editor.apply`.
+	 */
+	withCapture<T>(origin: OpOrigin, groupId: string | null, run: () => T): T;
 	setGroupTimeout(ms: number): void;
 
 	registerTrackedOrigins(origins: OpOrigin[]): Unsubscribe;
@@ -134,6 +158,7 @@ export interface HistoryAppliedEvent {
 	requestId: number;
 }
 
+/** What produced a commit: a local apply, a remote update, undo, redo, or a text stream. */
 export type CommitEventSource = "apply" | "remote" | "undo" | "redo" | "stream";
 
 /** Dropped ops and validation failures for one commit (`06-commit-pipeline.md`). */
@@ -141,6 +166,7 @@ export type Diagnostic = DiagnosticEvent;
 
 export type { SelectionRecord };
 
+/** The one event each durable commit emits (I1): its summary, origin, and the selection before and after. */
 export interface CommitEvent {
 	readonly commitId: number;
 	readonly origin: StructuredOpOrigin;
@@ -175,6 +201,7 @@ export interface DiagnosticEvent {
 	[key: string]: unknown;
 }
 
+/** One problem found when validating a CRDT document's shape, reported with `crdt:corruption`. */
 export interface DocumentValidationError {
 	code:
 		| "MISSING_SHARED_TYPE"
@@ -189,12 +216,32 @@ export interface DocumentValidationError {
 	severity: "error" | "warning";
 }
 
+/**
+ * Where a scroll-into-view places a block: the projector's mount request
+ * (W3) and `editor.scrollToBlock` (W4) share it.
+ */
+export type BlockScrollAlign = "start" | "center" | "end" | "nearest";
+
+/** Which scoped decoration source to recompute, and for which blocks. */
+export interface DecorationUpdateScope {
+	/**
+	 * A `ScopedDecorationSource` from `@input/pen-core`; omitted means every
+	 * scoped source. Typed `unknown` because the type lives in core (API3).
+	 */
+	readonly source?: unknown;
+	readonly blockIds: readonly string[] | "all";
+}
+
 // ── Editor Events ───────────────────────────────────────────
 
 export interface PenEventMap {
 	commit: (event: CommitEvent) => void;
 	historyApplied: (event: HistoryAppliedEvent) => void;
-	decorationsChange: (generation: number) => void;
+	/** `changedBlockIds` names the blocks whose decoration lists changed. */
+	decorationsChange: (
+		generation: number,
+		changedBlockIds: readonly string[],
+	) => void;
 	selectionChange: (record: SelectionRecord) => void;
 	diagnostic: (event: DiagnosticEvent) => void;
 	"crdt:corruption": (errors: DocumentValidationError[]) => void;
@@ -341,27 +388,48 @@ export interface Editor {
 		options?: { origin?: SelectionOrigin },
 	): void;
 	getSelection(): SelectionState;
-	selectBlock(blockId: string): void;
-	selectBlocks(blockIds: string[]): void;
-	selectCell(blockId: string, row: number, col: number): void;
+	selectBlock(blockId: string, options?: SelectionWriteOptions): void;
+	selectBlocks(blockIds: string[], options?: SelectionWriteOptions): void;
+	selectCell(
+		blockId: string,
+		row: number,
+		col: number,
+		options?: SelectionWriteOptions,
+	): void;
 	selectCellRange(
 		blockId: string,
 		anchor: { row: number; col: number },
 		head: { row: number; col: number },
+		options?: SelectionWriteOptions,
 	): void;
-	selectText(blockId: string, from: number, to: number): void;
+	selectText(
+		blockId: string,
+		from: number,
+		to: number,
+		options?: SelectionWriteOptions,
+	): void;
 	selectTextRange(
 		anchor: { blockId: string; offset: number },
 		focus: { blockId: string; offset: number },
+		options?: SelectionWriteOptions,
 	): void;
-	selectAll(behavior?: SelectAllBehavior): void;
+	selectAll(
+		behavior?: SelectAllBehavior,
+		options?: SelectionWriteOptions,
+	): void;
 
 	getSelectedText(): string;
 	getSelectedBlocks(): BlockHandle[];
 	replaceSelection(content: string | Block[]): void;
 	deleteSelection(options?: ApplyOptions): void;
 
-	requestDecorationUpdate(): void;
+	/**
+	 * Recompute decorations. With no argument, function-form and static
+	 * sources are recomputed in full. With a scope, only scoped sources (one,
+	 * when `source` is given) recompute the named blocks, or every block for
+	 * `"all"` (SCALE2).
+	 */
+	requestDecorationUpdate(scope?: DecorationUpdateScope): void;
 	getDecorations(): DecorationSet;
 	scrollToBlock?(blockId: string): void;
 
@@ -421,4 +489,25 @@ export interface EditorInternals {
 	assignSlot: (key: string, value: unknown) => void;
 	getBlockText(blockId: string): unknown;
 	getCellText(blockId: string, row: number, col: number): unknown;
+	/**
+	 * The anchors the selection authority holds for the current selection's
+	 * anchor and focus (AS1), both null when it holds none, as for a text
+	 * endpoint on a divider or table. A consumer that keeps them across
+	 * commits repairs its copies itself (AN14). Optional so an internals
+	 * object built outside core (a test double) still type-checks; a
+	 * consumer treats its absence as holding no anchors.
+	 */
+	selectionAnchors?(): {
+		readonly from: Anchor | null;
+		readonly to: Anchor | null;
+	};
+	/**
+	 * What commit `commitId` repaired `anchor` into, when the selection
+	 * authority held it going into that commit (AN14); `undefined` otherwise.
+	 * The authority resolves its anchors before the `commit` event, which
+	 * overwrites the pre-commit target a repair reads, so a consumer sharing
+	 * them takes this result instead of repairing its copy itself. Optional
+	 * for the same reason as `selectionAnchors`.
+	 */
+	selectionAnchorRepair?(anchor: Anchor, commitId: number): Anchor | undefined;
 }

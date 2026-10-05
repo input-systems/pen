@@ -12,11 +12,7 @@ import { assertAdapterYjsDoc } from "./yjsSingleton";
 // ── Internal Types ──────────────────────────────────────────
 
 export type BlockContentType =
-	| "inline"
-	| "table"
-	| "subdocument"
-	| "nested"
-	| "none";
+	"inline" | "table" | "subdocument" | "nested" | "none";
 
 export interface YjsCRDTDocument extends CRDTDocument {
 	readonly adapter: CRDTAdapter;
@@ -177,17 +173,20 @@ export function validateDocument(
 		const hasTable = block.has("tableContent");
 		const hasChildren = block.has("children");
 		const hasSubdocument = block.has(SUBDOCUMENT);
+		// A container with an inline title (`toggle`, RI6) stores its title in
+		// `content` beside its `children` array, so `children` is not counted
+		// as a second content key; it may not sit beside a table or subdocument.
 		const contentKeyCount =
 			(hasContent ? 1 : 0) +
 			(hasTable ? 1 : 0) +
-			(hasChildren ? 1 : 0) +
-			(hasSubdocument ? 1 : 0);
+			(hasSubdocument ? 1 : 0) +
+			(hasChildren && !hasContent ? 1 : 0);
 
 		if (contentKeyCount > 1) {
 			errors.push({
 				code: "INVALID_BLOCK_STRUCTURE",
 				blockId,
-				message: `Block '${blockId}' has ${contentKeyCount} content keys (should have at most 1)`,
+				message: `Block '${blockId}' has ${contentKeyCount} content keys (should have at most 1 besides a title's 'content' beside 'children')`,
 				severity: "error",
 			});
 		}
@@ -262,11 +261,18 @@ export function validateDocument(
 		repaired = true;
 	}
 
-	// 3b: Dangling references (in blockOrder but not blocks)
+	// 3b: Dangling references (in blockOrder, block map deleted). An absent
+	// block map that was never deleted is still in flight: out-of-order
+	// delivery can land an order entry one client wrote before the block map
+	// another client wrote, and removing the entry would leave the block in no
+	// array when its map arrives (COL4).
 	const currentOrder = blockOrder.toArray();
 	const danglingIndices: number[] = [];
 	for (let i = 0; i < currentOrder.length; i++) {
-		if (!blockIds.has(currentOrder[i])) {
+		if (
+			!blockIds.has(currentOrder[i]) &&
+			isMapKeyDeleted(blocks, currentOrder[i])
+		) {
 			danglingIndices.push(i);
 			errors.push({
 				code: "ORPHAN_BLOCK",
@@ -286,19 +292,32 @@ export function validateDocument(
 		repaired = true;
 	}
 
-	// 3c: Orphans (in blocks but not blockOrder)
-	const orderSet = new Set(blockOrder.toArray());
-	const orphanIds: string[] = [];
-	for (const id of blockIds) {
-		if (!orderSet.has(id)) {
-			orphanIds.push(id);
-			errors.push({
-				code: "ORPHAN_BLOCK",
-				blockId: id,
-				message: `Block '${id}' is in blocks map but not in blockOrder`,
-				severity: "warning",
-			});
+	// 3c: Orphans (in blocks but in no order or children array). A block in
+	// a live container's `children` array is placed and deliberately absent
+	// from blockOrder (RI6); appending it would put it in two arrays. This is
+	// the placement core's orphan re-home reads (COL4). A `parentId` child is
+	// stored in blockOrder, so one missing from it is unreachable and is
+	// re-homed with its `parentId` intact, which restores its route. Ids are
+	// appended in code-unit order so every peer loading the same state
+	// writes the same repair.
+	const placedIds = new Set(blockOrder.toArray());
+	for (const [, blockMap] of blocks.entries()) {
+		const children = blockMap.get("children");
+		if (!(children instanceof Y.Array)) continue;
+		for (const childId of children.toArray()) {
+			if (typeof childId === "string") placedIds.add(childId);
 		}
+	}
+	const orphanIds = [...blockIds]
+		.filter((id) => !placedIds.has(id))
+		.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+	for (const id of orphanIds) {
+		errors.push({
+			code: "ORPHAN_BLOCK",
+			blockId: id,
+			message: `Block '${id}' is in blocks map but in no blockOrder or children array`,
+			severity: "warning",
+		});
 	}
 
 	if (repair && orphanIds.length > 0) {
@@ -310,6 +329,18 @@ export function validateDocument(
 
 	const hasErrors = errors.some((e) => e.severity === "error");
 	return { valid: !hasErrors, errors, repaired };
+}
+
+/**
+ * A Y.Map keeps the item that last wrote each key, deleted or not; a key it
+ * has never integrated — a block map still in flight from another client —
+ * has no item at all. `_map` is the Yjs field `Y.Map#has` itself reads.
+ */
+export function isMapKeyDeleted<T>(map: Y.Map<T>, key: string): boolean {
+	const item = (
+		map as unknown as { _map: Map<string, { deleted: boolean }> }
+	)._map.get(key);
+	return item !== undefined && item.deleted;
 }
 
 // ── Document Creation ───────────────────────────────────────
@@ -331,7 +362,12 @@ export function setDocumentProfile(
 	doc: CRDTDocument,
 	profile: DocumentProfile,
 ): void {
-	asYjsDoc(doc).penDocument.metadata.set(DOCUMENT_PROFILE, profile);
+	const yjsDoc = asYjsDoc(doc);
+	// A bare `metadata.set` opens an implicit transaction with no origin, which
+	// the observer reports as ORIGIN_UNKNOWN; the profile stamp is a system write.
+	yjsDoc.ydoc.transact(() => {
+		yjsDoc.penDocument.metadata.set(DOCUMENT_PROFILE, profile);
+	}, "system");
 }
 
 export function createYjsDocument(
@@ -341,21 +377,7 @@ export function createYjsDocument(
 	// Reliable block undo/redo requires deleted Yjs content to remain restorable.
 	// Yjs recommends disabling GC when version/history restoration matters.
 	const ydoc = new Y.Doc({ gc: options?.gc ?? false });
-	assertAdapterYjsDoc(ydoc);
-	const blockOrder = ydoc.getArray<string>(BLOCK_ORDER);
-	const blocks = ydoc.getMap<Y.Map<unknown>>(BLOCKS);
-	const apps = ydoc.getMap<Y.Map<unknown>>(APPS);
-	const metadata = ydoc.getMap(METADATA);
-
-	const penDocument: YjsPenDocument = {
-		blockOrder,
-		blocks,
-		apps,
-		metadata,
-		adapter,
-	};
-
-	return { adapter, ydoc, penDocument };
+	return bindPenDocument(adapter, ydoc);
 }
 
 export function wrapYjsDocument(
@@ -363,6 +385,11 @@ export function wrapYjsDocument(
 	ydoc: Y.Doc,
 ): YjsCRDTDocument {
 	assertAdapterYjsDoc(ydoc);
+	return bindPenDocument(adapter, ydoc);
+}
+
+/** Reads the four Pen roots off `ydoc`, creating any that are missing. */
+function bindPenDocument(adapter: CRDTAdapter, ydoc: Y.Doc): YjsCRDTDocument {
 	const blockOrder = ydoc.getArray<string>(BLOCK_ORDER);
 	const blocks = ydoc.getMap<Y.Map<unknown>>(BLOCKS);
 	const apps = ydoc.getMap<Y.Map<unknown>>(APPS);

@@ -11,6 +11,7 @@ function createCrdtUndo() {
     canRedo: vi.fn(() => false),
     stopCapturing: vi.fn(),
     setCaptureTimeout: vi.fn(),
+    setCaptureKey: vi.fn((_key: unknown) => null),
     addTrackedOrigin: vi.fn(),
     removeTrackedOrigin: vi.fn(),
     destroy: vi.fn(),
@@ -68,29 +69,24 @@ describe("@input/pen-undo UndoManagerImpl", () => {
     expect(crdtUndo.removeTrackedOrigin).toHaveBeenCalledTimes(1);
   });
 
-  it("notifies capture boundary listeners when explicit undo groups change", () => {
+  it("AIB4: withCapture scopes the capture key to the run and never stops capturing", () => {
     const crdtUndo = createCrdtUndo();
-
     const manager = new UndoManagerImpl(crdtUndo);
     const onCaptureBoundary = vi.fn();
     manager._onCaptureBoundary = onCaptureBoundary;
 
-    manager.syncExplicitUndoGroup("group-a");
-    manager.syncExplicitUndoGroup("group-a");
-    manager.syncExplicitUndoGroup("group-b");
-    manager.syncExplicitUndoGroup(null);
+    const result = manager.withCapture({ type: "ai", groupId: "g1" }, "g1", () => 7);
+    manager.withCapture("user", null, () => undefined);
 
-    expect(onCaptureBoundary).toHaveBeenCalledTimes(3);
-    expect(crdtUndo.stopCapturing).toHaveBeenCalledTimes(3);
-    expect(crdtUndo.setCaptureTimeout).toHaveBeenNthCalledWith(
-      1,
-      2_147_483_647,
-    );
-    expect(crdtUndo.setCaptureTimeout).toHaveBeenNthCalledWith(
-      2,
-      2_147_483_647,
-    );
-    expect(crdtUndo.setCaptureTimeout).toHaveBeenNthCalledWith(3, 1000);
+    expect(result).toBe(7);
+    expect(crdtUndo.setCaptureKey.mock.calls).toEqual([
+      [{ key: "group:g1", explicit: true }],
+      [null],
+      [{ key: "origin:user", explicit: false }],
+      [null],
+    ]);
+    expect(onCaptureBoundary).not.toHaveBeenCalled();
+    expect(crdtUndo.stopCapturing).not.toHaveBeenCalled();
   });
 
   it("H.6/CH7 default max-depth cap is 500", () => {
@@ -132,7 +128,7 @@ describe("@input/pen-undo UndoManagerImpl", () => {
     expect(manager.undo()).toBe(false);
     expect(manager.redo()).toBe(false);
     manager.stopCapturing();
-    manager.syncExplicitUndoGroup("after-destroy");
+    expect(manager.withCapture("user", "after-destroy", () => 1)).toBe(1);
     manager.setGroupTimeout(50);
     manager.resetIdleTimer();
     expect(manager.registerTrackedOrigins(["ai"])).toEqual(expect.any(Function));

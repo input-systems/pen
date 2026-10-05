@@ -1,18 +1,23 @@
 import {
+	attachRemoteCarets,
 	createGeometryReader,
 	DomScheduler,
 	getRootGeometry,
+	getRootOverlay,
 	verticalCaretTarget,
 	type GeometryReaderHost,
+	type OverlayPainter,
+	type OverlayPaintPlan,
+	REMOTE_CARET_CONTRIBUTOR,
+	type RemoteCaretCursor,
+	type RootOverlay,
 } from "@input/pen-dom";
+import { fieldEditorHostFacet, getEditorSelectionRecord } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
 import {
-	createOverlayLayer,
 	OVERLAY_ITEM_ATTR,
 	OVERLAY_LAYER_ATTR,
-	type OverlayLayer,
-	type PaintPlan,
-} from "./overlays";
+} from "../../../../rendering/dom/src/utils/dataAttributes";
 import type {
 	GeometryBlockInfo,
 	GeometryCaretCompare,
@@ -22,6 +27,8 @@ import type {
 	GeometryPoint,
 	GeometryPointRef,
 	GeometryVerticalMotion,
+	OverlayAuthorityCheck,
+	OverlayProbeCounts,
 } from "../../src/types";
 import {
 	geometryBlocksFromEditor,
@@ -31,16 +38,19 @@ import {
 	tallyCaretCompares,
 } from "./geometryCompare";
 
-const CONTENT_SELECTOR = "[data-pen-editor-content]";
 const ROOT_SELECTOR = "[data-pen-editor-root]";
 
 type GeometryHost = {
+	root: HTMLElement;
 	reader: GeometryReaderHost;
 	scheduler: DomScheduler;
-	overlay: OverlayLayer;
 };
 
+/** Client ids of the harness's eight peers, clear of any real session's. */
+const REMOTE_CARET_CLIENT_BASE = 9000;
+
 let host: GeometryHost | null = null;
+let releaseRemoteCarets: (() => void) | null = null;
 
 function editorRoot(): HTMLElement {
 	const root = document.querySelector(ROOT_SELECTOR);
@@ -48,11 +58,6 @@ function editorRoot(): HTMLElement {
 		throw new Error("geometry: editor root is not mounted");
 	}
 	return root;
-}
-
-function contentRoot(root: HTMLElement): HTMLElement {
-	const content = root.querySelector(CONTENT_SELECTOR);
-	return content instanceof HTMLElement ? content : root;
 }
 
 function serializeLineBoxes(
@@ -106,14 +111,6 @@ function observeEntries(type: string): {
 	};
 }
 
-function placeOverlay(layer: OverlayLayer, root: HTMLElement): void {
-	if (layer.element.isConnected) {
-		return;
-	}
-	const content = contentRoot(root);
-	content.insertAdjacentElement("afterend", layer.element);
-}
-
 function attachHost(): GeometryHost {
 	const root = editorRoot();
 	// Measure the reader and scheduler the mounted editor actually drives
@@ -121,25 +118,34 @@ function attachHost(): GeometryHost {
 	// to this scheduler, and its flush invalidates this reader, so there is
 	// nothing for the harness to replay.
 	const { reader, scheduler } = getRootGeometry(root);
-	const overlay = createOverlayLayer({ root });
-	placeOverlay(overlay, root);
+	return { root, reader, scheduler };
+}
 
-	return { reader, scheduler, overlay };
+/**
+ * The production overlay the field editor attached to the root (OV2). The
+ * harness paints through it and owns no layer of its own.
+ */
+function rootOverlay(root: HTMLElement): RootOverlay {
+	const overlay = getRootOverlay(root);
+	if (!overlay) {
+		throw new Error(
+			"geometry: the editor root has no overlay; no field editor attached it",
+		);
+	}
+	return overlay;
 }
 
 export function disposeGeometry(): void {
-	if (!host) {
-		return;
-	}
-	// The reader and scheduler belong to the editor root, so the mount that
-	// created them disposes them; the harness only owns the overlay.
-	host.overlay.element.remove();
+	// The reader, scheduler and overlay belong to the editor root, so the
+	// mount that created them disposes them; the harness only owns its
+	// contributor.
+	releaseRemoteCarets?.();
+	releaseRemoteCarets = null;
 	host = null;
 }
 
 export function ensureGeometry(): GeometryHost {
-	if (host) {
-		placeOverlay(host.overlay, editorRoot());
+	if (host && host.root === editorRoot()) {
 		return host;
 	}
 	host = attachHost();
@@ -264,29 +270,15 @@ export function runVerticalMotion(args: {
 	}
 }
 
-function paintPlanForCarets(
-	reader: GeometryReaderHost,
+function remoteCaretCursors(
 	points: readonly GeometryPoint[],
-): PaintPlan {
-	return {
-		generation: reader.generation,
-		items: points.flatMap((point, index) => {
-			const rect = reader.caretRect(point, "downstream");
-			if (!rect) {
-				return [];
-			}
-			return [
-				{
-					id: `remote-caret:${index}`,
-					kind: "caret" as const,
-					x: rect.x,
-					y: rect.y,
-					width: rect.width,
-					height: rect.height,
-				},
-			];
-		}),
-	};
+): RemoteCaretCursor[] {
+	return points.map((point, index) => ({
+		clientId: REMOTE_CARET_CLIENT_BASE + index,
+		user: { id: `peer-${index}`, name: `Peer ${index + 1}` },
+		blockId: point.blockId,
+		offset: point.offset,
+	}));
 }
 
 function countLayoutReads(
@@ -329,7 +321,7 @@ export async function flushEightRemoteCarets(
 	points: readonly GeometryPoint[],
 ): Promise<GeometryEightCaretBudget> {
 	const current = ensureGeometry();
-	placeOverlay(current.overlay, editorRoot());
+	const overlay = rootOverlay(current.root);
 
 	const types = supportedEntryTypes();
 	const missingObserverTypes = ["layout-shift", "longtask"].filter(
@@ -340,7 +332,7 @@ export async function flushEightRemoteCarets(
 
 	let readPhase = current.scheduler.phase;
 	let writePhase = current.scheduler.phase;
-	let plan: PaintPlan = { generation: current.reader.generation, items: [] };
+	let plan: OverlayPaintPlan | null = null;
 	let readPhaseMeasureCount = 0;
 	let writePhaseMeasureCount = 0;
 	const restoreReads = countLayoutReads(current.scheduler, (phase) => {
@@ -350,20 +342,41 @@ export async function flushEightRemoteCarets(
 			writePhaseMeasureCount += 1;
 		}
 	});
+	const stopPlan = overlay.onPaintPlan((next) => {
+		writePhase = current.scheduler.phase;
+		plan = next;
+	});
 
 	try {
-		const readDone = current.scheduler.read(() => {
-			readPhase = current.scheduler.phase;
-			plan = paintPlanForCarets(current.reader, points);
+		// The production remote-caret contributor (the one
+		// Pen.Multiplayer.CaretOverlay registers) turns these cursors into
+		// requests in the read phase; the overlay paints them in the write
+		// phase of the same flush, and the queued read resolves once that
+		// flush has finished.
+		releaseRemoteCarets?.();
+		const cursors = remoteCaretCursors(points);
+		releaseRemoteCarets = attachRemoteCarets(overlay, {
+			getRemoteCursors: () => {
+				readPhase = current.scheduler.phase;
+				return cursors;
+			},
+			subscribe: () => () => {},
 		});
-		const writeDone = current.scheduler.write(() => {
-			writePhase = current.scheduler.phase;
-			current.overlay.applyPaintPlan(plan);
-		});
-		await Promise.all([readDone, writeDone]);
+		overlay.requestPaint();
+		await current.scheduler.read(() => {});
 	} finally {
 		restoreReads();
+		stopPlan();
 	}
+
+	// Assigned in the onPaintPlan callback, which control-flow analysis cannot see.
+	const painted = plan as OverlayPaintPlan | null;
+	const items = (painted?.items ?? []).filter(
+		(item) => item.contributor === REMOTE_CARET_CONTRIBUTOR,
+	);
+	// Items are layer-relative (OV2); the origin turns them back into the
+	// viewport boxes the scenario compares against.
+	const origin = overlay.layer.getBoundingClientRect();
 
 	// layout-shift / longtask entries are delivered after the current task
 	// and the next presented frame. same-turn takeRecords() always returns [].
@@ -378,15 +391,16 @@ export async function flushEightRemoteCarets(
 
 	return {
 		caretCount: points.length,
-		paintedCount: current.overlay.element.querySelectorAll(
+		paintedCount: overlay.layer.querySelectorAll(
 			`[${OVERLAY_ITEM_ATTR}="caret"]`,
 		).length,
-		overlayConnected: current.overlay.element.isConnected,
-		overlayAttr: current.overlay.element.getAttribute(OVERLAY_LAYER_ATTR),
+		overlayConnected: overlay.layer.isConnected,
+		overlayAttr: overlay.layer.getAttribute(OVERLAY_LAYER_ATTR),
+		layerOrigin: { x: origin.x, y: origin.y },
 		readPhase,
 		writePhase,
-		items: plan.items.map((item) => ({
-			id: item.id,
+		items: items.map((item) => ({
+			id: item.key,
 			kind: item.kind,
 			x: item.x,
 			y: item.y,
@@ -406,5 +420,237 @@ export async function flushEightRemoteCarets(
 				: 0,
 		),
 		missingObserverTypes,
+	};
+}
+
+/** OV4 retries at most this many flushes while the record moves under the paint. */
+const OVERLAY_SETTLE_FLUSHES = 3;
+
+/**
+ * OV4: wait for a scheduler flush (an empty queued read; its continuation runs
+ * after the whole flush, overlay paint included, and unlike a queued write it
+ * does not trigger the stale-after-write follow-up paint), then compare the layer's painted selection
+ * version and local caret with the authority record. A record that moved
+ * during the flush gets up to three more flushes; no clock is involved.
+ */
+export async function overlayMatchesAuthority(
+	editor: Editor,
+): Promise<OverlayAuthorityCheck> {
+	const root = document.querySelector(ROOT_SELECTOR);
+	const overlay = root instanceof HTMLElement ? getRootOverlay(root) : null;
+	if (!(root instanceof HTMLElement) || !overlay) {
+		const hasFieldEditor = editor.facet(fieldEditorHostFacet) != null;
+		return {
+			kind: hasFieldEditor ? "failed" : "no-overlay",
+			reason: hasFieldEditor
+				? "a field editor is attached but the root has no overlay layer"
+				: "no field editor attached; nothing paints an overlay",
+			layerVersion: null,
+			recordVersion: null,
+			caret: null,
+			expectedCaret: null,
+		};
+	}
+	const { scheduler } = getRootGeometry(root);
+	let check: OverlayAuthorityCheck | null = null;
+	for (let attempt = 0; attempt < OVERLAY_SETTLE_FLUSHES; attempt += 1) {
+		await scheduler.read(() => {});
+		check = compareOverlay(overlay.layer, editor);
+		if (check.kind === "held") {
+			return check;
+		}
+	}
+	return check!;
+}
+
+function compareOverlay(layer: HTMLElement, editor: Editor): OverlayAuthorityCheck {
+	const record = getEditorSelectionRecord(editor);
+	const versionAttr = layer.getAttribute("data-pen-overlay-selection-version");
+	const layerVersion = versionAttr === null ? null : Number(versionAttr);
+	const recordVersion = record?.version ?? null;
+	const caretNode = layer.querySelector("[data-pen-editor-caret]");
+	const caret =
+		caretNode instanceof HTMLElement
+			? {
+					blockId: caretNode.getAttribute("data-block-id") ?? "",
+					offset: Number(caretNode.getAttribute("data-offset")),
+					affinity: caretNode.getAttribute("data-affinity") ?? "",
+				}
+			: null;
+	const state = record?.state ?? null;
+	const expectedCaret =
+		state?.type === "text"
+			? {
+					blockId: state.focus.blockId,
+					offset: state.focus.offset,
+					affinity: state.affinity,
+				}
+			: null;
+	const base = { layerVersion, recordVersion, caret, expectedCaret };
+	if (layerVersion !== recordVersion) {
+		return {
+			kind: "failed",
+			reason: `layer painted version ${String(layerVersion)}, authority is at ${String(recordVersion)}`,
+			...base,
+		};
+	}
+	if (
+		caret &&
+		(!expectedCaret ||
+			caret.blockId !== expectedCaret.blockId ||
+			caret.offset !== expectedCaret.offset ||
+			caret.affinity !== expectedCaret.affinity)
+	) {
+		return {
+			kind: "failed",
+			reason: "the local caret does not name the record's focus point and affinity",
+			...base,
+		};
+	}
+	return { kind: "held", reason: "layer version and local caret match the record", ...base };
+}
+
+type OverlayProbeTallies = {
+	caretRectReads: number;
+	blockRectReads: number;
+	layerMutations: number;
+	layerAttributeWrites: number;
+};
+
+type OverlayProbe = {
+	readonly flushesAtStart: number;
+	readonly paintsAtStart: number;
+	readonly counts: OverlayProbeTallies;
+	readonly perFlush: Map<number, { caret: number; block: number }>;
+	readonly observer: MutationObserver;
+	readonly layer: HTMLElement;
+	readonly restore: () => void;
+	readonly scheduler: DomScheduler;
+};
+
+let overlayProbe: OverlayProbe | null = null;
+
+/**
+ * Item mutations: the layer's own OV4 bookkeeping attributes
+ * (`data-pen-overlay-selection-version`, `data-caret-visible`) are counted
+ * apart, since every selection change writes the version.
+ */
+function tallyLayerRecords(
+	records: readonly MutationRecord[],
+	layer: HTMLElement,
+	counts: OverlayProbeTallies,
+): void {
+	for (const record of records) {
+		if (record.type === "attributes" && record.target === layer) {
+			counts.layerAttributeWrites += 1;
+		} else {
+			counts.layerMutations += 1;
+		}
+	}
+}
+
+/**
+ * OV1 counters: the root scheduler's flush and paint counts, calls to the
+ * root reader's `caretRect` and `blockRect` (wrapped on the instance), and
+ * mutation records under the overlay layer.
+ */
+export function startOverlayProbe(): void {
+	stopOverlayProbe();
+	const root = editorRoot();
+	const overlay = rootOverlay(root);
+	const { reader, scheduler } = getRootGeometry(root);
+	const counts: OverlayProbeTallies = {
+		caretRectReads: 0,
+		blockRectReads: 0,
+		layerMutations: 0,
+		layerAttributeWrites: 0,
+	};
+	const perFlush = new Map<number, { caret: number; block: number }>();
+	const flushTally = () => {
+		const flush = scheduler.diagnostics.flushCount;
+		const tally = perFlush.get(flush) ?? { caret: 0, block: 0 };
+		perFlush.set(flush, tally);
+		return tally;
+	};
+	// Only reads made by the overlay's own read step count: the projector
+	// and scroll jobs share this reader. The root overlay is the scheduler's
+	// painter, so its `read` brackets them.
+	const painter = overlay as unknown as OverlayPainter;
+	const overlayRead = painter.read;
+	let inOverlayRead = false;
+	painter.read = (input) => {
+		inOverlayRead = true;
+		try {
+			overlayRead.call(painter, input);
+		} finally {
+			inOverlayRead = false;
+		}
+	};
+	const caretRect = reader.caretRect;
+	const blockRect = reader.blockRect;
+	reader.caretRect = (point, affinity) => {
+		if (inOverlayRead) {
+			counts.caretRectReads += 1;
+			flushTally().caret += 1;
+		}
+		return caretRect.call(reader, point, affinity);
+	};
+	reader.blockRect = (blockId) => {
+		if (inOverlayRead) {
+			counts.blockRectReads += 1;
+			flushTally().block += 1;
+		}
+		return blockRect.call(reader, blockId);
+	};
+	const observer = new MutationObserver((records) =>
+		tallyLayerRecords(records, overlay.layer, counts),
+	);
+	observer.observe(overlay.layer, {
+		attributes: true,
+		childList: true,
+		characterData: true,
+		subtree: true,
+	});
+	overlayProbe = {
+		flushesAtStart: scheduler.diagnostics.flushCount,
+		paintsAtStart: scheduler.diagnostics.paintCount,
+		counts,
+		perFlush,
+		observer,
+		layer: overlay.layer,
+		scheduler,
+		restore: () => {
+			delete (reader as Partial<typeof reader>).caretRect;
+			delete (reader as Partial<typeof reader>).blockRect;
+			delete (painter as Partial<OverlayPainter>).read;
+		},
+	};
+}
+
+export function stopOverlayProbe(): OverlayProbeCounts {
+	const probe = overlayProbe;
+	overlayProbe = null;
+	if (!probe) {
+		return {
+			flushes: 0,
+			paints: 0,
+			caretRectReads: 0,
+			blockRectReads: 0,
+			maxCaretRectReadsPerFlush: 0,
+			maxBlockRectReadsPerFlush: 0,
+			layerMutations: 0,
+			layerAttributeWrites: 0,
+		};
+	}
+	tallyLayerRecords(probe.observer.takeRecords(), probe.layer, probe.counts);
+	probe.observer.disconnect();
+	probe.restore();
+	const tallies = [...probe.perFlush.values()];
+	return {
+		flushes: probe.scheduler.diagnostics.flushCount - probe.flushesAtStart,
+		paints: probe.scheduler.diagnostics.paintCount - probe.paintsAtStart,
+		...probe.counts,
+		maxCaretRectReadsPerFlush: Math.max(0, ...tallies.map((tally) => tally.caret)),
+		maxBlockRectReadsPerFlush: Math.max(0, ...tallies.map((tally) => tally.block)),
 	};
 }

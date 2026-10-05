@@ -3,12 +3,7 @@ import { createEditor } from "@input/pen-core";
 import { htmlExporter } from "../exporter";
 import { defaultSchema } from "@input/pen-schema";
 import type { BlockSchema } from "@input/pen-types";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
+import { noDefaultExtensionsPreset } from "./exportHtml.testHelpers";
 
 function editorWithSchema(
 	schema: typeof defaultSchema,

@@ -55,6 +55,7 @@ export async function runGenerationLoop(
 				: 1,
 			allowedMutatingTools: controller._allowedMutatingTools,
 			confirm: controller._confirmAITool,
+			unconfirmedDestructive: controller._unconfirmedDestructive,
 			signal: abortController.signal,
 			requestMode: resolveGenerationRequestMode({
 				...context,
@@ -182,8 +183,7 @@ export async function runGenerationLoop(
 					controller.dismissEphemeralSuggestion();
 					return;
 				}
-				const previewBlockId = preview.blockId;
-				if (previewBlockId == null) {
+				if (preview.blockIds.length === 0) {
 					controller._setState({
 						activeGeneration: nextGeneration,
 					});
@@ -193,9 +193,11 @@ export async function runGenerationLoop(
 					controller,
 					{
 						operationIndex: preview.operationIndex,
-						blockId: previewBlockId,
+						blockIds: preview.blockIds,
+						placement: preview.placement,
 						operation: preview.operation,
 						text: preview.text,
+						complete: preview.complete,
 					},
 					nextGeneration,
 				);

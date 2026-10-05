@@ -22,6 +22,7 @@ import {
 	notifyRejected,
 	selectInlineAtomRangeFromShiftClick,
 } from "./inlineAtomDestructure";
+import { isDomDocument, isDomHTMLElement } from "../utils/domNodes";
 
 const DRAG_THRESHOLD_PX = 4;
 
@@ -99,8 +100,10 @@ export function attachInlineAtomWrapperInteractions(
 			if (selectInlineAtomRangeFromShiftClick(options)) {
 				event.preventDefault();
 				event.stopPropagation();
-				return;
 			}
+			// Otherwise a cross-block extend, left to the content gestures;
+			// a shift press never starts an atom drag.
+			return;
 		}
 
 		if (
@@ -153,7 +156,7 @@ export function attachInlineAtomWrapperInteractions(
 
 		event.preventDefault();
 		event.stopPropagation();
-		destructureInlineAtom(options);
+		destructureInlineAtom(options, "pointer");
 	};
 
 	options.element.addEventListener("pointerdown", handlePointerDown);
@@ -431,10 +434,9 @@ function resolveTargetFromPoint(
 	clientY: number,
 ): InlineAtomDropTarget | null {
 	const element = doc.elementFromPoint(clientX, clientY);
-	const root =
-		element instanceof HTMLElement
-			? element.closest<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`)
-			: null;
+	const root = isDomHTMLElement(element)
+		? element.closest<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`)
+		: null;
 	if (!root) {
 		return null;
 	}
@@ -493,5 +495,5 @@ function getPointerSessionForEvent(event: PointerEvent): PointerSession | null {
 
 function getEventDocument(event: Event): Document | null {
 	const currentTarget = event.currentTarget;
-	return currentTarget instanceof Document ? currentTarget : null;
+	return isDomDocument(currentTarget) ? currentTarget : null;
 }

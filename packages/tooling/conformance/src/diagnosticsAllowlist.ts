@@ -22,6 +22,4 @@ export type DiagnosticsAllowlistEntry = {
 	reason: string;
 };
 
-export const DIAGNOSTICS_ALLOWLIST: readonly DiagnosticsAllowlistEntry[] = [
-	// empty — hello-world baseline has not observed standing-code noise yet
-];
+export const DIAGNOSTICS_ALLOWLIST: readonly DiagnosticsAllowlistEntry[] = [];

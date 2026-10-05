@@ -4,6 +4,7 @@
  */
 
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomHTMLElement } from "../utils/domNodes";
 import { isInlineAtomNode } from "./inlineAtomDom";
 import { getDistanceToRect } from "../geometry/types";
 import { approximateInlineOffsetFromPoint } from "./selectionBridgeOffsets";
@@ -24,7 +25,6 @@ export {
 } from "./textDiff";
 export {
 	domPointToOffset,
-	domSelectionToEditor,
 	getBlockBoundaryPoint,
 	type DirectionalSelectionOffsets,
 	type SelectionBoundary,
@@ -38,10 +38,6 @@ import {
 	type SelectionBoundary,
 	type SelectionPoint,
 } from "./selectionMapping";
-
-function isNodeWithinOrEqual(container: HTMLElement, node: Node): boolean {
-	return node === container || container.contains(node);
-}
 
 interface CaretPositionLike {
 	offsetNode: Node;
@@ -83,7 +79,7 @@ export function getClosestBlockElementFromPoint(
 	let bestScore = Number.POSITIVE_INFINITY;
 
 	for (const blockElement of blockElements) {
-		if (!(blockElement instanceof HTMLElement)) continue;
+		if (!isDomHTMLElement(blockElement)) continue;
 		const rect = blockElement.getBoundingClientRect();
 		const { dx, dy } = getDistanceToRect(rect, clientX, clientY);
 		const score = dy * 1000 + dx;
@@ -150,47 +146,25 @@ export function pointToEditorSelectionPoint(
 		caretRangeFromPoint?: (x: number, y: number) => Range | null;
 	};
 
-	const position = caretFromPoint.caretPositionFromPoint?.(clientX, clientY);
-	if (position) {
-		const inlineBoundaryPoint = resolveInlineContainerBoundaryPoint(
+	const resolveCaretHit = (node: Node, offset: number) =>
+		resolveInlineContainerBoundaryPoint(
 			root,
-			position.offsetNode,
-			position.offset,
+			node,
+			offset,
 			clientX,
 			clientY,
 			options,
-		);
-		if (inlineBoundaryPoint) return inlineBoundaryPoint;
+		) ?? resolveSelectionPoint(root, node, offset, options);
 
-		const resolved = resolveSelectionPoint(
-			root,
-			position.offsetNode,
-			position.offset,
-			options,
-		);
-		if (resolved) return resolved;
-	}
+	const position = caretFromPoint.caretPositionFromPoint?.(clientX, clientY);
+	const positionPoint =
+		position && resolveCaretHit(position.offsetNode, position.offset);
+	if (positionPoint) return positionPoint;
 
 	const range = caretFromPoint.caretRangeFromPoint?.(clientX, clientY);
-	if (range) {
-		const inlineBoundaryPoint = resolveInlineContainerBoundaryPoint(
-			root,
-			range.startContainer,
-			range.startOffset,
-			clientX,
-			clientY,
-			options,
-		);
-		if (inlineBoundaryPoint) return inlineBoundaryPoint;
-
-		const resolved = resolveSelectionPoint(
-			root,
-			range.startContainer,
-			range.startOffset,
-			options,
-		);
-		if (resolved) return resolved;
-	}
+	const rangePoint =
+		range && resolveCaretHit(range.startContainer, range.startOffset);
+	if (rangePoint) return rangePoint;
 
 	const hoveredBlockEl = getClosestBlockElementFromPoint(
 		root,
@@ -203,11 +177,7 @@ export function pointToEditorSelectionPoint(
 	// the browser's native drag clamps its extent (the editing host's first
 	// or last position), so a Pen-owned drag leaving the root writes the
 	// same range as the browser and the two stop overwriting each other.
-	const documentEdge = resolveDocumentEdgeSide(
-		root,
-		hoveredBlockEl,
-		clientY,
-	);
+	const documentEdge = resolveDocumentEdgeSide(root, hoveredBlockEl, clientY);
 	if (documentEdge) {
 		return getBoundaryPointForBlockElement(hoveredBlockEl, documentEdge);
 	}
@@ -320,14 +290,17 @@ function isInlineBoundaryFallbackPoint(
 		return offset === 0;
 	}
 
-	return node instanceof HTMLElement && node.contains(inlineEl);
+	return isDomHTMLElement(node) && node.contains(inlineEl);
 }
 
 export {
-	editorSelectionToDOM,
+	domSelectionToEditor,
 	getCaretOffset,
 	getDirectionalSelectionOffsets,
 	getSelectionOffsets,
+} from "./selectionReader";
+export {
+	findDOMPoint,
 	getSelectionPointRect,
 	getTextSelectionClientRects,
 } from "./selectionBridgeOffsets";

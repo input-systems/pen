@@ -172,6 +172,15 @@ policy by accident; `changeset-check` rejects it. Naming any package is
 enough to bump the whole train — they share one `fixed` group — but still
 name the packages you changed so each CHANGELOG gets a line.
 
+Every non-empty changeset also records the grading on its own body line,
+last in the body so the summary stays the CHANGELOG headline: `Breaking: yes — <what a host must change>`
+or `Breaking: no`. `changeset-check` fails on a missing line, on
+`Breaking: yes` without a host action, on `Breaking: yes` with a `patch`
+bump, and on `Breaking: no` with a `minor` bump while the train is `0.x`.
+A change that breaks one package and only adds to another takes two
+changesets. A breaking change that already shipped as `patch` is recorded as
+an `### Erratum` under its version heading in the affected `CHANGELOG.md`.
+
 The unpublished placeholder in every manifest is `0.0.1`. The first
 `changeset version` lands at **0.1.0**. `scripts/stamp-first-train.mjs`
 rewrites a peer-promoted `1.0.0` (workspace peers on the fixed train)

@@ -8,7 +8,6 @@ import {
 	historyUndo,
 	isCollapsed,
 	isMultiBlock,
-	setCellCaretFocus,
 } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
 import type { FieldEditorKeyboardController } from "./controller";
@@ -20,17 +19,17 @@ import {
 } from "./commandDispatch";
 import type { SelectionRange } from "./commands";
 import { getAutocompleteController } from "../utils/autocompleteController";
-import { selectInlineAtomWithArrowKey } from "./keyHandlingInlineAtoms";
+import { markForAccelerator, reportCellMarkDecline } from "./cellMarkDecline";
 import {
-	collectKeyBindings,
 	isRedoShortcut,
 	isSelectAllShortcut,
 	isUndoShortcut,
-	matchesBindingContext,
-	matchesKey,
+	runMatchingKeyBinding,
 	tryHandleHistoryOverrideBinding,
 } from "./keyBindingShortcuts";
 import { dispatchKeymapEvent } from "./keymap";
+import { closestDomElement } from "../utils/domNodes";
+import { resolveEditedCellText } from "./selectionReader";
 import {
 	ensureLineEdgeMeasure,
 	isNavigationSelectionKey,
@@ -81,28 +80,16 @@ export function handleFieldEditorKeyDown(options: {
 		}
 	}
 
-	if (
-		(event.key === "ArrowLeft" || event.key === "ArrowRight") &&
-		!event.metaKey &&
-		!event.ctrlKey &&
-		!event.altKey &&
-		selectInlineAtomWithArrowKey({
-			blockId,
-			editor,
-			event,
-			fieldEditor,
-			range,
-			ytext,
-		})
-	) {
-		return true;
-	}
-
 	if (range && editor.selection?.type !== "cell") {
 		syncEditorTextSelection(editor, blockId, range);
 	}
 
-	ensureLineEdgeMeasure(editor);
+	const keyDocument =
+		closestDomElement(event.target)?.ownerDocument ??
+		(typeof document === "undefined" ? null : document);
+	if (keyDocument) {
+		ensureLineEdgeMeasure(editor, keyDocument);
+	}
 
 	if (
 		dispatchKeymapEvent(editor, event, {
@@ -145,7 +132,15 @@ export function handleFieldEditorKeyDown(options: {
 		}
 	}
 
-	if (handleEditorKeyBindings(editor, event, { includeSelectAll: false })) {
+	// History already ran above; an undo/redo key never reaches here.
+	if (!event.defaultPrevented && runMatchingKeyBinding(editor, event)) {
+		return true;
+	}
+
+	if (
+		fieldEditor.activeCellCoord &&
+		declineCellMarkAccelerator(editor, event)
+	) {
 		return true;
 	}
 
@@ -240,32 +235,25 @@ function handleTableCellKey(
 			return true;
 		}
 		const command = caretCommandForCellArrow(event.key);
-		setCellCaretFocus(
-			editor,
-			{
-				blockId: coord.blockId,
-				row: coord.row,
-				col: coord.col,
-				start: range?.start ?? 0,
-				end: range?.end ?? 0,
-			},
-			(next) => {
-				fieldEditor.commitCellTextSelection?.(
-					coord.blockId,
-					coord.row,
-					coord.col,
-					next.start,
-					next.end,
-				);
-			},
-		);
+		// T6 moves `CellSelection.text`; a cell with no caret in the record
+		// takes the field's before the motion.
+		if (
+			range &&
+			!resolveEditedCellText(editor.selection, coord.blockId, coord)
+		) {
+			fieldEditor.syncCellTextSelection?.(
+				coord,
+				range.start,
+				range.end,
+				"keyboard",
+			);
+		}
 		const handled = dispatchEditorCommand(
 			editor,
 			command,
 			{ extend: event.shiftKey },
 			{ origin: "user", fromKeymap: true },
 		);
-		setCellCaretFocus(editor, null);
 		if (!handled) {
 			return false;
 		}
@@ -274,6 +262,32 @@ function handleTableCellKey(
 	}
 
 	return null;
+}
+
+/**
+ * FE6: a mark accelerator nothing else claimed inside an edited cell fails
+ * closed here, on the keydown every engine delivers. Leaving it to the
+ * engine's `formatBold` beforeinput made the decline engine-dependent:
+ * Firefox never produces that event, and WebKit only does when the host app
+ * maps the key equivalent to a bold command (Safari's Format menu does; a
+ * bare WKWebView such as Playwright's does not). Preventing the default also
+ * keeps Chromium from following with a native `formatBold` that would
+ * report the same decline twice.
+ */
+function declineCellMarkAccelerator(
+	editor: Editor,
+	event: KeyboardEvent,
+): boolean {
+	if (event.defaultPrevented || event.isComposing === true) {
+		return false;
+	}
+	const mark = markForAccelerator(event);
+	if (!mark) {
+		return false;
+	}
+	event.preventDefault();
+	reportCellMarkDecline(editor, mark);
+	return true;
 }
 
 type CellArrowKey = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";
@@ -320,11 +334,15 @@ function syncAcceptedInlineCompletionSelection(
 	const blockId = selection.focus.blockId;
 	const offset = selection.focus.offset;
 	if (typeof fieldEditor.commitProgrammaticTextSelection === "function") {
-		fieldEditor.commitProgrammaticTextSelection(blockId, offset, offset);
+		fieldEditor.commitProgrammaticTextSelection(blockId, offset, offset, {
+			origin: "keyboard",
+		});
 		return;
 	}
 
-	fieldEditor.activateTextSelection(blockId, offset, offset);
+	fieldEditor.activateTextSelection(blockId, offset, offset, {
+		origin: "keyboard",
+	});
 }
 
 function shouldDismissAutocompleteOnKeyDown(
@@ -363,18 +381,7 @@ export function handleEditorKeyBindings(
 		return true;
 	}
 
-	const bindings = collectKeyBindings(editor);
-	for (const binding of bindings) {
-		if (
-			matchesBindingContext(editor, binding.context) &&
-			matchesKey(binding.key, event) &&
-			binding.handler(editor, event)
-		) {
-			return true;
-		}
-	}
-
-	return false;
+	return runMatchingKeyBinding(editor, event);
 }
 
 export function handleSelectAllShortcut(
@@ -386,7 +393,7 @@ export function handleSelectAllShortcut(
 		return false;
 	}
 
-	editor.selectAll(fieldEditor?.selectAllBehavior);
+	editor.selectAll(fieldEditor?.selectAllBehavior, { origin: "keyboard" });
 	if (fieldEditor) {
 		activateFieldEditorFromSelection(editor, fieldEditor);
 	}

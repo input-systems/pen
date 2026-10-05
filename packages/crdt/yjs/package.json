@@ -28,6 +28,16 @@
         "default": "./dist/index.cjs"
       }
     },
+    "./awareness": {
+      "import": {
+        "types": "./dist/awareness.d.ts",
+        "default": "./dist/awareness.mjs"
+      },
+      "require": {
+        "types": "./dist/awareness.d.cts",
+        "default": "./dist/awareness.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.cjs",
@@ -56,6 +66,11 @@
   "peerDependencies": {
     "y-protocols": "^1.0.7",
     "yjs": "^13.6"
+  },
+  "peerDependenciesMeta": {
+    "y-protocols": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^25.4.0",

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
-import { readBackend, readDocumentText } from "./compose";
+import { readBackend, readDocumentText } from "../input/keys";
 
 scenario(
 	"C4: Chromium prefers EditContext and composition commit writes the authority",

@@ -7,6 +7,7 @@ import {
 	MAX_TRACKED_PEERS,
 } from "../../../extensions/multiplayer/src/presence/constants";
 import { scenario } from "../src/scenario";
+import { collectPageErrors } from "../suites/specHelpers";
 
 const GOOD_PEER_ID = 77;
 const STALE_PEER_ID = 78;
@@ -15,14 +16,6 @@ const HOSTILE_AVATAR_JS = "javascript:window.__xssProbe()";
 const HOSTILE_AVATAR_HTML =
 	"data:text/html,<script>window.__xssProbe()</script>";
 const SCRIPT_NAME = '"><img src=x onerror="window.__xssProbe()">';
-
-function collectPageErrors(page: Page): string[] {
-	const errors: string[] = [];
-	page.on("pageerror", (error) => {
-		errors.push(error.message);
-	});
-	return errors;
-}
 
 async function serializePresenceAnchors(
 	page: Page,

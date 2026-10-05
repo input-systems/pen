@@ -112,7 +112,7 @@ test("scenarios call the bridge helper, not selection.isCollapsed", () => {
 	const files = [
 		"../../scenarios/f39-undo-selection.spec.ts",
 		"../../scenarios/f39-caret-overlay.spec.ts",
-		"../../scenarios/m2-arrow-swap.spec.ts",
+		"../../suites/specHelpers.ts",
 	];
 	for (const rel of files) {
 		const body = readFileSync(new URL(rel, import.meta.url), "utf8");
@@ -292,8 +292,14 @@ test("isFixtureName and windowedBlockId are live predicates, not always-true", a
 	);
 	assert.match(
 		catalog,
-		/return isLocalFixtureName\(name\) \|\| name === "deterministic"/,
+		/hasOwnProperty\.call\(SCALE_FIXTURE_ROOT_COUNTS, name\)/,
 	);
+	assert.match(
+		catalog,
+		/isLocalFixtureName\(name\) \|\|\s*isScaleFixtureName\(name\) \|\|\s*name === "deterministic"/,
+	);
+	assert.match(catalog, /hasOwnProperty\.call\(FUZZ_FIXTURES, name\)/);
+	assert.match(catalog, /name === "deterministic" \|\|\s*isFuzzFixtureName\(name\)/);
 	assert.doesNotMatch(
 		catalog,
 		/export function isFixtureName[\s\S]*return true;/,
@@ -370,5 +376,10 @@ test("STANDING_DIAGNOSTIC_CODES is a non-empty closed list", async () => {
 	assert.ok(STANDING_DIAGNOSTIC_CODES.includes("dom-divergence"));
 	assert.ok(STANDING_DIAGNOSTIC_CODES.includes("selection-projection-mismatch"));
 	assert.ok(STANDING_DIAGNOSTIC_CODES.length > 0);
-	assert.equal(DIAGNOSTICS_ALLOWLIST.length, 0);
+	// The target is an empty list. An entry is a ratchet: it must name the
+	// workstream requirement or step that removes it.
+	for (const entry of DIAGNOSTICS_ALLOWLIST) {
+		assert.ok(STANDING_DIAGNOSTIC_CODES.includes(entry.code), entry.code);
+		assert.match(entry.reason, /W\d+(\.R\d+| step \d+)/, entry.code);
+	}
 });

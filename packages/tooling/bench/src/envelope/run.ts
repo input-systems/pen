@@ -50,10 +50,14 @@ export async function runEnvelopeSuite(
 		? `Recorded at load ${load.load1.toFixed(2)} on ${load.ncpu} CPUs. Other work was running; these numbers are not a quiet-machine envelope.`
 		: `Recorded at load ${load.load1.toFixed(2)} on ${load.ncpu} CPUs.`;
 
+	const committedRenderer = await loadCommittedEnvelope()
+		.then((record) => record.renderer)
+		.catch(() => []);
 	const fresh = buildEnvelopeRecord(results, {
 		machineClass,
 		status,
 		caveat,
+		renderer: committedRenderer,
 	});
 
 	if (options.writeEnvelope) {

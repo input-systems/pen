@@ -11,12 +11,14 @@ import {
 	type RegionSelectorConfig,
 } from "../utils/regionSelection";
 import {
-	EDITOR_ROOT_SELECTOR,
 	ensureEditorFocus,
 	resolveClickedBlockId,
 	shouldIgnorePointerGesture,
 	type ContentGesturesContext,
 } from "./contentGesturesShared";
+
+/** FE5: the blocks host's top-level blocks, including those inside an AX1 list group. */
+const TOP_LEVEL_BLOCK_SELECTOR = `:scope > [${DATA_ATTRS.editorBlock}], :scope > [${DATA_ATTRS.listGroup}] > [${DATA_ATTRS.editorBlock}]`;
 
 export function createRegionGestures<
 	InteractionModel extends PointerInteractionModel,
@@ -29,7 +31,6 @@ export function createRegionGestures<
 		getBlocksHost,
 		regionSelectionStore,
 		regionGestureRef,
-		skipNextClickRef,
 		blockSelectionEnabled,
 	} = ctx;
 
@@ -62,13 +63,10 @@ export function createRegionGestures<
 		if (!blocksHost) return [];
 		return measureWithRoot(currentEditorRoot ?? gestureEl, ({ reader }) => {
 			const selectedIds: string[] = [];
-			for (const child of Array.from(blocksHost.children)) {
-				if (
-					!(child instanceof HTMLElement) ||
-					!child.hasAttribute(DATA_ATTRS.editorBlock)
-				) {
-					continue;
-				}
+			// Top-level blocks sit directly in the host or in an AX1 list group.
+			for (const child of Array.from(
+				blocksHost.querySelectorAll(TOP_LEVEL_BLOCK_SELECTOR),
+			)) {
 				const blockId = child.getAttribute(DATA_ATTRS.blockId);
 				if (!blockId) continue;
 				const blockRect = reader.blockRect(blockId);
@@ -93,10 +91,28 @@ export function createRegionGestures<
 				clientY: event.clientY,
 				isSelecting: false,
 			};
-			skipNextClickRef.current = false;
 			return true;
 		}
 		return false;
+	};
+
+	/** The region from the gesture's press to `event`, bounded, and the blocks it covers. */
+	const resolveRegion = (
+		gesture: { clientX: number; clientY: number },
+		event: MouseEvent,
+		config: Parameters<typeof resolveRegionRect>[0],
+	) => {
+		const boundedRect = intersectRegionSelectionRect(
+			createRegionSelectionRect(
+				gesture.clientX,
+				gesture.clientY,
+				event.clientX,
+				event.clientY,
+			),
+			resolveRegionRect(config),
+		);
+		const selectedIds = boundedRect ? getIntersectedBlockIds(boundedRect) : [];
+		return { boundedRect, selectedIds };
 	};
 
 	const handleMouseMove = (event: MouseEvent): boolean => {
@@ -115,29 +131,14 @@ export function createRegionGestures<
 		if (!gesture.isSelecting && !moved) {
 			return true;
 		}
-		if (!gesture.isSelecting) {
-			gesture.isSelecting = true;
-			skipNextClickRef.current = true;
-			gestureEl.ownerDocument?.getSelection()?.removeAllRanges();
-		}
+		gesture.isSelecting = true;
 		event.preventDefault();
-		const boundedRect = intersectRegionSelectionRect(
-			createRegionSelectionRect(
-				gesture.clientX,
-				gesture.clientY,
-				event.clientX,
-				event.clientY,
-			),
-			resolveRegionRect(config),
-		);
+		const { boundedRect, selectedIds } = resolveRegion(gesture, event, config);
 		regionSelectionStore.setLiveRect(boundedRect);
-		const selectedIds = boundedRect
-			? getIntersectedBlockIds(boundedRect)
-			: [];
 		if (selectedIds.length > 0) {
-			editor.selectBlocks(selectedIds);
+			editor.selectBlocks(selectedIds, { origin: "pointer" });
 		} else {
-			editor.setSelection(null);
+			editor.setSelection(null, { origin: "pointer" });
 		}
 		fieldEditor.deactivate();
 		return true;
@@ -149,37 +150,25 @@ export function createRegionGestures<
 			return false;
 		}
 		const wasSelecting = regionGesture.isSelecting;
-		const regionRoot = gestureEl.closest(
-			EDITOR_ROOT_SELECTOR,
-		) as HTMLElement | null;
+		const regionRoot = currentEditorRoot;
 		if (wasSelecting) {
 			if (!blockSelectionEnabled) {
-				skipNextClickRef.current = true;
 				clearRegionSelectionState();
 				return true;
 			}
-			const config = regionSelectionStore.getSnapshot().config;
-			const boundedRect = intersectRegionSelectionRect(
-				createRegionSelectionRect(
-					regionGesture.clientX,
-					regionGesture.clientY,
-					event.clientX,
-					event.clientY,
-				),
-				resolveRegionRect(config),
+			const { selectedIds } = resolveRegion(
+				regionGesture,
+				event,
+				regionSelectionStore.getSnapshot().config,
 			);
-			const selectedIds = boundedRect
-				? getIntersectedBlockIds(boundedRect)
-				: [];
 			if (selectedIds.length > 0) {
-				editor.selectBlocks(selectedIds);
+				editor.selectBlocks(selectedIds, { origin: "pointer" });
 				if (regionRoot) {
 					ensureEditorFocus(ctx, regionRoot);
 				}
 			} else {
-				editor.setSelection(null);
+				editor.setSelection(null, { origin: "pointer" });
 			}
-			skipNextClickRef.current = true;
 		}
 		clearRegionSelectionState();
 		return wasSelecting;

@@ -441,21 +441,6 @@ function validateSerializedAnchor(value: unknown):
 	return { anchor: value };
 }
 
-function resolveDocumentPoint(
-	blockId: string,
-	offset: number,
-	document: AwarenessDocumentView,
-): { reason: PresenceRejectionReason | null } {
-	const length = document.blockLength(blockId);
-	if (length == null) {
-		return { reason: "nonexistent-block" };
-	}
-	if (offset < 0 || offset > length) {
-		return { reason: "out-of-range-offset" };
-	}
-	return { reason: null };
-}
-
 function resolvePresenceAvatarUrl(
 	raw: string,
 	resolveUrl: ((value: string) => string | null) | undefined,

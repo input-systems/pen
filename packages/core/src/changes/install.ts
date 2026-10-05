@@ -1,12 +1,18 @@
 import type { ChangeSummary, CRDTEvent, PenDocument } from "@input/pen-types";
-import { createSummarySource } from "@input/pen-yjs";
+import {
+	createSummarySource,
+	type RawCommitDelta,
+	type YArrayDelta,
+} from "@input/pen-yjs";
 
 import {
 	createBlockIndex,
 	emptyBlockIndexSnapshot,
 	type BlockIndex,
+	type StoredBlockReader,
 } from "./blockIndex";
 import { createBlockIndexSnapshotFromDocument } from "./fromDocument";
+import { summaryTouchedBlockIds } from "./affectedBlocks";
 import { buildChangeSummary } from "./summaryBuilder";
 
 export interface ChangeSummaryHost {
@@ -15,9 +21,25 @@ export interface ChangeSummaryHost {
 	_pendingSummary: ChangeSummary | null;
 	_lastChangeSummary: ChangeSummary | null;
 	_blockIndex: BlockIndex;
+	_storedBlocks: StoredBlockReader | null;
+	_documentState: {
+		applyRootDelta(delta: YArrayDelta, readBlock: StoredBlockReader): void;
+		noteChildArrayEdits(blockIds: Iterable<string>): void;
+	};
 	_unsubSummary: (() => void) | null;
 	_deferredCRDTEvent: CRDTEvent | null;
-	_engine: { notifyStructureChanged(): void };
+	_engine: {
+		observeCommit(
+			delta: RawCommitDelta,
+			localApply: boolean,
+			readBlock: StoredBlockReader,
+		): void;
+		notifyExternalCommit(blockIds: Iterable<string>): void;
+	};
+	_pipeline: {
+		readonly suppressObserver: boolean;
+		noteExternalBlocks(blockIds: Iterable<string>): void;
+	};
 	_dispatchCRDTEvent(event: CRDTEvent): void;
 }
 
@@ -35,30 +57,65 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 		host._unsubSummary = createSummarySource(
 			host._crdtDoc as never,
 			(delta) => {
-				// Normalization only runs inside a local apply, so a remote or
-				// undo transaction is the one structural change its pass index
-				// never hears about at the mutation site.
-				if (
-					delta.blockOrderDelta.length > 0 ||
-					delta.childArrayDeltas.size > 0
-				) {
-					host._engine.notifyStructureChanged();
-				}
-
+				const readBlock = storedBlockReader(host._doc);
+				host._storedBlocks = readBlock;
+				// A local apply advanced the normalizer's pass index at each
+				// write; a remote or undo transaction advances it by its delta.
+				host._engine.observeCommit(
+					delta,
+					host._pipeline.suppressObserver,
+					readBlock,
+				);
+				// The document index follows the root order transaction by
+				// transaction; its commit dispatch indexes the rest.
+				host._documentState.applyRootDelta(delta.blockOrderDelta, readBlock);
+				host._documentState.noteChildArrayEdits(childArrayEditIds(delta));
 				const summary = buildChangeSummary(
 					delta,
 					host._blockIndex.snapshot(),
 					0,
+					{
+						blockExists: (blockId) => readBlock(blockId) !== undefined,
+						listedMoreThanOnce: (blockId) =>
+							host._blockIndex.listedMoreThanOnce(blockId),
+						rootIndexOf: (blockId) => host._blockIndex.rootIndexOf(blockId),
+						readBlock,
+					},
 				);
 				host._pendingSummary = summary;
+				// A local apply normalized inside its own transaction; any
+				// other commit hands the next local pass what it touched.
+				if (!host._pipeline.suppressObserver) {
+					const touched = structurallyTouchedBlockIds(delta, summary);
+					if (touched.size > 0) host._engine.notifyExternalCommit(touched);
+					host._pipeline.noteExternalBlocks(storedOrRetyped(delta));
+				}
 				// A text-only commit moves lengths and nothing else, so the
 				// index advances in place. Rebuilding it from the document
-				// would read every block's text on every keystroke (SCALE2).
-				if (summary.structural.length === 0) {
+				// would read every block's text on every keystroke (SCALE2). An
+				// array edit, or a block map arriving or leaving, that reports no
+				// structural change (a duplicate entry's repair, an orphan whose
+				// parent a peer deleted; COL4) still reshapes the index, which
+				// advances by the arrays and maps the delta names; a commit it
+				// cannot advance exactly is read back from the document.
+				// A root order whose length no longer matches the document's means
+				// the delta under-reported: Yjs merges a delete made in a commit
+				// listener during another transaction's cleanup into that
+				// transaction's delete set when the two entries' clocks are
+				// adjacent, and the nested commit's delta then omits it.
+				const named = namedBlockIds(summary);
+				let advanced = true;
+				if (summary.structural.length === 0 && !reshapesIndex(delta)) {
 					host._blockIndex.applyTextLengths(summary.blockText);
 				} else {
+					advanced = host._blockIndex.applyStructure(readBlock, delta, named);
+				}
+				if (!advanced || host._blockIndex.snapshot().roots.length !== host._doc.blockOrder.length) {
 					host._blockIndex.replace(
-						createBlockIndexSnapshotFromDocument(host._doc),
+						createBlockIndexSnapshotFromDocument(host._doc, {
+							lengths: host._blockIndex.snapshot().lengthById,
+							named,
+						}),
 					);
 				}
 				flushDeferredCRDTEvent(host);
@@ -71,9 +128,26 @@ export function installChangeSummaries(host: ChangeSummaryHost): void {
 
 export function teardownChangeSummaries(host: ChangeSummaryHost): void {
 	host._deferredCRDTEvent = null;
+	host._storedBlocks = null;
 	if (!host._unsubSummary) return;
 	host._unsubSummary();
 	host._unsubSummary = null;
+}
+
+/**
+ * One commit's reads of stored block maps, shared by the pass index, the
+ * summary, the block index and the document index so each map is read once
+ * per commit (SCALE2). Each transaction installs a fresh reader before
+ * anything reads, so the held one always answers for the current document.
+ */
+function storedBlockReader(doc: PenDocument): StoredBlockReader {
+	const reads = new Map<string, unknown>();
+	return (blockId) => {
+		if (reads.has(blockId)) return reads.get(blockId);
+		const block = doc.blocks.get(blockId);
+		reads.set(blockId, block);
+		return block;
+	};
 }
 
 function flushDeferredCRDTEvent(host: ChangeSummaryHost): void {
@@ -81,4 +155,104 @@ function flushDeferredCRDTEvent(host: ChangeSummaryHost): void {
 	if (!deferred) return;
 	host._deferredCRDTEvent = null;
 	host._dispatchCRDTEvent(deferred);
+}
+
+/**
+ * Whether a commit edited an order array, added or removed a block map, or
+ * set or removed a block's `children` array — a replaced array (concurrent
+ * first-child inserts, COL4) drops the entries of the one it replaced.
+ */
+function reshapesIndex(delta: RawCommitDelta): boolean {
+	if (delta.blockOrderDelta.length > 0 || delta.childArrayDeltas.size > 0) {
+		return true;
+	}
+	for (const keys of delta.blockMapChanges.values()) {
+		if (keys.size === 0 || keys.has("children")) return true;
+	}
+	return false;
+}
+
+/**
+ * Blocks whose `children` array a transaction edited, created, replaced, or
+ * took away with the block map. Read from the delta alone.
+ */
+function childArrayEditIds(delta: RawCommitDelta): Set<string> {
+	const blockIds = new Set<string>(delta.childArrayDeltas.keys());
+	for (const blockId of delta.arrivedChildArrays?.keys() ?? []) blockIds.add(blockId);
+	for (const [blockId, keys] of delta.blockMapChanges) {
+		if (keys.size === 0 || keys.has("children")) blockIds.add(blockId);
+	}
+	return blockIds;
+}
+
+/** Keys of a block map whose change can move the block in the tree. */
+const STRUCTURAL_BLOCK_KEYS: ReadonlySet<string> = new Set([
+	"parentId",
+	"props",
+	"children",
+]);
+
+/**
+ * Blocks a commit placed, re-parented, created, removed, or deleted: ids
+ * inserted into `blockOrder` or a `children` array, the owners of changed
+ * `children` arrays, block-map entries that changed whole or changed
+ * `parentId`, and the ids the summary reports removed or moved — an entry
+ * removed under a peer's concurrent move can leave a live block in no array.
+ * Read from the delta and summary alone, so it costs nothing per document block.
+ */
+function structurallyTouchedBlockIds(
+	delta: RawCommitDelta,
+	summary: ChangeSummary,
+): Set<string> {
+	const touched = new Set<string>();
+	for (const change of summary.structural) {
+		if (change.type === "block-removed" || change.type === "block-moved") {
+			touched.add(change.blockId);
+		}
+	}
+	const addInserted = (ops: RawCommitDelta["blockOrderDelta"]): void => {
+		for (const op of ops) {
+			for (const id of op.insert ?? []) {
+				if (typeof id === "string") touched.add(id);
+			}
+		}
+	};
+	addInserted(delta.blockOrderDelta);
+	for (const [ownerId, ops] of delta.childArrayDeltas) {
+		touched.add(ownerId);
+		addInserted(ops);
+	}
+	for (const [blockId, keys] of delta.blockMapChanges) {
+		if (keys.size === 0) {
+			touched.add(blockId);
+			continue;
+		}
+		for (const key of keys) {
+			if (STRUCTURAL_BLOCK_KEYS.has(key)) {
+				touched.add(blockId);
+				break;
+			}
+		}
+	}
+	return touched;
+}
+
+/** Blocks a commit stored whole or retyped: the ones that can carry a new block type. */
+function storedOrRetyped(delta: RawCommitDelta): string[] {
+	const blockIds: string[] = [];
+	for (const [blockId, keys] of delta.blockMapChanges) {
+		if (keys.size === 0 || keys.has("type")) blockIds.push(blockId);
+	}
+	return blockIds;
+}
+
+/** Blocks whose text a structural commit may have changed, so must be re-read. */
+function namedBlockIds(summary: ChangeSummary): Set<string> {
+	const named = new Set(summaryTouchedBlockIds(summary));
+	for (const change of summary.blockText) named.add(change.blockId);
+	for (const change of summary.structural) {
+		if (change.type === "block-split") named.add(change.newBlockId);
+		else if (change.type === "blocks-merged") named.add(change.targetBlockId);
+	}
+	return named;
 }

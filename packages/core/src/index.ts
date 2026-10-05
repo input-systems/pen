@@ -76,7 +76,19 @@ export {
 } from "./selection/helpers";
 export { snapToNormalPosition } from "./selection/normalPosition";
 export type { NormalPositionSnapshot } from "./selection/normalPosition";
-export { buildNormalPositionSnapshot } from "./commands/helpers";
+export {
+	clickSelectableBlock,
+	convertPointerDrag,
+} from "./selection/transitions";
+export type {
+	TransitionBlock,
+	TransitionSnapshot,
+} from "./selection/transitions";
+export { buildTransitionSnapshot } from "./commands/commandSnapshots";
+export {
+	buildLazyNormalPositionSnapshot,
+	buildNormalPositionSnapshot,
+} from "./commands/helpers";
 export { ExtensionManagerImpl } from "./editor/extensionManager";
 // ApplyPipeline stays off the barrel; hosts call editor.apply.
 export {
@@ -91,6 +103,12 @@ export {
 	resolveCellSelectionMatrix,
 } from "./editor/cellSelection";
 export { getNumberedListItemValue } from "./editor/orderedList";
+export {
+	getListItemSemantics,
+	getListSegments,
+	isListItemType,
+} from "./editor/listRuns";
+export type { ListItemSemantics, ListSegment } from "./editor/listRuns";
 export {
 	createImportResult,
 	filterOpsForDocumentProfile,
@@ -157,6 +175,7 @@ export {
 	keymapFacet,
 	beforeApplyFacet,
 	decorationsFacet,
+	scopedDecorationSource,
 	inputRulesFacet,
 	commandsFacet,
 	ariaReadOnlyFacet,
@@ -179,6 +198,7 @@ export type {
 	BlockDirectionSetting,
 } from "./direction/firstStrong";
 export { resolveBlockDirection } from "./direction/resolve";
+export { isSafeCssColor } from "./security/cssColor";
 export {
 	urlPolicy,
 	type UrlContext,
@@ -228,17 +248,10 @@ export {
 	caretUp,
 	caretWordLeft,
 	caretWordRight,
-	getCellCaretFocus,
 	selectAll,
 	selectBlock,
-	setCellCaretFocus,
 } from "./commands/caret";
-export type {
-	CaretMotionParam,
-	CellCaretFocus,
-	CellCaretWrite,
-	SelectBlockParam,
-} from "./commands/caret";
+export type { CaretMotionParam, SelectBlockParam } from "./commands/caret";
 export {
 	getVerticalCaretGoalX,
 	getVerticalCaretMeasure,
@@ -342,6 +355,9 @@ export type {
 	Keymap,
 	BeforeApplyHook,
 	DecorationSource,
+	DecorationInterest,
+	ScopedDecorationSource,
+	ScopedDecorationSourceSpec,
 	ClipboardHandler,
 	CommandHandlerTable,
 } from "./facets/coreFacets";
@@ -374,5 +390,9 @@ export {
 	smoothStreamControllerFacet,
 } from "./facets/controllerFacets";
 export { collectEditorKeyBindings } from "./editor/extensionManager";
-export { affectedBlockIdsFromSummary } from "./changes/affectedBlocks";
+export {
+	affectedBlockIdsFromSummary,
+	summaryRemovedBlockIds,
+	summaryTouchedBlockIds,
+} from "./changes/affectedBlocks";
 export { mapOffsetThroughSplices } from "./changes/mapOffsetThroughSplices";

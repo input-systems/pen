@@ -13,6 +13,11 @@ export {
 	handleFieldEditorRootFocus,
 	type FieldEditorRootFocusOptions,
 } from "./host/rootFocus";
+export {
+	bindEditorRootFocus,
+	isEditorRootFocused,
+	type EditorRootFocusHandlers,
+} from "./host/rootFocusTracking";
 export type {
 	FieldEditorFocusReason,
 	FieldEditorFocusRequest,
@@ -102,16 +107,62 @@ export {
 	urlPolicyFromEditor,
 } from "./security/resolveEditorUrl";
 export { urlPolicyExtension } from "./security/urlPolicyExtension";
-export { createReducedMotionSignal } from "./a11y/motion";
+export {
+	AX6_MOTION_MAPPING,
+	REDUCED_MOTION_ATTR,
+	createReducedMotionSignal,
+	getRootReducedMotion,
+} from "./a11y/motion";
 export type { ReducedMotionListener, ReducedMotionSignal } from "./a11y/motion";
+export { captureFocusReturn, restoreFocusReturn } from "./a11y/focusReturn";
+export type {
+	FocusReturnFieldEditor,
+	FocusReturnOptions,
+	FocusReturnPreference,
+	FocusReturnResult,
+	FocusReturnToken,
+} from "./a11y/focusReturn";
 export { DomScheduler } from "./scheduler";
 export type {
+	DomSchedulerDiagnostics,
 	DomSchedulerOptions,
 	DomSchedulerOwner,
 	DomSchedulerPhase,
 	FlushCollect,
 	GeometryInvalidator,
+	OverlayPainter,
 } from "./scheduler";
+export { getRootOverlay } from "./overlay/rootOverlay";
+export { overlayItemStyle, overlayLabelStyle } from "./overlay/overlayStyles";
+export {
+	attachRemoteCarets,
+	getRemoteCaretSource,
+	REMOTE_CARET_CONTRIBUTOR,
+	remoteCaretKey,
+} from "./overlay/remoteCarets";
+export type {
+	AttachRemoteCaretsOptions,
+	RemoteCaretCursor,
+	RemoteCaretSource,
+	RemoteCaretUser,
+} from "./overlay/remoteCarets";
+export type {
+	OverlayCaretVariant,
+	OverlayInlineStyle,
+} from "./overlay/overlayStyles";
+export type {
+	OverlayCaretRole,
+	OverlayCellCoord,
+	OverlayContributor,
+	OverlayFieldState,
+	OverlayItemKind,
+	OverlayPaintItem,
+	OverlayPaintMode,
+	OverlayPaintPlan,
+	OverlayReadContext,
+	OverlayRequest,
+	RootOverlay,
+} from "./overlay/types";
 export {
 	collapsedRect,
 	createGeometryReader,

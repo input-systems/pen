@@ -58,3 +58,25 @@ function addStructuralBlockIds(
 		}
 	}
 }
+
+/** Blocks a commit removed: deleted blocks and the source of a merge. */
+export function summaryRemovedBlockIds(
+	summary: Pick<ChangeSummary, "structural">,
+): string[] {
+	const removed: string[] = [];
+	for (const change of summary.structural) {
+		if (change.type === "block-removed") removed.push(change.blockId);
+		else if (change.type === "blocks-merged") removed.push(change.sourceBlockId);
+	}
+	return removed;
+}
+
+/**
+ * Every block a commit may have changed: its affected ids plus the blocks it
+ * removed, so a per-block index can drop them (SCALE2). O(|summary|).
+ */
+export function summaryTouchedBlockIds(
+	summary: Pick<ChangeSummary, "affectedBlockIds" | "structural">,
+): string[] {
+	return [...summary.affectedBlockIds, ...summaryRemovedBlockIds(summary)];
+}

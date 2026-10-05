@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
+import { HARNESS_PORT } from "./src/harnessPort";
 
-const HARNESS_BASE_URL = "http://127.0.0.1:4174";
+const HARNESS_BASE_URL = `http://127.0.0.1:${HARNESS_PORT}`;
 
 export default defineConfig({
 	testDir: ".",
@@ -18,7 +19,7 @@ export default defineConfig({
 		trace: "retain-on-failure",
 	},
 	webServer: {
-		command: "pnpm --filter @input/pen-conformance run harness:dev",
+		command: `pnpm --filter @input/pen-conformance exec vite --config harness/vite.config.ts --host 127.0.0.1 --port ${HARNESS_PORT} --strictPort`,
 		url: HARNESS_BASE_URL,
 		reuseExistingServer: !process.env.CI,
 		timeout: 120_000,

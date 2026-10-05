@@ -1,6 +1,5 @@
 import type { ModelStreamEvent } from "@input/pen-types";
 import type { AutocompleteRequestContext } from "./types";
-import { previewAutocompleteTextForLog } from "./autocompleteDebug";
 
 const PROSE_BLOCK_TYPES = new Set([
 	"paragraph",

@@ -1,3 +1,4 @@
+import type { SelectionOrigin } from "./selection";
 import type { BlockSchema } from "./schema";
 import type { SelectionRecord, SelectionState } from "./selection";
 import type { GenerationZone } from "./crdt";
@@ -17,6 +18,8 @@ export type FieldEditorFocusOptions = {
 	reason?: FieldEditorFocusReason;
 	domFocus?: boolean;
 	passive?: boolean;
+	/** The selection write's origin (S3); `"programmatic"` when omitted. */
+	origin?: SelectionOrigin;
 };
 
 export interface FieldEditor {

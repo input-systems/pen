@@ -59,8 +59,9 @@ function buildSelectionDecorationsForRange(
 	blockOrder: readonly string[],
 	selection: Extract<RemoteSelectionState, { kind: "text" }>,
 ): InlineDecoration[] {
-	const anchorIndex = blockOrder.indexOf(selection.anchor.blockId);
-	const headIndex = blockOrder.indexOf(selection.head.blockId);
+	// O(1) per endpoint (SCALE2): the position index, not a scan of the order.
+	const anchorIndex = editor.documentState.indexOf(selection.anchor.blockId);
+	const headIndex = editor.documentState.indexOf(selection.head.blockId);
 	if (anchorIndex < 0 || headIndex < 0) {
 		return [];
 	}

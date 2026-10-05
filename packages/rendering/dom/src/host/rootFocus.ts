@@ -3,18 +3,23 @@ import { FOCUS_SINK_ATTR } from "../a11y/focusSink";
 import type { FieldEditorSession } from "../field-editor/controller";
 import { queryBlockElement } from "../field-editor/selectionDomQueries";
 import { DATA_ATTRS } from "../utils/dataAttributes";
+import { isDomHTMLElement, isDomNode } from "../utils/domNodes";
 import { collectHostTextBlocks } from "./pointerActivation";
 
 /** Options for transferring editor-root focus into the active editor surface. */
 export interface FieldEditorRootFocusOptions {
 	event: FocusEvent;
 	editor: Editor;
-	fieldEditor: Pick<FieldEditorSession, "focusTextSelection">;
+	fieldEditor: Pick<
+		FieldEditorSession,
+		"focusTextSelection" | "focusSelection" | "requestRootFocus"
+	> &
+		Partial<Pick<FieldEditorSession, "getSubstituteState">>;
 	root: HTMLElement;
 	readonly?: boolean;
 }
 
-/** Transfers direct editor-root focus into the active editor surface. */
+/** Transfers focus entering the editor root from outside into the active editor surface. */
 export function handleFieldEditorRootFocus(
 	options: FieldEditorRootFocusOptions,
 ): void {
@@ -22,14 +27,27 @@ export function handleFieldEditorRootFocus(
 	if (event.target !== root) {
 		return;
 	}
+	// Focus that moved to the root from inside the editor is a projection
+	// (P: an app or null record, or a deactivated field), not focus entering
+	// the editor, and stays on the root (D18).
+	const from = event.relatedTarget;
+	if (isDomNode(from) && root.contains(from)) {
+		return;
+	}
 
 	const selection = editor.selection;
-	if (selection?.type === "block" || selection?.type === "cell") {
+	if (
+		selection?.type === "block" ||
+		selection?.type === "cell" ||
+		fieldEditor.getSubstituteState?.() != null
+	) {
 		const focusSink = root.querySelector(
 			`:scope > [${FOCUS_SINK_ATTR}]`,
 		);
-		if (focusSink instanceof HTMLElement) {
-			focusSink.focus({ preventScroll: true });
+		if (isDomHTMLElement(focusSink)) {
+			fieldEditor.requestRootFocus(focusSink, "selection-project", {
+				preventScroll: true,
+			});
 		}
 		return;
 	}
@@ -39,11 +57,16 @@ export function handleFieldEditorRootFocus(
 	}
 
 	if (selection) {
-		if (
-			selection.type === "text" &&
-			selection.anchor.blockId === selection.focus.blockId &&
-			queryBlockElement(root, selection.focus.blockId)
-		) {
+		if (selection.type !== "text") {
+			return;
+		}
+		if (selection.anchor.blockId !== selection.focus.blockId) {
+			// S2: a multi-block range within the block-surface threshold is
+			// a native range in the expanded host, with focus there.
+			fieldEditor.focusSelection();
+			return;
+		}
+		if (queryBlockElement(root, selection.focus.blockId)) {
 			void fieldEditor.focusTextSelection(
 				selection.focus.blockId,
 				selection.anchor.offset,
@@ -55,7 +78,7 @@ export function handleFieldEditorRootFocus(
 	}
 
 	const blocksHost = root.querySelector(`[${DATA_ATTRS.editorBlocksHost}]`);
-	if (!(blocksHost instanceof HTMLElement)) {
+	if (!isDomHTMLElement(blocksHost)) {
 		return;
 	}
 

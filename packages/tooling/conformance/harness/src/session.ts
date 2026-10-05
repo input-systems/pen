@@ -3,24 +3,23 @@ import {
 	createEditor,
 	createHeadlessEditor,
 	createPseudoLocaleCatalog,
+	buildLazyNormalPositionSnapshot,
 	fieldEditorHostFacet,
 	getEditorSelectionRecord,
 	isCollapsed as selectionIsCollapsed,
 } from "@input/pen-core";
+import { wrapYjsDocument, yjsAdapter } from "@input/pen-yjs";
+import { mountEditor } from "@input/pen-dom";
 import {
 	applyYjsAwarenessUpdate,
+	createYjsAwareness,
 	encodeYjsAwarenessUpdate,
-	wrapYjsDocument,
-	yjsAdapter,
-} from "@input/pen-yjs";
+} from "@input/pen-yjs/awareness";
 import {
 	BEFOREINPUT_MAP,
 	mapBeforeInput,
 } from "@input/pen-dom/field-editor/beforeinputMap";
-import {
-	domSelectionToEditor,
-	editorSelectionToDOM,
-} from "@input/pen-dom/field-editor";
+import { domSelectionToEditor } from "@input/pen-dom/field-editor";
 import { applyValidatedOps } from "@input/pen-tools";
 import { parsePenClipboardPayload } from "@input/pen-dom/utils/clipboardPayload";
 import {
@@ -32,9 +31,13 @@ import { defaultPreset } from "@input/pen";
 import { defaultSchema } from "@input/pen-schema";
 import {
 	createDeterministicYDocFixture,
+	generateMixedBlockSpecs,
+	mixedFixtureOps,
 	populateYDoc,
 } from "@input/pen-test";
+import { getRootBlockIds } from "@input/pen-dom/utils/parentIdTree";
 import {
+	type BlockScrollAlign,
 	type CRDTAdapter,
 	type CRDTDocument,
 	type DiagnosticEvent,
@@ -51,8 +54,13 @@ import {
 } from "../../../../extensions/multiplayer/src";
 import { createReducedMotionSignal } from "../../../../rendering/dom/src/a11y/motion";
 import {
+	FUZZ_FIXTURES,
 	isFixtureName,
+	isFuzzFixtureName,
 	isLocalFixtureName,
+	isScaleFixtureName,
+	SCALE_FIXTURE_ROOT_COUNTS,
+	LOCAL_FIXTURE_OPS,
 	LOCAL_FIXTURES,
 	WINDOWED_WINDOW_SIZE,
 } from "../../fixtures/catalog";
@@ -63,6 +71,7 @@ import type {
 	DocumentContentSnapshot,
 	DomAuthorityCheck,
 	ForcedDomDivergence,
+	FuzzCheckReport,
 	HostileDomScan,
 	LogicalPoint,
 	PenConformanceBridge,
@@ -74,11 +83,22 @@ import type {
 	SerializedDiagnostic,
 } from "../../src/types";
 import { connectPeers } from "../../src/connectPeers";
+import { instrumentSessionEditor } from "./probes/index";
+import { collectFuzzReport, whenSchedulerIdle } from "./fuzzCheck";
 import {
 	misplacedOffset,
 	pointsEqual,
 	resolveDomAuthorityCheck,
+	type ExtendedS2Observations,
+	type SubstitutePaint,
 } from "./domAuthorityCompare";
+import {
+	isLogicallyEquivalent,
+	readNormalizedDomProposal,
+} from "../../../../rendering/dom/src/field-editor/selectionReader";
+// The public `editorSelectionToDOM` is gone (S1); the harness writes through
+// the projector's native-range primitive as its test-side writer.
+import { writeNativeRange } from "../../../../rendering/dom/src/field-editor/selectionProjector";
 import {
 	serializeDiagnostic,
 	serializeSelection,
@@ -88,6 +108,9 @@ import {
 	compareCaretCache,
 	disposeGeometry,
 	flushEightRemoteCarets,
+	overlayMatchesAuthority,
+	startOverlayProbe,
+	stopOverlayProbe,
 	geometryBlocks,
 	geometryGeneration,
 	geometryLineBoxes,
@@ -111,7 +134,39 @@ export type Session = {
 	unsubscribers: Unsubscribe[];
 	disconnectPeers: () => void;
 	brokenProjection: DomAuthorityCheck | null;
+	/** `?relay=1`: updates the local doc emitted since the last drain (W5.R10). */
+	relayOutbox: Uint8Array[] | null;
+	/** `?relay=1`: the local awareness state last drained, to send only changes. */
+	relayAwarenessSent: string | null;
 };
+
+/**
+ * The origin of every update a relay delivers. An update applied with it is
+ * not re-emitted to the outbox, which is `connectPeers`' echo rule.
+ */
+const RELAY_ORIGIN = Symbol("pen-conformance-relay");
+
+/** A peer forked from another page's encoded state (`?relay=1`). */
+type SessionSeed = { readonly update: Uint8Array; readonly clientId: number };
+
+function isRelayMode(): boolean {
+	return readQueryFlag("relay");
+}
+
+function toBase64(bytes: Uint8Array): string {
+	let binary = "";
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	return btoa(binary);
+}
+
+function fromBase64(text: string): Uint8Array {
+	const binary = atob(text);
+	const bytes = new Uint8Array(binary.length);
+	for (let index = 0; index < binary.length; index += 1) {
+		bytes[index] = binary.charCodeAt(index);
+	}
+	return bytes;
+}
 
 let session: Session | null = null;
 const listeners = new Set<() => void>();
@@ -156,23 +211,21 @@ function createLocalDocument(name: string): {
 			document: fixture.crdtDoc,
 		};
 	}
-	if (!isLocalFixtureName(name)) {
+	const adapter = yjsAdapter({ awareness: createYjsAwareness });
+	const ydoc = new Y.Doc({ gc: false });
+	if (isScaleFixtureName(name)) {
+		populateYDoc(ydoc, generateMixedBlockSpecs(SCALE_FIXTURE_ROOT_COUNTS[name]));
+	} else if (isFuzzFixtureName(name)) {
+		populateYDoc(ydoc, [...FUZZ_FIXTURES[name].blocks]);
+	} else if (isLocalFixtureName(name)) {
+		populateYDoc(ydoc, [...LOCAL_FIXTURES[name]]);
+	} else {
 		throw new Error(`Unknown conformance fixture: ${name}`);
 	}
-	const adapter = yjsAdapter();
-	const ydoc = new Y.Doc({ gc: false });
-	populateYDoc(ydoc, [...LOCAL_FIXTURES[name]]);
-	return {
-		adapter,
-		ydoc,
-		document: wrapYjsDocument(adapter, ydoc),
-	};
+	return { adapter, ydoc, document: wrapYjsDocument(adapter, ydoc) };
 }
 
-function readQueryFlag(name: string): boolean {
-	if (typeof window === "undefined") {
-		return false;
-	}
+export function readQueryFlag(name: string): boolean {
 	return new URLSearchParams(window.location.search).get(name) === "1";
 }
 
@@ -205,9 +258,13 @@ function col2MultiplayerExtensions() {
 	if (!readQueryFlag("col2")) {
 		return undefined;
 	}
+	// `?peer=<id>`: each relay page presents as its own user (W5.R10).
+	const peer = new URLSearchParams(window.location.search).get("peer");
 	return [
 		multiplayerExtension({
-			user: { id: "conformance-local", name: "Local" },
+			user: peer
+				? { id: `conformance-peer-${peer}`, name: `Peer ${peer}` }
+				: { id: "conformance-local", name: "Local" },
 		}),
 	];
 }
@@ -220,13 +277,31 @@ function sessionExtensions() {
 	return extensions.length > 0 ? extensions : undefined;
 }
 
-function createSession(fixtureName: string): Session {
-	const local = createLocalDocument(fixtureName);
-	const remoteAdapter = yjsAdapter();
+function createSeededDocument(seed: SessionSeed): {
+	adapter: CRDTAdapter;
+	ydoc: Y.Doc;
+	document: CRDTDocument;
+} {
+	const adapter = yjsAdapter({ awareness: createYjsAwareness });
+	const ydoc = new Y.Doc({ gc: false });
+	ydoc.clientID = seed.clientId;
+	Y.applyUpdate(ydoc, seed.update, RELAY_ORIGIN);
+	return { adapter, ydoc, document: wrapYjsDocument(adapter, ydoc) };
+}
+
+function createSession(fixtureName: string, seed?: SessionSeed): Session {
+	const local = seed ? createSeededDocument(seed) : createLocalDocument(fixtureName);
+	const remoteAdapter = yjsAdapter({ awareness: createYjsAwareness });
 	const remoteY = new Y.Doc({ gc: false });
 	Y.applyUpdate(remoteY, Y.encodeStateAsUpdate(local.ydoc));
 	const remoteDoc = wrapYjsDocument(remoteAdapter, remoteY);
-	const disconnectPeers = connectPeers(local.ydoc, remoteY);
+	// Relay mode: the peer is another page, reached only through the relay
+	// bridge, so the in-page zero-latency peer stays disconnected.
+	const relay = isRelayMode();
+	const relayOutbox: Uint8Array[] | null = relay ? [] : null;
+	const disconnectPeers = relay
+		? recordRelayOutbox(local.ydoc, relayOutbox!)
+		: connectPeers(local.ydoc, remoteY);
 
 	const editor = createEditor({
 		documentProfile: "structured",
@@ -236,6 +311,7 @@ function createSession(fixtureName: string): Session {
 		messages: readPseudoLocaleMessages(),
 		extensions: sessionExtensions(),
 	});
+	instrumentSessionEditor(editor);
 	const remoteEditor = createHeadlessEditor({
 		documentProfile: "structured",
 		schema: defaultSchema,
@@ -255,9 +331,87 @@ function createSession(fixtureName: string): Session {
 		unsubscribers: [],
 		disconnectPeers,
 		brokenProjection: null,
+		relayOutbox,
+		relayAwarenessSent: null,
 	};
 	wireEvents(next);
+	if (isScaleFixtureName(fixtureName)) {
+		// Tables and marks need editor.apply (populateYDoc drops them). This runs
+		// before any surface mounts, so construction is never measured.
+		editor.apply(mixedFixtureOps(SCALE_FIXTURE_ROOT_COUNTS[fixtureName]), {
+			origin: "system",
+		});
+	}
+	// A seeded peer already holds the fixture's ops in its forked state.
+	if (isFuzzFixtureName(fixtureName) && !seed) {
+		editor.apply(FUZZ_FIXTURES[fixtureName].ops(), { origin: "system" });
+	}
+	const localOps = isLocalFixtureName(fixtureName) ? LOCAL_FIXTURE_OPS[fixtureName] : undefined;
+	if (localOps && !seed) {
+		editor.apply(localOps(), { origin: "system" });
+	}
 	return next;
+}
+
+/** Collects every local update not applied by the relay itself. */
+function recordRelayOutbox(ydoc: Y.Doc, outbox: Uint8Array[]): () => void {
+	const onUpdate = (update: Uint8Array, origin: unknown) => {
+		if (origin === RELAY_ORIGIN) {
+			return;
+		}
+		outbox.push(update);
+	};
+	ydoc.on("update", onUpdate);
+	return () => ydoc.off("update", onUpdate);
+}
+
+/** `?relay=1`: fork this page from another page's encoded state with its own client id. */
+function loadSeeded(fixture: string, seedBase64: string, clientId: number): void {
+	loadFixture(fixture, { update: fromBase64(seedBase64), clientId });
+}
+
+function relayBridge(): NonNullable<PenConformanceBridge["relay"]> {
+	const current = () => {
+		const active = getHarnessSession();
+		if (!active.relayOutbox) {
+			throw new Error("relay bridge needs ?relay=1");
+		}
+		return active;
+	};
+	return {
+		drainOutbox() {
+			return current().relayOutbox!.splice(0).map(toBase64);
+		},
+		deliver(updates) {
+			const { localY } = current();
+			for (const update of updates) {
+				Y.applyUpdate(localY, fromBase64(update), RELAY_ORIGIN);
+			}
+		},
+		stateVector() {
+			return toBase64(Y.encodeStateVector(current().localY));
+		},
+		encodeSince(stateVector) {
+			const since = stateVector ? fromBase64(stateVector) : undefined;
+			return toBase64(Y.encodeStateAsUpdate(current().localY, since));
+		},
+		drainAwareness() {
+			const active = current();
+			const awareness = active.editor.internals.awareness;
+			if (!awareness) return [];
+			const state = JSON.stringify(awareness.getLocalState());
+			if (state === active.relayAwarenessSent) return [];
+			active.relayAwarenessSent = state;
+			return [toBase64(encodeYjsAwarenessUpdate(awareness, [active.localY.clientID]))];
+		},
+		deliverAwareness(updates) {
+			const awareness = current().editor.internals.awareness;
+			if (!awareness) return;
+			for (const update of updates) {
+				applyYjsAwarenessUpdate(awareness, fromBase64(update), RELAY_ORIGIN);
+			}
+		},
+	};
 }
 
 function recordEvent(target: Session, type: string, payload: unknown): void {
@@ -317,7 +471,7 @@ export function getWindowStart(): number {
 	return windowStart;
 }
 
-export function setWindowStart(start: number): void {
+function setWindowStart(start: number): void {
 	const blockCount = getHarnessSession().editor.documentState.blockOrder.length;
 	const next = clampWindowStart(start, blockCount, WINDOWED_WINDOW_SIZE);
 	if (next === windowStart) {
@@ -334,13 +488,13 @@ function reducedMotion(): boolean {
 	return reducedMotionSignal.reduced;
 }
 
-export function loadFixture(name: string): void {
+function loadFixture(name: string, seed?: SessionSeed): void {
 	disposeGeometry();
 	if (session) {
 		destroySession(session);
 	}
 	windowStart = 0;
-	session = createSession(name);
+	session = createSession(name, seed);
 	installBridge();
 	notify();
 }
@@ -366,6 +520,25 @@ function mountSelectionProbe(text: string, blockId: string): HTMLElement {
 	return root;
 }
 
+/**
+ * HOST9: a second, independent editor on the page, after the harness editor
+ * (so `editorRoot()` still finds the harness one first). A scenario types in
+ * it while the harness editor keeps a stale caret.
+ */
+function mountSecondEditor(text: string): HTMLElement {
+	const editor = createEditor({ schema: defaultSchema });
+	const blockId = editor.firstBlock()!.id;
+	editor.apply([{ type: "splice-text", blockId, from: 0, to: 0, insert: text }], {
+		origin: "system",
+	});
+	const root = document.createElement("div");
+	root.setAttribute("data-pen-conformance-second-editor", "");
+	root.setAttribute("aria-label", "Second editor");
+	document.body.append(root);
+	mountEditor(editor, root);
+	return root;
+}
+
 function editorHasFocus(root: HTMLElement): boolean {
 	const active = document.activeElement;
 	return active instanceof Node && root.contains(active);
@@ -385,7 +558,235 @@ function checkDomMatchesAuthority(): DomAuthorityCheck {
 		hasFocus: editorHasFocus(root),
 		authority: serializeSelection(current.editor.selection),
 		mapped: domSelectionToEditor(root),
+		extended: observeExtendedS2(current.editor, root),
 	});
+}
+
+/** W3.R2: what the extended standing S2 check needs from the page. */
+function observeExtendedS2(editor: Editor, root: HTMLElement): ExtendedS2Observations {
+	const substitute = substituteState(editor);
+	return {
+		composing: isFieldComposing(editor),
+		nativeRangeInRoot: hasNativeRangeIn(root),
+		focusedSinkRole: focusedSinkRole(root),
+		equivalent: isDomEquivalentToText(editor, root),
+		substitute,
+		substitutePaint: substitute ? observeSubstitutePaint(root) : null,
+	};
+}
+
+/** D5: the field editor's substitute state (`getSubstituteState`), or null. */
+function substituteState(
+	editor: Editor,
+): PenConformanceBridge["substituteState"] {
+	const fieldEditor = editor.facet(fieldEditorHostFacet) as {
+		getSubstituteState?: () => PenConformanceBridge["substituteState"];
+	} | null;
+	return fieldEditor?.getSubstituteState?.() ?? null;
+}
+
+/** D5: the overlay layer's endpoint carets and range items, as painted. */
+function observeSubstitutePaint(root: HTMLElement): SubstitutePaint {
+	const items = [
+		...root.querySelectorAll<HTMLElement>(
+			"[data-pen-overlay-layer] [data-pen-overlay-item]",
+		),
+	];
+	const ofKind = (kind: string) =>
+		items.filter((item) => item.getAttribute("data-pen-overlay-item") === kind);
+	return {
+		endpoints: ofKind("caret")
+			.map((item) => item.getAttribute("data-endpoint"))
+			.filter((endpoint): endpoint is string => endpoint !== null)
+			.sort(),
+		ranges: ofKind("range").length,
+		blockSpans: ofKind("block-span").length,
+	};
+}
+
+type ConfiningWriteFault = {
+	confined: number;
+	clears: number;
+	laterWrites: number;
+};
+
+/**
+ * W3.R17 fault injection: an engine that confines a multi-block range to
+ * the anchor field. Within the task of the first cross-block write, every
+ * cross-block selection write is clamped to the anchor's node (and
+ * `extend` is refused), as WebKit and Firefox confine select-all. It counts
+ * the clamped writes, the lone `removeAllRanges` calls that task ends with
+ * (the projector's one fallback write), and any write after that task.
+ */
+function installConfiningWriteFault(): void {
+	const counters: ConfiningWriteFault = { confined: 0, clears: 0, laterWrites: 0 };
+	(
+		window as unknown as { __penConfiningWriteFault: ConfiningWriteFault }
+	).__penConfiningWriteFault = counters;
+	const proto = Selection.prototype;
+	const original = {
+		setBaseAndExtent: proto.setBaseAndExtent,
+		extend: proto.extend,
+		addRange: proto.addRange,
+		removeAllRanges: proto.removeAllRanges,
+		collapse: proto.collapse,
+	};
+	let phase: "armed" | "confining" | "done" = "armed";
+	let pendingClear = false;
+	const blockOf = (node: Node) =>
+		(node instanceof Element ? node : node.parentElement)?.closest(
+			"[data-block-id]",
+		) ?? null;
+	const endOf = (node: Node) =>
+		node.nodeType === Node.TEXT_NODE
+			? (node as Text).length
+			: node.childNodes.length;
+	const note = (replacesClear: boolean) => {
+		if (phase === "done") {
+			counters.laterWrites += 1;
+		}
+		if (replacesClear) {
+			pendingClear = false;
+		}
+	};
+	const startConfining = () => {
+		phase = "confining";
+		counters.confined += 1;
+		setTimeout(() => {
+			if (pendingClear) {
+				counters.clears += 1;
+			}
+			pendingClear = false;
+			phase = "done";
+		}, 0);
+	};
+	proto.setBaseAndExtent = function (
+		this: Selection,
+		anchorNode: Node,
+		anchorOffset: number,
+		focusNode: Node,
+		focusOffset: number,
+	) {
+		note(true);
+		if (phase !== "done" && blockOf(anchorNode) !== blockOf(focusNode)) {
+			if (phase === "armed") {
+				startConfining();
+			}
+			return original.setBaseAndExtent.call(
+				this,
+				anchorNode,
+				anchorOffset,
+				anchorNode,
+				endOf(anchorNode),
+			);
+		}
+		return original.setBaseAndExtent.call(
+			this,
+			anchorNode,
+			anchorOffset,
+			focusNode,
+			focusOffset,
+		);
+	};
+	proto.extend = function (this: Selection, node: Node, offset?: number) {
+		note(false);
+		if (phase === "confining") {
+			throw new DOMException(
+				"confined to the anchor field",
+				"InvalidStateError",
+			);
+		}
+		return original.extend.call(this, node, offset);
+	};
+	proto.addRange = function (this: Selection, range: Range) {
+		note(true);
+		if (
+			phase === "confining" &&
+			blockOf(range.startContainer) !== blockOf(range.endContainer)
+		) {
+			range.setEnd(range.startContainer, endOf(range.startContainer));
+		}
+		return original.addRange.call(this, range);
+	};
+	proto.collapse = function (
+		this: Selection,
+		node: Node | null,
+		offset?: number,
+	) {
+		note(true);
+		return original.collapse.call(this, node, offset);
+	};
+	proto.removeAllRanges = function (this: Selection) {
+		note(false);
+		if (phase === "confining") {
+			pendingClear = true;
+		}
+		return original.removeAllRanges.call(this);
+	};
+}
+
+function confiningWriteFaultCounters(): ConfiningWriteFault {
+	return (
+		(window as unknown as { __penConfiningWriteFault?: ConfiningWriteFault })
+			.__penConfiningWriteFault ?? { confined: 0, clears: 0, laterWrites: 0 }
+	);
+}
+
+function isFieldComposing(editor: Editor): boolean {
+	const fieldEditor = editor.facet(fieldEditorHostFacet) as { getSnapshot?: () => { isComposing: boolean } } | null;
+	return fieldEditor?.getSnapshot?.().isComposing === true;
+}
+
+function hasNativeRangeIn(root: HTMLElement): boolean {
+	const native = document.getSelection();
+	if (!native || native.rangeCount === 0) return false;
+	return [native.anchorNode, native.focusNode].some((node) => node !== null && root.contains(node));
+}
+
+function focusedSinkRole(root: HTMLElement): string | null {
+	const active = document.activeElement;
+	if (!(active instanceof HTMLElement) || !root.contains(active)) return null;
+	const role = active.getAttribute("role");
+	return role === "group" || role === "grid" ? role : null;
+}
+
+function isDomEquivalentToText(editor: Editor, root: HTMLElement): boolean {
+	const record = editor.selection;
+	if (record?.type !== "text") return false;
+	return isLogicallyEquivalent(
+		readNormalizedDomProposal(root, editor),
+		{ type: "text", anchor: record.anchor, focus: record.focus },
+		buildLazyNormalPositionSnapshot(editor),
+	);
+}
+
+/**
+ * W3.R1 fault injection: the next native selection write is dropped, as an
+ * engine that rejects it would, and every write is counted from here on, so a
+ * scenario can assert one report and no retry.
+ */
+function installSelectionWriteFault(): void {
+	const counters = { dropped: 0, writes: 0 };
+	(window as unknown as { __penSelectionWriteFault: typeof counters }).__penSelectionWriteFault = counters;
+	const proto = Selection.prototype as unknown as Record<string, (...args: unknown[]) => unknown>;
+	for (const key of ["setBaseAndExtent", "collapse", "addRange"]) {
+		const original = proto[key];
+		proto[key] = function (this: Selection, ...args: unknown[]) {
+			counters.writes += 1;
+			if (counters.dropped === 0) {
+				counters.dropped = 1;
+				return undefined;
+			}
+			return original.apply(this, args);
+		};
+	}
+}
+
+function selectionWriteFaultCounters(): { dropped: number; writes: number } {
+	return (
+		(window as unknown as { __penSelectionWriteFault?: { dropped: number; writes: number } })
+			.__penSelectionWriteFault ?? { dropped: 0, writes: 0 }
+	);
 }
 
 function installBrokenProjector(): void {
@@ -411,7 +812,7 @@ function installBrokenProjector(): void {
 	const length = block?.length() ?? 0;
 	const offset = misplacedOffset(authority.anchor.offset, length);
 	const wrong = { blockId: authority.anchor.blockId, offset };
-	editorSelectionToDOM(root, wrong, wrong);
+	writeNativeRange(root, wrong, wrong);
 
 	const mapped = domSelectionToEditor(root);
 	const mismatch: DomAuthorityCheck = {
@@ -497,7 +898,7 @@ function forceUnwindowedDomDivergence(): ForcedDomDivergence {
 	};
 	root.ownerDocument.addEventListener("selectionchange", onChange, true);
 	try {
-		editorSelectionToDOM(root, wrong, wrong);
+		writeNativeRange(root, wrong, wrong);
 	} finally {
 		root.ownerDocument.removeEventListener(
 			"selectionchange",
@@ -684,6 +1085,28 @@ function applyOps(ops: readonly DocumentOp[]): void {
 	getHarnessSession().editor.apply([...ops], { origin: "user" });
 }
 
+function selectTextById(
+	blockId: string,
+	anchorOffset: number,
+	focusOffset = anchorOffset,
+): void {
+	getHarnessSession().editor.selectText(blockId, anchorOffset, focusOffset);
+}
+
+/** A programmatic text range between two blocks (D5 scenarios). */
+function selectTextRangeById(anchor: LogicalPoint, focus: LogicalPoint): void {
+	getHarnessSession().editor.selectTextRange(anchor, focus);
+}
+
+/** Clock runs disconnect the in-page peer so its sync is not measured. */
+function setPeersConnected(connected: boolean): void {
+	const current = getHarnessSession();
+	current.disconnectPeers();
+	current.disconnectPeers = connected
+		? connectPeers(current.localY, current.remoteY)
+		: () => {};
+}
+
 function remoteApply(ops: readonly DocumentOp[]): void {
 	getHarnessSession().remoteEditor.apply([...ops], { origin: "collaborator" });
 }
@@ -692,7 +1115,7 @@ function encodePeerPresence(
 	clientId: number,
 	state: Record<string, unknown>,
 ): Uint8Array {
-	const adapter = yjsAdapter();
+	const adapter = yjsAdapter({ awareness: createYjsAwareness });
 	const ydoc = new Y.Doc({ gc: false });
 	ydoc.clientID = clientId;
 	const document = wrapYjsDocument(adapter, ydoc);
@@ -873,18 +1296,23 @@ function documentSnapshot(): DocumentContentSnapshot {
 	const editor = getHarnessSession().editor;
 	return {
 		blockOrder: [...editor.documentState.blockOrder],
-		blocks: editor.documentState.blockOrder.map((id) => {
+		// COL4: an order entry a concurrent delete left behind survives remote
+		// commits until the next local structural pass; renderers skip it, and
+		// so does the snapshot.
+		blocks: editor.documentState.blockOrder.flatMap((id) => {
 			const block = editor.getBlock(id);
 			if (!block) {
-				throw new Error(`documentSnapshot: missing block ${id}`);
+				return [];
 			}
-			return {
-				id: block.id,
-				type: block.type,
-				text: block.textContent(),
-				props: { ...block.props },
-				deltas: block.inlineDeltas(),
-			};
+			return [
+				{
+					id: block.id,
+					type: block.type,
+					text: block.textContent(),
+					props: { ...block.props },
+					deltas: block.inlineDeltas(),
+				},
+			];
 		}),
 	};
 }
@@ -948,6 +1376,19 @@ function mutateActiveSurfaceText(text: string): void {
 	activeSurface().append(text);
 }
 
+/** W3.R19: one fuzz step's observations; diagnostics are drained so each step sees only its own. */
+function fuzzCheck(): FuzzCheckReport {
+	const current = getHarnessSession();
+	const diagnostics = current.diagnostics.splice(0);
+	return collectFuzzReport({
+		editor: current.editor,
+		localY: current.localY,
+		remoteY: current.remoteY,
+		s2: checkDomMatchesAuthority(),
+		diagnostics,
+	});
+}
+
 function installBridge(): void {
 	installXssProbe();
 	const bridge: PenConformanceBridge = {
@@ -971,6 +1412,32 @@ function installBridge(): void {
 		get documentText() {
 			return documentText();
 		},
+		get rootBlockIds() {
+			return [...getRootBlockIds(getHarnessSession().editor)];
+		},
+		setPeersConnected,
+		selectTextById,
+		selectTextRangeById,
+		get substituteState() {
+			return substituteState(getHarnessSession().editor);
+		},
+		selectCaretWithAffinity(blockId, offset, affinity) {
+			const point = { blockId, offset };
+			getHarnessSession().editor.setSelection(
+				{ type: "text", anchor: point, focus: point, affinity },
+				{ origin: "keyboard" },
+			);
+		},
+		get preorderBlockIds() {
+			return [...getHarnessSession().editor.documentState.preorderBlockIds()];
+		},
+		selectBlocksById(blockIds) {
+			getHarnessSession().editor.selectBlocks([...blockIds], {
+				origin: "keyboard",
+			});
+		},
+		blockText: (blockId: string) =>
+			getHarnessSession().editor.getBlock(blockId)?.textContent() ?? "",
 		get blockIds() {
 			return blockIds();
 		},
@@ -987,6 +1454,9 @@ function installBridge(): void {
 		get hasFieldEditor() {
 			return getHarnessSession().editor.facet(fieldEditorHostFacet) != null;
 		},
+		get composing() {
+			return isFieldComposing(getHarnessSession().editor);
+		},
 		get reducedMotion() {
 			return reducedMotion();
 		},
@@ -1001,6 +1471,10 @@ function installBridge(): void {
 		},
 		load(name: string) {
 			loadFixture(name);
+		},
+		loadSeeded,
+		get relay() {
+			return getHarnessSession().relayOutbox ? relayBridge() : undefined;
 		},
 		focusText,
 		selectText,
@@ -1017,13 +1491,22 @@ function installBridge(): void {
 		injectPresence,
 		serializePresenceAnchor,
 		installBrokenProjector,
+		installSelectionWriteFault,
+		get selectionWriteFault() {
+			return selectionWriteFaultCounters();
+		},
+		installConfiningWriteFault,
+		get confiningWriteFault() {
+			return confiningWriteFaultCounters();
+		},
 		forceUnwindowedDomDivergence,
 		domMatchesAuthority: checkDomMatchesAuthority,
 		mapDomSelection: (root) => domSelectionToEditor(root),
 		projectSelectionToDom: (root, anchor, focus) => {
-			editorSelectionToDOM(root, anchor, focus);
+			writeNativeRange(root, anchor, focus);
 		},
 		mountSelectionProbe,
+		mountSecondEditor,
 		applyAiRangeReplacement,
 		parseClipboardPayload,
 		exerciseInlineAtomDragPreview,
@@ -1051,6 +1534,11 @@ function installBridge(): void {
 		flushEightRemoteCarets(points) {
 			return flushEightRemoteCarets(points);
 		},
+		overlayMatchesAuthority() {
+			return overlayMatchesAuthority(getHarnessSession().editor);
+		},
+		startOverlayProbe,
+		stopOverlayProbe,
 		get beforeinputMap() {
 			return beforeinputMap();
 		},
@@ -1062,12 +1550,23 @@ function installBridge(): void {
 		undo() {
 			getHarnessSession().editor.undoManager.undo();
 		},
+		scrollBlockIntoView(blockId: string, align: BlockScrollAlign) {
+			const fieldEditor = getHarnessSession().editor.facet(fieldEditorHostFacet) as {
+				scrollIntoView?(target: { blockId: string }, scroll: { align: BlockScrollAlign }): void;
+			} | null;
+			if (!fieldEditor?.scrollIntoView) {
+				throw new Error("scrollBlockIntoView: field editor has no scrollIntoView");
+			}
+			fieldEditor.scrollIntoView({ blockId }, { align });
+		},
 		redo() {
 			getHarnessSession().editor.undoManager.redo();
 		},
 		stopCapturing() {
 			getHarnessSession().editor.undoManager.stopCapturing();
 		},
+		fuzzCheck,
+		whenIdle: () => whenSchedulerIdle(editorRoot()),
 	};
 	window.__penConformance = bridge;
 }

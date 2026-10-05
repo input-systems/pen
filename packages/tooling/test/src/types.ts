@@ -133,3 +133,126 @@ export interface TwoPeerHarness {
 	snapshot(id?: TwoPeerId): NormalizedYDocSnapshot;
 	destroy(): void;
 }
+
+/** Zero-based index of a peer in a {@link PeerHarness}. */
+export type PeerIndex = number;
+
+/** Options for `createPeerHarness(n, options)`. */
+export interface PeerHarnessOptions extends TestEditorOptions {
+	/** One Yjs clientID per peer. Default `index + 1`. Must be distinct and length n. */
+	clientIds?: readonly number[];
+	/** Mutate the seed editor before peers fork from its encoded state. */
+	prepare?: (editor: TestEditor) => void;
+	/** Fork from this encoded state instead of building a seed editor. Excludes `blocks`, `doc`, `prepare`. */
+	seedUpdate?: Uint8Array;
+	/**
+	 * Build each peer's extensions. An extension factory closes over the
+	 * controller it activates, so peers handed the same instance end up
+	 * sharing one; anything with per-editor state needs this rather than
+	 * `extensions`.
+	 */
+	extensionsFor?: (peer: PeerIndex) => TestEditorOptions["extensions"];
+	/**
+	 * Build each adapter with `yjsAdapter({ awareness: createYjsAwareness })`
+	 * and relay its states in `syncAwareness()`. Default false.
+	 */
+	awareness?: boolean;
+}
+
+/** One forked peer of a {@link PeerHarness}. */
+export interface Peer {
+	readonly index: PeerIndex;
+	/** `"a"`, `"b"`, `"c"` … for messages only. */
+	readonly label: string;
+	readonly editor: TestEditor;
+	readonly adapter: CRDTAdapter;
+	readonly crdtDoc: CRDTDocument;
+}
+
+/**
+ * How a delivery reaches the receiver: `"adapter"` through
+ * `adapter.applyUpdate` (structured `collaborator` origin), `"provider"`
+ * through `Y.applyUpdate` with a non-adapter origin (`transaction.local === false`).
+ */
+export type PeerDeliveryPath = "adapter" | "provider";
+
+/** One step of a peer schedule. */
+export type PeerStep =
+	| {
+			readonly kind: "deliver";
+			readonly from: PeerIndex;
+			readonly to: PeerIndex;
+			/** Default `"adapter"`. */
+			readonly via?: PeerDeliveryPath;
+	  }
+	| { readonly kind: "normalize"; readonly peer: PeerIndex };
+
+/**
+ * Named delivery schedules:
+ * - `ring`: two passes i → i+1 (mod n);
+ * - `reverse-ring`: two passes i → i-1 (mod n);
+ * - `star`: every peer → 0, then 0 → every peer;
+ * - `pairwise`: every ordered pair, i ascending then j ascending, every second delivery via `"provider"`;
+ * - `partial-normalize`: 0 → n-1, normalize(n-1), then pairwise.
+ */
+export type PeerScheduleName =
+	| "ring"
+	| "reverse-ring"
+	| "star"
+	| "pairwise"
+	| "partial-normalize";
+
+/**
+ * A named schedule, a seeded schedule (3·n² steps, normalize with p = 1/4),
+ * or explicit steps.
+ */
+export type PeerSchedule =
+	| PeerScheduleName
+	| { readonly seed: number }
+	| readonly PeerStep[];
+
+/** Options for {@link PeerHarness.deliver}. */
+export interface PeerDeliverOptions {
+	/** Default `"adapter"`. */
+	via?: PeerDeliveryPath;
+}
+
+/** n forked editors on one seed, with explicit delivery and repair exchange. */
+export interface PeerHarness {
+	readonly peers: readonly Peer[];
+	readonly size: number;
+	peer(index: PeerIndex): Peer;
+	stateVector(index: PeerIndex): Uint8Array;
+	/** Everything `from` holds that `since` lacks. `since` defaults to the empty vector. */
+	encodeUpdate(from: PeerIndex, since?: Uint8Array): Uint8Array;
+	/** Applies through `adapter.applyUpdate`, so the receiver commits with origin `collaborator` (COL1). */
+	applyUpdateTo(to: PeerIndex, update: Uint8Array): void;
+	/**
+	 * Sends `to` exactly the state-vector diff from `from`, and nothing when
+	 * `to` already holds it. `via: "adapter"` (default) uses
+	 * `adapter.applyUpdate`; `via: "provider"` uses `Y.applyUpdate` with a
+	 * non-adapter origin, so the receiver sees `transaction.local === false`
+	 * as with a real provider (COL1).
+	 */
+	deliver(from: PeerIndex, to: PeerIndex, options?: PeerDeliverOptions): void;
+	/** Executes a schedule's steps in order. Does not quiesce. */
+	run(schedule: PeerSchedule): void;
+	/** Delivers every ordered pair until no peer's state moves. */
+	syncAll(): void;
+	/**
+	 * syncAll; normalizeAll on every peer; syncAll — repeated until a round
+	 * moves no peer's state (state vector or delete set). Returns the rounds
+	 * used. Throws `PeerHarnessQuiesceError` after `MAX_QUIESCE_ROUNDS`,
+	 * naming the peers whose state still moved.
+	 */
+	quiesce(): number;
+	/** Runs `normalizeAll()` on every peer, in index order. */
+	normalizeAll(): void;
+	/** Relays every peer's local awareness state to every other peer. Requires `awareness: true`. */
+	syncAwareness(): void;
+	/** Throws `"N-peer documents did not converge"` naming every peer that differs from peer 0. */
+	assertConverged(message?: string): void;
+	snapshot(index?: PeerIndex): NormalizedYDocSnapshot;
+	/** Destroys every editor and `Y.Doc` the harness allocated. */
+	destroy(): void;
+}

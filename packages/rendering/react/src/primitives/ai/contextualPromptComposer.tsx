@@ -1,17 +1,35 @@
 import React from "react";
-import { isMultiBlock, resolveEditorMessage } from "@input/pen-core";
-import type { AIContextualPromptAnchor, AISession } from "@input/pen-ai";
-import type { Editor } from "@input/pen-types";
+import {
+	isCollapsed,
+	isMultiBlock,
+	resolveEditorMessage,
+} from "@input/pen-core";
+import type {
+	AIContextualPromptAnchor,
+	AISession,
+	GenerationState,
+} from "@input/pen-ai";
+import type { Editor, TextSelection } from "@input/pen-types";
 import { useIsomorphicLayoutEffect } from "../../hooks/useIsomorphicLayoutEffect";
-import { domSelectionToEditor } from "@input/pen-dom/field-editor";
+import { queryBlockElement } from "@input/pen-dom/field-editor/selectionBridge";
+import {
+	captureFocusReturn,
+	restoreFocusReturn,
+	type FocusReturnToken,
+} from "@input/pen-dom";
+import { useFieldEditorContext } from "../../context/fieldEditorContext";
 import { useAISessionActions } from "../../hooks/useAISessionActions";
+import { resolveChromeEditorRoot } from "../../utils/aiDomScope";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
+import { composeRefs } from "../../utils/composeRefs";
+import { getAttachedFieldEditorSession } from "../../utils/fieldEditor";
 import {
 	resolvePromptHostElement,
 	selectionMatchesSnapshot,
 } from "./contextualPromptGeometry";
 import { useContextualPromptSession } from "./contextualPromptPlacement";
 import { useAIContext } from "./root";
+import { isDomHTMLElement, isDomNode } from "@input/pen-dom/utils/domNodes";
 
 export interface AIContextualPromptComposerProps extends AsChildProps {
 	placeholder?: string;
@@ -22,24 +40,38 @@ export interface AIContextualPromptComposerProps extends AsChildProps {
 export function AIContextualPromptComposer(
 	props: AIContextualPromptComposerProps,
 ) {
-	const { autoFocus = true, ref, ...rest } = props;
+	const { editor } = useAIContext();
+	const session = useContextualPromptSession(editor);
+	// The body's hooks run only once a session exists, so their order never
+	// changes when one opens.
+	if (!session) {
+		return null;
+	}
+	return <ContextualPromptComposerBody {...props} session={session} />;
+}
+
+function ContextualPromptComposerBody(
+	props: AIContextualPromptComposerProps & { session: AISession },
+) {
+	const { autoFocus = true, ref, session, ...rest } = props;
 	const { editor, state } = useAIContext();
 	const placeholder =
 		props.placeholder ??
 		resolveEditorMessage(editor, "pen.ai.prompt.placeholder");
-	const session = useContextualPromptSession(editor);
 	const actions = useAISessionActions(editor);
+	const fieldEditorContext = useFieldEditorContext();
 	const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
-	const isRunningCurrentSession =
-		state.activeGeneration?.sessionId != null &&
-		state.activeGeneration.sessionId === session?.id &&
-		state.activeGeneration.status === "streaming";
-	const sessionTurns = session?.turns ?? [];
-	const activeTurnId =
-		state.activeGeneration?.turnId ?? session?.activeTurnId ?? null;
-	const draftPrompt = session?.contextualPrompt?.composer.draftPrompt ?? "";
-	const hasSubmittedPrompt = sessionTurns.length > 0;
-	const latestTurnId = sessionTurns[sessionTurns.length - 1]?.id ?? null;
+	const composerRef = React.useRef<HTMLElement | null>(null);
+	const focusReturnRef = React.useRef<FocusReturnToken | null>(null);
+	const {
+		composerOpen,
+		isRunningCurrentSession,
+		sessionTurns,
+		activeTurnId,
+		draftPrompt,
+		hasSubmittedPrompt,
+		latestTurnId,
+	} = resolveComposerSessionState(session, state.activeGeneration);
 
 	const focusComposerInput = React.useCallback(() => {
 		const input = inputRef.current;
@@ -54,10 +86,33 @@ export function AIContextualPromptComposer(
 		return input.ownerDocument.activeElement === input;
 	}, []);
 
+	// AX3 (D15): record what held focus when the prompt opened, before the
+	// input takes it, so accept, reject, dismiss and Escape can return it.
+	useIsomorphicLayoutEffect(() => {
+		if (!composerOpen) {
+			focusReturnRef.current = null;
+			return;
+		}
+		if (focusReturnRef.current) {
+			return;
+		}
+		const root = resolveChromeEditorRoot(editor, composerRef.current);
+		if (!root) {
+			return;
+		}
+		const token = captureFocusReturn(root);
+		const insideComposer =
+			token.target !== null &&
+			composerRef.current?.contains(token.target);
+		focusReturnRef.current = insideComposer
+			? captureFocusReturn(root, null)
+			: token;
+	}, [composerOpen, editor]);
+
 	useIsomorphicLayoutEffect(() => {
 		if (
 			!autoFocus ||
-			!session?.contextualPrompt?.composer.isOpen ||
+			!session.contextualPrompt?.composer.isOpen ||
 			session.contextualPrompt.composer.openReason === "history"
 		) {
 			return;
@@ -84,14 +139,11 @@ export function AIContextualPromptComposer(
 		focusComposerInput,
 		isRunningCurrentSession,
 		latestTurnId,
-		session?.contextualPrompt?.composer.openReason,
-		session?.contextualPrompt?.composer.isOpen,
-		session?.id,
+		session.contextualPrompt?.composer.openReason,
+		session.contextualPrompt?.composer.isOpen,
+		session.id,
 	]);
 
-	if (!session) {
-		return null;
-	}
 	const sessionId = session.id;
 	const selectionSnapshot =
 		session.contextualPrompt?.anchor.selectionSnapshot ?? null;
@@ -121,6 +173,19 @@ export function AIContextualPromptComposer(
 			});
 	}
 
+	function returnFocus() {
+		const token = focusReturnRef.current;
+		if (!token) {
+			return;
+		}
+		restoreFocusReturn(
+			token,
+			fieldEditorContext ?? getAttachedFieldEditorSession(editor),
+			"target",
+			{ owner: composerRef.current },
+		);
+	}
+
 	function handleAcceptTurn(turnId: string) {
 		const resolved = actions.resolveSessionTurn(
 			sessionId,
@@ -130,6 +195,7 @@ export function AIContextualPromptComposer(
 		if (!resolved) {
 			actions.resolveSession(sessionId, "accept");
 		}
+		returnFocus();
 	}
 
 	function handleRejectTurn(turnId: string) {
@@ -141,9 +207,15 @@ export function AIContextualPromptComposer(
 		if (!resolved) {
 			actions.resolveSession(sessionId, "reject");
 		}
+		returnFocus();
 	}
 
 	function handleDismiss() {
+		dismissSession();
+		returnFocus();
+	}
+
+	function dismissSession() {
 		if (isRunningCurrentSession) {
 			actions.cancelSession(sessionId);
 			return;
@@ -181,9 +253,9 @@ export function AIContextualPromptComposer(
 				"[data-pen-editor-root]",
 			) as HTMLElement | null;
 			const targetElement =
-				event.target instanceof HTMLElement
+				isDomHTMLElement(event.target)
 					? event.target
-					: event.target instanceof Node
+					: isDomNode(event.target)
 						? event.target.parentElement
 						: null;
 			const targetEditorRoot = targetElement?.closest(
@@ -227,27 +299,19 @@ export function AIContextualPromptComposer(
 		const updateTargetState = () => {
 			const nextTargetState = resolveInlineSessionTargetState(
 				ownerDocument,
+				editor,
 				hostElement,
 				promptElement,
 				selectionSnapshot ?? undefined,
 			);
-			const liveSelection = ownerDocument.getSelection();
-			const liveRange =
-				liveSelection && liveSelection.rangeCount > 0
-					? liveSelection.getRangeAt(0)
-					: null;
-			const liveCommonAncestor =
-				liveRange?.commonAncestorContainer instanceof Element
-					? liveRange.commonAncestorContainer
-					: (liveRange?.commonAncestorContainer?.parentElement ??
-						null);
+			// A new range selected in the editor, not the one the prompt
+			// opened on, moves the user on from an unsubmitted prompt.
+			const selection = editor.selection;
 			if (
 				nextTargetState === "pinned" &&
 				!hasSubmittedPrompt &&
-				liveSelection &&
-				!liveSelection.isCollapsed &&
-				liveCommonAncestor &&
-				!(promptElement?.contains(liveCommonAncestor) ?? false)
+				selection?.type === "text" &&
+				!isCollapsed(selection)
 			) {
 				actions.suspendInlineSession(sessionId);
 				return;
@@ -256,14 +320,12 @@ export function AIContextualPromptComposer(
 		};
 
 		updateTargetState();
-		ownerDocument.addEventListener("selectionchange", updateTargetState);
+		const unsubscribeSelection =
+			editor.onSelectionChange(updateTargetState);
 		ownerDocument.addEventListener("focusin", updateTargetState, true);
 		ownerDocument.addEventListener("focusout", updateTargetState, true);
 		return () => {
-			ownerDocument.removeEventListener(
-				"selectionchange",
-				updateTargetState,
-			);
+			unsubscribeSelection();
 			ownerDocument.removeEventListener(
 				"focusin",
 				updateTargetState,
@@ -277,6 +339,7 @@ export function AIContextualPromptComposer(
 		};
 	}, [
 		actions,
+		editor,
 		hasSubmittedPrompt,
 		selectionSnapshot,
 		session,
@@ -444,13 +507,41 @@ export function AIContextualPromptComposer(
 		ref?: React.Ref<HTMLElement>;
 	} & Record<string, unknown> = {
 		...rest,
-		ref,
+		ref: composeRefs(ref, composerRef),
 		children: props.children ?? defaultChildren,
 	};
 
 	return renderAsChild(composerProps, "div", {
 		"data-pen-ai-contextual-prompt-composer": "",
 	});
+}
+
+/** What the composer reads from its session and the running generation. */
+function resolveComposerSessionState(
+	session: AISession,
+	activeGeneration: GenerationState | null,
+) {
+	const sessionTurns = session.turns ?? [];
+	return {
+		composerOpen: session.contextualPrompt?.composer.isOpen === true,
+		isRunningCurrentSession: isStreamingSession(activeGeneration, session.id),
+		sessionTurns,
+		activeTurnId: activeGeneration?.turnId ?? session.activeTurnId ?? null,
+		draftPrompt: session.contextualPrompt?.composer.draftPrompt ?? "",
+		hasSubmittedPrompt: sessionTurns.length > 0,
+		latestTurnId: sessionTurns[sessionTurns.length - 1]?.id ?? null,
+	};
+}
+
+function isStreamingSession(
+	activeGeneration: GenerationState | null,
+	sessionId: string,
+): boolean {
+	return (
+		activeGeneration?.sessionId != null &&
+		activeGeneration.sessionId === sessionId &&
+		activeGeneration.status === "streaming"
+	);
 }
 
 function resolveInlineSessionTurnStatusLabel(
@@ -490,6 +581,7 @@ function resolveInlineSessionLabel(editor: Editor, session: AISession): string {
 
 function resolveInlineSessionTargetState(
 	ownerDocument: Document,
+	editor: Editor,
 	hostElement: HTMLElement | null,
 	promptElement: HTMLElement | null,
 	snapshot: AIContextualPromptAnchor["selectionSnapshot"],
@@ -500,21 +592,29 @@ function resolveInlineSessionTargetState(
 	const activeElement = ownerDocument.activeElement;
 	if (
 		promptElement &&
-		activeElement instanceof Node &&
+		isDomNode(activeElement) &&
 		promptElement.contains(activeElement)
 	) {
 		return "active";
 	}
-	if (!hostElement) {
-		return "pinned";
-	}
-	const domSelection = domSelectionToEditor(hostElement);
-	if (!domSelection) {
-		return "pinned";
-	}
-	return selectionMatchesSnapshot(domSelection, snapshot)
+	const selection = textSelectionInHost(editor, hostElement);
+	return selection && selectionMatchesSnapshot(selection, snapshot)
 		? "active"
 		: "pinned";
+}
+
+/** The editor's text selection when its anchor is rendered inside `hostElement`. */
+function textSelectionInHost(
+	editor: Editor,
+	hostElement: HTMLElement | null,
+): TextSelection | null {
+	const selection = editor.selection;
+	if (!hostElement || selection?.type !== "text") {
+		return null;
+	}
+	return queryBlockElement(hostElement, selection.anchor.blockId)
+		? selection
+		: null;
 }
 
 function resolveInlineSessionTargetHint(

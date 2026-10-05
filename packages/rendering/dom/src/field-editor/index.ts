@@ -1,16 +1,10 @@
 export type { FieldEditorStore, FieldEditorStoreSnapshot } from "./store";
-export {
-	applyDeltaToDOM,
-	fullReconcileToDOM,
-	saveSelection,
-	restoreSelection,
-} from "./reconciler";
+export { applyDeltaToDOM, fullReconcileToDOM } from "./reconciler";
 export { resolveMarksAtPosition } from "./markBoundary";
 export {
 	computeTextDiff,
 	extractTextFromDOM,
 	domSelectionToEditor,
-	editorSelectionToDOM,
 	getSelectionOffsets,
 	getCaretOffset,
 	type SelectionPoint,

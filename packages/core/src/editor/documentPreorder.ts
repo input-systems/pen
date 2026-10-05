@@ -1,26 +1,19 @@
 import type {
 	CRDTArray,
 	CRDTMap,
-	DocumentState,
 	Editor,
 	PenDocument,
 } from "@input/pen-types";
 
 type CRDTBlockMap = CRDTMap<CRDTMap<unknown>>;
 
-/** Nested document order: each `blockOrder` root, then that block's `children` array. */
-export function documentPreorderBlockIds(editor: Editor): string[] {
-	return documentPreorderBlockIdsFromState(editor.documentState);
-}
-
-export function documentPreorderBlockIdsFromState(
-	state: DocumentState,
-): string[] {
-	const ids: string[] = [];
-	for (const block of state.blocks) {
-		ids.push(block.id);
-	}
-	return ids;
+/**
+ * Nested document order: each `blockOrder` root, then that block's `children`
+ * array. Reads `DocumentState`'s cached preorder, so it is O(1) between
+ * structural changes (SCALE2).
+ */
+export function documentPreorderBlockIds(editor: Editor): readonly string[] {
+	return editor.documentState.preorderBlockIds();
 }
 
 export function documentPreorderBlockIdsFromDoc(doc: PenDocument): string[] {

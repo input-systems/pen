@@ -1,6 +1,5 @@
 import {
 	findEmptyBlockPlaceholder,
-	isEmptyBlockPlaceholder,
 } from "../field-editor/emptyBlockPlaceholder";
 import {
 	findLogicalDOMPoint,
@@ -9,7 +8,7 @@ import {
 	isInlineAtomHostNode,
 	isInlineAtomNode,
 } from "../field-editor/inlineAtomDom";
-import { toLogicalOffset } from "../field-editor/offsetDomain";
+import { clampOffset } from "../utils/clampOffset";
 import { getTextSelectionClientRects } from "../field-editor/selectionBridgeOffsets";
 import {
 	findInlineContentElement,
@@ -25,6 +24,7 @@ import {
 	rectFromDOMRect,
 	unionRects,
 } from "./types";
+import { isDomHTMLElement } from "../utils/domNodes";
 
 export const LINE_TOP_EPSILON = 1;
 
@@ -36,7 +36,10 @@ export function snapToLogicalOffset(root: HTMLElement, point: Point): Point {
 	}
 	return {
 		blockId: point.blockId,
-		offset: toLogicalOffset(point.offset, getLogicalTextContent(inlineEl)),
+		offset: clampOffset(
+			point.offset,
+			getLogicalTextContent(inlineEl).length,
+		),
 	};
 }
 
@@ -86,6 +89,27 @@ export function measureCaretRect(
 		return collapsedCaretFromRects(collapsed, affinity);
 	}
 	return caretFromElementRect(inlineEl, affinity);
+}
+
+/**
+ * Whether `point` resolves into an inline atom's host (a caret on either
+ * side of a chip). Read phase only.
+ */
+export function isPointBesideAtom(root: HTMLElement, point: Point): boolean {
+	const blockEl = queryBlockElement(root, point.blockId);
+	const inlineEl = blockEl
+		? (findInlineContentElement(blockEl) ??
+			queryInlineElement(root, point.blockId))
+		: null;
+	if (!inlineEl) {
+		return false;
+	}
+	const length = getLogicalNodeLength(inlineEl);
+	if (length <= 0) {
+		return false;
+	}
+	const domPoint = findLogicalDOMPoint(inlineEl, clampOffset(point.offset, length));
+	return findAtomHost(domPoint.node) !== null;
 }
 
 export function measureRangeRects(
@@ -144,15 +168,38 @@ export function measureBlockRect(
 	blockId: string,
 ): Rect | null {
 	const blockEl = queryBlockElement(root, blockId);
-	if (!blockEl) {
-		return null;
-	}
+	return blockEl ? measureBlockElementRect(blockEl) : null;
+}
+
+/** A block element's box, or its inline surface's when the block has none. */
+export function measureBlockElementRect(blockEl: HTMLElement): Rect {
 	const rect = elementRect(blockEl);
 	if (isUsefulRect(rect)) {
 		return rect;
 	}
 	const inlineEl = findInlineContentElement(blockEl);
 	return inlineEl ? elementRect(inlineEl) : rect;
+}
+
+/**
+ * O3: the box of one grid cell, `[data-pen-table-cell][data-cell-row][data-cell-col]`
+ * inside the table block. Read phase only. Null when the block or the cell
+ * is not mounted (the vanilla path renders no table cells, RI5).
+ */
+export function measureCellRect(
+	root: HTMLElement,
+	blockId: string,
+	row: number,
+	col: number,
+): Rect | null {
+	const blockEl = queryBlockElement(root, blockId);
+	if (!blockEl) {
+		return null;
+	}
+	const cell = blockEl.querySelector<HTMLElement>(
+		`[${DATA_ATTRS.tableCell}][${DATA_ATTRS.tableCellRow}="${row}"][${DATA_ATTRS.tableCellCol}="${col}"]`,
+	);
+	return cell ? elementRect(cell) : null;
 }
 
 export function characterRect(
@@ -214,7 +261,7 @@ function readClientRects(range: Range): DOMRect[] {
 	return Array.from(getter.call(range)).filter(isUsefulRect);
 }
 
-export function readInkRects(range: Range): DOMRect[] {
+function readInkRects(range: Range): DOMRect[] {
 	return readClientRects(range).filter(isInkRect);
 }
 
@@ -351,6 +398,30 @@ export function elementRect(element: HTMLElement): Rect {
 	return rectFromDOMRect(element.getBoundingClientRect());
 }
 
+/** Viewport pixels per CSS pixel along each axis inside an element. */
+export type ElementScale = { readonly x: number; readonly y: number };
+
+/**
+ * Viewport pixels per CSS pixel inside `element`: every ancestor
+ * `transform: scale()` and CSS `zoom`, and the element's own, read as its
+ * border box (`rect`, already measured by the caller) over its layout size.
+ * An axis whose two sizes agree to within `offsetWidth`'s integer rounding
+ * is 1, so an unscaled element measures exactly 1; an axis with no layout
+ * size borrows the other axis.
+ */
+export function elementScale(element: HTMLElement, rect: Rect): ElementScale {
+	const x = axisScale(rect.width, element.offsetWidth);
+	const y = axisScale(rect.height, element.offsetHeight);
+	return { x: x ?? y ?? 1, y: y ?? x ?? 1 };
+}
+
+function axisScale(viewport: number, layout: number): number | null {
+	if (layout <= 0 || viewport <= 0) {
+		return null;
+	}
+	return Math.abs(viewport - layout) < 1 ? 1 : viewport / layout;
+}
+
 export function findAtomHost(node: Node): HTMLElement | null {
 	let current: Node | null = node;
 	while (current) {
@@ -359,15 +430,9 @@ export function findAtomHost(node: Node): HTMLElement | null {
 		}
 		if (isInlineAtomNode(current)) {
 			const host = current.closest(`[${DATA_ATTRS.inlineAtomHost}]`);
-			return host instanceof HTMLElement ? host : current;
+			return isDomHTMLElement(host) ? host : current;
 		}
 		current = current.parentNode;
 	}
 	return null;
-}
-
-function clampOffset(offset: number, length: number): number {
-	if (offset < 0) return 0;
-	if (offset > length) return length;
-	return offset;
 }

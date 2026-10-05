@@ -237,6 +237,7 @@ export {
 	useEditor,
 	useEditorMessage,
 	useFieldEditor,
+	useReducedMotion,
 	useEditorFocusController,
 	useFocusController,
 	useSnapshots,

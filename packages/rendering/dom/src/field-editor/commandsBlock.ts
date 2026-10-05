@@ -44,7 +44,7 @@ export function splitBlockAtOffset(
 		newBlockType,
 		applyOptions: { origin: "user" },
 	});
-	editor.selectText(newBlockId, 0, 0);
+	editor.selectText(newBlockId, 0, 0, { origin: "keyboard" });
 
 	return {
 		blockId: newBlockId,

@@ -130,6 +130,12 @@ export function rectCenterY(rect: Rect): number {
 	return rect.top + rect.height / 2;
 }
 
+/** One block's live box, in the order a whole-root walk lists blocks. */
+export type BlockRectEntry = {
+	readonly id: string;
+	readonly rect: Rect;
+};
+
 export function isUsefulRect(rect: Pick<DOMRect, "width" | "height">): boolean {
 	return rect.width > 0 || rect.height > 0;
 }

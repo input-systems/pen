@@ -1,8 +1,69 @@
-import type { FieldEditorTextChangeEvent } from "./crdt";
+import type { SchemaRegistry } from "@input/pen-types";
+import type { UrlPolicy } from "../security/urlPolicy";
+import type { FieldEditorDelta } from "./crdt";
 import {
 	findEmptyBlockPlaceholder,
 } from "./emptyBlockPlaceholder";
-import { findLogicalDOMPoint } from "./inlineAtomDom";
+import { findLogicalDOMPoint, getLogicalNodeLength } from "./inlineAtomDom";
+import { INLINE_ATOM_REPLACEMENT_TEXT } from "./inlineAtomModel";
+import { applyDeltaToDOM } from "./reconciler";
+import { isDomText } from "../utils/domNodes";
+
+/**
+ * Applies a `Y.Text` delta to the field's logical text (one U+FFFC per
+ * inline atom), so the backend can follow `Y.Text` without reading it back.
+ */
+export function applyDeltaToLogicalText(
+	text: string,
+	delta: readonly FieldEditorDelta[],
+): string {
+	let result = "";
+	let offset = 0;
+	for (const entry of delta) {
+		if (entry.retain != null) {
+			result += text.slice(offset, offset + entry.retain);
+			offset += entry.retain;
+		} else if (entry.delete != null) {
+			offset += entry.delete;
+		} else if (typeof entry.insert === "string") {
+			result += entry.insert;
+		} else if (entry.insert != null) {
+			result += INLINE_ATOM_REPLACEMENT_TEXT;
+		}
+	}
+	return result + text.slice(offset);
+}
+
+/**
+ * C4: shows one composition edit in the field — `deleteLength` logical
+ * characters at `offset` replaced by `text` — without touching `Y.Text`.
+ * An edit inside one text node goes through `replaceData`, which leaves a
+ * native caret at or before `offset` where it is, so painting raises no
+ * `selectionchange` for the reader to take; any other edit goes through the
+ * delta reconciler. False when neither could paint it.
+ */
+export function paintEditContextComposition(
+	element: HTMLElement,
+	edit: { offset: number; deleteLength: number; text: string },
+	registry: SchemaRegistry,
+	policy?: UrlPolicy,
+): boolean {
+	const { offset, deleteLength, text } = edit;
+	const point = findLogicalDOMPoint(element, offset);
+	if (
+		isDomText(point.node) &&
+		getLogicalNodeLength(point.node) === point.node.length &&
+		point.offset + deleteLength <= point.node.length
+	) {
+		point.node.replaceData(point.offset, deleteLength, text);
+		return true;
+	}
+	const delta: FieldEditorDelta[] = [];
+	if (offset > 0) delta.push({ retain: offset });
+	if (deleteLength > 0) delta.push({ delete: deleteLength });
+	if (text.length > 0) delta.push({ insert: text });
+	return applyDeltaToDOM(delta, element, registry, policy);
+}
 
 export type EditContextTextFormat = {
 	rangeStart: number;
@@ -22,7 +83,7 @@ export function applyEditContextTextFormats(
 
 		const inlineEls = element.querySelectorAll("[data-pen-inline-content]");
 		for (const el of inlineEls) {
-			const walker = document.createTreeWalker(
+			const walker = element.ownerDocument.createTreeWalker(
 				el,
 				NodeFilter.SHOW_TEXT,
 				null,
@@ -68,45 +129,10 @@ export function findTextPosition(
 	return findLogicalDOMPoint(container, Math.max(0, charOffset));
 }
 
-export function shouldReplaceEditContextText(
-	delta: FieldEditorTextChangeEvent["delta"],
-	editContextTextLength: number,
-): boolean {
-	let offset = 0;
-	for (const entry of delta) {
-		if (entry.retain != null) {
-			offset += entry.retain;
-			if (offset > editContextTextLength) return true;
-		} else if (typeof entry.insert === "string") {
-			if (offset > editContextTextLength) return true;
-			offset += entry.insert.length;
-		} else if (entry.delete != null) {
-			if (offset + entry.delete > editContextTextLength) return true;
-		}
-	}
-	return false;
-}
-
-export function isNavigationSelectionKey(event: KeyboardEvent): boolean {
-	switch (event.key) {
-		case "ArrowLeft":
-		case "ArrowRight":
-		case "ArrowUp":
-		case "ArrowDown":
-		case "Home":
-		case "End":
-		case "PageUp":
-		case "PageDown":
-			return true;
-		default:
-			return false;
-	}
-}
-
 function getCharacterRect(element: HTMLElement, charOffset: number): DOMRect {
 	const start = findLogicalDOMPoint(element, Math.max(0, charOffset));
 	const end = findLogicalDOMPoint(element, Math.max(0, charOffset + 1));
-	const range = document.createRange();
+	const range = element.ownerDocument.createRange();
 	range.setStart(start.node, start.offset);
 	range.setEnd(end.node, end.offset);
 	const rect = range.getBoundingClientRect();

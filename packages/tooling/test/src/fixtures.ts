@@ -5,7 +5,6 @@ import {
 	yjsAdapter,
 	wrapYjsDocument,
 } from "@input/pen-yjs";
-import type { CRDTDocument, PenDocument } from "@input/pen-types";
 import { populateYDoc } from "./createTestDocument";
 import { resetTestIdCounter } from "./helpers";
 import type {
@@ -39,6 +38,7 @@ export const DEFAULT_PEN_ROOTS = [
 	{ name: "metadata", type: "map" },
 ] satisfies YjsRootExpectation[];
 
+/** Thrown when a test fixture or one of its CRDT contracts is malformed. */
 export class PenFixtureError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -214,4 +214,3 @@ type Base64Globals = typeof globalThis & {
 	btoa?: (value: string) => string;
 };
 
-export type { CRDTDocument, PenDocument };

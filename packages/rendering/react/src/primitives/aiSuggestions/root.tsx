@@ -2,8 +2,13 @@ import React from "react";
 import type { Editor } from "@input/pen-types";
 import { EditorContext } from "../../context/editorContext";
 import { renderAsChild, type AsChildProps } from "../../utils/asChild";
-import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
-import { getAttachedFieldEditor } from "../../utils/fieldEditor";
+import { captureFocusReturn, restoreFocusReturn } from "@input/pen-dom";
+import { isDomElement, isDomNode } from "@input/pen-dom/utils/domNodes";
+import {
+	resolveEditorOwnerDocument,
+	resolveEditorRootElement,
+} from "../../utils/aiDomScope";
+import { getAttachedFieldEditorSession } from "../../utils/fieldEditor";
 import { useAISuggestionPopover } from "../../hooks/useAISuggestionPopover";
 
 interface AISuggestionsContextValue {
@@ -27,6 +32,10 @@ const AI_SUGGESTIONS_STYLES = `
 	background-size: 100% 2px;
 	background-position: 0 100%;
 	transition: filter 180ms ease;
+}
+
+[data-pen-reduced-motion] .pen-ai-suggestion-underline {
+	transition: none;
 }
 
 .pen-ai-suggestion-underline:hover {
@@ -68,8 +77,7 @@ export function AISuggestionsRoot(props: AISuggestionsRootProps) {
 
 	React.useEffect(() => {
 		const handleClick = (event: MouseEvent) => {
-			const target =
-				event.target instanceof Element ? event.target : null;
+			const target = isDomElement(event.target) ? event.target : null;
 			const anchor = target?.closest(
 				"[data-ai-suggestion-id]",
 			) as HTMLElement | null;
@@ -91,11 +99,12 @@ export function AISuggestionsRoot(props: AISuggestionsRootProps) {
 			openSuggestion(suggestionId);
 		};
 
-		document.addEventListener("click", handleClick, true);
+		const doc = resolveEditorOwnerDocument(editor);
+		doc.addEventListener("click", handleClick, true);
 		return () => {
-			document.removeEventListener("click", handleClick, true);
+			doc.removeEventListener("click", handleClick, true);
 		};
-	}, [closeSuggestion, openSuggestion]);
+	}, [closeSuggestion, editor, openSuggestion]);
 
 	const isPopoverOpen = Boolean(popover.activeSuggestion && popover.position);
 
@@ -114,21 +123,23 @@ export function AISuggestionsRoot(props: AISuggestionsRootProps) {
 			closeSuggestion();
 		};
 
-		document.addEventListener("keydown", handleKeyDown, true);
+		const doc = resolveEditorOwnerDocument(editor);
+		doc.addEventListener("keydown", handleKeyDown, true);
 		return () => {
-			document.removeEventListener("keydown", handleKeyDown, true);
+			doc.removeEventListener("keydown", handleKeyDown, true);
 		};
 	}, [closeSuggestion, editor, isPopoverOpen]);
 
 	React.useEffect(() => {
-		let styleElement = document.getElementById(
+		const doc = resolveEditorOwnerDocument(editor);
+		let styleElement = doc.getElementById(
 			AI_SUGGESTIONS_STYLESHEET_ID,
 		) as HTMLStyleElement | null;
 
 		if (!styleElement) {
-			styleElement = document.createElement("style");
+			styleElement = doc.createElement("style");
 			styleElement.id = AI_SUGGESTIONS_STYLESHEET_ID;
-			document.head.appendChild(styleElement);
+			doc.head.appendChild(styleElement);
 		}
 		styleElement.textContent = AI_SUGGESTIONS_STYLES;
 
@@ -147,7 +158,7 @@ export function AISuggestionsRoot(props: AISuggestionsRootProps) {
 			}
 			styleElement.dataset.refCount = String(currentRefCount);
 		};
-	}, []);
+	}, [editor]);
 
 	return (
 		<AISuggestionsContext.Provider value={{ editor, popover }}>
@@ -168,13 +179,23 @@ export function useAISuggestionsContext(): AISuggestionsContextValue {
 	return context;
 }
 
+/**
+ * AX3: a caret-anchored popup never takes focus, so Escape leaves focus
+ * where it is when the editor holds it; focus that fell out of the editor
+ * goes to the editor surface.
+ */
 function restoreEditorFocus(editor: Editor): void {
-	const fieldEditor = getAttachedFieldEditor(editor);
-	if (fieldEditor?.focus({ reason: "keyboard", domFocus: true })) {
+	const root = resolveEditorRootElement(editor);
+	if (!root) {
 		return;
 	}
-
-	document
-		.querySelector<HTMLElement>(`[${DATA_ATTRS.editorRoot}]`)
-		?.focus({ preventScroll: true });
+	const active = root.ownerDocument.activeElement;
+	if (isDomNode(active) && root.contains(active)) {
+		return;
+	}
+	restoreFocusReturn(
+		captureFocusReturn(root),
+		getAttachedFieldEditorSession(editor),
+		"surface",
+	);
 }

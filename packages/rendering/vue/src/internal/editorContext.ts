@@ -7,6 +7,8 @@ export interface PenEditorContextValue {
   readonly: Ref<boolean>;
   emptyPlaceholder: Ref<string | undefined>;
   renderers: Ref<RendererOverrides | undefined>;
+  /** The editor root element once mounted: overlay bindings reach the root overlay through it. */
+  rootElement: Ref<HTMLElement | null>;
 }
 
 const PEN_EDITOR_CONTEXT_KEY: InjectionKey<PenEditorContextValue> =

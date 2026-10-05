@@ -1,4 +1,5 @@
 import type {
+	CRDTUndoCaptureKey,
 	CRDTUndoManager,
 	CRDTUndoStackItem,
 	OpOriginType,
@@ -52,41 +53,107 @@ export function createYjsUndoManager(
 	}
 	const maxDepth = options?.maxDepth ?? DEFAULT_UNDO_MAX_DEPTH;
 
+	// AIB4: Yjs never merges on its own (captureTimeout 0). Merging is keyed:
+	// a tracked transaction joins the open stack item for its capture key, so
+	// an explicit AI group collects every write of its action while user
+	// typing interleaved with it forms its own items.
 	const undoManager = new Y.UndoManager([blockOrder, blocks], {
 		trackedOrigins,
-		captureTimeout: options?.captureTimeout ?? 0,
+		captureTimeout: 0,
 		doc: doc.ydoc,
 	});
+	let windowMs = options?.captureTimeout ?? 0;
+	let currentKey: CRDTUndoCaptureKey | null = null;
+	const openItems = new Map<string, OpenCapture>();
 
 	(undoManager as unknown as Record<string, unknown>)[HISTORY_ORIGIN_TAG] =
 		true;
 
-	const trimStack = (stack: unknown[]) => {
+	const trimStack = (stack: Y.UndoManager["undoStack"]) => {
 		while (maxDepth >= 0 && stack.length > maxDepth) {
 			stack.shift();
 		}
 	};
 
-	undoManager.on("stack-item-added", (event: { type: "undo" | "redo" }) => {
-		trimStack(
-			event.type === "undo"
-				? undoManager.undoStack
-				: undoManager.redoStack,
-		);
-	});
+	const addedListeners = new Set<StackItemListener>();
+	const updatedListeners = new Set<StackItemListener>();
+	const dispatch = (
+		listeners: Set<StackItemListener>,
+		stackItem: StackItem,
+		type: "undo" | "redo",
+	) => {
+		for (const listener of listeners) {
+			listener(wrapStackItem(stackItem), type);
+		}
+	};
+
+	/** Joins `added` into the open item for its key; returns the item now on top. */
+	const captureKeyed = (added: StackItem, origin: unknown): StackItem | null => {
+		const key = currentKey ?? captureKeyFromOrigin(origin);
+		const now = Date.now();
+		const open = openItems.get(key.key);
+		const stack = undoManager.undoStack;
+		// An explicit group joins its item wherever it sits, unless a later step
+		// deleted text the group inserted: moving the group past that step would
+		// let undoing it bring the deleted text back, so the group closes and
+		// this write starts its next step. An origin key only joins the item
+		// directly beneath the new one, so typing never merges across another
+		// action's step and undo stays in time order.
+		const beneath = stack[stack.length - 2];
+		const joinable =
+			open != null &&
+			stack.includes(open.item) &&
+			(open.explicit
+				? !laterStepDeletesInsertions(stack, open.item, added)
+				: beneath === open.item && now - open.lastChange < windowMs);
+		if (!joinable) {
+			openItems.set(key.key, { item: added, lastChange: now, explicit: key.explicit });
+			return null;
+		}
+		mergeStackItem(open.item, added);
+		stack.splice(stack.indexOf(added), 1);
+		stack.splice(stack.indexOf(open.item), 1);
+		stack.push(open.item);
+		open.lastChange = now;
+		return open.item;
+	};
+
+	const dropTrimmedOpenItems = () => {
+		for (const [key, open] of openItems) {
+			if (!undoManager.undoStack.includes(open.item)) {
+				openItems.delete(key);
+			}
+		}
+	};
+
+	undoManager.on(
+		"stack-item-added",
+		(event: { stackItem: StackItem; type: "undo" | "redo"; origin: unknown }) => {
+			const isCapture =
+				event.type === "undo" && !undoManager.undoing && !undoManager.redoing;
+			const merged = isCapture ? captureKeyed(event.stackItem, event.origin) : null;
+			trimStack(event.type === "undo" ? undoManager.undoStack : undoManager.redoStack);
+			dropTrimmedOpenItems();
+			if (merged != null) {
+				dispatch(updatedListeners, merged, event.type);
+			} else {
+				dispatch(addedListeners, event.stackItem, event.type);
+			}
+		},
+	);
 
 	let destroyed = false;
 
-	const wrapStackItem = (stackItem: {
-		meta: Map<string, unknown>;
-	}): CRDTUndoStackItem => ({
+	function wrapStackItem(stackItem: StackItem): CRDTUndoStackItem {
+		return {
 		getMeta<T>(key: string): T | undefined {
 			return stackItem.meta.get(key) as T | undefined;
 		},
 		setMeta(key: string, value: unknown): void {
 			stackItem.meta.set(key, value);
 		},
-	});
+		};
+	}
 
 	return {
 		addTrackedOrigin(origin) {
@@ -104,6 +171,7 @@ export function createYjsUndoManager(
 			}
 		},
 		undo() {
+			openItems.clear();
 			if (undoManager.undoStack.length === 0) return false;
 			return withHistoryKind(undoManager, "undo", () => {
 				undoManager.undo();
@@ -111,6 +179,7 @@ export function createYjsUndoManager(
 			});
 		},
 		redo() {
+			openItems.clear();
 			if (undoManager.redoStack.length === 0) return false;
 			return withHistoryKind(undoManager, "redo", () => {
 				undoManager.redo();
@@ -125,43 +194,39 @@ export function createYjsUndoManager(
 		},
 		stopCapturing() {
 			undoManager.stopCapturing();
+			for (const [key, open] of openItems) {
+				if (!open.explicit) {
+					openItems.delete(key);
+				}
+			}
 		},
 		setCaptureTimeout(ms) {
-			(
-				undoManager as Y.UndoManager & { captureTimeout?: number }
-			).captureTimeout = ms;
+			windowMs = ms;
+		},
+		setCaptureKey(key) {
+			const previous = currentKey;
+			currentKey = key;
+			return previous;
 		},
 		onStackItemAdded(callback) {
-			const handler = (event: {
-				stackItem: { meta: Map<string, unknown> };
-				type: "undo" | "redo";
-			}) => {
-				callback(wrapStackItem(event.stackItem), event.type);
-			};
-
-			undoManager.on("stack-item-added", handler);
+			addedListeners.add(callback);
 			return () => {
-				undoManager.off("stack-item-added", handler);
+				addedListeners.delete(callback);
 			};
 		},
 		onStackItemUpdated(callback) {
-			const handler = (event: {
-				stackItem: { meta: Map<string, unknown> };
-				type: "undo" | "redo";
-			}) => {
-				callback(wrapStackItem(event.stackItem), event.type);
-			};
-
-			undoManager.on("stack-item-updated", handler);
+			updatedListeners.add(callback);
 			return () => {
-				undoManager.off("stack-item-updated", handler);
+				updatedListeners.delete(callback);
 			};
 		},
 		onStackItemPopped(callback) {
-			const handler = (event: {
-				stackItem: { meta: Map<string, unknown> };
-				type: "undo" | "redo";
-			}) => {
+			const handler = (event: { stackItem: StackItem; type: "undo" | "redo" }) => {
+				openItems.forEach((open, key) => {
+					if (open.item === event.stackItem) {
+						openItems.delete(key);
+					}
+				});
 				callback(wrapStackItem(event.stackItem), event.type);
 			};
 
@@ -175,6 +240,9 @@ export function createYjsUndoManager(
 				return;
 			}
 			destroyed = true;
+			openItems.clear();
+			addedListeners.clear();
+			updatedListeners.clear();
 			undoManager.destroy();
 		},
 	};
@@ -192,4 +260,81 @@ function withHistoryKind(
 	} finally {
 		delete target[HISTORY_OPERATION_KIND];
 	}
+}
+
+type StackItem = Y.UndoManager["undoStack"][number];
+type DeleteSet = StackItem["insertions"];
+
+type StackItemListener = (
+	stackItem: CRDTUndoStackItem,
+	kind: "undo" | "redo",
+) => void;
+
+interface OpenCapture {
+	item: StackItem;
+	lastChange: number;
+	explicit: boolean;
+}
+
+/**
+ * The key a tracked transaction captures under when the caller declared
+ * none: a structured origin with a `groupId` is an explicit group, anything
+ * else groups by origin type.
+ */
+function captureKeyFromOrigin(origin: unknown): CRDTUndoCaptureKey {
+	const structured =
+		typeof origin === "object" && origin !== null
+			? (origin as { type?: unknown; groupId?: unknown })
+			: null;
+	if (typeof structured?.groupId === "string") {
+		return { key: `group:${structured.groupId}`, explicit: true };
+	}
+	const type =
+		typeof origin === "string" ? origin : String(structured?.type ?? "unknown");
+	return { key: `origin:${type}`, explicit: false };
+}
+
+/**
+ * Whether a step between `item` and the newly added `added` deleted content
+ * that `item` inserted (AIB4).
+ */
+function laterStepDeletesInsertions(
+	stack: StackItem[],
+	item: StackItem,
+	added: StackItem,
+): boolean {
+	const from = stack.indexOf(item) + 1;
+	const to = stack.indexOf(added);
+	for (let index = from; index < to; index += 1) {
+		if (deleteSetsOverlap(stack[index]!.deletions, item.insertions)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function deleteSetsOverlap(a: DeleteSet, b: DeleteSet): boolean {
+	for (const [client, rangesA] of a.clients) {
+		const rangesB = b.clients.get(client);
+		if (rangesB == null) {
+			continue;
+		}
+		for (const rangeA of rangesA) {
+			for (const rangeB of rangesB) {
+				if (
+					rangeA.clock < rangeB.clock + rangeB.len &&
+					rangeB.clock < rangeA.clock + rangeA.len
+				) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+/** Folds `source` into `target`; `target.meta` (owned by pen-undo) is kept. */
+function mergeStackItem(target: StackItem, source: StackItem): void {
+	target.insertions = Y.mergeDeleteSets([target.insertions, source.insertions]);
+	target.deletions = Y.mergeDeleteSets([target.deletions, source.deletions]);
 }

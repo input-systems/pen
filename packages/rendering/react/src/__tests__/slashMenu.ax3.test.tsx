@@ -3,39 +3,17 @@
 import React, { act } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createRoot } from "react-dom/client";
-import { createEditor, fieldEditorHostFacet } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
+import { fieldEditorHostFacet } from "@input/pen-core";
 import type { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
 import { Pen } from "../primitives/index";
-import { defaultSchema } from "@input/pen-schema";
+import {
+	createSlashMenuEditor,
+	dispatchKey,
+} from "./utils/slashMenuTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-function createSlashMenuEditor(
-	options: Parameters<typeof createEditor>[0] = {},
-) {
-	return createEditor({
-		schema: defaultSchema,
-		...options,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
-
-function dispatchKey(key: string, target: EventTarget = document) {
-	target.dispatchEvent(
-		new KeyboardEvent("keydown", {
-			key,
-			bubbles: true,
-			cancelable: true,
-		}),
-	);
-}
 
 function createOpenController() {
 	return {

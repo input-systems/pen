@@ -7,9 +7,8 @@ import {
   INGEST_MAX_IMAGE_COUNT,
   INGEST_MAX_NESTING_DEPTH,
   INGEST_MAX_NODE_COUNT,
-  XmlIngestDropCounts,
-  boundPenDocument,
-} from "../ingestBounds";
+} from "../../ingestBounds";
+import { XmlIngestDropCounts, boundPenDocument } from "../ingestBounds";
 
 const noDefaultExtensionsPreset = {
   resolve() {

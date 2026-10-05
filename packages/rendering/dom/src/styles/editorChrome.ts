@@ -30,8 +30,16 @@ const EDITOR_CHROME_STYLE_ID = "pen-editor-chrome";
  * `EditorRoot`, and `mountEditor` adopt it by default. Pass `chrome={false}`
  * for the unstyled HOST6 path: empty inline content stays zero-width, and
  * the UA focus ring is the AX5 signal.
+ *
+ * The root rule positions the root as the overlay layer's containing block
+ * (OV2) at zero specificity, so any host rule wins. Without the sheet the
+ * overlay sets the same value inline on a static root.
  */
 export const PEN_EDITOR_CHROME_STYLESHEET = `
+:where([${DATA_ATTRS.editorRoot}]) {
+	position: relative;
+}
+
 [${DATA_ATTRS.inlineContent}] {
 	display: block;
 	width: 100%;

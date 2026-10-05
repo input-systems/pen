@@ -58,26 +58,36 @@ export function readSuggestionsFromBlock(
 export function readAllSuggestions(editor: Editor): PersistentSuggestion[] {
 	const suggestions: PersistentSuggestion[] = [];
 	for (const block of editor.documentState.allBlocks()) {
-		const blockSuggestion = readBlockSuggestionMeta(block);
-		if (blockSuggestion) {
-			suggestions.push({
-				kind: "block",
-				id: blockSuggestion.id,
-				action: blockSuggestion.action,
-				author: blockSuggestion.author,
-				authorType: blockSuggestion.authorType,
-				createdAt: blockSuggestion.createdAt,
-				model: blockSuggestion.model,
-				sessionId: blockSuggestion.sessionId,
-				requestId: blockSuggestion.requestId,
-				turnId: blockSuggestion.turnId,
-				generationId: blockSuggestion.generationId,
-				blockId: block.id,
-				previousState: blockSuggestion.previousState,
-			});
-		}
-		suggestions.push(...readSuggestionsFromBlock(editor, block.id));
+		suggestions.push(...readBlockSuggestions(editor, block));
 	}
+	return suggestions;
+}
+
+/** One block's suggestions: its block-level suggestion, then its inline marks. */
+export function readBlockSuggestions(
+	editor: Editor,
+	block: BlockHandle,
+): PersistentSuggestion[] {
+	const suggestions: PersistentSuggestion[] = [];
+	const blockSuggestion = readBlockSuggestionMeta(block);
+	if (blockSuggestion) {
+		suggestions.push({
+			kind: "block",
+			id: blockSuggestion.id,
+			action: blockSuggestion.action,
+			author: blockSuggestion.author,
+			authorType: blockSuggestion.authorType,
+			createdAt: blockSuggestion.createdAt,
+			model: blockSuggestion.model,
+			sessionId: blockSuggestion.sessionId,
+			requestId: blockSuggestion.requestId,
+			turnId: blockSuggestion.turnId,
+			generationId: blockSuggestion.generationId,
+			blockId: block.id,
+			previousState: blockSuggestion.previousState,
+		});
+	}
+	suggestions.push(...readSuggestionsFromBlock(editor, block.id));
 	return suggestions;
 }
 
@@ -138,16 +148,7 @@ function parseBlockSuggestionMeta(meta: unknown): BlockSuggestionMeta | null {
 		author: record.author,
 		authorType: record.authorType === "ai" ? "ai" : "user",
 		createdAt: record.createdAt,
-		model: typeof record.model === "string" ? record.model : undefined,
-		sessionId:
-			typeof record.sessionId === "string" ? record.sessionId : undefined,
-		requestId:
-			typeof record.requestId === "string" ? record.requestId : undefined,
-		turnId: typeof record.turnId === "string" ? record.turnId : undefined,
-		generationId:
-			typeof record.generationId === "string"
-				? record.generationId
-				: undefined,
+		...readSuggestionProvenance(record),
 		previousState: readPreviousState(record.previousState),
 	};
 }
@@ -264,6 +265,19 @@ function asSuggestion(value: unknown): {
 		author: record.author,
 		authorType,
 		createdAt: record.createdAt,
+		...readSuggestionProvenance(record),
+	};
+}
+
+/** The optional string provenance fields a stored suggestion record carries. */
+function readSuggestionProvenance(record: Record<string, unknown>): {
+	model: string | undefined;
+	sessionId: string | undefined;
+	requestId: string | undefined;
+	turnId: string | undefined;
+	generationId: string | undefined;
+} {
+	return {
 		model: typeof record.model === "string" ? record.model : undefined,
 		sessionId:
 			typeof record.sessionId === "string" ? record.sessionId : undefined,

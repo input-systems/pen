@@ -8,6 +8,9 @@ import {
 	decorationsFacet,
 	keyBindingPriorityToPrecedence,
 	keymapFacet,
+	scopedDecorationSource,
+	summaryRemovedBlockIds,
+	summaryTouchedBlockIds,
 	ensureInlineCompletionController,
 	getInlineCompletionController,
 	getOpOriginType,
@@ -24,6 +27,8 @@ import {
 	AI_REVIEW_CONTROLLER_SLOT,
 } from "@input/pen-types";
 import { defineExtension } from "@input/pen-core";
+import { SuggestionDecorationIndex } from "./review/suggestionIndex";
+import { aiToolConfirmPolicyFacet } from "./tools/confirmPolicy";
 import {
 	AI_SESSION_SUGGESTION_ORIGIN,
 	shouldBypassSuggestMode,
@@ -89,6 +94,20 @@ export function aiExtension(config: AIExtensionConfig = {}): Extension {
 	let inlineHistory: AIInlineHistoryController | null = null;
 	let activeEditor: Editor | null = null;
 
+	// Suggestion decorations are scoped (SCALE2): a commit re-reads suggestion
+	// marks and block meta only on the blocks it touched. Presentation is fixed
+	// per config, so nothing else asks for a full re-read.
+	const suggestionIndex = new SuggestionDecorationIndex(
+		config.suggestionPresentation ?? "track-changes",
+	);
+	const reviewSuggestionSource = scopedDecorationSource({
+		interest: ({ summary }) => {
+			suggestionIndex.drop(summaryRemovedBlockIds(summary));
+			return summaryTouchedBlockIds(summary);
+		},
+		decorate: (blockIds, editor) => suggestionIndex.refresh(editor, blockIds),
+	});
+
 	return defineExtension({
 		name: AI_EXTENSION_NAME,
 		dependencies: ["tools", "delta-stream", "undo"],
@@ -120,8 +139,14 @@ export function aiExtension(config: AIExtensionConfig = {}): Extension {
 					{ origin: options.origin },
 				);
 			}, "high"),
+			aiToolConfirmPolicyFacet.of({
+				confirm: config.confirm,
+				unconfirmedDestructive: config.unconfirmedDestructive,
+			}),
+			decorationsFacet.of(reviewSuggestionSource),
 			decorationsFacet.of(() => {
-				const decorations = controller?.buildDecorations() ?? [];
+				const decorations =
+					controller?.buildPresentationDecorations(suggestionIndex) ?? [];
 				const inlineDecorations =
 					activeEditor?.facet(aiAutocompleteControllerFacet) == null
 						? (inlineCompletion?.buildDecorations() ?? [])
@@ -180,6 +205,7 @@ export function aiExtension(config: AIExtensionConfig = {}): Extension {
 			unsubscribeTrackedOrigins?.();
 			unsubscribeTrackedOrigins = null;
 			controller = null;
+			suggestionIndex.clear();
 			inlineCompletion = null;
 			releaseInlineCompletion = null;
 			inlineHistory = null;
@@ -235,3 +261,4 @@ function aiKeymapProviders(
 		),
 	);
 }
+

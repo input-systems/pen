@@ -239,7 +239,10 @@ describe("@input/pen-vue: editing interactions", () => {
     await nextTick();
 
     const activeSurface = wrapper.get("[data-pen-field-editor-active-surface]");
-    setDomTextSelection(activeSurface.element as HTMLElement, 5);
+    // W3.R5: input edits the authority; a caret moved in the DOM with no
+    // gesture is divergence and is projected back (R step 4).
+    editor.selectText("paragraph-1", 5, 5);
+    await nextTick();
     dispatchBeforeInput(activeSurface.element as HTMLElement, {
       inputType: "insertText",
       data: "!",

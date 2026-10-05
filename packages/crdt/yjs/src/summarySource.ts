@@ -46,6 +46,19 @@ export interface RawCommitDelta {
 	readonly blockOrderDelta: YArrayDelta;
 	readonly childArrayDeltas: ReadonlyMap<string, YArrayDelta>;
 	readonly blockMapChanges: ReadonlyMap<string, ReadonlySet<string>>;
+	/**
+	 * Each non-empty `children` array created in this transaction: on a block
+	 * whose map arrived whole (an undo restoring a container, a peer's
+	 * insert), or set on an existing block by its first child. Yjs reports no
+	 * array delta for an array created inside the transaction.
+	 */
+	readonly arrivedChildArrays?: ReadonlyMap<string, readonly string[]>;
+	/**
+	 * Block-map entries this transaction changed whose map is absent after
+	 * it: deleted, or stored and deleted within it. Read from the one block
+	 * map read the arrived-content pass makes.
+	 */
+	readonly absentBlockIds?: ReadonlySet<string>;
 	readonly appChanges: ReadonlySet<string>;
 	readonly metadataChanges: ReadonlySet<string>;
 }
@@ -163,7 +176,30 @@ function readOriginTag(txn: Y.Transaction): unknown {
 	};
 }
 
-function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
+/**
+ * A type's event, built when the transaction has not reached its own
+ * observer calls yet (`precomputeQueued`): Yjs creates events there, and
+ * skips a type whose item is deleted, as this does.
+ */
+function eventAhead(
+	txn: Y.Transaction,
+	ytype: object,
+	keys: Set<string | null>,
+): { delta: unknown } | undefined {
+	if (getTypeItem(ytype) && (ytype as { _item: { deleted: boolean } })._item.deleted) {
+		return undefined;
+	}
+	if (ytype instanceof Y.Text) return new Y.YTextEvent(ytype, txn, keys);
+	if (ytype instanceof Y.Array) return new Y.YArrayEvent(ytype, txn);
+	return undefined;
+}
+
+function transactionToRawCommitDelta(
+	txn: Y.Transaction,
+	ahead = false,
+): RawCommitDelta {
+	const eventFor = (ytype: object, keys: Set<string | null>) =>
+		ahead ? eventAhead(txn, ytype, keys) : eventForType(txn, ytype);
 	const blocks = txn.doc.getMap(BLOCKS) as Y.Map<Y.Map<unknown>>;
 	const blockOrder = txn.doc.getArray(BLOCK_ORDER);
 	const apps = txn.doc.getMap(APPS) as Y.Map<Y.Map<unknown>>;
@@ -172,6 +208,7 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 	const textDeltas = new Map<string, YTextDelta[]>();
 	const childArrayDeltas = new Map<string, YArrayDelta>();
 	const blockMapChanges = new Map<string, Set<string>>();
+	const arrivedChildArrays = new Map<string, readonly string[]>();
 	const entryChangedBlockIds = new Set<string>();
 	const appChanges = new Set<string>();
 	const metadataChanges = new Set<string>();
@@ -179,7 +216,7 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 
 	for (const [ytype, keys] of txn.changed) {
 		if ((ytype as unknown) === (blockOrder as unknown)) {
-			const event = eventForType(txn, ytype);
+			const event = eventFor(ytype, keys);
 			if (event) {
 				blockOrderDelta = snapshotArrayDelta(
 					event.delta as YArrayDeltaOp[],
@@ -213,7 +250,7 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 
 		if (ytype instanceof Y.Text) {
 			const blockId = resolveSharedKey(ytype, blocks);
-			const event = eventForType(txn, ytype);
+			const event = eventFor(ytype, keys);
 			if (blockId && event) {
 				const snapshot = snapshotTextDelta(
 					event.delta as YTextDeltaOp[],
@@ -232,7 +269,7 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 			const item = getTypeItem(ytype);
 			const blockId = resolveSharedKey(ytype, blocks);
 			if (blockId && item?.parentSub === "children") {
-				const event = eventForType(txn, ytype);
+				const event = eventFor(ytype, keys);
 				if (event) {
 					childArrayDeltas.set(
 						blockId,
@@ -260,6 +297,15 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 
 			if (item?.parent === blocks) {
 				addKeys(blockMapChanges, blockId, keys);
+				// A `children` array set on an existing block (created on its
+				// first child) arrives whole, like a new block's.
+				if (keys.has("children")) {
+					addArrivedChildren(
+						arrivedChildArrays,
+						blockId,
+						(ytype as Y.Map<unknown>).get("children"),
+					);
+				}
 				continue;
 			}
 
@@ -274,7 +320,12 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 		}
 	}
 
-	addArrivedBlockText(blocks, entryChangedBlockIds, textDeltas);
+	const absentBlockIds = addArrivedBlockContent(
+		blocks,
+		entryChangedBlockIds,
+		textDeltas,
+		arrivedChildArrays,
+	);
 
 	return {
 		originTag: readOriginTag(txn),
@@ -282,6 +333,8 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
 		blockOrderDelta,
 		childArrayDeltas,
 		blockMapChanges,
+		arrivedChildArrays,
+		absentBlockIds,
 		appChanges,
 		metadataChanges,
 	};
@@ -295,19 +348,93 @@ function transactionToRawCommitDelta(txn: Y.Transaction): RawCommitDelta {
  * its own. Every observer downstream would see the block appear and its text
  * arrive from nowhere — which is what left AN14's remote pairing with a delete
  * and nothing to pair it against when a peer split a block.
+ *
+ * The same holds for a `children` array the block arrived with: its entries
+ * are returned per block, read from the one block map read. Returns the
+ * changed entries whose map that read found absent.
  */
-function addArrivedBlockText(
+function addArrivedBlockContent(
 	blocks: Y.Map<Y.Map<unknown>>,
 	entryChangedBlockIds: ReadonlySet<string>,
 	textDeltas: Map<string, YTextDelta[]>,
-): void {
+	arrivedChildArrays: Map<string, readonly string[]>,
+): Set<string> {
+	const absent = new Set<string>();
 	for (const blockId of entryChangedBlockIds) {
+		const block = blocks.get(blockId);
+		if (!block) absent.add(blockId);
+		addArrivedChildren(arrivedChildArrays, blockId, block?.get("children"));
 		if (textDeltas.has(blockId)) continue;
-		const content = blocks.get(blockId)?.get("content");
+		const content = block?.get("content");
 		if (!(content instanceof Y.Text) || content.length === 0) continue;
 		textDeltas.set(blockId, [
 			snapshotTextDelta(content.toDelta() as YTextDeltaOp[]),
 		]);
+	}
+	return absent;
+}
+
+function addArrivedChildren(
+	arrivedChildArrays: Map<string, readonly string[]>,
+	blockId: string,
+	children: unknown,
+): void {
+	if (!(children instanceof Y.Array) || children.length === 0) return;
+	arrivedChildArrays.set(
+		blockId,
+		children.toArray().filter((id): id is string => typeof id === "string"),
+	);
+}
+
+/** The Yjs document fields the read-ahead below relies on. */
+interface YDocInternals {
+	_transaction: Y.Transaction | null;
+	_transactionCleanups: Y.Transaction[];
+}
+
+/**
+ * Runs `read` with `txn` as the document's current transaction, so a text
+ * event's delta, which Yjs reads inside `transact`, joins the queued `txn`
+ * it belongs to rather than opening another transaction behind the cleanup
+ * in progress.
+ */
+function readWithin<T>(ydoc: Y.Doc, txn: Y.Transaction, read: () => T): T {
+	const doc = ydoc as unknown as YDocInternals;
+	if (doc._transaction !== null) return read();
+	doc._transaction = txn;
+	try {
+		return read();
+	} finally {
+		doc._transaction = null;
+	}
+}
+
+/**
+ * Reads ahead every transaction queued behind `txn` — a write a commit
+ * listener made while `txn` was being observed (COL4 listener writes). Yjs
+ * runs a queued transaction's observers only after the earlier ones' cleanup,
+ * and that cleanup merges structs: a deleted run with the entry beside it a
+ * queued write deleted, and (from an earlier empty transaction, whose state
+ * vector is read only when its cleanup runs) a queued write's new entry with
+ * the one the same client wrote just before. The queued write's own events
+ * then miss the merged delete or insert. Read now, before `txn`'s cleanup,
+ * its deltas are whole; its `afterTransaction` uses them.
+ */
+function precomputeQueued(
+	ydoc: Y.Doc,
+	txn: Y.Transaction,
+	ahead: WeakMap<Y.Transaction, RawCommitDelta>,
+): void {
+	const cleanups = (ydoc as unknown as YDocInternals)._transactionCleanups;
+	// A Yjs build without the field keeps the pre-read-ahead behaviour.
+	if (!Array.isArray(cleanups)) return;
+	for (let at = cleanups.indexOf(txn) + 1; at > 0 && at < cleanups.length; at += 1) {
+		const queued = cleanups[at]!;
+		if (queued.changed.size === 0 || ahead.has(queued)) continue;
+		// Yjs sorts a transaction's delete set when its cleanup starts; its
+		// events look deletes up in it, so they need it sorted now.
+		queued.deleteSet = Y.mergeDeleteSets([queued.deleteSet]);
+		ahead.set(queued, readWithin(ydoc, queued, () => transactionToRawCommitDelta(queued, true)));
 	}
 }
 
@@ -319,12 +446,16 @@ export function createSummarySource(
 	let state = sources.get(ydoc);
 	if (!state) {
 		const listeners = new Set<(delta: RawCommitDelta) => void>();
+		const ahead = new WeakMap<Y.Transaction, RawCommitDelta>();
 		const handler = (txn: Y.Transaction) => {
-			if (txn.changed.size === 0 || listeners.size === 0) return;
-			const delta = transactionToRawCommitDelta(txn);
-			for (const listener of listeners) {
-				listener(delta);
+			if (listeners.size === 0) return;
+			if (txn.changed.size > 0) {
+				const delta = ahead.get(txn) ?? transactionToRawCommitDelta(txn);
+				for (const listener of listeners) {
+					listener(delta);
+				}
 			}
+			precomputeQueued(ydoc, txn, ahead);
 		};
 		ydoc.on("afterTransaction", handler);
 		state = { listeners, handler };

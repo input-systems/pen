@@ -1,58 +1,12 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi } from "vitest";
-import { createEditor as createCoreEditor } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
+import { describe, expect, it } from "vitest";
 import { handleClipboardPaste } from "@input/pen-dom/field-editor/clipboard";
-import type { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
-import { defaultSchema } from "@input/pen-schema";
-
-function createEditor(
-	options: Parameters<typeof createCoreEditor>[0] = {},
-	config: {
-		undo?: boolean;
-	} = {},
-) {
-	return createCoreEditor({
-		schema: defaultSchema,
-		...options,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: config.undo ?? false,
-		}),
-	});
-}
-
-function createFileList(files: File[]): FileList {
-	return Object.assign([...files], {
-		item(index: number) {
-			return files[index] ?? null;
-		},
-	}) as unknown as FileList;
-}
-
-function createClipboardData(files: File[] = []): DataTransfer {
-	const data = new Map<string, string>();
-	const types: string[] = files.length > 0 ? ["Files"] : [];
-
-	return {
-		files: createFileList(files),
-		types,
-		getData(type: string) {
-			return data.get(type) ?? "";
-		},
-		setData(type: string, value: string) {
-			data.set(type, value);
-		},
-	} as unknown as DataTransfer;
-}
-
-function createFieldEditorStub(): FieldEditorImpl {
-	return {
-		activateTextSelection: vi.fn(),
-	} as unknown as FieldEditorImpl;
-}
+import {
+	createClipboardData,
+	createEditor,
+	createFieldEditorStub,
+} from "./utils/clipboardTestHelpers";
 
 describe("@input/pen-react clipboard: unknown payload guards", () => {
 	it("does not direct-paste unknown pen block payloads in flow documents", () => {

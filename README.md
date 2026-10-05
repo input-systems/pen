@@ -39,7 +39,7 @@ Every host follows the same two steps: build an editor, then mount it. `createEd
 ### React
 
 ```bash
-pnpm add @input/pen @input/pen-react react react-dom yjs y-protocols
+pnpm add @input/pen @input/pen-react react react-dom yjs
 ```
 
 ```tsx
@@ -62,7 +62,7 @@ export function App() {
 ### Vue
 
 ```bash
-pnpm add @input/pen @input/pen-vue vue yjs y-protocols
+pnpm add @input/pen @input/pen-vue vue yjs
 ```
 
 ```vue
@@ -85,7 +85,7 @@ Vue has no `"use client"` directive. Mount `PenEditor` in the browser, not durin
 ### Vanilla DOM
 
 ```bash
-pnpm add @input/pen @input/pen-dom yjs y-protocols
+pnpm add @input/pen @input/pen-dom yjs
 ```
 
 ```ts
@@ -106,7 +106,7 @@ mountEditor(editor, root);
 
 `createEditor` from `@input/pen` applies `defaultPreset()` whenever you pass no `preset` of your own; explicit `preset`, `schema`, and `extensions` options pass through unchanged. The bare constructor — no schema, no extensions, `editor.undoManager` an inert stub, and Mod-Z doing nothing, silently — is `@input/pen-core`'s `createEditor`. Reach for that one when you compose every extension yourself.
 
-**Peer dependencies.** `react` and `react-dom`, or `vue`, are peers of the binding you install. `yjs` and `y-protocols` are peers of `@input/pen-yjs`, which `@input/pen-core` depends on, so every Pen install needs both, including non-collaborative ones, since the document model is a Yjs document and the adapter imports awareness. `yjs` is a peer rather than a dependency so that exactly one copy is resolved; the adapter asserts that at document creation and fails loudly if a second copy is present. Package managers that auto-install peers will add them for you, but naming them explicitly is what pins the versions you get.
+**Peer dependencies.** `react` and `react-dom`, or `vue`, are peers of the binding you install. `yjs` is a peer of `@input/pen-yjs`, which `@input/pen-core` depends on, so every Pen install needs it, since the document model is a Yjs document. `y-protocols` is needed only for collaboration: it is a peer of `@input/pen-multiplayer` and of the `@input/pen-yjs/awareness` subpath, and a non-collaborative install never loads it. `yjs` is a peer rather than a dependency so that exactly one copy is resolved; the adapter asserts that at document creation and fails loudly if a second copy is present. Package managers that auto-install peers will add them for you, but naming them explicitly is what pins the versions you get.
 
 **Direct imports.** Sections below import `@input/pen-types` and `@input/pen-shortcuts` on top of a feature package each. Both arrive transitively with the starter, so the code resolves without them in your manifest, but list whatever you import directly, because a phantom dependency breaks as soon as the tree shifts underneath it.
 
@@ -342,7 +342,7 @@ The current-state specs in [`spec/README.md`](spec/README.md) are the contract: 
 | Firefox         | 92                                     | contenteditable                                                                         |
 | Safari / WebKit | 15.4                                   | contenteditable                                                                         |
 
-Expanded field-editor mode and table-cell editing always use contenteditable, even when EditContext is present. APIs newer than this floor (EditContext, `structuredClone`, `ResizeObserver`, `color-mix()`, `crypto.randomUUID`) are feature-detected with a documented fallback and do not raise the minimum. Published packages declare `engines.node: "^22.22.2 || ^24.15.0 || >=26.0.0"`, the range jsdom 30 declares (the Node sanitizer behind `@input/pen-interop` runs on it), and CI verifies both declared endpoints (current Node 22 and current Node 26) plus one non-Linux runner in [`.github/workflows/node-matrix.yml`](.github/workflows/node-matrix.yml). Raising the floor is a minor-version change; lowering it is never silent. The reasoning is in [`spec/rules/host.md`](spec/rules/host.md) (HOST3, HOST4).
+Expanded field-editor mode and table-cell editing always use contenteditable, even when EditContext is present. APIs newer than this floor (EditContext, `structuredClone`, `ResizeObserver`, `color-mix()`, `crypto.randomUUID`) are feature-detected with a documented fallback and do not raise the minimum. Published packages declare `engines.node: "^22.22.2 || ^24.15.0 || >=26.0.0"`, the range jsdom 30 declares (the Node sanitizer behind `@input/pen-interop` runs on it), and CI verifies each line's exact floor (Node 22.22.2 and 24.15.0) and current Node 26, plus one non-Linux runner on the 22.22.2 floor, in [`.github/workflows/node-matrix.yml`](.github/workflows/node-matrix.yml). Raising the floor is a minor-version change; lowering it is never silent. The reasoning is in [`spec/rules/host.md`](spec/rules/host.md) (HOST3, HOST4).
 
 ## Docs And Examples
 

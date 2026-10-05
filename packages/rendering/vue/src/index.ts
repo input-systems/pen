@@ -5,6 +5,7 @@ export {
   PenBlock,
   PenInlineContent,
   PenFieldEditor,
+  PenMultiplayerCaretOverlay,
 } from "./components/index";
 export { PenVuePlugin } from "./plugin";
 export type {

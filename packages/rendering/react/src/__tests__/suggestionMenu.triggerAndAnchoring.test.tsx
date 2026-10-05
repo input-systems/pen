@@ -3,82 +3,22 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
-import { createEditor } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
 import {
 	useSuggestionMenu,
 	type SuggestionMenuController,
 } from "../hooks/useSuggestionMenu";
 import { Pen } from "../primitives/index";
-import { defaultSchema } from "@input/pen-schema";
+import {
+	createRect,
+	createSuggestionMenuEditor,
+	dispatchKey,
+	requireMenu,
+	waitForCondition,
+} from "./utils/suggestionMenuTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-async function waitForCondition(
-	check: () => boolean,
-	maxTicks = 20,
-): Promise<void> {
-	for (let tick = 0; tick < maxTicks; tick += 1) {
-		if (check()) {
-			return;
-		}
-		await Promise.resolve();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-	}
-}
-
-function createSuggestionMenuEditor() {
-	return createEditor({
-		schema: defaultSchema,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
-
-function dispatchKey(key: string, target: EventTarget = document) {
-	target.dispatchEvent(
-		new KeyboardEvent("keydown", {
-			key,
-			bubbles: true,
-			cancelable: true,
-		}),
-	);
-}
-
-function createRect(
-	left: number,
-	top: number,
-	width: number,
-	height: number,
-): DOMRect {
-	return {
-		x: left,
-		y: top,
-		left,
-		top,
-		right: left + width,
-		bottom: top + height,
-		width,
-		height,
-		toJSON() {
-			return {};
-		},
-	} as DOMRect;
-}
-
-function requireMenu<TItem>(
-	menu: SuggestionMenuController<TItem> | null,
-): SuggestionMenuController<TItem> {
-	if (!menu) {
-		throw new Error("Suggestion menu did not initialize");
-	}
-	return menu;
-}
 
 describe("@input/pen-react suggestion menu: trigger and anchoring", () => {
 	it("opens from a typed trigger and confirms the selected item", async () => {

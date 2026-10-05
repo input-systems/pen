@@ -5,6 +5,7 @@ import {
 	AX6_MOTION_MAPPING,
 	REDUCED_MOTION_QUERY,
 	createReducedMotionSignal,
+	getRootReducedMotion,
 } from "../motion";
 
 type MockMediaQueryList = {
@@ -50,23 +51,17 @@ afterEach(() => {
 });
 
 describe("createReducedMotionSignal (AX6)", () => {
-	it("AX6: reduced is true when the media query matches", () => {
-		const mediaQueryList = createMockMediaQueryList(true);
-		vi.stubGlobal("matchMedia", () => mediaQueryList);
+	it.each([true, false])(
+		"AX6: reduced mirrors a media query match of %s",
+		(matches) => {
+			const mediaQueryList = createMockMediaQueryList(matches);
+			vi.stubGlobal("matchMedia", () => mediaQueryList);
 
-		const signal = createReducedMotionSignal();
-		expect(signal.reduced).toBe(true);
-		signal.dispose();
-	});
-
-	it("AX6: reduced is false when the media query does not match", () => {
-		const mediaQueryList = createMockMediaQueryList(false);
-		vi.stubGlobal("matchMedia", () => mediaQueryList);
-
-		const signal = createReducedMotionSignal();
-		expect(signal.reduced).toBe(false);
-		signal.dispose();
-	});
+			const signal = createReducedMotionSignal();
+			expect(signal.reduced).toBe(matches);
+			signal.dispose();
+		},
+	);
 
 	it("AX6 HOST4: missing matchMedia leaves reduced false", () => {
 		vi.stubGlobal("matchMedia", undefined);
@@ -168,5 +163,37 @@ describe("createReducedMotionSignal (AX6)", () => {
 				value: originalView,
 			});
 		}
+	});
+});
+
+describe("getRootReducedMotion (AX6)", () => {
+	it("AX6: handles on one root share one matchMedia listener and release it with the last handle; another root gets its own", () => {
+		const mediaQueryList = createMockMediaQueryList(false);
+		const addListener = vi.spyOn(mediaQueryList, "addEventListener");
+		const removeListener = vi.spyOn(mediaQueryList, "removeEventListener");
+		vi.stubGlobal("matchMedia", () => mediaQueryList);
+		const root = document.createElement("div");
+
+		const first = getRootReducedMotion(root);
+		const second = getRootReducedMotion(root);
+		expect(addListener).toHaveBeenCalledTimes(1);
+
+		const seen: boolean[] = [];
+		second.subscribe(() => seen.push(second.reduced));
+		mediaQueryList.dispatch(true);
+		expect(first.reduced).toBe(true);
+		expect(seen).toEqual([true]);
+
+		second.dispose();
+		mediaQueryList.dispatch(false);
+		expect(seen).toEqual([true]);
+		expect(removeListener).not.toHaveBeenCalled();
+
+		first.dispose();
+		expect(removeListener).toHaveBeenCalledTimes(1);
+
+		const other = getRootReducedMotion(document.createElement("div"));
+		expect(addListener).toHaveBeenCalledTimes(2);
+		other.dispose();
 	});
 });

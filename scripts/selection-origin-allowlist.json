@@ -1,0 +1,23 @@
+{
+  "_comment": "S3 (spec/rules/selection.md), W3.R11: pen-dom and pen-undo selection-setter calls that omit an origin on purpose (host-API forwarding, FieldEditor.focus() re-targeting). Each entry needs file, enclosing symbol, setter and reason; pen/require-selection-origin fails an entry with no matching call (I15).",
+  "entries": [
+    {
+      "file": "packages/rendering/dom/src/field-editor/fieldEditorImpl.ts",
+      "symbol": "selection",
+      "setter": "setSelection",
+      "reason": "Host API forwarding: the public FieldEditor.selection setter writes a host-chosen selection, which is programmatic."
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/fieldEditorImpl.ts",
+      "symbol": "expandTo",
+      "setter": "selectTextRange",
+      "reason": "Host API forwarding: FieldEditor.expandTo has no pen-dom caller; hosts reach it through expandFieldEditorRange."
+    },
+    {
+      "file": "packages/rendering/dom/src/field-editor/fieldEditorImpl.ts",
+      "symbol": "contractToFocused",
+      "setter": "selectTextRange",
+      "reason": "Host API forwarding: FieldEditor.contractToFocused has no pen-dom caller; hosts reach it through contractFieldEditorRange."
+    }
+  ]
+}

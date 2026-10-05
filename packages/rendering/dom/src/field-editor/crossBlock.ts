@@ -1,5 +1,6 @@
 import { getSelectionBlockRange, isMultiBlock } from "@input/pen-core";
 import type { Editor, FieldEditor, SelectionState } from "@input/pen-types";
+import { BLOCK_SURFACE_MODE_THRESHOLD } from "../constants/selection";
 import { getBlockSelectionRoleFromSchema } from "../utils/blockSelectionSemantics";
 
 /**
@@ -8,12 +9,6 @@ import { getBlockSelectionRoleFromSchema } from "../utils/blockSelectionSemantic
  * Handles expanding the contenteditable scope across multiple blocks
  * and managing shared Y.Text observation.
  */
-
-interface CrossBlockState {
-	isExpanded: boolean;
-	blockIds: readonly string[];
-	anchorBlockId: string | null;
-}
 
 export type FieldEditorSurfaceMode =
 	| "inactive"
@@ -51,13 +46,28 @@ export function contractFieldEditorRange(
 /**
  * Surface heuristic: a text range over >50 blocks skips contenteditable
  * expansion (`mode: "block"`). This is not an authority-type change.
- * T3: pointer reads never flip to BlockSelection by count.
+ * T3: pointer reads never flip to BlockSelection by count. D5: the range is
+ * shown by the `block-surface-range` substitute state (S2).
  */
 export function shouldUseBlockSelection(
 	_editor: Editor,
 	blockCount: number,
 ): boolean {
-	return blockCount > 50;
+	return blockCount > BLOCK_SURFACE_MODE_THRESHOLD;
+}
+
+/** D5: whether a text selection is a block-surface range (more than the threshold of blocks). */
+export function isBlockSurfaceTextRange(
+	editor: Editor,
+	selection: SelectionState,
+): boolean {
+	if (selection?.type !== "text" || !isMultiBlock(selection)) {
+		return false;
+	}
+	return shouldUseBlockSelection(
+		editor,
+		getSelectionBlockRange(editor.documentState, selection).length,
+	);
 }
 
 export function getExpandedBlockRole(
@@ -67,7 +77,16 @@ export function getExpandedBlockRole(
 	const block = editor.getBlock(blockId);
 	if (!block) return null;
 
-	return getBlockSelectionRoleFromSchema(editor.schema.resolve(block.type));
+	const schema = editor.schema.resolve(block.type);
+	const role = getBlockSelectionRoleFromSchema(schema);
+	// G4: a delegated block with one text surface (a code block) holds text
+	// offsets, so the expanded host keeps it editable. Stamped
+	// non-editable, WebKit moves a range endpoint in its text to the
+	// nearest editable position and the projection cannot show the record.
+	if (role === "delegated" && schema?.content === "inline") {
+		return "editable-inline";
+	}
+	return role;
 }
 
 export function classifySelectionSurface(
@@ -81,10 +100,7 @@ export function classifySelectionSurface(
 	}
 
 	if (selection?.type === "text") {
-		const blockRange = getSelectionBlockRange(
-			editor.internals.doc,
-			selection,
-		);
+		const blockRange = getSelectionBlockRange(editor.documentState, selection);
 		if (isMultiBlock(selection)) {
 			return {
 				mode: shouldUseBlockSelection(editor, blockRange.length)

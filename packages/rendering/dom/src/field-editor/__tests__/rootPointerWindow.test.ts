@@ -51,28 +51,27 @@ function seedMountedEditor() {
 }
 
 describe("FieldEditorImpl root pointer window", () => {
-	it("opens the pointer window on in-content pointerdown without beginPointerSelection", () => {
+	it("opens the pointer window on in-content pointerdown without a host gesture notification", () => {
 		const { fieldEditor, inline } = seedMountedEditor();
-		expect(fieldEditor.isAdmissibleGestureRead()).toBe(false);
+		expect(fieldEditor.reader.isAdmissibleRead()).toBe(false);
 		inline.dispatchEvent(
 			new PointerEvent("pointerdown", { bubbles: true, button: 0 }),
 		);
-		expect(fieldEditor.isAdmissibleGestureRead()).toBe(true);
-		expect(fieldEditor.shouldHandleDomSelectionChange(0)).toBe(true);
+		expect(fieldEditor.reader.isAdmissibleRead()).toBe(true);
 	});
 
 	it("opens the window from root pointerdown when no field is attached", () => {
 		const { fieldEditor, inline } = seedMountedEditor();
 		fieldEditor.deactivate();
 		expect(fieldEditor.getSnapshot().isEditing).toBe(false);
-		expect(fieldEditor.isAdmissibleGestureRead()).toBe(false);
+		expect(fieldEditor.reader.isAdmissibleRead()).toBe(false);
 		inline.dispatchEvent(
 			new PointerEvent("pointerdown", { bubbles: true, button: 0 }),
 		);
-		expect(fieldEditor.isAdmissibleGestureRead()).toBe(true);
+		expect(fieldEditor.reader.isAdmissibleRead()).toBe(true);
 	});
 
-	it("accepts a DOM read after root pointerdown without beginPointerSelection", () => {
+	it("accepts a DOM read after root pointerdown without a host gesture notification", () => {
 		const { editor, fieldEditor, blockId, inline } = seedMountedEditor();
 		fieldEditor.deactivate();
 		editor.selectText(blockId, 0, 0);
@@ -100,7 +99,7 @@ describe("FieldEditorImpl root pointer window", () => {
 		overlay.dispatchEvent(
 			new PointerEvent("pointerdown", { bubbles: true, button: 0 }),
 		);
-		expect(fieldEditor.isAdmissibleGestureRead()).toBe(false);
+		expect(fieldEditor.reader.isAdmissibleRead()).toBe(false);
 
 		const ignored = document.createElement("div");
 		ignored.setAttribute(DATA_ATTRS.ignorePointerGesture, "");
@@ -108,7 +107,7 @@ describe("FieldEditorImpl root pointer window", () => {
 		ignored.dispatchEvent(
 			new PointerEvent("pointerdown", { bubbles: true, button: 0 }),
 		);
-		expect(fieldEditor.isAdmissibleGestureRead()).toBe(false);
+		expect(fieldEditor.reader.isAdmissibleRead()).toBe(false);
 
 		const sink = document.createElement("div");
 		sink.setAttribute(FOCUS_SINK_ATTR, "");
@@ -116,6 +115,6 @@ describe("FieldEditorImpl root pointer window", () => {
 		sink.dispatchEvent(
 			new PointerEvent("pointerdown", { bubbles: true, button: 0 }),
 		);
-		expect(fieldEditor.isAdmissibleGestureRead()).toBe(false);
+		expect(fieldEditor.reader.isAdmissibleRead()).toBe(false);
 	});
 });

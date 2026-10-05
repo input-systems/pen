@@ -11,7 +11,7 @@ This package gives Vue applications a lean but real renderer surface: core edito
 ## Key Exports / Entrypoints
 
 - Export map: `.`, `./plugin`
-- Root exports such as `PenEditor`, `PenContent`, `PenBlock`, `PenInlineContent`, and `PenFieldEditor`. The `PenEditorProps` interface is declared on the component but is not on the barrel; `PenTableCellContent` is likewise internal.
+- Root exports such as `PenEditor`, `PenContent`, `PenBlock`, `PenInlineContent`, `PenFieldEditor`, and `PenMultiplayerCaretOverlay`. The `PenEditorProps` interface is declared on the component but is not on the barrel; `PenTableCellContent` is likewise internal.
 - Composables such as `useEditor`, `useSelection`, `useBlockList`, and `useDecorations`
 - Plugin export: `PenVuePlugin`
 - Public renderer and paste-importer types such as `RendererOverrides` and `PasteImporters`
@@ -44,6 +44,8 @@ flowchart TD
 
 Important responsibilities:
 
+- `PenBlock` and `PenInlineContent` read their block's slices from the field editor's block notifier rather than the editor selection or the full field-editor store, the document placeholder target and root ids come from the notifier's document snapshot, and `useBlockList` changes only when the root ids change (SCALE6). A numbered item's marker comes from its `list` slice, so it updates when an item is inserted above it. `PenBlock` acknowledges its own mount; `PenContent` does not acknowledge every block.
+- `PenContent` and `PenBlock` wrap list runs in `div[data-pen-list-group][role="list"]` groups and put `role="listitem"`, `aria-level`, `aria-posinset`, and `aria-setsize` on the block wrapper, from the notifier's list segments and `list` slice, which the same core helpers React uses compute (AX1). A block holds the segment channel only while it has children; a host renderer's `childNodes` include the group wrappers.
 - Mount the editor and shared field-editor engine in a Vue host
 - Expose key editor-derived state through composables instead of duplicating state inside components
 - Register the field editor and paste assets with `internals.assignSlot`. When the host omits `importers`, `PenEditor` still defaults `paste:importers.html` to `htmlImporter` from `@input/pen-interop/html`. Also wires focused/read-only/empty root attributes and `bindEditorDocumentKeyDown()` from `@input/pen-dom` (HOST7/HOST8: Escape and Enter bubble; other document shortcuts stay in capture).
@@ -52,6 +54,7 @@ Important responsibilities:
 - `useEditor()` with no argument calls `createEditor({ schema: defaultSchema })`. It injects the default schema and still installs no preset. Pass `preset: defaultPreset()` or explicit `extensions` when the host wants undo, shortcuts, tools, or the stream extension.
 - `PenEditor` adopts `PEN_EDITOR_CHROME_STYLESHEET` by default (`chrome`, default `true`). Pass `:chrome="false"` for the unstyled HOST6 path.
 - The `readonly` prop on `PenEditor` is what declines pointer activation and local typing. `pen.ariaReadOnly` is read only for `aria-readonly` and does not set `data-readonly`. The facet does not decline typing, `editor.apply`, or the wire. That split is an open owner decision.
+- `PenEditor` passes `readonly` to `fieldEditor.setReadOnly`; the overlay layer, O1–O4 carets, and block outlines come from `@input/pen-dom` with no Vue component. `PenMultiplayerCaretOverlay`, placed inside `PenEditor`, registers pen-dom's remote-caret contributor for the editor's `@input/pen-multiplayer` cursors; it renders and measures nothing (OV3).
 - Boolean `data-*` attributes use the same valueless form as `@input/pen-dom` (`data-readonly=""`). ARIA booleans remain `"true"` / `"false"`.
 - Support renderer overrides so host apps can customize block rendering without forking the runtime
 - Validate that keyboard routing, Escape selection transitions, select-all behavior, clipboard, and table-editing behavior stay portable across frameworks

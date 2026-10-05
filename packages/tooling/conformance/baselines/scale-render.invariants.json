@@ -1,0 +1,1658 @@
+[
+	{
+		"id": "SCALE6-live-listeners-total-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "mount",
+		"metric": "listeners.live.total",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-live-listeners-store-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "mount",
+		"metric": "listeners.live.store",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-invoked-commit-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "listeners.invoked.commit",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-invoked-selection-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "caretRight",
+		"metric": "listeners.invoked.selectionChange",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-invoked-store-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "listeners.invoked.store",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-touched-keystroke-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-touched-caretRight-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "caretRight",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-touched-caretDown-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "caretDown",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-touched-shiftDown-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "shiftDown",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE2-remote-affected-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "remoteInsert",
+		"metric": "commit.affectedBlockIds",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R11"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-blockOrderReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "scan.blockOrderReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-blocksMapReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "scan.blocksMapReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-blocksMapIterations-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "scan.blocksMapIterations",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-textFullReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "scan.textFullReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-orderArrayReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "scan.orderArrayReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-documentWalks-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "scan.documentWalks",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-blockOrderReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretRight",
+		"metric": "scan.blockOrderReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-blocksMapReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretRight",
+		"metric": "scan.blocksMapReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-blocksMapIterations-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretRight",
+		"metric": "scan.blocksMapIterations",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-textFullReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretRight",
+		"metric": "scan.textFullReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-orderArrayReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretRight",
+		"metric": "scan.orderArrayReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-documentWalks-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretRight",
+		"metric": "scan.documentWalks",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-blockOrderReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretDown",
+		"metric": "scan.blockOrderReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-blocksMapReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretDown",
+		"metric": "scan.blocksMapReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-blocksMapIterations-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretDown",
+		"metric": "scan.blocksMapIterations",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-textFullReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretDown",
+		"metric": "scan.textFullReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-orderArrayReads-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretDown",
+		"metric": "scan.orderArrayReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-documentWalks-react",
+		"rule": "SCALE2",
+		"surface": "react",
+		"action": "caretDown",
+		"metric": "scan.documentWalks",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "G2-geometry-keystroke-react",
+		"rule": "G2",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "geometry.boundingClientRect.total",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R12"
+	},
+	{
+		"id": "SCALE6-live-listeners-total-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "mount",
+		"metric": "listeners.live.total",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-live-listeners-store-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "mount",
+		"metric": "listeners.live.store",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-invoked-commit-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "listeners.invoked.commit",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-invoked-selection-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "caretRight",
+		"metric": "listeners.invoked.selectionChange",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-invoked-store-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "listeners.invoked.store",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-touched-keystroke-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-touched-caretRight-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "caretRight",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-touched-caretDown-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "caretDown",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-touched-shiftDown-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "shiftDown",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE2-remote-affected-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "remoteInsert",
+		"metric": "commit.affectedBlockIds",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R11"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-blockOrderReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "scan.blockOrderReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-blocksMapReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "scan.blocksMapReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-blocksMapIterations-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "scan.blocksMapIterations",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-textFullReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "scan.textFullReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-orderArrayReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "scan.orderArrayReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-documentWalks-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "scan.documentWalks",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-blockOrderReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretRight",
+		"metric": "scan.blockOrderReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-blocksMapReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretRight",
+		"metric": "scan.blocksMapReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-blocksMapIterations-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretRight",
+		"metric": "scan.blocksMapIterations",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-textFullReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretRight",
+		"metric": "scan.textFullReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-orderArrayReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretRight",
+		"metric": "scan.orderArrayReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-documentWalks-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretRight",
+		"metric": "scan.documentWalks",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-blockOrderReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretDown",
+		"metric": "scan.blockOrderReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-blocksMapReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretDown",
+		"metric": "scan.blocksMapReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-blocksMapIterations-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretDown",
+		"metric": "scan.blocksMapIterations",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-textFullReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretDown",
+		"metric": "scan.textFullReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-orderArrayReads-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretDown",
+		"metric": "scan.orderArrayReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-documentWalks-vue",
+		"rule": "SCALE2",
+		"surface": "vue",
+		"action": "caretDown",
+		"metric": "scan.documentWalks",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "G2-geometry-keystroke-vue",
+		"rule": "G2",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "geometry.boundingClientRect.total",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R12"
+	},
+	{
+		"id": "SCALE6-live-listeners-total-vanilla",
+		"rule": "SCALE6",
+		"surface": "vanilla",
+		"action": "mount",
+		"metric": "listeners.live.total",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R6"
+	},
+	{
+		"id": "SCALE6-live-listeners-store-vanilla",
+		"rule": "SCALE6",
+		"surface": "vanilla",
+		"action": "mount",
+		"metric": "listeners.live.store",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R6"
+	},
+	{
+		"id": "SCALE6-invoked-commit-vanilla",
+		"rule": "SCALE6",
+		"surface": "vanilla",
+		"action": "keystroke",
+		"metric": "listeners.invoked.commit",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R6"
+	},
+	{
+		"id": "SCALE6-invoked-selection-vanilla",
+		"rule": "SCALE6",
+		"surface": "vanilla",
+		"action": "caretRight",
+		"metric": "listeners.invoked.selectionChange",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R6"
+	},
+	{
+		"id": "SCALE6-invoked-store-vanilla",
+		"rule": "SCALE6",
+		"surface": "vanilla",
+		"action": "keystroke",
+		"metric": "listeners.invoked.store",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R6"
+	},
+	{
+		"id": "SCALE6-touched-keystroke-vanilla",
+		"rule": "SCALE6",
+		"surface": "vanilla",
+		"action": "keystroke",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R6"
+	},
+	{
+		"id": "SCALE6-touched-caretRight-vanilla",
+		"rule": "SCALE6",
+		"surface": "vanilla",
+		"action": "caretRight",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R6"
+	},
+	{
+		"id": "SCALE6-touched-caretDown-vanilla",
+		"rule": "SCALE6",
+		"surface": "vanilla",
+		"action": "caretDown",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R6"
+	},
+	{
+		"id": "SCALE6-touched-shiftDown-vanilla",
+		"rule": "SCALE6",
+		"surface": "vanilla",
+		"action": "shiftDown",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R6"
+	},
+	{
+		"id": "SCALE2-remote-affected-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "remoteInsert",
+		"metric": "commit.affectedBlockIds",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R11"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-blockOrderReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "keystroke",
+		"metric": "scan.blockOrderReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-blocksMapReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "keystroke",
+		"metric": "scan.blocksMapReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-blocksMapIterations-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "keystroke",
+		"metric": "scan.blocksMapIterations",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-textFullReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "keystroke",
+		"metric": "scan.textFullReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-orderArrayReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "keystroke",
+		"metric": "scan.orderArrayReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-keystroke-documentWalks-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "keystroke",
+		"metric": "scan.documentWalks",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-blockOrderReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretRight",
+		"metric": "scan.blockOrderReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-blocksMapReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretRight",
+		"metric": "scan.blocksMapReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-blocksMapIterations-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretRight",
+		"metric": "scan.blocksMapIterations",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-textFullReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretRight",
+		"metric": "scan.textFullReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-orderArrayReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretRight",
+		"metric": "scan.orderArrayReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretRight-documentWalks-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretRight",
+		"metric": "scan.documentWalks",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-blockOrderReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretDown",
+		"metric": "scan.blockOrderReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-blocksMapReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretDown",
+		"metric": "scan.blocksMapReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-blocksMapIterations-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretDown",
+		"metric": "scan.blocksMapIterations",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-textFullReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretDown",
+		"metric": "scan.textFullReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-orderArrayReads-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretDown",
+		"metric": "scan.orderArrayReads",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "SCALE2-scan-caretDown-documentWalks-vanilla",
+		"rule": "SCALE2",
+		"surface": "vanilla",
+		"action": "caretDown",
+		"metric": "scan.documentWalks",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R7"
+	},
+	{
+		"id": "G2-geometry-keystroke-vanilla",
+		"rule": "G2",
+		"surface": "vanilla",
+		"action": "keystroke",
+		"metric": "geometry.boundingClientRect.total",
+		"relation": {
+			"kind": "equal-across",
+			"fixtures": [
+				"scale-1k",
+				"scale-5k"
+			]
+		},
+		"status": "enforced",
+		"closedBy": "W2.R12"
+	},
+	{
+		"id": "SCALE6-blocks-keystroke-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-blocks-caretRight-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "caretRight",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-blocks-caretDown-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "caretDown",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-blocks-shiftDown-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "shiftDown",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-blocks-enterParagraph-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "enterParagraph",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 3
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-blocks-enterNumbered-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "enterNumbered",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 5
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-blocks-remoteInsert-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "remoteInsert",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R11"
+	},
+	{
+		"id": "SCALE6-content-keystroke-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "keystroke",
+		"metric": "render.contentRenders",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 0
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-content-caretRight-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "caretRight",
+		"metric": "render.contentRenders",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 0
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-content-caretDown-react",
+		"rule": "SCALE6",
+		"surface": "react",
+		"action": "caretDown",
+		"metric": "render.contentRenders",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 0
+		},
+		"status": "enforced",
+		"closedBy": "W2.R3"
+	},
+	{
+		"id": "SCALE6-blocks-keystroke-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-blocks-caretRight-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "caretRight",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 1
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-blocks-caretDown-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "caretDown",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-blocks-shiftDown-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "shiftDown",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-blocks-enterParagraph-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "enterParagraph",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 3
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-blocks-enterNumbered-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "enterNumbered",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 5
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-blocks-remoteInsert-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "remoteInsert",
+		"metric": "render.blocksRendered",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 2
+		},
+		"status": "enforced",
+		"closedBy": "W2.R11"
+	},
+	{
+		"id": "SCALE6-content-keystroke-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "keystroke",
+		"metric": "render.contentRenders",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 0
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-content-caretRight-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "caretRight",
+		"metric": "render.contentRenders",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 0
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-content-caretDown-vue",
+		"rule": "SCALE6",
+		"surface": "vue",
+		"action": "caretDown",
+		"metric": "render.contentRenders",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 0
+		},
+		"status": "enforced",
+		"closedBy": "W2.R5"
+	},
+	{
+		"id": "SCALE6-touched-enterParagraph-vanilla",
+		"rule": "SCALE6",
+		"surface": "vanilla",
+		"action": "enterParagraph",
+		"metric": "dom.blocksTouched",
+		"relation": {
+			"kind": "max",
+			"fixture": "scale-5k",
+			"value": 3
+		},
+		"status": "enforced",
+		"closedBy": "W2.R6"
+	}
+]

@@ -22,6 +22,7 @@ import type {
 	GenerationState,
 	PersistentSuggestion,
 } from "../types";
+import { SuggestionListIndex } from "../suggestions/suggestionListIndex";
 import type {
 	AIInlineHistoryRestoreRequest,
 	GenerationExecutionContext,
@@ -107,6 +108,11 @@ export class AIControllerSessionState {
 	_state: AIControllerState;
 
 	_suggestions: PersistentSuggestion[] = [];
+
+	/** Per-block suggestions; a commit re-reads only the blocks it touched (SCALE2). */
+	// Read through `this: AIControllerImpl` method objects, which fallow cannot follow.
+	// fallow-ignore-next-line unused-class-member
+	readonly _suggestionList = new SuggestionListIndex();
 
 	_documentVersion = 0;
 
@@ -705,31 +711,15 @@ export class AIControllerSessionState {
 					: undefined,
 			});
 		}
-		if (options?.finalizeSession === false) {
-			if (undoHistoryBeforeSnapshot) {
-				this._undoHistoryMetadata?.setCurrentEntryMetadata(
-					AI_UNDO_HISTORY_METADATA_KEY,
-					{
-						before: undoHistoryBeforeSnapshot,
-						after: createInlineHistorySnapshot(
-							this._editor,
-							this._state.sessions,
-							this._state.activeSessionId ?? null,
-							this._documentVersion,
-							{ kind: "document-coupled" },
-						),
-					},
-				);
-			}
-			return true;
+		if (options?.finalizeSession !== false) {
+			const nextSession =
+				this._state.sessions.find((item) => item.id === sessionId) ??
+				session;
+			this._updateSession(sessionId, {
+				status: "complete",
+				contextualPrompt: closeInlineSessionPrompt(nextSession),
+			});
 		}
-		const nextSession =
-			this._state.sessions.find((item) => item.id === sessionId) ??
-			session;
-		this._updateSession(sessionId, {
-			status: "complete",
-			contextualPrompt: closeInlineSessionPrompt(nextSession),
-		});
 		if (undoHistoryBeforeSnapshot) {
 			this._undoHistoryMetadata?.setCurrentEntryMetadata(
 				AI_UNDO_HISTORY_METADATA_KEY,

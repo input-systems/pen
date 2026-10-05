@@ -3,7 +3,7 @@ import { resolveEditorMessage } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
 import type { PersistentSuggestion } from "@input/pen-ai";
 import {
-	describeBlockSuggestion,
+	describeSuggestionText,
 	formatSuggestionAction,
 	preventEditorBlur,
 } from "./changeListUtils";
@@ -26,20 +26,7 @@ export function renderAIChangeListItems(
 	} = args;
 
 	const suggestionItems = suggestions.map((suggestion) => {
-		const block = editor.getBlock(suggestion.blockId);
-		const text =
-			suggestion.kind === "text"
-				? (block
-						?.textContent()
-						.slice(
-							suggestion.offset,
-							suggestion.offset + suggestion.length,
-						) ?? "")
-				: describeBlockSuggestion(
-						editor,
-						suggestion.action,
-						block?.type ?? null,
-					);
+		const text = describeSuggestionText(editor, suggestion);
 
 		return (
 			<div

@@ -7,30 +7,13 @@ import {
 import { defaultSchema } from "@input/pen-schema";
 import { createModelDouble } from "@input/pen-test";
 import { undoExtension } from "@input/pen-undo";
-import type { ModelAdapter, ModelStreamEvent } from "@input/pen-types";
-import { aiExtension, getAIController, runAgenticLoop } from "../index";
-import { deltaStreamExtension } from "../stream";
+import type { ModelStreamEvent } from "@input/pen-types";
+import { getAIController, runAgenticLoop } from "../index";
+import { createChatEditor } from "./editChannel.testHelpers";
 
 interface OutlineEntry {
 	blockId: string;
 	blockType: string;
-}
-
-function createChatEditor(model: ModelAdapter) {
-	return createEditor({
-		schema: defaultSchema,
-		extensions: [
-			undoExtension(),
-			deltaStreamExtension(),
-			toolsExtension(),
-			aiExtension({
-				model,
-				contentFormat: { blockGeneration: "markdown" },
-				mutationPreference: "direct",
-				allowedMutatingTools: ["edit_document"],
-			}),
-		],
-	});
 }
 
 function seedDocument(editor: ReturnType<typeof createEditor>): {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { MoveBlockOp } from "@input/pen-types";
 import { clearBlockDragPreviewImage } from "../../utils/blockDragPreview";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
@@ -85,43 +85,48 @@ export function BlockDragSessionProvider(props: {
 	const blocksHostRef = useRef<HTMLElement | null>(null);
 	const draggedRef = useRef<DraggedBlockSet | null>(null);
 
-	const startDrag = (dragged: DraggedBlockSet) => {
+	// Stable callbacks and value: the provider re-renders with its parent root,
+	// and a fresh value would re-render every consumer, blocks included (SCALE6).
+	const startDrag = useCallback((dragged: DraggedBlockSet) => {
 		draggedRef.current = dragged;
 		setState({
 			active: true,
 			dragged,
 		});
-	};
+	}, []);
 
-	const setDropTarget = (blockId: string, position: BlockDropPosition) => {
+	const setDropTarget = useCallback((blockId: string, position: BlockDropPosition) => {
 		clearDropTargetDOM(blocksHostRef.current);
 		applyDropTargetDOM(blocksHostRef.current, blockId, position);
-	};
+	}, []);
 
-	const clearDropTarget = () => {
+	const clearDropTarget = useCallback(() => {
 		clearDropTargetDOM(blocksHostRef.current);
-	};
+	}, []);
 
-	const endDrag = () => {
+	const endDrag = useCallback(() => {
 		clearBlockDragPreviewImage(blocksHostRef.current?.ownerDocument);
 		clearDropTargetDOM(blocksHostRef.current);
 		draggedRef.current = null;
 		setState(EMPTY_DRAG_SESSION_STATE);
-	};
+	}, []);
+
+	const value = useMemo(
+		() => ({
+			viewId: props.viewId,
+			state,
+			blocksHostRef,
+			draggedRef,
+			startDrag,
+			setDropTarget,
+			clearDropTarget,
+			endDrag,
+		}),
+		[props.viewId, state, startDrag, setDropTarget, clearDropTarget, endDrag],
+	);
 
 	return (
-		<BlockDragSessionContext.Provider
-			value={{
-				viewId: props.viewId,
-				state,
-				blocksHostRef,
-				draggedRef,
-				startDrag,
-				setDropTarget,
-				clearDropTarget,
-				endDrag,
-			}}
-		>
+		<BlockDragSessionContext.Provider value={value}>
 			{props.children}
 		</BlockDragSessionContext.Provider>
 	);

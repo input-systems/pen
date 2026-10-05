@@ -27,11 +27,15 @@ pnpm --filter @input/pen-conformance run test:host4
 - `harness/` — Vite app: one v1-preset editor, fixture loader, `window.__penConformance`
 - `src/` — scenario DSL, standing assertions, and lint scripts
 - `scenarios/` — scripted journeys (hello-world, harness self-test, feature suites)
-- `suites/` — selection (live I4/P1/S3/S5/S6), input (K1/K2/K4/B1/B2), ime (C1–C4 plus `MANUAL.md`), bidi (M2/M3/DIR2), overlays (O1/O2), geometry (G2). Other live wiring stays in `scenarios/` and `harness-live.spec.ts`.
+- `suites/` — selection (live I4/P1/S3/S5/S6), input (K1/K2/K4/B1/B2), ime (C1–C4 plus `MANUAL.md`), bidi (M2/M3/DIR2), overlays (O1/O2), geometry (G2), fuzz (the W3.R19 DOM fuzzer: seeded S2/S5/S6 walks over `fuzz-mixed` and, with `long-drag` across more than 50 blocks, `fuzz-large` (the D5 substitute check), `pnpm run fuzz:dom -- --project <engine>`, traces in `test-results/fuzz-dom/`). Other live wiring stays in `scenarios/` and `harness-live.spec.ts`.
 - `fixtures/` — documents plus the diagnostics allowlist
 - `fixtures/hostile/` — attacker corpus (`window.__xssProbe` canary)
 
-## Known defects — the ledger is empty again (2026-08-24)
+## Known defects — four DOM fuzz seeds (2026-10-03)
+
+**The DOM fuzzer's four PR seeds (`suites/fuzz/dom-fuzz.spec.ts`, W3.R19) all find a product defect on their first run, and each is an entry.** One `knownDefect: KNOWN_FUZZ_DEFECTS[seed]` line carries the four, so `rg -c 'knownDefect:' suites/` counts it once. Each symptom is the shrunk trace's (`PEN_FUZZ_SHRINK=1`) first failure, measured on Chromium; WebKit fails the same seeds at other steps. A seed whose defect is fixed reports as unexpectedly passing, and then runs on to its next failure or to step 40.
+
+The ledger was empty from 2026-08-24 until then. N2 mixed-boundary pointer delete was filed and closed the same day; its two scenarios in `suites/selection/n2-mixed-boundary-delete.spec.ts` now pass on Chromium, WebKit and Firefox, and the annotations are deleted as the fix's last step.
 
 N2 mixed-boundary pointer delete was filed and closed the same day; its two scenarios in `suites/selection/n2-mixed-boundary-delete.spec.ts` now pass on Chromium, WebKit and Firefox, and the annotations are deleted as the fix's last step.
 
@@ -69,9 +73,14 @@ Re-verify rather than trust: an expected-failure also absorbs a failure for the 
 
 Two things kept it recoverable. The verbatim symptom named `hasBody:false` alongside a populated `blockIds`, which is what made the fixture the suspect rather than the renderer. And the annotation is a marker, not a mute — the scenario kept asserting the spec throughout, so nothing had to be un-weakened to re-check it. The fixture-shape lock now rejects `children:` for this fixture by name, so the shape cannot come back silently.
 
-| Rule     | Scenario | Route |
-| -------- | -------- | ----- |
-| _(none)_ | —        | —     |
+| Rule | Scenario | Route |
+| ---- | -------- | ----- |
+
+The O1 chip-half entry closed on 2026-10-04 (W35.R16). The block was already being edited when the chip was clicked, so pointer activation stood aside and the browser's mousedown put the DOM caret inside the `contenteditable="false"` chip's text, which reads back after the atom whichever half was hit. React's content-gesture mouseup re-resolved the point from geometry; `mountEditor` and the Vue binding have no mouseup path. `handleFieldEditorPointerActivate` now resolves a plain click on a chip in the editing field from geometry too. The recorded inactive-block cause (`elementFromPoint` returning the inline content) did not reproduce at HEAD.
+
+Seed 11 closed on 2026-10-03 (W3 step 16). Cross-block reads and drags form through core T2, whose code block is text like the authority's, so the Shift+ArrowDown into `fuzz-code` no longer leaves S2 broken. Its intermittent step-3 failure after `undo` (a `null` restore that projected a mismatch) also closed: a pointer read that moves the session to another block now stops undo capture as `activate()` does, so the click no longer leaves the typing merged into a load-time undo item.
+
+Seeds 23, 37 and 41 closed on 2026-10-03 (W3 step 22), each by a product fix the next failure of the same seed then exposed. A code block that expanded mode stamped `delegated` now maps text offsets, as core's selection does. The projector projects the pointer path's last record again at `pointerup`, because Chromium's drag controller re-clamps a drag that starts in a code block to that editing host after the projector wrote it. A null, app, block or cell record completes without a text read-back, which is what reported the mismatch after Mod-z restored `null`. A DOM point in the gap beside an image or divider maps back to that unit block's 0..1 extent, and identical points are equivalent without snapping. A text record that arrives while no field is active activates its block when the editor owns focus. A cell selection clears the native range like a block selection.
 
 **C1 was fixed on 2026-08-24, and the shipped fix is not the candidate this section proposed — the candidate was wrong for a measurable reason worth keeping.** The proposal was "hold `handleTextUpdate`'s apply until the end of the same turn, then resolve on `compositionend`". Measuring Chromium's real CDP order refuted it: `textupdate` arrives in task 1 with composing still closed, microtasks run with composing still closed, and `textformatupdate` only opens the session in task 2. A same-turn hold therefore still commits before composing opens — the original bug, delayed one tick. `compositionend` never fires at all on Escape or on `Input.insertText`, so the proposed resolution point does not exist.
 

@@ -1,8 +1,8 @@
 import type { Editor, Extension, FacetProvider, KeyBinding } from "@input/pen-types";
 import { SEARCH_CONTROLLER_SLOT } from "@input/pen-types";
 import {
-	createDecorationSet,
 	decorationsFacet,
+	scopedDecorationSource,
 	defineExtension,
 	keyBindingPriorityToPrecedence,
 	keymapFacet,
@@ -13,6 +13,22 @@ import { buildSearchDecorations } from "./decorations";
 import type { SearchController } from "./types";
 
 export const SEARCH_EXTENSION_NAME = "search";
+
+/** Moves to the next or previous match while search is open with a query. */
+function stepSearchMatch(
+	editor: Editor,
+	event: KeyboardEvent,
+	direction: "next" | "previous",
+): boolean {
+	const controller = getSearchController(editor);
+	const state = controller?.getState();
+	if (!controller || !state?.open || state.query.length === 0) {
+		return false;
+	}
+	event.preventDefault();
+	controller[direction]();
+	return true;
+}
 
 const SEARCH_KEY_BINDINGS: KeyBinding[] = [
 	{
@@ -31,58 +47,22 @@ const SEARCH_KEY_BINDINGS: KeyBinding[] = [
 	{
 		key: "Mod-g",
 		description: "Next search match",
-		handler: (editor, event) => {
-			const controller = getSearchController(editor);
-			const state = controller?.getState();
-			if (!controller || !state?.open || state.query.length === 0) {
-				return false;
-			}
-			event.preventDefault();
-			controller.next();
-			return true;
-		},
+		handler: (editor, event) => stepSearchMatch(editor, event, "next"),
 	},
 	{
 		key: "Shift-Mod-g",
 		description: "Previous search match",
-		handler: (editor, event) => {
-			const controller = getSearchController(editor);
-			const state = controller?.getState();
-			if (!controller || !state?.open || state.query.length === 0) {
-				return false;
-			}
-			event.preventDefault();
-			controller.previous();
-			return true;
-		},
+		handler: (editor, event) => stepSearchMatch(editor, event, "previous"),
 	},
 	{
 		key: "Enter",
 		description: "Next search match",
-		handler: (editor, event) => {
-			const controller = getSearchController(editor);
-			const state = controller?.getState();
-			if (!controller || !state?.open || state.query.length === 0) {
-				return false;
-			}
-			event.preventDefault();
-			controller.next();
-			return true;
-		},
+		handler: (editor, event) => stepSearchMatch(editor, event, "next"),
 	},
 	{
 		key: "Shift-Enter",
 		description: "Previous search match",
-		handler: (editor, event) => {
-			const controller = getSearchController(editor);
-			const state = controller?.getState();
-			if (!controller || !state?.open || state.query.length === 0) {
-				return false;
-			}
-			event.preventDefault();
-			controller.previous();
-			return true;
-		},
+		handler: (editor, event) => stepSearchMatch(editor, event, "previous"),
 	},
 	{
 		key: "Escape",
@@ -105,18 +85,41 @@ export function searchExtension(): Extension {
 	let controller: SearchControllerImpl | null = null;
 	let unsubscribeCommit: (() => void) | null = null;
 	let unsubscribeController: (() => void) | null = null;
+	// Blocks the last decoration pass gave matches, so a state change recomputes
+	// exactly the blocks that gain or lose one (SCALE2).
+	let decoratedBlockIds = new Set<string>();
+
+	// Matches are controller state: a commit changes them only through the
+	// controller's rescan, which then asks for the blocks that moved. The
+	// source therefore has no interest in commits themselves.
+	const matchSource = scopedDecorationSource({
+		interest: () => null,
+		decorate: (blockIds) => {
+			const state = controller?.getState();
+			if (!state) return [];
+			const wanted = new Set(blockIds);
+			return buildSearchDecorations(state).filter((decoration) =>
+				wanted.has(decoration.blockId),
+			);
+		},
+	});
+
+	function requestChangedBlocks(editor: Editor): void {
+		const state = controller?.getState();
+		const next = new Set(
+			state?.open ? state.matches.map((match) => match.blockId) : [],
+		);
+		const blockIds = [...new Set([...decoratedBlockIds, ...next])];
+		decoratedBlockIds = next;
+		if (blockIds.length === 0) return;
+		editor.requestDecorationUpdate({ source: matchSource, blockIds });
+	}
 
 	return defineExtension({
 		name: SEARCH_EXTENSION_NAME,
 		facets: [
 			...searchKeymapProviders(SEARCH_KEY_BINDINGS),
-			decorationsFacet.of(() => {
-				const state = controller?.getState();
-				if (!state || state.matches.length === 0) {
-					return createDecorationSet([]);
-				}
-				return createDecorationSet(buildSearchDecorations(state));
-			}),
+			decorationsFacet.of(matchSource),
 		],
 
 		activateClient: async ({ editor }) => {
@@ -124,12 +127,12 @@ export function searchExtension(): Extension {
 			controller = new SearchControllerImpl(editor);
 			editor.internals.assignSlot(SEARCH_CONTROLLER_SLOT, controller);
 
-			unsubscribeCommit = editor.on("commit", () => {
-				controller?.recompute();
+			unsubscribeCommit = editor.on("commit", (event) => {
+				controller?.recomputeForCommit(event.summary);
 			});
 
 			unsubscribeController = controller.subscribe(() => {
-				activeEditor?.requestDecorationUpdate();
+				if (activeEditor) requestChangedBlocks(activeEditor);
 			});
 		},
 
@@ -140,6 +143,7 @@ export function searchExtension(): Extension {
 			unsubscribeController = null;
 			activeEditor?.internals.assignSlot(SEARCH_CONTROLLER_SLOT, null);
 			controller = null;
+			decoratedBlockIds = new Set();
 			activeEditor = null;
 		},
 	});

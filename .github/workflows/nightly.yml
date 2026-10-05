@@ -3,9 +3,11 @@
 # Builds workspace `dist/` first because the property suites import
 # published package entries (`@input/pen-core`, …) which resolve there.
 # Logs a seed every run and passes PEN_FUZZ_SEED into fuzz:nightly, which runs
-# every workspace *.properties.test.ts suite (I2/I3, DUR3, I1) at nightly
-# scale plus any packages/**/*an-fuzz*.test.ts file. Browser fuzz is not
-# part of this job.
+# every workspace *.properties.test.ts suite (DUR3, I1, COL4 at 3 and 5 peers,
+# C2 rebase) at nightly scale plus any packages/**/*an-fuzz*.test.ts file.
+# The browser DOM fuzzer is the separate `dom-fuzz` job (W3.R19): 24 seeds
+# derived from the logged seed x 250 steps on fuzz-mixed and fuzz-large with
+# the full action set, per engine. A red run is an open failure until fixed.
 #
 # The schedule only fires from the default branch. `workflow_dispatch` can
 # run on any branch and is not a substitute for a scheduled green run.
@@ -67,3 +69,90 @@ jobs:
         env:
           PEN_FUZZ_SEED: ${{ steps.seed.outputs.seed }}
         run: pnpm --filter @input/pen-conformance run fuzz:nightly
+
+  scale-render-large:
+    name: Scale render (large fixtures)
+    timeout-minutes: 180
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Pen toolchain
+        uses: ./.github/actions/setup
+        with:
+          turbo-cache-scope: nightly-scale
+
+      - name: Build conformance and dependencies
+        run: pnpm --filter @input/pen-conformance... build
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @input/pen-conformance exec playwright install --with-deps chromium
+
+      # SCALE1: the 10k and 50k fixtures mount whole with their stated identity.
+      - name: Mount the large scale fixtures
+        env:
+          SCALE_FIXTURES: all
+        run: pnpm --filter @input/pen-conformance exec playwright test scenarios/scale-fixtures.spec.ts --project=chromium
+
+      # W1.R6 / CH8: 10k and 50k mount counts and clocks, record-only. No
+      # RECORD_* variable, so nothing is written or compared; a fixture that
+      # does not mount records `mountTimedOut`, which W4.G8 reads.
+      - name: Record large renderer counts and clocks
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/scale-render.large.json
+        run: pnpm --filter @input/pen-conformance run test:scale-render:large -- --reporter=list,json
+
+      - name: Upload large renderer results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: scale-render-large
+          path: packages/tooling/conformance/test-results/scale-render.*.json
+          if-no-files-found: warn
+
+  dom-fuzz:
+    name: DOM fuzz (${{ matrix.engine }})
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit, firefox]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Log fuzz seed
+        id: seed
+        run: |
+          SEED="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-dom"
+          echo "seed=$SEED" >> "$GITHUB_OUTPUT"
+          echo "Nightly DOM fuzz seed: $SEED (replay one failing seed with PEN_FUZZ_REPLAY=<trace>)"
+
+      - name: Set up Pen toolchain
+        uses: ./.github/actions/setup
+        with:
+          turbo-cache-scope: nightly-dom-fuzz
+
+      - name: Build conformance and dependencies
+        run: pnpm --filter @input/pen-conformance... build
+
+      - name: Install Playwright ${{ matrix.engine }}
+        run: pnpm --filter @input/pen-conformance exec playwright install --with-deps ${{ matrix.engine }}
+
+      - name: Run the DOM fuzzer
+        env:
+          PEN_FUZZ_NIGHTLY: "1"
+          PEN_FUZZ_SEED: ${{ steps.seed.outputs.seed }}
+        run: pnpm --filter @input/pen-conformance run fuzz:dom -- --project ${{ matrix.engine }}
+
+      - name: Upload fuzz traces
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dom-fuzz-${{ matrix.engine }}
+          path: packages/tooling/conformance/test-results/fuzz-dom/
+          if-no-files-found: ignore

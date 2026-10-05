@@ -1,50 +1,18 @@
 // @vitest-environment jsdom
 
 import React, { act } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createRoot } from "react-dom/client";
-import { createEditor } from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
 import { Pen } from "../primitives/index";
 import { useSlashMenu } from "../hooks/useSlashMenu";
-import { getAttachedFieldEditor } from "../utils/fieldEditor";
-import { defaultSchema } from "@input/pen-schema";
+import {
+	createSlashMenuEditor,
+	dispatchKey,
+} from "./utils/slashMenuTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-async function flushAnimationFrames(count = 1): Promise<void> {
-	for (let i = 0; i < count; i++) {
-		await new Promise<void>((resolve) => {
-			window.requestAnimationFrame(() => resolve());
-		});
-	}
-}
-
-function createSlashMenuEditor(
-	options: Parameters<typeof createEditor>[0] = {},
-) {
-	return createEditor({
-		schema: defaultSchema,
-		...options,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
-
-function dispatchKey(key: string, target: EventTarget = document) {
-	target.dispatchEvent(
-		new KeyboardEvent("keydown", {
-			key,
-			bubbles: true,
-			cancelable: true,
-		}),
-	);
-}
 
 describe("@input/pen-react slash menu: insertion and flow filtering", () => {
 	it("inserts a non-empty nested block after its visible subtree", async () => {

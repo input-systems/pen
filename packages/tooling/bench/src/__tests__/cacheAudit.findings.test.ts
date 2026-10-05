@@ -1,0 +1,817 @@
+import {
+	createPeerHarness,
+	generateMixedBlockSpecs,
+	type PeerHarness,
+	type TestBlock,
+	type TestEditor,
+} from "@input/pen-test";
+import type { ChangeSummary, CommitEvent, Editor } from "@input/pen-types";
+import { searchExtension, getSearchController } from "@input/pen-search";
+import { undoExtension } from "@input/pen-undo";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import * as Y from "yjs";
+import {
+	loadAuditInternals,
+	type AuditBlockNotifier,
+	type AuditInternals,
+} from "../cacheAudit/internals";
+import {
+	checkBlockIndex,
+	checkDocumentIndex,
+	checkPassIndex,
+	checkSearch,
+	checkTouchedIds,
+	mergeStateVectors,
+	storedBlockStates,
+} from "../cacheAudit/property";
+
+/**
+ * One regression per finding the widened cache property reproduced: each
+ * builds the smallest peer schedule that broke a cache and asserts the cache
+ * equals its naive recompute on every peer afterwards.
+ */
+
+const ROOT_COUNT = 40;
+
+/** A callout holding one `children`-array child. */
+function callout(id: string): TestBlock {
+	return {
+		id,
+		type: "callout",
+		content: id,
+		children: [{ id: `${id}-1`, type: "paragraph", content: "one" }],
+	};
+}
+
+let internals: AuditInternals;
+let harness: PeerHarness | null = null;
+
+beforeAll(async () => {
+	internals = await loadAuditInternals();
+});
+
+afterEach(() => {
+	harness?.destroy();
+	harness = null;
+});
+
+function fork(count: number, blocks = generateMixedBlockSpecs(ROOT_COUNT)): TestEditor[] {
+	harness = createPeerHarness(count, {
+		blocks,
+		extensionsFor: () => [undoExtension(), searchExtension()],
+	});
+	return harness.peers.map((peer) => {
+		const editor = peer.editor;
+		// The caches read removed blocks and expect null, as the runtime returns.
+		delete (editor as { getBlock?: unknown }).getBlock;
+		const search = getSearchController(editor);
+		search?.setQuery("ox");
+		search?.open();
+		return editor;
+	});
+}
+
+/** A, B, F and G on one peer. */
+function cacheProblems(editor: Editor): string[] {
+	return [
+		...checkDocumentIndex(editor),
+		...checkBlockIndex(editor, internals),
+		...checkSearch(editor),
+		...checkPassIndex(editor),
+	];
+}
+
+/** Every summary `editor` commits while `run` runs, and the touched-id check over it. */
+function touchedProblems(editor: Editor, run: () => void): string[] {
+	const summaries: ChangeSummary[] = [];
+	const before = storedBlockStates(editor);
+	const off = editor.on("commit", (event: CommitEvent) => {
+		summaries.push(event.summary);
+	});
+	try {
+		run();
+	} finally {
+		off();
+	}
+	return checkTouchedIds(before, storedBlockStates(editor), summaries);
+}
+
+/** The root ids a block notifier's document snapshot renders. */
+function documentRootIds(notifier: AuditBlockNotifier): readonly string[] {
+	return (
+		notifier as unknown as { getDocumentSnapshot(): { rootIds: readonly string[] } }
+	).getDocumentSnapshot().rootIds;
+}
+
+function engineOf(editor: Editor): { passIndex: unknown } {
+	return editor.internals.engine as unknown as { passIndex: unknown };
+}
+
+describe("cache property findings", () => {
+	it("finding 1: closing a stream normalizes its block inside one transaction, so the pass index advances once", () => {
+		const [local, remote] = fork(2);
+		const writer = local!.openTextStream(
+			{ blockId: "scale-block-5" },
+			{ origin: "ai" },
+		);
+		// Both peers move the streamed block: the merge lists it twice in the
+		// root order, and the deferred block keeps the duplicate until close.
+		local!.apply([
+			{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-20" } },
+		]);
+		remote!.apply([
+			{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-30" } },
+		]);
+		harness!.deliver(1, 0);
+		writer.append(" more");
+		writer.flush();
+		expect(engineOf(local!).passIndex).not.toBeNull();
+		writer.close();
+		expect(cacheProblems(local!)).toEqual([]);
+		expect(local!.documentState.blockOrder.filter((id) => id === "scale-block-5")).toHaveLength(1);
+
+		// The stale index resolved this delete to the wrong entry.
+		local!.apply([{ type: "delete-block", blockId: "scale-block-34" }]);
+		expect(local!.documentState.blockOrder).toContain("scale-block-33");
+		expect(local!.documentState.blockOrder).not.toContain("scale-block-34");
+		expect(cacheProblems(local!)).toEqual([]);
+	});
+
+	it("finding 2: several parentId siblings moving in one apply keep their parent's children in root order", () => {
+		const [local, remote] = fork(2, [
+			...generateMixedBlockSpecs(20),
+			{ id: "t", type: "toggle", props: { open: true }, content: "T" },
+			{ id: "c0", type: "paragraph", props: { parentId: "t" }, content: "zero" },
+			{ id: "c1", type: "paragraph", props: { parentId: "t" }, content: "one" },
+			{ id: "c2", type: "paragraph", props: { parentId: "t" }, content: "two" },
+		]);
+		for (const editor of [local!, remote!]) {
+			expect(editor.documentState.childrenOf("t")).toEqual(["c0", "c1", "c2"]);
+		}
+		local!.apply([
+			{ type: "move-block", blockId: "c0", position: { after: "c2" } },
+			{ type: "move-block", blockId: "c1", position: { after: "c0" } },
+		]);
+		expect(local!.documentState.childrenOf("t")).toEqual(["c2", "c0", "c1"]);
+		expect(cacheProblems(local!)).toEqual([]);
+		harness!.deliver(0, 1);
+		expect(remote!.documentState.childrenOf("t")).toEqual(["c2", "c0", "c1"]);
+		expect(cacheProblems(remote!)).toEqual([]);
+	});
+
+	it("finding 3: a children entry whose block map arrives after it enters the preorder when the map lands", () => {
+		const [a, b, local] = fork(3, [
+			...generateMixedBlockSpecs(20),
+			{
+				id: "callout-a",
+				type: "callout",
+				content: "Box",
+				children: [{ id: "callout-a-1", type: "paragraph", content: "one" }],
+			},
+		]);
+		a!.apply([
+			{
+				type: "insert-block",
+				blockId: "x",
+				blockType: "paragraph",
+				props: {},
+				position: { after: "scale-block-3" },
+			},
+			{ type: "splice-text", blockId: "x", from: 0, to: 0, insert: "fox" },
+		]);
+		harness!.deliver(0, 1);
+		b!.apply([
+			{ type: "move-block", blockId: "x", position: { parent: "callout-a", index: 1 } },
+		]);
+		// b's own update, without what it learned from a: its children entry
+		// lands before the block map a wrote.
+		const since = mergeStateVectors([harness!.stateVector(2), harness!.stateVector(0)]);
+		harness!.applyUpdateTo(2, harness!.encodeUpdate(1, since));
+		expect(cacheProblems(local!)).toEqual([]);
+		const touched = touchedProblems(local!, () => harness!.deliver(0, 2));
+		expect(local!.documentState.childrenOf("callout-a")).toEqual(["callout-a-1", "x"]);
+		expect(local!.documentState.preorderIndexOf("x")).toBe(
+			local!.documentState.preorderIndexOf("callout-a-1") + 1,
+		);
+		expect(touched).toEqual([]);
+		expect(cacheProblems(local!)).toEqual([]);
+	});
+
+	it("finding 5: a block two children arrays list keeps a parent when one entry goes", () => {
+		const peers = fork(2, [
+			...generateMixedBlockSpecs(20),
+			callout("callout-a"),
+			callout("callout-b"),
+		]);
+		const [left, right] = peers as [TestEditor, TestEditor];
+		left.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-a", index: 0 } },
+		]);
+		right.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-b", index: 1 } },
+		]);
+		harness!.deliver(0, 1);
+		harness!.deliver(1, 0);
+		for (const editor of peers) expect(cacheProblems(editor)).toEqual([]);
+		// Undo takes `scale-block-3` out of callout-b and back into the root
+		// order, while callout-a still lists it.
+		const manager = right.undoManager;
+		manager.stopCapturing();
+		expect(manager.undo()).toBe(true);
+		expect(right.documentState.parentOf("scale-block-3")).toBe("callout-a");
+		expect(cacheProblems(right)).toEqual([]);
+		harness!.deliver(1, 0);
+		expect(cacheProblems(left)).toEqual([]);
+	});
+
+	it("finding 7: a duplicate root entry landing directly before the original is reported", () => {
+		const peers = fork(2);
+		for (const editor of peers) {
+			editor.apply([
+				{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-9" } },
+			]);
+		}
+		// One of the two deliveries lands the peer's entry directly before the
+		// receiver's own; both must report that the root order gained an entry.
+		for (const [from, to] of [
+			[0, 1],
+			[1, 0],
+		] as const) {
+			const summaries: ChangeSummary[] = [];
+			const off = peers[to]!.on("commit", (event: CommitEvent) => {
+				summaries.push(event.summary);
+			});
+			harness!.deliver(from, to);
+			off();
+			const named = summaries.flatMap((summary) =>
+				summary.structural.map((change) => ("blockId" in change ? change.blockId : null)),
+			);
+			expect(named).toContain("scale-block-5");
+			expect(peers[to]!.documentState.blockOrder.filter((id) => id === "scale-block-5")).toHaveLength(2);
+			expect(cacheProblems(peers[to]!)).toEqual([]);
+		}
+	});
+
+	it("a first child's new array is reported when the same commit lists the block in another array too", () => {
+		const peers = fork(3, [...generateMixedBlockSpecs(ROOT_COUNT), callout("callout-a")]);
+		const [a, , d] = peers as [TestEditor, TestEditor, TestEditor];
+		a.apply([
+			{ type: "move-block", blockId: "scale-block-4", position: { parent: "callout-a", index: 2 } },
+		]);
+		// `scale-block-14` is a blockquote without a `children` array.
+		d.apply([
+			{ type: "move-block", blockId: "scale-block-4", position: { parent: "scale-block-14", index: 0 } },
+		]);
+		harness!.deliver(0, 2);
+		const summaries: ChangeSummary[] = [];
+		const off = peers[1]!.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		harness!.deliver(2, 1);
+		off();
+		const targets = summaries.flatMap((summary) =>
+			summary.structural.flatMap((change) =>
+				change.type === "block-moved" && change.blockId === "scale-block-4"
+					? [change.toParentId]
+					: [],
+			),
+		);
+		expect(targets.sort()).toEqual(["callout-a", "scale-block-14"]);
+		expect(cacheProblems(peers[1]!)).toEqual([]);
+	});
+
+	it("a root block that loses its last children entry rejoins the top-level list", () => {
+		const peers = fork(3, [
+			...generateMixedBlockSpecs(ROOT_COUNT),
+			callout("callout-a"),
+			callout("callout-b"),
+		]);
+		const [b, c, e] = peers as [TestEditor, TestEditor, TestEditor];
+		// b and e move one block to one place: b's root order lists it twice
+		// until a pass there repairs it, so it holds no positions.
+		for (const editor of [b, e]) {
+			editor.apply([
+				{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-9" } },
+			]);
+		}
+		b.undoManager.stopCapturing();
+		b.apply([
+			{ type: "move-block", blockId: "scale-block-1", position: { parent: "callout-b", index: 1 } },
+		]);
+		c.apply([
+			{ type: "move-block", blockId: "scale-block-1", position: { parent: "scale-block-34", index: 0 } },
+		]);
+		harness!.deliver(1, 0);
+		harness!.deliver(0, 1);
+		harness!.deliver(2, 0);
+		expect(b.documentState.blockOrder.filter((id) => id === "scale-block-5")).toHaveLength(2);
+		expect(b.documentState.rootBlockIds()).not.toContain("scale-block-1");
+		// b's undo puts the block back in the root order and out of
+		// callout-b; scale-block-34 still lists it.
+		b.undoManager.stopCapturing();
+		expect(b.undoManager.undo()).toBe(true);
+		expect(cacheProblems(b)).toEqual([]);
+		b.documentState.rootBlockIds();
+		// c's next pass keeps the lowest-id parent (callout-b) and drops the
+		// scale-block-34 entry; on b that leaves only the root entry.
+		c.apply([
+			{ type: "splice-text", blockId: "callout-a-1", from: 0, to: 0, insert: "o" },
+		]);
+		harness!.deliver(1, 0);
+		expect(cacheProblems(b)).toEqual([]);
+		expect(b.documentState.rootBlockIds()).toContain("scale-block-1");
+	});
+
+	it("a second entry for a deleted block reports it removed, not moved", () => {
+		const peers = fork(3);
+		const [deleter, left, right] = peers as [TestEditor, TestEditor, TestEditor];
+		deleter.apply([{ type: "delete-block", blockId: "scale-block-5" }]);
+		left.apply([
+			{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-9" } },
+		]);
+		right.apply([
+			{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-20" } },
+		]);
+		// Each move re-inserts an entry the delete removed (COL4).
+		const reported = (from: number) => {
+			const summaries: ChangeSummary[] = [];
+			const off = deleter.on("commit", (event: CommitEvent) => {
+				summaries.push(event.summary);
+			});
+			harness!.deliver(from, 0);
+			off();
+			return summaries.flatMap((summary) =>
+				summary.structural.flatMap((change) =>
+					"blockId" in change && change.blockId === "scale-block-5" ? [change.type] : [],
+				),
+			);
+		};
+		expect(reported(1)).toEqual(["block-removed"]);
+		expect(reported(2)).toEqual(["block-removed"]);
+		expect(deleter.documentState.blockOrder.filter((id) => id === "scale-block-5")).toHaveLength(2);
+		expect(deleter.documentState.preorderBlockIds()).not.toContain("scale-block-5");
+		expect(cacheProblems(deleter)).toEqual([]);
+	});
+
+	it("a move arriving with the delete of the block it moves reports the block removed", () => {
+		const peers = fork(3);
+		const [receiver, deleter, mover] = peers as [TestEditor, TestEditor, TestEditor];
+		deleter.apply([{ type: "delete-block", blockId: "scale-block-5" }]);
+		mover.apply([
+			{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-9" } },
+		]);
+		harness!.deliver(2, 1);
+		const summaries: ChangeSummary[] = [];
+		const off = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		harness!.deliver(1, 0);
+		off();
+		const reported = summaries.flatMap((summary) =>
+			summary.structural.flatMap((change) =>
+				"blockId" in change && change.blockId === "scale-block-5" ? [change] : [],
+			),
+		);
+		expect(reported).toEqual([
+			{ type: "block-removed", blockId: "scale-block-5", parentId: null, index: 5 },
+		]);
+		expect(receiver.documentState.preorderBlockIds()).not.toContain("scale-block-5");
+		expect(cacheProblems(receiver)).toEqual([]);
+	});
+
+	it("finding 6: a parentId child that loses its root entry is ordered as a rebuild orders it", () => {
+		const peers = fork(2, [
+			...generateMixedBlockSpecs(20),
+			{ id: "t", type: "toggle", props: { open: true }, content: "T" },
+			{ id: "c0", type: "paragraph", props: { parentId: "t" }, content: "zero" },
+			{ id: "c1", type: "paragraph", props: { parentId: "t" }, content: "one" },
+			{ id: "c2", type: "paragraph", props: { parentId: "t" }, content: "two" },
+		]);
+		const [local, remote] = peers as [TestEditor, TestEditor];
+		expect(local.documentState.childrenOf("t")).toEqual(["c0", "c1", "c2"]);
+		// A remote client removes c2's order entry and nothing else: the block
+		// keeps its map and `parentId` but sits in no array (COL4), until the
+		// next local pass re-homes it.
+		const order = remote.ydoc.getArray<string>("blockOrder");
+		remote.ydoc.transact(() => {
+			order.delete(order.toArray().indexOf("c2"), 1);
+		});
+		harness!.deliver(1, 0);
+		expect(cacheProblems(local)).toEqual([]);
+	});
+
+	it("finding 9: a stored container re-entering the order brings its children back into the summary", () => {
+		const peers = fork(2, [
+			...generateMixedBlockSpecs(20),
+			{
+				id: "callout-b",
+				type: "callout",
+				content: "Box",
+				children: [{ id: "callout-b-1", type: "paragraph", content: "one fox" }],
+			},
+		]);
+		const [local, remote] = peers as [TestEditor, TestEditor];
+		// A remote client takes the container's order entry out and puts one
+		// back, each in its own update: in between the container and its
+		// child render nowhere, and its block map never changes.
+		const order = remote.ydoc.getArray<string>("blockOrder");
+		remote.ydoc.transact(() => {
+			order.delete(order.toArray().indexOf("callout-b"), 1);
+		});
+		expect(touchedProblems(local, () => harness!.deliver(1, 0))).toEqual([]);
+		expect(local.documentState.preorderBlockIds()).not.toContain("callout-b-1");
+		expect(cacheProblems(local)).toEqual([]);
+		remote.ydoc.transact(() => {
+			order.insert(3, ["callout-b"]);
+		});
+		expect(touchedProblems(local, () => harness!.deliver(1, 0))).toEqual([]);
+		expect(local.documentState.preorderBlockIds()).toContain("callout-b-1");
+		expect(cacheProblems(local)).toEqual([]);
+	});
+
+	it("a deleted container's child that another entry still lists is moved there, not removed", () => {
+		const peers = fork(3, [...generateMixedBlockSpecs(ROOT_COUNT), callout("callout-a")]);
+		const [receiver, mover, deleter] = peers as [TestEditor, TestEditor, TestEditor];
+		mover.apply([
+			{ type: "move-block", blockId: "scale-block-8", position: { parent: "callout-a", index: 1 } },
+		]);
+		deleter.apply([
+			{ type: "move-block", blockId: "scale-block-8", position: { after: "scale-block-20" } },
+		]);
+		harness!.deliver(1, 0);
+		harness!.deliver(2, 0);
+		// The receiver lists scale-block-8 in callout-a and in the root order
+		// (COL4); the deleter, which never saw the first, deletes callout-a.
+		deleter.apply([{ type: "delete-block", blockId: "callout-a" }]);
+		const summaries: ChangeSummary[] = [];
+		const off = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		const touched = touchedProblems(receiver, () => harness!.deliver(2, 0));
+		off();
+		const types = summaries.flatMap((summary) =>
+			summary.structural.flatMap((change) =>
+				"blockId" in change && change.blockId === "scale-block-8" ? [change.type] : [],
+			),
+		);
+		expect(types).toEqual(["block-moved"]);
+		expect(touched).toEqual([]);
+		expect(receiver.documentState.preorderBlockIds()).toContain("scale-block-8");
+		expect(cacheProblems(receiver)).toEqual([]);
+	});
+
+	it("a container map an undo restores whole reports the children the replaced map held", () => {
+		const peers = fork(2);
+		const [receiver, other] = peers as [TestEditor, TestEditor];
+		// `scale-block-14` is a blockquote without a `children` array.
+		receiver.apply([
+			{
+				type: "insert-block",
+				blockId: "x",
+				blockType: "paragraph",
+				props: {},
+				position: { parent: "scale-block-14", index: 0 },
+			},
+			{ type: "splice-text", blockId: "x", from: 0, to: 0, insert: "fox" },
+		]);
+		other.apply([{ type: "delete-block", blockId: "scale-block-14" }]);
+		other.undoManager.stopCapturing();
+		expect(other.undoManager.undo()).toBe(true);
+		// The undo stores a new map for the container, without x's array.
+		expect(touchedProblems(receiver, () => harness!.deliver(1, 0))).toEqual([]);
+		expect(cacheProblems(receiver)).toEqual([]);
+	});
+
+	it("an entry whose block map arrives and is deleted in the same commit is reported removed", () => {
+		const peers = fork(3);
+		const [receiver, author, mover] = peers as [TestEditor, TestEditor, TestEditor];
+		author.apply([
+			{ type: "insert-block", blockId: "x", blockType: "paragraph", props: {}, position: { after: "scale-block-3" } },
+		]);
+		harness!.deliver(1, 2);
+		mover.apply([{ type: "move-block", blockId: "x", position: { after: "scale-block-20" } }]);
+		author.apply([{ type: "delete-block", blockId: "x" }]);
+		// One update carries x's map, its delete, and the mover's entry.
+		const since = harness!.stateVector(0);
+		const merged = Y.mergeUpdates([
+			harness!.encodeUpdate(1, since),
+			harness!.encodeUpdate(2, since),
+		]);
+		const summaries: ChangeSummary[] = [];
+		const off = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		harness!.applyUpdateTo(0, merged);
+		off();
+		const types = summaries.flatMap((summary) =>
+			summary.structural.flatMap((change) =>
+				"blockId" in change && change.blockId === "x" ? [change.type] : [],
+			),
+		);
+		expect(types).toEqual(["block-removed"]);
+		expect(receiver.documentState.blockOrder).toContain("x");
+		expect(cacheProblems(receiver)).toEqual([]);
+	});
+
+	it("a block losing one of two entries in the commit that deletes its map is removed, not moved, and leaves the notifier's root ids", () => {
+		const peers = fork(2, [...generateMixedBlockSpecs(20), callout("callout-a"), callout("callout-b")]);
+		const [receiver, author] = peers as [TestEditor, TestEditor];
+		const notifier = internals.createBlockNotifier(receiver);
+		const off = notifier.subscribeDocument(() => {});
+		// Both peers move x into a different callout at once: the merge
+		// lists it in both arrays (COL4).
+		receiver.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-b", index: 0 } },
+		]);
+		author.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-a", index: 0 } },
+		]);
+		harness!.deliver(0, 1);
+		harness!.deliver(1, 0);
+		// Both undo their move; deleting callout-b, which the author still
+		// lists it in, deletes its map.
+		for (const editor of peers) {
+			editor.undoManager.stopCapturing();
+			expect(editor.undoManager.undo()).toBe(true);
+		}
+		author.apply([{ type: "delete-block", blockId: "callout-b" }]);
+		// The receiver lists x in callout-a and, after its own undo, in the
+		// root order; the author lists it only in callout-b.
+		expect(receiver.documentState.blockOrder).toContain("scale-block-3");
+		expect(receiver.documentState.parentOf("scale-block-3")).toBe("callout-a");
+		const summaries: ChangeSummary[] = [];
+		const offCommit = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		// The author's undo drops the callout-a entry, and its delete takes
+		// x's map: the root entry is left naming no block, so x is removed
+		// where it sat rather than moved to the root entry.
+		harness!.deliver(1, 0);
+		offCommit();
+		const changes = summaries.flatMap((summary) =>
+			summary.structural.filter((change) => "blockId" in change && change.blockId === "scale-block-3"),
+		);
+		expect(changes).toEqual([
+			{ type: "block-removed", blockId: "scale-block-3", parentId: "callout-a", index: 0 },
+		]);
+		expect(receiver.getBlock("scale-block-3")).toBeNull();
+		expect(receiver.documentState.rootBlockIds()).toContain("scale-block-3");
+		expect(documentRootIds(notifier)).not.toContain("scale-block-3");
+		off();
+		notifier.destroy();
+	});
+
+	it("a list item's map an undo restores whole over a peer's indent change re-segments its list", () => {
+		const peers = fork(2, [
+			{ id: "p", type: "paragraph", content: "p" },
+			{ id: "x", type: "numberedListItem", props: { indent: 1 }, content: "x" },
+			{ id: "a", type: "bulletListItem", props: { indent: 0 }, content: "a" },
+			{ id: "q", type: "paragraph", content: "q" },
+		]);
+		const [receiver, other] = peers as [TestEditor, TestEditor];
+		const notifier = internals.createBlockNotifier(receiver);
+		const off = notifier.subscribeListSegments(null, () => {});
+		// COL4: a delete against a move. The deleting peer's undo restores
+		// x's map and its old entry; its next local pass keeps the later
+		// entry, the move's, so the receiver's order does not change.
+		receiver.apply([{ type: "move-block", blockId: "x", position: { after: "a" } }]);
+		other.apply([{ type: "delete-block", blockId: "x" }]);
+		harness!.deliver(0, 1);
+		other.undoManager.stopCapturing();
+		expect(other.undoManager.undo()).toBe(true);
+		other.apply([{ type: "splice-text", blockId: "p", from: 0, to: 0, insert: "o" }]);
+		expect(other.documentState.blockOrder).toEqual(["p", "a", "x", "q"]);
+		// At level 1 x's type differs from a's, so it starts its own group.
+		receiver.apply([{ type: "set-props", blockId: "x", props: { indent: 0 } }]);
+		expect(notifier.getListSegments(null)).toHaveLength(4);
+		const summaries: ChangeSummary[] = [];
+		const offCommit = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		// The undo's new map for x, without the receiver's indent, replaces
+		// the receiver's: x is back at level 2, inside a's group.
+		harness!.deliver(1, 0);
+		offCommit();
+		expect(receiver.getBlock("x")?.props.indent).toBe(1);
+		const changes = summaries.flatMap((summary) =>
+			summary.structural.filter((change) => "blockId" in change && change.blockId === "x"),
+		);
+		expect(changes).toEqual([{ type: "block-props-changed", blockId: "x", keys: ["indent"] }]);
+		const fresh = internals.createBlockNotifier(receiver);
+		expect(notifier.getListSegments(null)).toEqual(fresh.getListSegments(null));
+		expect(notifier.getListSegments(null)).toHaveLength(3);
+		fresh.destroy();
+		off();
+		notifier.destroy();
+	});
+
+	it("a dead block losing one of its two entries is removed, not moved to the other", () => {
+		const peers = fork(3, [...generateMixedBlockSpecs(20), callout("callout-a")]);
+		const [receiver, nester, mover] = peers as [TestEditor, TestEditor, TestEditor];
+		const notifier = internals.createBlockNotifier(receiver);
+		const off = notifier.subscribeDocument(() => {});
+		// COL4: against the receiver's delete, one peer moves x into
+		// callout-a and another to a new root position; the receiver lists
+		// x in both, with no map.
+		receiver.apply([{ type: "delete-block", blockId: "scale-block-3" }]);
+		nester.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-a", index: 0 } },
+		]);
+		mover.apply([
+			{ type: "move-block", blockId: "scale-block-3", position: { after: "scale-block-12" } },
+		]);
+		harness!.deliver(1, 0);
+		harness!.deliver(2, 0);
+		expect(receiver.documentState.blockOrder).toContain("scale-block-3");
+		expect(receiver.getBlock("scale-block-3")).toBeNull();
+		// The nester's delete drops the callout-a entry; the root entry is
+		// left naming no block, so x is removed where it sat.
+		nester.apply([{ type: "delete-block", blockId: "scale-block-3" }]);
+		const summaries: ChangeSummary[] = [];
+		const offCommit = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		harness!.deliver(1, 0);
+		offCommit();
+		const types = summaries.flatMap((summary) =>
+			summary.structural.flatMap((change) =>
+				"blockId" in change && change.blockId === "scale-block-3" ? [change.type] : [],
+			),
+		);
+		expect(types).not.toContain("block-moved");
+		expect(receiver.documentState.blockOrder).toContain("scale-block-3");
+		expect(documentRootIds(notifier)).not.toContain("scale-block-3");
+		off();
+		notifier.destroy();
+	});
+
+	it("a commit listener's write during an undo that relists a block re-reads the list slices its repair moved", () => {
+		const peers = fork(2, [
+			{ id: "p", type: "paragraph", content: "p" },
+			{ id: "a", type: "bulletListItem", props: { indent: 0 }, content: "a" },
+			{ id: "x", type: "bulletListItem", props: { indent: 0 }, content: "x" },
+			{ id: "q", type: "paragraph", content: "q" },
+			callout("callout-a"),
+		]);
+		const [mover, deleter] = peers as [TestEditor, TestEditor];
+		// COL4: a delete against a move leaves the deleter a dead entry.
+		deleter.apply([{ type: "delete-block", blockId: "x" }]);
+		mover.apply([{ type: "move-block", blockId: "x", position: { after: "q" } }]);
+		harness!.deliver(0, 1);
+		const notifier = internals.createBlockNotifier(deleter);
+		const offs = ["p", "a", "q"].map((id) => notifier.subscribeBlock(id, () => {}));
+		// The undo restores x beside a, and the move's entry still lists it:
+		// a listener reacting to the undo moves x into callout-a.
+		let fired = false;
+		const offCommit = deleter.on("commit", () => {
+			if (fired) return;
+			fired = true;
+			deleter.apply([
+				{ type: "move-block", blockId: "x", position: { parent: "callout-a", index: 0 } },
+			]);
+		});
+		deleter.undoManager.stopCapturing();
+		expect(deleter.undoManager.undo()).toBe(true);
+		offCommit();
+		expect(fired).toBe(true);
+		const fresh = internals.createBlockNotifier(deleter);
+		const list = (source: typeof notifier, id: string) =>
+			(source as unknown as { getBlockSnapshot(id: string): { list: unknown } }).getBlockSnapshot(id).list;
+		expect(list(notifier, "a")).toEqual(list(fresh, "a"));
+		fresh.destroy();
+		for (const off of offs) off();
+		notifier.destroy();
+	});
+
+	describe("a commit listener's write while a remote commit is observed", () => {
+		/** Runs `write` from `editor`'s first commit listener call while `deliver` runs; returns every summary. */
+		function writeFromListener(editor: TestEditor, deliver: () => void, write: () => void): ChangeSummary[] {
+			const summaries: ChangeSummary[] = [];
+			let fired = false;
+			const off = editor.on("commit", (event: CommitEvent) => {
+				summaries.push(event.summary);
+				if (fired) return;
+				fired = true;
+				write();
+			});
+			try {
+				deliver();
+			} finally {
+				off();
+			}
+			expect(fired).toBe(true);
+			return summaries;
+		}
+
+		it("reports an entry it appends next to the entry its client wrote last", () => {
+			const peers = fork(2, [...generateMixedBlockSpecs(20), callout("callout-a")]);
+			const [receiver, other] = peers as [TestEditor, TestEditor];
+			// The receiver's last struct is x's entry in callout-a.
+			receiver.apply([
+				{ type: "move-block", blockId: "scale-block-3", position: { parent: "callout-a", index: 1 } },
+			]);
+			other.apply([{ type: "splice-text", blockId: "scale-block-9", from: 0, to: 0, insert: "ox " }]);
+			const before = storedBlockStates(receiver);
+			// Reading the remote commit's text delta opens an empty Yjs
+			// transaction; its cleanup merged the listener's new entry into
+			// x's before the listener's own commit was observed.
+			const summaries = writeFromListener(
+				receiver,
+				() => harness!.deliver(1, 0),
+				() =>
+					receiver.apply([
+						{ type: "move-block", blockId: "scale-block-5", position: { parent: "callout-a", index: 2 } },
+					]),
+			);
+			expect(receiver.documentState.childrenOf("callout-a")).toEqual(["callout-a-1", "scale-block-3", "scale-block-5"]);
+			const moved = summaries.flatMap((summary) =>
+				summary.structural.filter((change) => "blockId" in change && change.blockId === "scale-block-5"),
+			);
+			expect(moved.map((change) => change.type)).toEqual(["block-moved"]);
+			expect(checkTouchedIds(before, storedBlockStates(receiver), summaries)).toEqual([]);
+			expect(cacheProblems(receiver)).toEqual([]);
+		});
+
+		it("reports text it deletes next to a run the remote commit deleted", () => {
+			const peers = fork(2);
+			const [receiver, other] = peers as [TestEditor, TestEditor];
+			// One insert: a single text struct of the other peer's.
+			other.apply([{ type: "splice-text", blockId: "scale-block-4", from: 0, to: 0, insert: "abcd" }]);
+			harness!.deliver(1, 0);
+			other.apply([{ type: "splice-text", blockId: "scale-block-4", from: 0, to: 2, insert: "" }]);
+			// The remote commit deletes "ab"; the listener deletes the "c"
+			// beside it, which the remote commit's cleanup merged into the
+			// deleted "ab" before the listener's commit was observed.
+			const summaries = writeFromListener(
+				receiver,
+				() => harness!.deliver(1, 0),
+				() =>
+					receiver.apply([{ type: "splice-text", blockId: "scale-block-4", from: 0, to: 1, insert: "" }]),
+			);
+			expect(receiver.getBlock("scale-block-4")?.textContent().startsWith("dBlock 4")).toBe(true);
+			const spliced = summaries.flatMap((summary) =>
+				summary.blockText.filter((change) => change.blockId === "scale-block-4"),
+			);
+			expect(spliced).toHaveLength(2);
+			expect(cacheProblems(receiver)).toEqual([]);
+		});
+	});
+
+	describe.each([
+		{ name: "both keep their first child", deleteOn: null },
+		{ name: "the lower peer deletes its first child", deleteOn: 0 },
+		{ name: "the higher peer deletes its first child", deleteOn: 1 },
+	])("finding 4: concurrent first-child inserts into one container ($name)", ({ deleteOn }) => {
+		it("reports the losing array's children, re-homes them on every peer and converges", () => {
+			const peers = fork(2);
+			// `scale-block-14` is a blockquote: a container without a `children` array.
+			const inserted = peers.map((editor, at) => {
+				const blockId = `first-${at}`;
+				editor.apply([
+					{
+						type: "insert-block",
+						blockId,
+						blockType: "paragraph",
+						props: {},
+						position: { parent: "scale-block-14", index: 0 },
+					},
+					{ type: "splice-text", blockId, from: 0, to: 0, insert: "fox" },
+				]);
+				return blockId;
+			});
+			if (deleteOn !== null) {
+				peers[deleteOn]!.apply([{ type: "delete-block", blockId: inserted[deleteOn]! }]);
+			}
+			const touched = [
+				touchedProblems(peers[1]!, () => harness!.deliver(0, 1)),
+				touchedProblems(peers[0]!, () => harness!.deliver(1, 0)),
+			];
+			expect(touched).toEqual([[], []]);
+			for (const editor of peers) expect(cacheProblems(editor)).toEqual([]);
+
+			// The next local pass on each peer re-homes what its merge orphaned.
+			for (const editor of peers) {
+				editor.apply([
+					{ type: "splice-text", blockId: "scale-block-1", from: 0, to: 0, insert: "o" },
+				]);
+				expect(cacheProblems(editor)).toEqual([]);
+			}
+			harness!.syncAll();
+			for (const editor of peers) {
+				editor.apply([
+					{ type: "splice-text", blockId: "scale-block-2", from: 0, to: 0, insert: "o" },
+				]);
+			}
+			harness!.syncAll();
+			harness!.assertConverged();
+			const survivors = inserted.filter((_, at) => at !== deleteOn);
+			for (const editor of peers) {
+				expect(cacheProblems(editor)).toEqual([]);
+				const preorder = editor.documentState.preorderBlockIds();
+				for (const blockId of survivors) {
+					expect(preorder.filter((id) => id === blockId)).toHaveLength(1);
+				}
+			}
+		});
+	});
+});

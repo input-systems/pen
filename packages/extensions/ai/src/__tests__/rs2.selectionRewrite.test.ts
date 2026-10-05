@@ -6,7 +6,7 @@ import { toolsExtension } from "@input/pen-tools";
 import { defaultSchema } from "@input/pen-schema";
 import { deltaStreamExtension } from "../stream";
 import { aiExtension, getAIController } from "../index";
-import { createDeferred } from "./extension.testUtils";
+import { createDeferred, createSingleDeltaEditor } from "./extension.testUtils";
 
 /**
  * RS2 for the selection lane. Staging already went through the suggest
@@ -73,25 +73,7 @@ describe("RS2: selection rewrites ride the review surface", () => {
 	});
 
 	it("RS2: a staged selection rewrite renders review-surface decorations", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "Rewritten",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("Rewritten");
 		const firstBlockId = seedTwoBlocks(editor);
 		editor.selectTextRange(
 			{ blockId: firstBlockId, offset: 0 },

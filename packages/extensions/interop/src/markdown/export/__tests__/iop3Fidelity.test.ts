@@ -10,8 +10,8 @@ import { defaultSchema } from "@input/pen-schema";
 import {
 	MARKDOWN_EXPORT_FIDELITY,
 	renderMarkdownFidelityTable,
-	type ExportFidelityRow,
 } from "../fidelityTable";
+import type { ExportFidelityRow } from "../../../fidelityTable";
 
 const noDefaultExtensionsPreset = {
 	resolve() {

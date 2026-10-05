@@ -11,23 +11,14 @@ import type {
 import { aiExtension, getAIController } from "../index";
 import { isAIToolCallDenied } from "../tools";
 import { deltaStreamExtension } from "../stream";
+import {
+	ORIGINAL,
+	annotationsFromRequest,
+	seedDocument,
+	snapshot,
+} from "./editChannel.testHelpers";
 
 const PROMPT = "Shorten the last paragraph";
-const BLOCK_ANNOTATION_PATTERN = /<!-- block:(\S+) (\S+) -->/g;
-const ORIGINAL = "Revenue grew. Costs fell. Margins improved.";
-
-interface Annotation {
-	id: string;
-	type: string;
-}
-
-function annotationsFromRequest(request: { messages: unknown }): Annotation[] {
-	const serialized = JSON.stringify(request.messages);
-	return [...serialized.matchAll(BLOCK_ANNOTATION_PATTERN)].map((match) => ({
-		id: match[1]!,
-		type: match[2]!,
-	}));
-}
 
 function editChannelModel(): ModelAdapter {
 	let passes = 0;
@@ -80,50 +71,6 @@ function createChatEditor(
 			}),
 		],
 	});
-}
-
-function seedDocument(editor: ReturnType<typeof createEditor>): string {
-	const headingId = editor.firstBlock()!.id;
-	editor.apply(
-		[
-			{
-				type: "set-props",
-				blockId: headingId,
-				props: { type: "heading", level: 1 },
-			},
-			{
-				type: "splice-text",
-				blockId: headingId,
-				from: 0,
-				to: 0,
-				insert: "Quarterly Report",
-			},
-			{
-				type: "insert-block",
-				blockId: "closing",
-				blockType: "paragraph",
-				props: {},
-				position: "last",
-			},
-			{
-				type: "splice-text",
-				blockId: "closing",
-				from: 0,
-				to: 0,
-				insert: ORIGINAL,
-			},
-		],
-		{ origin: "system" },
-	);
-	return "closing";
-}
-
-function snapshot(editor: ReturnType<typeof createEditor>) {
-	return Array.from(editor.blocks()).map((block) => ({
-		id: block.id,
-		type: block.type,
-		text: block.textContent(),
-	}));
 }
 
 describe("EC13: authority is unchanged on the tool channel", () => {

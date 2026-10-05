@@ -55,7 +55,7 @@ type Fixture = {
 
 const fixtures: Fixture[] = [];
 
-async function renderCommandMenu() {
+async function renderCommandMenu(options: { trigger?: boolean } = {}) {
 	const editor = createCommandMenuEditor();
 	const controller = getAIController(editor);
 	if (!controller) {
@@ -66,7 +66,9 @@ async function renderCommandMenu() {
 		{} as Awaited<ReturnType<typeof controller.runCommand>>,
 	);
 	vi.spyOn(controller, "closeCommandMenu");
-	controller.openCommandMenu();
+	if (!options.trigger) {
+		controller.openCommandMenu();
+	}
 
 	const container = document.createElement("div");
 	document.body.appendChild(container);
@@ -77,6 +79,13 @@ async function renderCommandMenu() {
 			createElement(
 				Pen.Editor.Root,
 				{ editor },
+				options.trigger
+					? createElement(
+							"button",
+							{ type: "button", "data-testid": "ai-trigger" },
+							"Ask AI",
+						)
+					: null,
 				createElement(
 					Pen.AI.Root,
 					{ editor },
@@ -199,16 +208,24 @@ describe("@input/pen-react AI command menu AX3", () => {
 		});
 		expect(controller.closeCommandMenu).toHaveBeenCalled();
 		expect(controller.runCommand).toHaveBeenCalledWith("cmd-c");
+		// Nothing held focus when the menu opened: the editor surface.
+		const editorRoot = container.querySelector<HTMLElement>(
+			"[data-pen-editor-root]",
+		);
+		expect(document.activeElement).toBe(editorRoot);
 
 		await act(async () => {
 			controller.openCommandMenu();
 		});
 
 		await act(async () => {
+			input?.focus();
+		});
+		await act(async () => {
 			dispatchKey("Escape", input ?? document);
 		});
 		expect(controller.closeCommandMenu).toHaveBeenCalled();
-		expect(document.activeElement).toBe(input);
+		expect(document.activeElement).toBe(editorRoot);
 	});
 
 	it("AX3 Tab accepts the active command", async () => {
@@ -224,6 +241,39 @@ describe("@input/pen-react AI command menu AX3", () => {
 
 		expect(controller.closeCommandMenu).toHaveBeenCalled();
 		expect(controller.runCommand).toHaveBeenCalledWith("cmd-a");
-		expect(document.activeElement).toBe(input);
+		expect(document.activeElement).toBe(
+			container.querySelector("[data-pen-editor-root]"),
+		);
+	});
+
+	it("AX3: closing the AI command menu returns focus to what held it at open", async () => {
+		const { container, controller } = await renderCommandMenu({
+			trigger: true,
+		});
+		const trigger = container.querySelector<HTMLElement>(
+			'[data-testid="ai-trigger"]',
+		)!;
+		const input = container.querySelector<HTMLInputElement>(
+			"[data-pen-ai-command-input]",
+		)!;
+
+		for (const key of ["Escape", "Enter"] as const) {
+			await act(async () => {
+				trigger.focus();
+				controller.openCommandMenu();
+			});
+			await act(async () => {
+				input.focus();
+			});
+			expect(document.activeElement).toBe(input);
+
+			await act(async () => {
+				dispatchKey(key, input);
+			});
+
+			expect(controller.closeCommandMenu).toHaveBeenCalled();
+			expect(document.activeElement, key).toBe(trigger);
+		}
+		expect(controller.runCommand).toHaveBeenCalledWith("cmd-a");
 	});
 });

@@ -4,6 +4,7 @@ import type {
 	AISuggestionScopeSegment,
 } from "./types";
 import { generateId } from "@input/pen-types";
+import { compareByConfidenceThenKind, rangesOverlap } from "./controllerUtils";
 
 export function materializeSuggestionsFromCandidates(input: {
 	blockId: string;
@@ -124,16 +125,9 @@ function compareSuggestionsForDedupe(
 	left: AISuggestion,
 	right: AISuggestion,
 ): number {
-	const leftConfidence = left.confidence ?? 0;
-	const rightConfidence = right.confidence ?? 0;
-	if (leftConfidence !== rightConfidence) {
-		return rightConfidence - leftConfidence;
-	}
-
-	const leftPriority = resolveKindPriority(left.kind);
-	const rightPriority = resolveKindPriority(right.kind);
-	if (leftPriority !== rightPriority) {
-		return leftPriority - rightPriority;
+	const ranked = compareByConfidenceThenKind(left, right);
+	if (ranked !== 0) {
+		return ranked;
 	}
 
 	if (left.from !== right.from) {
@@ -141,26 +135,4 @@ function compareSuggestionsForDedupe(
 	}
 
 	return left.to - right.to;
-}
-
-function resolveKindPriority(kind: AISuggestion["kind"]): number {
-	switch (kind) {
-		case "spelling":
-			return 1;
-		case "grammar":
-			return 2;
-		case "clarity":
-			return 3;
-		case "rephrase":
-			return 4;
-	}
-}
-
-function rangesOverlap(
-	leftFrom: number,
-	leftTo: number,
-	rightFrom: number,
-	rightTo: number,
-): boolean {
-	return leftFrom < rightTo && rightFrom < leftTo;
 }

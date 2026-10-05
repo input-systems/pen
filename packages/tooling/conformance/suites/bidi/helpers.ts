@@ -1,9 +1,10 @@
-import { expect, test, type Page } from "@playwright/test";
-import { loadavg } from "node:os";
+import { expect, type Page } from "@playwright/test";
 import { formatCheckReport } from "../../src/checkReport";
 import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { authorityCheckKind } from "../../src/standingAssertions";
 import type { DomAuthorityCheck } from "../../src/types";
+
+export { attachJson, logLoad } from "../specHelpers";
 
 export type TextCaret = {
 	blockId: string;
@@ -19,19 +20,6 @@ export type DirSnapshot = {
 	text: string;
 	unicodeBidi: string;
 };
-
-export function logLoad(label: string): number[] {
-	const loads = loadavg();
-	console.log(`${label} loadavg ${loads.join(" ")}`);
-	return loads;
-}
-
-export async function attachJson(name: string, payload: unknown): Promise<void> {
-	await test.info().attach(name, {
-		body: JSON.stringify({ loadavg: loadavg(), payload }, null, 2),
-		contentType: "application/json",
-	});
-}
 
 export async function readCaret(page: Page): Promise<TextCaret | null> {
 	return page.evaluate(() => {
@@ -64,6 +52,30 @@ export async function readDir(page: Page, blockId: string): Promise<DirSnapshot 
 			unicodeBidi: getComputedStyle(host).unicodeBidi,
 		};
 	}, blockId);
+}
+
+/**
+ * Polls until the block renders mixed RTL-script and Latin text under the
+ * expected resolved `dir`, so a keystroke scenario starts on a real
+ * mixed-direction line.
+ */
+export async function expectMixedBlockDir(
+	page: Page,
+	blockId: string,
+	dir: "ltr" | "rtl",
+): Promise<void> {
+	await expect
+		.poll(async () => {
+			const snap = await readDir(page, blockId);
+			if (!snap) {
+				return "missing";
+			}
+			if (!/[֐-ࣿ]/.test(snap.text) || !/[A-Za-z]/.test(snap.text)) {
+				return `not-mixed:${snap.text}`;
+			}
+			return snap.dir;
+		})
+		.toBe(dir);
 }
 
 export async function replayImeCommit(

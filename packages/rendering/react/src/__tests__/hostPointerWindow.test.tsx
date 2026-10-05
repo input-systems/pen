@@ -11,6 +11,7 @@ import { defaultPreset } from "@input/pen";
 import { defaultSchema } from "@input/pen-schema";
 import { describe, expect, it } from "vitest";
 import { Pen } from "../primitives/index";
+import { fieldEditorInternals } from "./utils/fieldEditorInternals";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -28,7 +29,7 @@ function createEditor() {
 }
 
 describe("@input/pen-react host pointer window", () => {
-	it("opens the pointer window from root pointerdown without beginPointerSelection", async () => {
+	it("opens the pointer window from root pointerdown without a host gesture notification", async () => {
 		const editor = createEditor();
 		const blockId = editor.firstBlock()!.id;
 		editor.apply([
@@ -50,7 +51,9 @@ describe("@input/pen-react host pointer window", () => {
 		if (!fieldEditor) {
 			throw new Error("Missing attached field editor");
 		}
-		expect(fieldEditor.isAdmissibleGestureRead()).toBe(false);
+		expect(
+			fieldEditorInternals(fieldEditor).reader.isAdmissibleRead(),
+		).toBe(false);
 		const inline = container.querySelector(
 			"[data-pen-inline-content]",
 		) as HTMLElement | null;
@@ -60,7 +63,9 @@ describe("@input/pen-react host pointer window", () => {
 				new PointerEvent("pointerdown", { bubbles: true, button: 0 }),
 			);
 		});
-		expect(fieldEditor.isAdmissibleGestureRead()).toBe(true);
+		expect(
+			fieldEditorInternals(fieldEditor).reader.isAdmissibleRead(),
+		).toBe(true);
 		await act(async () => {
 			root.unmount();
 		});

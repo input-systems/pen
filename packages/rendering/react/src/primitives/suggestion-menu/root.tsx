@@ -23,6 +23,7 @@ import {
 	resolveSuggestionMenuField,
 	suggestionMenuOptionId,
 } from "./popupAria";
+import { resolveEditorOwnerDocument } from "../../utils/aiDomScope";
 
 export type SuggestionMenuContextValue<TItem = unknown> =
 	SuggestionMenuState<TItem> &
@@ -245,11 +246,12 @@ function SuggestionMenuRootContent<TItem>(
 			}
 		};
 
-		document.addEventListener("keydown", handleKeyDown, true);
+		const doc = resolveEditorOwnerDocument(editor);
+		doc.addEventListener("keydown", handleKeyDown, true);
 		return () => {
-			document.removeEventListener("keydown", handleKeyDown, true);
+			doc.removeEventListener("keydown", handleKeyDown, true);
 		};
-	}, [isOpen]);
+	}, [editor, isOpen]);
 
 	// ax3: caret-anchored popup; dom focus stays in the editing field
 	useEffect(() => {

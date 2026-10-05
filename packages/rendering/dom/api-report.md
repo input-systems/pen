@@ -13,9 +13,11 @@
 - adoptEditorChrome
 - attachContentGestures
 - attachInlineAtomWrapperInteractions
+- attachRemoteCarets
 - bindEditorDocumentKeyDown
+- bindEditorRootFocus
 - canDestructure
-- collapsedRect
+- captureFocusReturn
 - createGeometryReader
 - createReducedMotionSignal
 - createRegionSelectionRect
@@ -23,26 +25,32 @@
 - getClosestEditorRoot
 - getInlineAtomDragSnapshot
 - getInlineAtomRenderInteractionProps
+- getRemoteCaretSource
 - getRootGeometry
+- getRootReducedMotion
 - handleEditorDocumentKeyDown
 - handleEscapeSelectionTransition
 - handleFieldEditorPointerActivate
 - handleFieldEditorRootFocus
 - handleTableCellSelectionKeyDown
 - intersectRegionSelectionRect
+- isEditorRootFocused
 - isFieldEditorTextEditingKey
 - isInlineAtomDragSource
 - measureWithRoot
 - mountEditor
+- overlayItemStyle
+- overlayLabelStyle
 - registerInlineAtomInteractionRoot
 - registerVerticalCaretMeasure
+- remoteCaretKey
 - resolveBlockTextAlignment
 - resolveEditorUrl
 - resolveRegionRect
 - resolveShiftClickInlineAtomSelection
+- restoreFocusReturn
 - selectInlineAtomRangeFromShiftClick
 - shouldHandleEditorKeyboardEvent
-- singleRunLineBox
 - subscribeInlineAtomDragSnapshot
 - urlPolicyExtension
 - urlPolicyFromEditor
@@ -57,8 +65,14 @@
 
 ### value
 
+- Affinity
+- AX6_MOTION_MAPPING
+- BidiRun
+- BidiRunGeometry
+- collapsedRect
 - DEFAULT_SELECT_ALL_BEHAVIOR
 - DomScheduler
+- DomSchedulerDiagnostics
 - DomSchedulerOptions
 - DomSchedulerOwner
 - DomSchedulerPhase
@@ -70,7 +84,21 @@
 - FieldEditorSession
 - FlushCollect
 - GeometryInvalidator
+- GeometryReader
 - getInlineAtomAtOffset
+- getRootOverlay
+- LineBox
+- OverlayCaretRole
+- OverlayCellCoord
+- OverlayContributor
+- OverlayFieldState
+- OverlayItemKind
+- OverlayPainter
+- OverlayPaintItem
+- OverlayPaintMode
+- OverlayPaintPlan
+- OverlayReadContext
+- OverlayRequest
 - PasteImporters
 - PEN_EDITOR_CHROME_STYLESHEET
 - PEN_REVIEW_STYLESHEET
@@ -82,37 +110,45 @@
 - PenFocusPolicy
 - PenFocusReason
 - PenFocusRequest
+- Point
+- Rect
+- REDUCED_MOTION_ATTR
+- REMOTE_CARET_CONTRIBUTOR
 - removeInlineAtom
 - resolveSelectAllBehavior
+- RootOverlay
+- singleRunLineBox
 - UrlContext
 - urlPolicy
 - UrlPolicy
 
 ### type
 
-- Affinity
 - AttachContentGesturesOptions
-- BidiRun
-- BidiRunGeometry
+- AttachRemoteCaretsOptions
 - BindEditorDocumentKeyDownOptions
 - BlockTextAlignment
 - ContentGestureRegionGesture
 - ContentGestureState
+- EditorRootFocusHandlers
 - FieldEditorPointerActivateOptions
 - FieldEditorPointerTarget
 - FieldEditorRootFocusOptions
+- FocusReturnFieldEditor
+- FocusReturnOptions
+- FocusReturnPreference
+- FocusReturnResult
+- FocusReturnToken
 - GeometryMeasureAdapter
-- GeometryReader
 - GeometryReaderHost
 - GeometryReaderOptions
 - GestureSlot
 - InlineAtomDragSnapshot
 - InlineAtomWrapperInteractionOptions
-- LineBox
 - MountedEditor
 - MountEditorOptions
-- Point
-- Rect
+- OverlayCaretVariant
+- OverlayInlineStyle
 - ReducedMotionListener
 - ReducedMotionSignal
 - RegionSelectionRect
@@ -120,6 +156,9 @@
 - RegionSelectorActivation
 - RegionSelectorConfig
 - RegionSelectorSelectionMode
+- RemoteCaretCursor
+- RemoteCaretSource
+- RemoteCaretUser
 - RootGeometry
 - VerticalCaretTarget
 - VerticalDirection
@@ -130,27 +169,28 @@
 
 ### function
 
-- classifySelectionSurface
-- contractFieldEditorRange
-- expandFieldEditorRange
-- getExpandedBlockRole
 - resolveMarksAtPosition
-- shouldUseBlockSelection
 
 ### value
 
 - applyDeltaToDOM
 - buildMoveInlineAtomOps
+- classifySelectionSurface
 - computeTextDiff
+- contractFieldEditorRange
 - domSelectionToEditor
-- editorSelectionToDOM
+- ExpandedBlockRole
+- expandFieldEditorRange
 - extractTextFromDOM
 - FieldEditorFocusReason
 - FieldEditorFocusRequest
 - FieldEditorStore
 - FieldEditorStoreSnapshot
+- FieldEditorSurfaceMode
+- FieldEditorSurfaceState
 - fullReconcileToDOM
 - getCaretOffset
+- getExpandedBlockRole
 - getInlineAtomAtOffset
 - getSelectionOffsets
 - handleClipboardPaste
@@ -177,16 +217,9 @@
 - ReplaceInlineAtomWithTextOptions
 - resolveInlineAtomDropTarget
 - ResolveInlineAtomDropTargetOptions
-- restoreSelection
-- saveSelection
 - SelectionPoint
+- shouldUseBlockSelection
 - TextDiffOp
-
-### type
-
-- ExpandedBlockRole
-- FieldEditorSurfaceMode
-- FieldEditorSurfaceState
 
 ## ./field-editor/beforeinputMap
 
@@ -426,12 +459,6 @@ _no exports_
 - applyDeltaToDOM
 - fullReconcileDeltasToDOM
 - fullReconcileToDOM
-- restoreSelection
-- saveSelection
-
-### type
-
-- SavedSelection
 
 ## ./field-editor/selectionBridge
 
@@ -440,9 +467,12 @@ _no exports_
 ### function
 
 - findBlockElement
+- findDOMPoint
 - findInlineContentElement
 - getClosestBlockElementFromPoint
 - getSelectionPointForBlockAtPointer
+- getSelectionPointRect
+- getTextSelectionClientRects
 - pointToEditorSelectionPoint
 - queryBlockElement
 - queryInlineElement
@@ -453,14 +483,11 @@ _no exports_
 - DirectionalSelectionOffsets
 - domPointToOffset
 - domSelectionToEditor
-- editorSelectionToDOM
 - extractTextFromDOM
 - getBlockBoundaryPoint
 - getCaretOffset
 - getDirectionalSelectionOffsets
 - getSelectionOffsets
-- getSelectionPointRect
-- getTextSelectionClientRects
 - SelectionBoundary
 - SelectionPoint
 - TextDiffOp
@@ -469,7 +496,24 @@ _no exports_
 
 `./dist/field-editor/store.d.ts`
 
-_no exports_
+### value
+
+- BlockCommitSlice
+- BlockFieldSlice
+- BlockListSegment
+- BlockListSlice
+- BlockNotifier
+- BlockNotifierDiagnostics
+- BlockNotifierEventKind
+- BlockSelectionSlice
+- BlockSnapshot
+- DocumentSnapshot
+- SurfaceSnapshot
+
+### type
+
+- FieldEditorStore
+- FieldEditorStoreSnapshot
 
 ## ./field-editor/transfer
 
@@ -644,13 +688,34 @@ _no exports_
 ### function
 
 - buildDataAttributes
+- listGroupKey
+- listItemHostAttributes
 - penDataAttr
 
 ### value
 
 - DATA_ATTRS
+- LIST_GROUP_ATTRIBUTES
 - OVERLAY_ITEM_ATTR
 - OVERLAY_LAYER_ATTR
+
+## ./utils/domNodes
+
+`./dist/utils/domNodes.d.ts`
+
+### function
+
+- closestDomElement
+
+### guard
+
+- isDomCompositionEvent
+- isDomDocument
+- isDomElement
+- isDomEvent
+- isDomHTMLElement
+- isDomNode
+- isDomText
 
 ## ./utils/editorEmptyState
 
@@ -714,10 +779,12 @@ _no exports_
 ### function
 
 - appendParentIdChildBlock
+- areAdjacentSiblingBlocks
 - getAdjacentVisibleBlockId
 - getChildBlockIds
 - getInsertSiblingBlockOp
 - getLastDescendantBlockId
+- getRootBlockEndpoints
 - getRootBlockIds
 - getVisibleBlockIds
 - isInsideParentIdContainer
@@ -782,7 +849,9 @@ _no exports_
 - queryEditorBlockElement
 - querySuggestionAnchorElements
 - resolveAIRootElement
+- resolveChromeEditorRoot
 - resolveEditorContentElement
+- resolveEditorOwnerDocument
 - resolveEditorRootElement
 
 ## ./utils/aiKeyboardScope
@@ -800,6 +869,7 @@ _no exports_
 ### function
 
 - getAttachedFieldEditor
+- getAttachedFieldEditorSession
 - getAttachedFieldEditorStore
 
 ## ./utils/inlineAtomDragPreview
@@ -875,6 +945,7 @@ _no exports_
 ### function
 
 - isInlineAtomSelected
+- isInlineAtomSelectedInSlice
 
 ## ./utils/pointerSelection
 
@@ -885,10 +956,12 @@ _no exports_
 - createPointerSelectionGesture
 - resolvePointerDragSelection
 - resolvePointerGestureAnchorPoint
+- resolvePointerSelectionIntent
 
 ### type
 
 - PointerSelectionGesture
+- PointerSelectionInput
 - ResolvedPointerDragSelection
 
 ## ./utils/remoteCellSelection

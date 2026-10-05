@@ -4,10 +4,63 @@ import {
 } from "@input/pen-core";
 import type { DocumentOp, Editor } from "@input/pen-types";
 
+/** The top-level sibling list, kept by core's document index (`rootBlockIds`). */
 export function getRootBlockIds(editor: Editor): readonly string[] {
-	return editor.documentState.blockOrder.filter(
-		(blockId) => editor.documentState.parentOf(blockId) == null,
-	);
+	return editor.documentState.rootBlockIds();
+}
+
+/**
+ * Whether `nextId` is the sibling right after `previousId` in model order —
+ * the same sibling list (`childrenOf`, or the root list), with nothing
+ * between them. DOM parentage cannot answer this once AX1 list groups wrap
+ * some siblings and not others.
+ */
+export function areAdjacentSiblingBlocks(
+	editor: Editor,
+	previousId: string,
+	nextId: string,
+): boolean {
+	const state = editor.documentState;
+	const parentId = state.parentOf(previousId);
+	if (previousId === nextId || parentId !== state.parentOf(nextId)) return false;
+	if (parentId !== null) {
+		const siblings = state.childrenOf(parentId);
+		const index = siblings.indexOf(previousId);
+		return index >= 0 && siblings[index + 1] === nextId;
+	}
+	const start = state.indexOf(previousId);
+	if (start < 0) return false;
+	// `parentId` children follow their parent in `blockOrder`; skip them.
+	for (let index = start + 1; index < state.blockCount; index += 1) {
+		const blockId = state.blockAt(index);
+		if (blockId !== null && state.parentOf(blockId) == null) return blockId === nextId;
+	}
+	return false;
+}
+
+/**
+ * The first and last top-level blocks, in `getRootBlockIds` order, without
+ * building the list: `parentId` children only ever follow their parent in
+ * `blockOrder`, so the walk from each end stops at the first root block.
+ */
+export function getRootBlockEndpoints(editor: Editor): {
+	readonly firstBlockId: string | null;
+	readonly lastBlockId: string | null;
+} {
+	const state = editor.documentState;
+	const isRoot = (index: number) => {
+		const blockId = state.blockAt(index);
+		return blockId !== null && state.parentOf(blockId) == null ? blockId : null;
+	};
+	let firstBlockId: string | null = null;
+	for (let index = 0; index < state.blockCount && firstBlockId === null; index += 1) {
+		firstBlockId = isRoot(index);
+	}
+	let lastBlockId: string | null = null;
+	for (let index = state.blockCount - 1; index >= 0 && lastBlockId === null; index -= 1) {
+		lastBlockId = isRoot(index);
+	}
+	return { firstBlockId, lastBlockId };
 }
 
 /** Child ids of a container, covering both the children array and `parentId` routes. */

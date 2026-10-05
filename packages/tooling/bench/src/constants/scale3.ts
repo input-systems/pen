@@ -38,13 +38,26 @@ export const SCALE3_EXTENSION_COUNT_POINTS = [9, 17] as const;
 export const SCALE3_DECORATION_COUNT_POINTS = [0, 256] as const;
 
 /**
- * Remote-caret decorations on the multiplayer stand-in. This is not
- * N synced Y.Docs — SCALE3 does not measure peer-count scaling.
- * SCALE1 covers two concurrent peers.
+ * Remote-caret decorations on the multiplayer stand-in: decoration cost,
+ * not N synced Y.Docs. Peer-count scaling is the synced-peer axis below.
  */
 export const SCALE3_REMOTE_CARET_COUNT_POINTS = [0, 8] as const;
 
-export const SCALE3_DEFAULT_PRESET_EXTENSIONS = [
+/**
+ * Synced peers (W5.R9): real forked `Y.Doc`s at the 1,000-block point, each
+ * with the real `multiplayerExtension`, one typist fanning a keystroke out
+ * to the others. Gated on counts (`baselines/scale3-peers.json`); its
+ * clocks are recorded, never gated (CH8), because fan-out grows with n.
+ */
+export const SCALE3_SYNCED_PEER_POINTS = [2, 4, 8] as const;
+
+/**
+ * Setup-only wait for presence to settle: one `LOCAL_PRESENCE_MIN_INTERVAL_MS`
+ * (50ms in `@input/pen-multiplayer`) plus margin, outside every clock.
+ */
+export const LOCAL_PRESENCE_SETTLE_MS = 80;
+
+const SCALE3_DEFAULT_PRESET_EXTENSIONS = [
 	"tools",
 	"delta-stream",
 	"undo",
@@ -76,11 +89,12 @@ export type Scale3Axis =
 	| "document-size"
 	| "extension-count"
 	| "decoration-count"
-	| "remote-caret-count";
+	| "remote-caret-count"
+	| "synced-peer-count";
 
 export interface Scale3AxisSpec {
 	axis: Scale3Axis;
-	points: readonly [number, number];
+	points: readonly [number, number, ...number[]];
 	unit: string;
 }
 
@@ -105,6 +119,11 @@ export const SCALE3_AXES: readonly Scale3AxisSpec[] = [
 		points: SCALE3_REMOTE_CARET_COUNT_POINTS,
 		unit: "remote-carets",
 	},
+	{
+		axis: "synced-peer-count",
+		points: SCALE3_SYNCED_PEER_POINTS,
+		unit: "synced-peers",
+	},
 ];
 
 export interface Scale3Baseline {
@@ -118,12 +137,13 @@ export interface Scale3Baseline {
 }
 
 /**
- * Two measured points per axis. The 1000-block shipped stack is the
- * shared low point for extension / decoration / remote-caret count.
+ * The measured points per axis, at least two. The 1000-block shipped stack
+ * is the shared low point for extension / decoration / remote-caret count;
+ * the synced-peer axis is gated on counts at three points.
  */
-export const SCALE3_AXIS_BENCH_PAIRS: Record<
+export const SCALE3_AXIS_BENCHES: Record<
 	Scale3Axis,
-	readonly [string, string]
+	readonly [string, string, ...string[]]
 > = {
 	"document-size": [
 		"scale3.keystroke.realistic-stack.document-size.100",
@@ -140,6 +160,11 @@ export const SCALE3_AXIS_BENCH_PAIRS: Record<
 	"remote-caret-count": [
 		"scale3.keystroke.realistic-stack.document-size.1000",
 		"scale3.keystroke.realistic-stack.remote-caret-count.8",
+	],
+	"synced-peer-count": [
+		"scale3.keystroke.synced-peers.2",
+		"scale3.keystroke.synced-peers.4",
+		"scale3.keystroke.synced-peers.8",
 	],
 };
 
@@ -204,8 +229,8 @@ export function getScale3Baseline(id: string): Scale3Baseline {
  */
 export const SCALE2_PLUS8_TOLERANCE_RATIO = 2;
 export const SCALE2_PLUS8_TOLERANCE_FLOOR_MS = 15;
-export const SCALE2_PLUS8_BASE_ID = SCALE3_AXIS_BENCH_PAIRS["extension-count"][0];
-export const SCALE2_PLUS8_ID = SCALE3_AXIS_BENCH_PAIRS["extension-count"][1];
+export const SCALE2_PLUS8_BASE_ID = SCALE3_AXIS_BENCHES["extension-count"][0];
+export const SCALE2_PLUS8_ID = SCALE3_AXIS_BENCHES["extension-count"][1];
 
 export function scale2Plus8GateMs(baseP50Ms: number): number {
 	const raw = Math.max(

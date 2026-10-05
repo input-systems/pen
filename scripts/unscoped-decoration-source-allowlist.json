@@ -1,0 +1,35 @@
+{
+  "_comment": "SCALE2 (spec/rules/scale.md). Function-form decorationsFacet sources are recomputed in full on every commit. Each entry names the file, the enclosing exported function, why the site may stay function-form, and what closes it: a W-requirement that scopes it, or \"permitted\" when the cost follows the extension's own state rather than the document. pen/no-unscoped-decoration-source fails an entry whose site no longer exists (I15).",
+  "entries": [
+    {
+      "file": "packages/extensions/ai/src/extension.ts",
+      "symbol": "aiExtension",
+      "reason": "Presentation only: selection context, streaming previews, the generation zone and the inline completion. Suggestion marks moved to a scoped source (W2.R9); what remains follows the active session and generation (SCALE2's state-proportional allowance), not the document.",
+      "closedBy": "permitted"
+    },
+    {
+      "file": "packages/extensions/multiplayer/src/extension.ts",
+      "symbol": "multiplayerExtension",
+      "reason": "Remote cursors and selections: cost follows the number of connected peers (SCALE2's state-proportional allowance), not the document.",
+      "closedBy": "permitted"
+    },
+    {
+      "file": "packages/extensions/ai/src/suggestions/extension.ts",
+      "symbol": "aiSuggestionsExtension",
+      "reason": "Decorates the controller's in-memory suggestion list: cost follows the open suggestions (SCALE2's state-proportional allowance), not the document.",
+      "closedBy": "permitted"
+    },
+    {
+      "file": "packages/extensions/ai/src/autocomplete/extension.ts",
+      "symbol": "autocompleteExtension",
+      "reason": "Decorates the one visible inline completion: cost follows that completion (SCALE2's state-proportional allowance), not the document.",
+      "closedBy": "permitted"
+    },
+    {
+      "file": "packages/extensions/ai/src/stream/smoothStreamExtension.ts",
+      "symbol": "smoothStreamExtension",
+      "reason": "Decorates the active stream frontier: cost follows the open streams (SCALE2's state-proportional allowance), not the document.",
+      "closedBy": "permitted"
+    }
+  ]
+}

@@ -110,44 +110,7 @@ function serializeInlineContentHTML(
 		);
 	}
 
-	let result = "";
-
-	for (const delta of deltas) {
-		let text =
-			typeof delta.insert === "string"
-				? serializeMarkupText(delta.insert)
-				: "";
-		if (typeof delta.insert === "string" && delta.insert === "") {
-			continue;
-		}
-
-		const suggestion = delta.attributes?.suggestion as
-			{ action?: string } | undefined;
-		if (
-			viewMode === "resolved" &&
-			suggestion?.action === DELETE_SUGGESTION_ACTION
-		) {
-			continue;
-		}
-
-		if (delta.attributes) {
-			const ordered = sortDeltaAttributes(
-				delta.attributes,
-				editor.schema,
-			);
-			const marks = Object.entries(ordered);
-			for (const [mark, props] of marks) {
-				if (viewMode === "resolved" && mark === "suggestion") {
-					continue;
-				}
-				text = wrapInlineMarkHTML(text, mark, props, editor);
-			}
-		}
-
-		result += text;
-	}
-
-	return result;
+	return serializeDeltasHTML(deltas, editor, viewMode);
 }
 
 function renderTableHTML(
@@ -219,8 +182,20 @@ function serializeTableCellHTML(
 		return "";
 	}
 
+	return serializeDeltasHTML(cell.textDeltas(), editor, viewMode);
+}
+
+/**
+ * Escaped text wrapped in its marks, in schema mark order. Resolved view
+ * drops suggested deletions and the suggestion mark itself.
+ */
+function serializeDeltasHTML(
+	deltas: ReturnType<BlockHandle["textDeltas"]>,
+	editor: Editor,
+	viewMode: HtmlExportViewMode,
+): string {
 	let result = "";
-	for (const delta of cell.textDeltas()) {
+	for (const delta of deltas) {
 		let text =
 			typeof delta.insert === "string"
 				? serializeMarkupText(delta.insert)

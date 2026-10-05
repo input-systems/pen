@@ -1,0 +1,19 @@
+{
+	"$comment": "CH11: a rule ID two spec documents share resolves by a `[<doc basename>]` title qualifier, else by the claiming test's path prefix listed here. An ambiguous family missing from this file fails the gate.",
+	"ambiguous": {
+		"R": {
+			"rules/selection": [
+				"packages/rendering/dom/",
+				"packages/rendering/react/",
+				"packages/rendering/vue/",
+				"packages/tooling/conformance/"
+			],
+			"rules/facets": [
+				"packages/core/",
+				"packages/pen/",
+				"packages/extensions/",
+				"packages/schema/"
+			]
+		}
+	}
+}

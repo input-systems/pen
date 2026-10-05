@@ -9,7 +9,7 @@ import type {
 import type { DiagnosticEvent } from "@input/pen-types";
 import { toStructuredOrigin } from "./commitEvent";
 import { isCRDTMap } from "./crdtShapes";
-import type { ApplyPipelineInternal } from "./applyPipelineContext";
+import type { ApplyCapture, ApplyPipelineInternal } from "./applyPipelineContext";
 import { validateOpProps } from "./validateOpProps";
 import { blockExists, opBlockId } from "./applySharedHelpers";
 import {
@@ -34,11 +34,13 @@ import {
 import { resolveCommitSource } from "./commitEvent";
 import { snapshotOrigin } from "./origin";
 import { rejectedOwnPropKeys } from "./rejectedOwnKeys";
+import { isJsonEncodable, isStorableMapValue } from "./encodablePayload";
 export function applyInternal(
 	pipeline: ApplyPipelineInternal,
 	ops: DocumentOp[],
 	origin: OpOrigin,
 	structural?: StructuralOriginTag,
+	capture?: ApplyCapture,
 ): void {
 	if (pipeline._applying) {
 		if (pipeline._applyTurnCount >= APPLY_STORM_QUEUE_LIMIT) {
@@ -46,7 +48,7 @@ export function applyInternal(
 			return;
 		}
 		pipeline._applyTurnCount += 1;
-		pipeline._queue.push({ ops, origin, structural });
+		pipeline._queue.push({ ops, origin, structural, capture });
 		return;
 	}
 
@@ -54,19 +56,35 @@ export function applyInternal(
 	pipeline._applyTurnCount = 1;
 	pipeline._applyStormEmitted = false;
 	try {
-		executeOps(pipeline, ops, origin, structural);
+		executeCaptured(pipeline, ops, origin, structural, capture);
 		while (pipeline._queue.length > 0) {
-			const {
-				ops: queued,
-				origin: queuedOrigin,
-				structural: queuedStructural,
-			} = pipeline._queue.shift()!;
-			executeOps(pipeline, queued, queuedOrigin, queuedStructural);
+			const queued = pipeline._queue.shift()!;
+			executeCaptured(
+				pipeline,
+				queued.ops,
+				queued.origin,
+				queued.structural,
+				queued.capture,
+			);
 		}
 	} finally {
 		pipeline._applying = false;
 		pipeline._applyTurnCount = 0;
 		pipeline._applyStormEmitted = false;
+	}
+}
+
+function executeCaptured(
+	pipeline: ApplyPipelineInternal,
+	ops: DocumentOp[],
+	origin: OpOrigin,
+	structural: StructuralOriginTag | undefined,
+	capture: ApplyCapture | undefined,
+): void {
+	if (capture) {
+		capture(() => executeOps(pipeline, ops, origin, structural));
+	} else {
+		executeOps(pipeline, ops, origin, structural);
 	}
 }
 
@@ -149,32 +167,38 @@ function emitSchemaUnknownBlock(
 
 /**
  * DUR3 wants one diagnostic per unknown type per session, including for blocks
- * no op touches, so the sweep has to look at the whole document. Apply refuses
- * `insert-block` and `set-props` carrying an unregistered type (PEN_APPLY_002),
- * so no local apply can add a type a previous sweep did not already see; only
- * a load or a remote insert can, and both move the block count. Re-sweeping on
- * an unchanged count would make every keystroke O(document) (SCALE2).
+ * no op touches, so the first apply after a load sweeps the whole document.
+ * Apply refuses `insert-block` and `set-props` carrying an unregistered type
+ * (PEN_APPLY_002), so no local apply can add a type a previous sweep did not
+ * already see; only a load or a remote or undo commit can, and such a commit
+ * names the blocks it stored or retyped. Later applies check only those, so a
+ * keystroke or a structural commit sweeps nothing (SCALE2).
  */
 function reportUnknownBlocksInDocument(pipeline: ApplyPipelineInternal): void {
-	const blockCount = pipeline._doc.blocks.size;
-	if (blockCount === pipeline._unknownScanBlockCount) {
+	if (pipeline._unknownScanPending) {
+		pipeline._unknownScanPending = false;
+		pipeline._unknownTypeCandidates.clear();
+		for (const [, rawBlockMap] of pipeline._doc.blocks.entries()) {
+			reportUnknownBlockType(pipeline, rawBlockMap);
+		}
 		return;
 	}
-	pipeline._unknownScanBlockCount = blockCount;
-
-	for (const [, rawBlockMap] of pipeline._doc.blocks.entries()) {
-		if (!isCRDTMap(rawBlockMap)) {
-			continue;
-		}
-		const type = rawBlockMap.get("type");
-		if (typeof type !== "string") {
-			continue;
-		}
-		if (isRegisteredBlockType(pipeline._registry, type)) {
-			continue;
-		}
-		emitSchemaUnknownBlock(pipeline, type);
+	if (pipeline._unknownTypeCandidates.size === 0) return;
+	for (const blockId of pipeline._unknownTypeCandidates) {
+		reportUnknownBlockType(pipeline, pipeline._doc.blocks.get(blockId));
 	}
+	pipeline._unknownTypeCandidates.clear();
+}
+
+function reportUnknownBlockType(
+	pipeline: ApplyPipelineInternal,
+	rawBlockMap: unknown,
+): void {
+	if (!isCRDTMap(rawBlockMap)) return;
+	const type = rawBlockMap.get("type");
+	if (typeof type !== "string") return;
+	if (isRegisteredBlockType(pipeline._registry, type)) return;
+	emitSchemaUnknownBlock(pipeline, type);
 }
 
 function readStoredBlockType(
@@ -329,7 +353,11 @@ function snapshotPlain(value: unknown): unknown {
 	if (Array.isArray(value)) {
 		return value.map(snapshotPlain);
 	}
-	const next: Record<string | symbol, unknown> = {};
+	const prototype = Object.getPrototypeOf(value);
+	if (prototype !== Object.prototype && prototype !== null) {
+		return snapshotInstance(value);
+	}
+	const next: Record<string | symbol, unknown> = Object.create(prototype);
 	for (const key of Object.keys(value as object)) {
 		Object.defineProperty(next, key, {
 			value: snapshotPlain((value as Record<string, unknown>)[key]),
@@ -338,7 +366,12 @@ function snapshotPlain(value: unknown): unknown {
 			writable: true,
 		});
 	}
-	for (const key of Object.getOwnPropertySymbols(value as object)) {
+	snapshotSymbolKeys(value, next);
+	return next;
+}
+
+function snapshotSymbolKeys(value: object, next: object): void {
+	for (const key of Object.getOwnPropertySymbols(value)) {
 		const descriptor = Object.getOwnPropertyDescriptor(value, key);
 		if (!descriptor?.enumerable) {
 			continue;
@@ -350,7 +383,16 @@ function snapshotPlain(value: unknown): unknown {
 			writable: true,
 		});
 	}
-	return next;
+}
+
+/**
+ * A class instance is not plain data: copying its own keys would turn a
+ * `Date` or `Map` into `{}`, which validate would then accept. It passes
+ * through as is so validate sees what the caller sent (OPB1); only a
+ * `Uint8Array`, which the CRDT stores, is copied.
+ */
+function snapshotInstance(value: object): unknown {
+	return value instanceof Uint8Array ? value.slice() : value;
 }
 
 function snapshotOps(ops: readonly DocumentOp[]): DocumentOp[] {
@@ -416,10 +458,55 @@ function isInlineInsert(value: unknown): boolean {
 	if (!isRecord(value)) {
 		return false;
 	}
-	return isNonEmptyString(value.nodeType) && isRecord(value.props);
+	return (
+		isNonEmptyString(value.nodeType) &&
+		isRecord(value.props) &&
+		isJsonEncodable(value.props)
+	);
+}
+
+function isPosition(value: unknown): boolean {
+	if (value === "first" || value === "last") {
+		return true;
+	}
+	if (!isRecord(value)) {
+		return false;
+	}
+	if ("parent" in value) {
+		return isNonEmptyString(value.parent) && isNonNegativeInt(value.index);
+	}
+	if ("before" in value) {
+		return isNonEmptyString(value.before);
+	}
+	if ("after" in value) {
+		return isNonEmptyString(value.after);
+	}
+	return false;
+}
+
+function hasStorableValues(record: Record<string, unknown>): boolean {
+	return Object.values(record).every(isStorableMapValue);
+}
+
+/** Mark values are text attributes; `null` removes the mark. */
+function hasEncodableMarks(marks: Record<string, unknown>): boolean {
+	return Object.values(marks).every(isJsonEncodable);
+}
+
+function hasValidCell(cell: unknown): boolean {
+	return (
+		!cell ||
+		(isRecord(cell) &&
+			isNonNegativeInt(cell.row) &&
+			isNonNegativeInt(cell.col))
+	);
 }
 
 function malformedOpMessage(op: DocumentOp): string | null {
+	const shape: unknown = op;
+	if (!isRecord(shape) || typeof shape.type !== "string") {
+		return "op must be an object with a string type";
+	}
 	switch (op.type) {
 		case "splice-text": {
 			if (!isNonEmptyString(op.blockId)) {
@@ -436,15 +523,16 @@ function malformedOpMessage(op: DocumentOp): string | null {
 			}
 			const items = Array.isArray(op.insert) ? op.insert : [op.insert];
 			if (!items.every(isInlineInsert)) {
-				return "splice-text requires string or atom insert";
+				return "splice-text requires string or atom insert with encodable props";
 			}
-			if (op.cell) {
-				if (
-					!isNonNegativeInt(op.cell.row) ||
-					!isNonNegativeInt(op.cell.col)
-				) {
-					return "splice-text cell requires non-negative integer row and col";
-				}
+			if (
+				op.marks !== undefined &&
+				(!isRecord(op.marks) || !hasEncodableMarks(op.marks))
+			) {
+				return "splice-text marks must be an object of JSON-encodable values";
+			}
+			if (!hasValidCell(op.cell)) {
+				return "splice-text cell requires non-negative integer row and col";
 			}
 			return null;
 		}
@@ -464,13 +552,11 @@ function malformedOpMessage(op: DocumentOp): string | null {
 			if (!isRecord(op.marks)) {
 				return "format-text requires a marks object";
 			}
-			if (op.cell) {
-				if (
-					!isNonNegativeInt(op.cell.row) ||
-					!isNonNegativeInt(op.cell.col)
-				) {
-					return "format-text cell requires non-negative integer row and col";
-				}
+			if (!hasEncodableMarks(op.marks)) {
+				return "format-text marks must be JSON-encodable values";
+			}
+			if (!hasValidCell(op.cell)) {
+				return "format-text cell requires non-negative integer row and col";
 			}
 			return null;
 		}
@@ -481,17 +567,47 @@ function malformedOpMessage(op: DocumentOp): string | null {
 			if (!isNonEmptyString(op.blockType)) {
 				return "insert-block requires a non-empty blockType";
 			}
+			if (!isRecord(op.props) || !hasStorableValues(op.props)) {
+				return "insert-block requires a props object of acyclic plain-data values";
+			}
+			if (!isPosition(op.position)) {
+				return "insert-block requires a valid position";
+			}
+			return null;
+		case "move-block":
+			if (!isNonEmptyString(op.blockId)) {
+				return "move-block requires a non-empty blockId";
+			}
+			if (!isPosition(op.position)) {
+				return "move-block requires a valid position";
+			}
+			return null;
+		case "set-props":
+			if (!isNonEmptyString(op.blockId)) {
+				return "set-props requires a non-empty blockId";
+			}
+			if (!isRecord(op.props) || !hasStorableValues(op.props)) {
+				return "set-props requires a props object of acyclic plain-data values";
+			}
+			return null;
+		case "set-meta":
+			if (!isNonEmptyString(op.blockId)) {
+				return "set-meta requires a non-empty blockId";
+			}
+			if (!isNonEmptyString(op.namespace)) {
+				return "set-meta requires a non-empty string namespace";
+			}
+			if (
+				op.data !== null &&
+				(!isRecord(op.data) || !isStorableMapValue(op.data))
+			) {
+				return "set-meta requires a data object of acyclic plain-data values, or null";
+			}
 			return null;
 		case "delete-block":
-		case "move-block":
-		case "set-props":
-		case "set-meta":
 		case "stream-open":
 			if (!isNonEmptyString(op.blockId)) {
 				return `${op.type} requires a non-empty blockId`;
-			}
-			if (op.type === "set-props" && !isRecord(op.props)) {
-				return "set-props requires a props object";
 			}
 			return null;
 		case "grid": {
@@ -514,12 +630,29 @@ function malformedOpMessage(op: DocumentOp): string | null {
 				if (!isNonEmptyString(op.change.appType)) {
 					return "app create requires a non-empty appType";
 				}
+				if (
+					op.change.config !== undefined &&
+					(!isRecord(op.change.config) ||
+						!hasStorableValues(op.change.config))
+				) {
+					return "app create config must be an object of acyclic plain-data values";
+				}
+				if (!isStorableMapValue(op.change.placement)) {
+					return "app create placement must be acyclic plain data";
+				}
 			} else if (
 				op.change.kind === "update" ||
 				op.change.kind === "delete"
 			) {
 				if (!isNonEmptyString(op.change.appId)) {
 					return `app ${op.change.kind} requires a non-empty appId`;
+				}
+				if (
+					op.change.kind === "update" &&
+					(!isRecord(op.change.patch) ||
+						!hasStorableValues(op.change.patch))
+				) {
+					return "app update requires a patch object of acyclic plain-data values";
 				}
 			}
 			return null;
@@ -549,15 +682,6 @@ function emitMalformedOpDiagnostic(
 	});
 }
 
-/** Ops that move `blockOrder` or a `children` array, invalidating the normalizer's pass index. */
-function isStructuralOp(op: DocumentOp): boolean {
-	return (
-		op.type === "insert-block" ||
-		op.type === "delete-block" ||
-		op.type === "move-block"
-	);
-}
-
 function executeOps(
 	pipeline: ApplyPipelineInternal,
 	ops: DocumentOp[],
@@ -580,10 +704,17 @@ function executeOps(
 	recordPhase(pipeline, "validate");
 	const affectedBlocks: string[] = [];
 	const validatedOps: DocumentOp[] = [];
-	const pendingBlockIds = new Set<string>();
+	const batch: BatchLiveness = { inserted: new Set(), deleted: new Set() };
 	const pendingBlockTypes = new Map<string, string>();
 
 	for (const op of transformedOps) {
+		// Shape first: every later check reads op fields, and a malformed
+		// payload written through would leave the document unencodable.
+		if (malformedOpMessage(op)) {
+			emitMalformedOpDiagnostic(pipeline, op);
+			continue;
+		}
+
 		const blockId = opBlockId(pipeline, op);
 
 		if (!validateOp(pipeline, op)) continue;
@@ -593,10 +724,7 @@ function executeOps(
 			// so an insert naming a live block replaces its text, props, and
 			// meta, and normalization then strips the duplicate order entry —
 			// silent content loss. An id is claimed once per document.
-			if (
-				blockExists(pipeline, op.blockId) ||
-				pendingBlockIds.has(op.blockId)
-			) {
+			if (liveInBatch(pipeline, batch, op.blockId)) {
 				emitPipelineDiagnostic(pipeline, {
 					code: "PEN_APPLY_010",
 					level: "warn",
@@ -605,7 +733,6 @@ function executeOps(
 				});
 				continue;
 			}
-			pendingBlockIds.add(op.blockId);
 			pendingBlockTypes.set(op.blockId, op.blockType);
 		}
 
@@ -616,9 +743,8 @@ function executeOps(
 
 		if (
 			blockId &&
-			!blockExists(pipeline, blockId) &&
-			!pendingBlockIds.has(blockId) &&
-			nextOp.type !== "insert-block"
+			nextOp.type !== "insert-block" &&
+			!liveInBatch(pipeline, batch, blockId)
 		) {
 			emitPipelineDiagnostic(pipeline, {
 				code: "PEN_APPLY_003",
@@ -629,11 +755,20 @@ function executeOps(
 			continue;
 		}
 
-		if (malformedOpMessage(nextOp)) {
-			emitMalformedOpDiagnostic(pipeline, nextOp);
+		const missingParent = missingParentId(pipeline, nextOp, batch);
+		if (missingParent !== null) {
+			// Executing it would write the block outside the tree: insert leaves
+			// an orphan, move detaches the block from wherever it was.
+			emitPipelineDiagnostic(pipeline, {
+				code: "PEN_APPLY_003",
+				level: "warn",
+				source: "apply",
+				message: `apply: skipping ${nextOp.type} under non-existent parent "${missingParent}"`,
+			});
 			continue;
 		}
 
+		recordBatchLiveness(batch, nextOp);
 		validatedOps.push(nextOp);
 	}
 
@@ -665,9 +800,6 @@ function executeOps(
 					} catch (err) {
 						emitMalformedOpDiagnostic(pipeline, op, err);
 					}
-					if (isStructuralOp(op)) {
-						pipeline._engine.notifyStructureChanged();
-					}
 				}
 
 				for (const blockId of affectedBlocks) {
@@ -698,6 +830,79 @@ function executeOps(
 		origin,
 		applied: true,
 	});
+}
+
+/**
+ * Block liveness as the batch has left it so far. Validation runs before any
+ * op executes, so the document alone answers for the state before the batch;
+ * an op later in the batch sees the inserts and deletes validated before it.
+ */
+type BatchLiveness = {
+	readonly inserted: Set<string>;
+	readonly deleted: Set<string>;
+};
+
+function liveInBatch(
+	pipeline: ApplyPipelineInternal,
+	batch: BatchLiveness,
+	blockId: string,
+): boolean {
+	if (batch.inserted.has(blockId)) return true;
+	if (batch.deleted.has(blockId)) return false;
+	return blockExists(pipeline, blockId);
+}
+
+function recordBatchLiveness(batch: BatchLiveness, op: DocumentOp): void {
+	if (op.type === "insert-block") {
+		batch.inserted.add(op.blockId);
+		batch.deleted.delete(op.blockId);
+	} else if (op.type === "delete-block") {
+		batch.deleted.add(op.blockId);
+		batch.inserted.delete(op.blockId);
+	}
+}
+
+/**
+ * The parent an op names — an insert's or move's `{ parent }` position, or
+ * the `parentId` prop an insert or `set-props` writes — when that parent is
+ * not live at that point in the batch.
+ */
+function missingParentId(
+	pipeline: ApplyPipelineInternal,
+	op: DocumentOp,
+	batch: BatchLiveness,
+): string | null {
+	for (const parent of namedParentIds(op)) {
+		if (!liveInBatch(pipeline, batch, parent)) return parent;
+	}
+	return null;
+}
+
+/** The parent ids an op places its block under, through either nesting route (RI6). */
+function namedParentIds(op: DocumentOp): string[] {
+	const parents: string[] = [];
+	if (op.type === "insert-block" || op.type === "move-block") {
+		const parent = positionParent(op.position);
+		if (parent !== null) parents.push(parent);
+	}
+	if (op.type === "insert-block" || op.type === "set-props") {
+		const parentId = propsParentId(op.props);
+		if (parentId !== null) parents.push(parentId);
+	}
+	return parents;
+}
+
+/** The `children`-array parent a block position names, if any. */
+function positionParent(
+	position: Extract<DocumentOp, { type: "move-block" }>["position"],
+): string | null {
+	return typeof position === "object" && "parent" in position ? position.parent : null;
+}
+
+/** A non-empty `parentId` in an op's props, if any. */
+function propsParentId(props: unknown): string | null {
+	const parentId = (props as Record<string, unknown> | undefined)?.parentId;
+	return typeof parentId === "string" && parentId !== "" ? parentId : null;
 }
 
 function emitApplyBoundary(

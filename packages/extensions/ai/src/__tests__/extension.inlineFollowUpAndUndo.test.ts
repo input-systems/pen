@@ -3,25 +3,9 @@ import { createEditor } from "@input/pen-core";
 import { undoExtension } from "@input/pen-undo";
 import { deltaStreamExtension } from "../stream";
 import { toolsExtension } from "@input/pen-tools";
-import {
-	acceptAllSuggestions,
-	acceptSuggestion,
-	aiExtension,
-	getAIInlineHistoryController,
-	getAIController,
-	rejectSuggestion,
-} from "../index";
-import {
-	readAllSuggestions,
-	readBlockSuggestionMeta,
-	readSuggestionsFromBlock,
-} from "../suggestions/persistent";
+import { aiExtension, getAIController } from "../index";
 import { defaultSchema } from "@input/pen-schema";
-import {
-	createDeferred,
-	testStreamingToolExtension,
-	waitForPreview,
-} from "./extension.testUtils";
+import { createSingleDeltaEditor } from "./extension.testUtils";
 
 describe("aiExtension: inline follow-up targets and undo", () => {
 	it("refreshes the inline follow-up target after keeping a rewritten selection", async () => {
@@ -158,25 +142,7 @@ describe("aiExtension: inline follow-up targets and undo", () => {
 	});
 
 	it("keeps inline prompt targets stable after the live selection changes", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "planet",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("planet");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[
@@ -227,25 +193,7 @@ describe("aiExtension: inline follow-up targets and undo", () => {
 	});
 
 	it("restores inline edit review state through document undo and redo", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				undoExtension(),
-				deltaStreamExtension(),
-				toolsExtension(),
-				aiExtension({
-					model: {
-						async *stream() {
-							yield {
-								type: "text-delta" as const,
-								delta: "planet",
-							};
-							yield { type: "done" as const };
-						},
-					},
-				}),
-			],
-		});
+		const editor = createSingleDeltaEditor("planet");
 		const blockId = editor.firstBlock()!.id;
 		editor.apply(
 			[

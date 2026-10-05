@@ -25,7 +25,7 @@ function NumberedListItemView({
 	...rest
 }: NumberedListItemViewProps): React.ReactElement {
 	const indent = (block.props?.indent as number) ?? 0;
-	const counterValue = useNumberedListItemValue(block);
+	const counterValue = useNumberedListItemValue(block.id);
 
 	return (
 		<ListItemLayout

@@ -3,62 +3,20 @@
 import React, { act } from "react";
 import { describe, expect, it } from "vitest";
 import { createRoot } from "react-dom/client";
-import {
-	createEditor as createCoreEditor,
-	DocumentRangeImpl,
-	fieldEditorHostFacet,
-} from "@input/pen-core";
-import { defaultPreset } from "@input/pen";
-import type { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
+import { DocumentRangeImpl } from "@input/pen-core";
 import { Pen } from "../primitives/index";
+import { domSelectionToEditor } from "@input/pen-dom/field-editor/selectionBridge";
+import { projectSelectionToDom } from "./utils/projectSelectionToDom";
 import {
-	domSelectionToEditor,
-	editorSelectionToDOM,
-} from "@input/pen-dom/field-editor/selectionBridge";
-import { defaultSchema } from "@input/pen-schema";
+	createEditor,
+	createEscapeEvent,
+	flushAnimationFrames,
+	getFieldEditor,
+} from "./utils/crossBlockSelectionTestHelpers";
 
 (
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-function createEditor(options: Parameters<typeof createCoreEditor>[0] = {}) {
-	return createCoreEditor({
-		schema: defaultSchema,
-		...options,
-		preset: defaultPreset({
-			tools: false,
-			deltaStream: false,
-			undo: false,
-		}),
-	});
-}
-
-function createEscapeEvent(): KeyboardEvent {
-	return new KeyboardEvent("keydown", {
-		key: "Escape",
-		bubbles: true,
-	});
-}
-
-async function flushAnimationFrames(count = 1): Promise<void> {
-	for (let i = 0; i < count; i++) {
-		await new Promise<void>((resolve) => {
-			requestAnimationFrame(() => resolve());
-		});
-	}
-}
-
-function getFieldEditor(
-	editor: ReturnType<typeof createEditor>,
-): FieldEditorImpl {
-	const fieldEditor = editor.facet(
-		fieldEditorHostFacet,
-	) as FieldEditorImpl | null;
-	if (!fieldEditor) {
-		throw new Error("Missing attached field editor");
-	}
-	return fieldEditor;
-}
 
 describe("@input/pen-react Escape: the selection ladder", () => {
 	it("preserves backwards same-block selection direction when collapsing", async () => {
@@ -110,7 +68,7 @@ describe("@input/pen-react Escape: the selection ladder", () => {
 					editor.internals.doc,
 				).toTextSelection(),
 			);
-			editorSelectionToDOM(
+			projectSelectionToDom(
 				rootElement!,
 				{ blockId, offset: 5 },
 				{ blockId, offset: 2 },
@@ -241,14 +199,19 @@ describe("@input/pen-react Escape: the selection ladder", () => {
 			isEditing: false,
 			mode: "inactive",
 		});
-		expect(document.activeElement).toBe(blockElement);
+		// W3.R16: the block rung's projection focuses the revealed sink,
+		// never the block element.
+		const focusSink = rootElement?.querySelector("[data-pen-focus-sink]");
+		expect(document.activeElement).toBe(focusSink);
+		expect(focusSink?.getAttribute("aria-hidden")).toBeNull();
 
 		await act(async () => {
-			blockElement?.dispatchEvent(createEscapeEvent());
+			focusSink?.dispatchEvent(createEscapeEvent());
 		});
 
+		// D18: a null record focuses the editor root, not the sink.
 		expect(editor.selection).toBeNull();
-		expect(document.activeElement).toBe(blockElement);
+		expect(document.activeElement).toBe(rootElement);
 
 		await act(async () => {
 			root.unmount();

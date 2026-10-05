@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 import { loadavg } from "node:os";
 import { formatCheckReport } from "../../src/checkReport";
 import { scenario } from "../../src/scenario";
+import { readDocumentText } from "../input/keys";
 import {
-	readDocumentText,
 	replayCompositionCommitSameTurn,
 	replayCompositionStart,
 } from "./compose";

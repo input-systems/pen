@@ -14,7 +14,7 @@ function installUndoManager(
 		canUndo: () => false,
 		canRedo: () => false,
 		stopCapturing: () => {},
-		syncExplicitUndoGroup: () => {},
+		withCapture: (_origin, _groupId, run) => run(),
 		setGroupTimeout: () => {},
 		registerTrackedOrigins: () => () => {},
 		onStackChange: () => () => {},

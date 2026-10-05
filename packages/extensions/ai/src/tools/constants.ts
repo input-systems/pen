@@ -83,7 +83,8 @@ export const AI_MUTATING_TOOL_NAMES = [
 export const AI_DESTRUCTIVE_TOOL_NAMES = [
 	"delete_block",
 	"write_document",
-	// edit_document's replace_blocks and delete_blocks remove existing blocks.
+	// edit_document declares a per-call resolver; this entry covers a
+	// definition that declares nothing.
 	AI_EDIT_DOCUMENT_TOOL_NAME,
 ] as const;
 

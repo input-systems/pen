@@ -34,7 +34,6 @@ describe("EM2 empty-block placeholder", () => {
 		const host = mountInline();
 		fullReconcileDeltasToDOM([], host, defaultSchema, {
 			urlPolicy: { resolve: () => null },
-			preserveSelection: false,
 		});
 
 		const placeholder = host.querySelector(`[${DATA_ATTRS.emptyBlock}]`);

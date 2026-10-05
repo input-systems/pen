@@ -1,38 +1,7 @@
-import { defineBlock, mergeSchemas, SchemaRegistryImpl } from "../index";
 import { describe, expect, it } from "vitest";
 
-import { applySplitBlock, createEditor as createCoreEditor } from "../index";
-import { createDefaultSchema } from "./fixtures/testSchema";
-
-const noDefaultExtensionsPreset = {
-	resolve() {
-		return { extensions: [] };
-	},
-};
-
-const flowDisallowedWidget = defineBlock("widget", {
-	content: "none",
-	fieldEditor: "none",
-	authoring: {
-		flowCapability: "flow-disallowed",
-	},
-});
-
-const flowPolicySchema = mergeSchemas(
-	createDefaultSchema(),
-	new SchemaRegistryImpl({
-		blocks: [flowDisallowedWidget],
-		inlines: [],
-	}),
-);
-
-function createFlowEditor() {
-	return createCoreEditor({
-		schema: flowPolicySchema,
-		documentProfile: "flow",
-		preset: noDefaultExtensionsPreset,
-	});
-}
+import { applySplitBlock } from "../index";
+import { createFlowEditor } from "./ops.testHelpers";
 
 describe("ops profile parity GATE 4.9", () => {
 	it("profile parity: flow still drops a flow-disallowed insert-block", () => {

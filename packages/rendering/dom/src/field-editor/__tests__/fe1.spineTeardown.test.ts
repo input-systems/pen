@@ -1,68 +1,20 @@
 // @vitest-environment jsdom
 
-import { createEditor } from "@input/pen-core";
-import { defaultSchema } from "@input/pen-schema";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Editor } from "@input/pen-types";
 import { ContentEditableBackend } from "../contenteditableBackend";
-import type { FieldEditorInputController } from "../controller";
 import { EditContextBackend } from "../editContextBackend";
-import type { EditContext } from "../editContextTypes";
 import { ExpandedContentEditableBackend } from "../expandedContentEditableBackend";
-import type { FieldEditorTextLike } from "../crdt";
 import type { InputBackend } from "../../internal/inputBackend";
-import { DATA_ATTRS } from "../../utils/dataAttributes";
-
-function getYText(editor: Editor, blockId: string): FieldEditorTextLike {
-	const ydoc = editor.internals.adapter.raw<{
-		getMap(name: string): {
-			get(key: string): { get(field: string): unknown } | undefined;
-		};
-	}>(editor.internals.crdtDoc);
-	const ytext = ydoc.getMap("blocks").get(blockId)?.get("content") as
-		| FieldEditorTextLike
-		| null
-		| undefined;
-	if (!ytext) {
-		throw new Error(`Missing test Y.Text for block ${blockId}`);
-	}
-	return ytext;
-}
-
-class FakeEditContext implements EditContext {
-	text: string;
-	selectionStart: number;
-	selectionEnd: number;
-	private readonly listeners = new Map<string, Set<(event: Event) => void>>();
-
-	constructor(options?: { text?: string }) {
-		this.text = options?.text ?? "";
-		this.selectionStart = 0;
-		this.selectionEnd = 0;
-	}
-
-	updateText(): void {}
-	updateSelection(): void {}
-	updateCharacterBounds(): void {}
-
-	addEventListener(type: string, handler: (event: Event) => void): void {
-		const handlers = this.listeners.get(type) ?? new Set();
-		handlers.add(handler);
-		this.listeners.set(type, handlers);
-	}
-
-	removeEventListener(type: string, handler: (event: Event) => void): void {
-		this.listeners.get(type)?.delete(handler);
-	}
-
-	get listenerCount(): number {
-		let total = 0;
-		for (const handlers of this.listeners.values()) {
-			total += handlers.size;
-		}
-		return total;
-	}
-}
+import {
+	contextOf,
+	getYText,
+	installFakeEditContext,
+	mountBlockDom,
+	recordingController,
+	removeEditContext,
+	seedParagraphs,
+} from "./fieldEditorFixtures.testHelpers";
 
 /**
  * jsdom builds a document's selector engine on its first `matches` /
@@ -148,72 +100,36 @@ function installLedger() {
 	};
 }
 
-function stubController(blockId: string) {
-	return {
-		focusBlockId: blockId,
-		inputMode: "richtext" as const,
-		activeCellCoord: null,
-		activateCell: () => {},
-		activateTextSelection: () => {},
-		deactivate: () => {},
-		resetBackendSelectionAuthority: () => {},
-		withBackendSelectionWrite: <T>(write: () => T) => write(),
-		requestDomFocus: () => false,
-		shouldHandleDomSelectionChange: () => false,
-		getBackendSelectionApplicationDepth: () => 0,
-		applyDomTextSelection: () => {},
-		selectAllBehavior: "block-first" as const,
-		resolveInsertMarks: () => undefined,
-		setComposing: () => {},
-		notifyDomReconciled: () => {},
-		notifyGestureEvent: () => {},
-		setBackendSelectionAuthority: () => {},
-		getBackendSelectionAuthority: () => null,
-		hasBackendSelectionAuthority: () => false,
-		clearBackendSelectionAuthority: () => {},
-		setEditContextSelectionSnapshot: () => {},
-		getEditContextSelectionSnapshot: () => null,
-		selection: null,
-	} as unknown as FieldEditorInputController;
+/** Runs `run` under a fresh ledger and asserts it leaves nothing bound. */
+function expectNothingBound(run: () => void): void {
+	const ledger = installLedger();
+	try {
+		run();
+		expect(ledger.outstanding()).toEqual([]);
+		expect(ledger.liveObservers()).toBe(0);
+	} finally {
+		ledger.restore();
+	}
 }
 
-type Fixture = {
-	editor: Editor;
-	backend: InputBackend;
-	element: HTMLElement;
-};
+const fixtures: Array<{ editor: Editor; backend: InputBackend }> = [];
 
-const fixtures: Fixture[] = [];
-
-function seedEditor(): { editor: Editor; blockId: string } {
-	const editor = createEditor({ schema: defaultSchema });
-	const blockId = editor.firstBlock()!.id;
-	editor.apply([
-		{ type: "splice-text", blockId, from: 0, to: 0, insert: "Hello world" },
-	]);
-	return { editor, blockId };
-}
-
-function inlineElement(blockId: string): HTMLElement {
-	const root = document.createElement("div");
-	root.setAttribute(DATA_ATTRS.editorRoot, "");
-	const block = document.createElement("div");
-	block.setAttribute(DATA_ATTRS.editorBlock, "");
-	block.setAttribute(DATA_ATTRS.blockId, blockId);
-	const inline = document.createElement("div");
-	inline.setAttribute(DATA_ATTRS.inlineContent, "");
-	inline.textContent = "Hello world";
-	block.append(inline);
-	root.append(block);
-	document.body.append(root);
-	return inline;
+function mount<T extends InputBackend>(
+	Backend: new (editor: Editor, controller: ReturnType<typeof recordingController>["controller"]) => T,
+) {
+	const {
+		editor,
+		blockIds: [blockId],
+	} = seedParagraphs(["Hello world"]);
+	const backend = new Backend(editor, recordingController(blockId!).controller);
+	fixtures.push({ editor, backend });
+	const { inline } = mountBlockDom(blockId!, "Hello world");
+	return { backend, inline, ytext: getYText(editor, blockId!) };
 }
 
 /** Attach, exercise, tear down — the same three steps for every backend. */
 function exercise(element: HTMLElement): void {
-	element.dispatchEvent(
-		new KeyboardEvent("keydown", { key: "a", bubbles: true }),
-	);
+	element.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }));
 	element.dispatchEvent(new Event("contextmenu", { bubbles: true }));
 	element.ownerDocument.dispatchEvent(new Event("selectionchange"));
 }
@@ -224,133 +140,69 @@ afterEach(() => {
 		fixture.editor.destroy();
 	}
 	document.body.replaceChildren();
-	delete (globalThis as { EditContext?: unknown }).EditContext;
+	removeEditContext();
 });
 
 describe("FE1 spine teardown is total", () => {
 	it("leaves nothing bound after the contenteditable backend detaches", () => {
-		const { editor, blockId } = seedEditor();
-		const element = inlineElement(blockId);
-		const backend = new ContentEditableBackend(
-			editor,
-			stubController(blockId),
-		);
-		fixtures.push({ editor, backend, element });
+		const { backend, inline, ytext } = mount(ContentEditableBackend);
 
-		const ledger = installLedger();
-		try {
-			backend.activate(element, getYText(editor, blockId));
-			expect(element.getAttribute("tabindex")).toBe("-1");
-			exercise(element);
+		expectNothingBound(() => {
+			backend.activate(inline, ytext);
+			expect(inline.getAttribute("tabindex")).toBe("-1");
+			exercise(inline);
 			backend.deactivate();
-
-			expect(ledger.outstanding()).toEqual([]);
-			expect(ledger.liveObservers()).toBe(0);
-			expect(element.hasAttribute("tabindex")).toBe(false);
-		} finally {
-			ledger.restore();
-		}
+		});
+		expect(inline.hasAttribute("tabindex")).toBe(false);
 	});
 
 	it("leaves nothing bound after the EditContext backend detaches", () => {
-		(globalThis as { EditContext?: unknown }).EditContext = FakeEditContext;
-		const { editor, blockId } = seedEditor();
-		const element = inlineElement(blockId);
-		const backend = new EditContextBackend(editor, stubController(blockId));
-		fixtures.push({ editor, backend, element });
+		installFakeEditContext();
+		const { backend, inline, ytext } = mount(EditContextBackend);
 
-		const ledger = installLedger();
-		try {
-			backend.activate(element, getYText(editor, blockId));
-			expect(element.getAttribute("tabindex")).toBe("-1");
-			const editContext = (
-				element as HTMLElement & { editContext: FakeEditContext | null }
-			).editContext;
+		expectNothingBound(() => {
+			backend.activate(inline, ytext);
+			expect(inline.getAttribute("tabindex")).toBe("-1");
+			const editContext = contextOf(inline);
 			expect(
-				editContext?.listenerCount,
+				editContext.listenerCount,
 				"the EditContext must carry its own listeners while attached",
 			).toBeGreaterThan(0);
 
-			exercise(element);
+			exercise(inline);
 			backend.deactivate();
 
-			expect(ledger.outstanding()).toEqual([]);
-			expect(ledger.liveObservers()).toBe(0);
 			expect(
-				editContext?.listenerCount,
+				editContext.listenerCount,
 				"EditContext listeners are released with the DOM ones",
 			).toBe(0);
-			expect(
-				(element as HTMLElement & { editContext: unknown }).editContext,
-			).toBeNull();
-			expect(element.hasAttribute("tabindex")).toBe(false);
-		} finally {
-			ledger.restore();
-		}
+		});
+		expect(contextOf(inline)).toBeNull();
+		expect(inline.hasAttribute("tabindex")).toBe(false);
 	});
 
-	it("leaves nothing bound after the expanded backend detaches", () => {
-		const { editor, blockId } = seedEditor();
-		const host = document.createElement("div");
-		document.body.append(host);
-		const backend = new ExpandedContentEditableBackend(
-			editor,
-			stubController(blockId),
-		);
-		fixtures.push({ editor, backend, element: host });
+	it("leaves nothing bound, the editing host's tabindex included, after the expanded backend detaches", () => {
+		const { backend, inline: host } = mount(ExpandedContentEditableBackend);
 
-		const ledger = installLedger();
-		try {
+		expectNothingBound(() => {
 			backend.activate(host);
+			expect(host.getAttribute("tabindex")).toBe("-1");
 			exercise(host);
 			backend.deactivate();
-
-			expect(ledger.outstanding()).toEqual([]);
-			expect(ledger.liveObservers()).toBe(0);
-		} finally {
-			ledger.restore();
-		}
-	});
-
-	it("releases the editing host's tabindex with the listeners", () => {
-		const { editor, blockId } = seedEditor();
-		const host = document.createElement("div");
-		document.body.append(host);
-		const backend = new ExpandedContentEditableBackend(
-			editor,
-			stubController(blockId),
-		);
-		fixtures.push({ editor, backend, element: host });
-
-		backend.activate(host);
-		expect(host.getAttribute("tabindex")).toBe("-1");
-		backend.deactivate();
-
+		});
 		expect(host.hasAttribute("tabindex")).toBe(false);
 	});
 
 	it("survives a second detach without unbinding a live re-attach", () => {
-		const { editor, blockId } = seedEditor();
-		const element = inlineElement(blockId);
-		const backend = new ContentEditableBackend(
-			editor,
-			stubController(blockId),
-		);
-		fixtures.push({ editor, backend, element });
+		const { backend, inline, ytext } = mount(ContentEditableBackend);
 
-		const ledger = installLedger();
-		try {
-			backend.activate(element, getYText(editor, blockId));
+		expectNothingBound(() => {
+			backend.activate(inline, ytext);
 			backend.deactivate();
 			backend.deactivate();
-			backend.activate(element, getYText(editor, blockId));
-			exercise(element);
+			backend.activate(inline, ytext);
+			exercise(inline);
 			backend.deactivate();
-
-			expect(ledger.outstanding()).toEqual([]);
-			expect(ledger.liveObservers()).toBe(0);
-		} finally {
-			ledger.restore();
-		}
+		});
 	});
 });

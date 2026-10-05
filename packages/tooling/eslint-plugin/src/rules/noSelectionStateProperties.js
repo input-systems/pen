@@ -1,6 +1,4 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { loadAllowlistEntries } from "./allowlistLint.js";
 import {
 	posixFilename,
 	propertyName,
@@ -13,24 +11,12 @@ import {
  * properties. Browser Selection and snapshot records are allowlisted.
  */
 
-const DEFAULT_ALLOWLIST_PATH = path.join(
-	path.dirname(fileURLToPath(import.meta.url)),
-	"../../../../../scripts/selection-state-properties-allowlist.json",
-);
+const ALLOWLIST_PATH = "scripts/selection-state-properties-allowlist.json";
 
 const RECEIVERS = new Set(["selection", "sel", "nextSelection"]);
 const PROPS = new Set(["isCollapsed", "isMultiBlock", "blockRange"]);
 
-function loadAllowlist(filePath) {
-	try {
-		const parsed = JSON.parse(readFileSync(filePath, "utf8"));
-		return Array.isArray(parsed.entries) ? parsed.entries : [];
-	} catch {
-		return [];
-	}
-}
-
-const committedAllowlist = loadAllowlist(DEFAULT_ALLOWLIST_PATH);
+const committedAllowlist = loadAllowlistEntries(ALLOWLIST_PATH);
 
 function receiverName(node) {
 	if (node.type === "Identifier" && RECEIVERS.has(node.name)) {

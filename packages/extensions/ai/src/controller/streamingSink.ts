@@ -16,6 +16,7 @@ import type { AIControllerImpl } from "./aiController";
 import type { GenerationExecutionState } from "./generationExecutionState";
 import {
 	editDocumentReviewPreviewInput,
+	type EditDocumentReviewPreviewSource,
 	markdownReviewPreviewInput,
 	selectionReviewPreviewInput,
 } from "./streamingPreviewInput";
@@ -350,27 +351,37 @@ function applyReviewPreviewDelta(
 	}
 }
 
+/**
+ * Paints one `edit_document` operation's preview. An operation that changes
+ * no text maps to nothing, and then its own preview is withdrawn — an empty
+ * text for that operation index clears it and leaves the call's other
+ * operations on screen (RS6).
+ */
 export function applyEditDocumentPreview(
 	controller: AIControllerImpl,
-	preview: {
-		operationIndex: number;
-		blockId: string;
-		operation: string | null;
-		text: string;
-	},
+	preview: Omit<EditDocumentReviewPreviewSource, "sessionId" | "turnId">,
 	activeGeneration: NonNullable<
 		AIControllerImpl["_state"]["activeGeneration"]
 	>,
 ): void {
+	const sessionId = activeGeneration.sessionId ?? activeGeneration.id;
+	const input = editDocumentReviewPreviewInput(controller._editor, {
+		...preview,
+		sessionId,
+		turnId: activeGeneration.turnId,
+	});
 	controller.setStreamingReviewPreview(
-		editDocumentReviewPreviewInput(controller._editor, {
-			sessionId: activeGeneration.sessionId ?? activeGeneration.id,
+		input ?? {
+			sessionId,
 			turnId: activeGeneration.turnId,
 			operationIndex: preview.operationIndex,
-			blockId: preview.blockId,
-			operation: preview.operation,
-			text: preview.text,
-		}),
+			target: {
+				kind: "insertion-point",
+				blockId: preview.blockIds[0] ?? "",
+				offset: 0,
+			},
+			text: "",
+		},
 		{ activeGeneration },
 	);
 }

@@ -1,15 +1,10 @@
 import React, { useRef } from "react";
-import { resolveEditorMessage } from "@input/pen-core";
-import type {
-	BlockHandle,
-	BlockRenderContext,
-	CellSelection,
-} from "@input/pen-types";
+import { isSafeCssColor, resolveEditorMessage } from "@input/pen-core";
+import type { BlockHandle, BlockRenderContext } from "@input/pen-types";
 import { useEditorContext } from "../context/editorContext";
 import { useFieldEditorContext } from "../context/fieldEditorContext";
-import { useFieldEditorState } from "../hooks/useFieldEditorState";
+import { useBlockSlice } from "../hooks/useBlockNotifier";
 import { useRemoteSelections } from "../hooks/useRemoteSelections";
-import { useSelection } from "../hooks/useSelection";
 import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import { isCellInSelection } from "../utils/cellSelection";
 import { resolveRemoteCellPresence } from "../utils/remoteCellSelection";
@@ -26,8 +21,9 @@ function TableRendererInner(props: {
 	const { block, ctx } = props;
 	const { editor, readonly } = useEditorContext();
 	const fieldEditor = useFieldEditorContext();
-	const fieldEditorState = useFieldEditorState(fieldEditor);
-	const editorSelection = useSelection(editor);
+	// The table block's own slices, not the full store and selection (SCALE6).
+	const activeCell = useBlockSlice(block.id, "field").activeCell;
+	const cellSelection = useBlockSlice(block.id, "selection").cell;
 	const remoteSelections = useRemoteSelections(editor);
 
 	const table = block.as("table");
@@ -37,19 +33,13 @@ function TableRendererInner(props: {
 	const addRowRef = useRef<HTMLButtonElement>(null);
 	const addColumnRef = useRef<HTMLButtonElement>(null);
 
-	const cellSelection =
-		editorSelection?.type === "cell" && editorSelection.blockId === block.id
-			? editorSelection
-			: null;
 	const remoteCellPresence = resolveRemoteCellPresence(
 		remoteSelections,
 		block.id,
 	);
 
 	const isEditingThisCell = (row: number, col: number) =>
-		fieldEditorState.activeCellCoord?.blockId === block.id &&
-		fieldEditorState.activeCellCoord.row === row &&
-		fieldEditorState.activeCellCoord.col === col;
+		activeCell?.row === row && activeCell.col === col;
 
 	function handleCellMouseDown(
 		event: React.MouseEvent<HTMLTableCellElement>,
@@ -109,7 +99,6 @@ function TableRendererInner(props: {
 			],
 			{ origin: "user" },
 		);
-		queueMicrotask(() => addRowRef.current?.focus());
 	}
 
 	function handleAddColumn() {
@@ -123,7 +112,6 @@ function TableRendererInner(props: {
 			],
 			{ origin: "user" },
 		);
-		queueMicrotask(() => addColumnRef.current?.focus());
 	}
 
 	function handleControlMouseDown(
@@ -156,7 +144,10 @@ function TableRendererInner(props: {
 			// token as a prop is what lets a peer ring in their own colour.
 			style: peer
 				? ({
-						"--pen-peer-color": peer.user.color ?? "currentColor",
+						// COL2: re-validated at the sink, like the overlay.
+						"--pen-peer-color": isSafeCssColor(peer.user.color)
+							? peer.user.color
+							: "currentColor",
 					} as CellStyle)
 				: undefined,
 		};

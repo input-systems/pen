@@ -21,6 +21,7 @@ import {
 	getSlashMenuOptionId,
 	resolveSlashMenuField,
 } from "./popupAria";
+import { resolveEditorOwnerDocument } from "../../utils/aiDomScope";
 
 export type SlashMenuController = SlashMenuState &
 	SlashMenuActions & {
@@ -213,10 +214,11 @@ function SlashMenuRootContent(props: SlashMenuRootContentProps) {
 			}
 		};
 
-		document.addEventListener("keydown", handleKeyDown, true);
+		const doc = resolveEditorOwnerDocument(editor);
+		doc.addEventListener("keydown", handleKeyDown, true);
 		return () =>
-			document.removeEventListener("keydown", handleKeyDown, true);
-	}, [isOpen]);
+			doc.removeEventListener("keydown", handleKeyDown, true);
+	}, [editor, isOpen]);
 
 	useEffect(() => {
 		const syncFieldAria = () => {

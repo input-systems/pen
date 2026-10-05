@@ -1,15 +1,12 @@
 import type { DocumentOp } from "@input/pen-types";
 import type { ActiveCellCoord } from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
+import type { TextDiffOp } from "./textDiff";
 
 export type InlineTextRange = {
 	start: number;
 	end: number;
 };
-
-export type InlineTextDiffOp =
-	| { type: "insert"; offset: number; text: string }
-	| { type: "delete"; offset: number; length: number };
 
 export type InlineTextSelectionTarget = {
 	blockId: string;
@@ -36,45 +33,15 @@ export function buildInlineTextEditTransaction(options: {
 	const nextOffset = range.start + text.length;
 
 	if (range.end > range.start) {
-		ops.push(
-			cellCoord
-				? {
-						type: "splice-text",
-						blockId,
-						cell: { row: cellCoord.row, col: cellCoord.col },
-						from: range.start,
-						to: range.end,
-						insert: "",
-					}
-				: {
-						type: "splice-text",
-						blockId,
-						from: range.start,
-						to: range.end,
-						insert: "",
-					},
-		);
+		ops.push(spliceTextOp(blockId, cellCoord, range.start, range.end));
 	}
 
 	if (text.length > 0) {
 		ops.push(
-			cellCoord
-				? {
-						type: "splice-text",
-						blockId,
-						cell: { row: cellCoord.row, col: cellCoord.col },
-						from: range.start,
-						to: range.start,
-						insert: text,
-					}
-				: {
-						type: "splice-text",
-						blockId,
-						from: range.start,
-						to: range.start,
-						insert: text,
-						marks,
-					},
+			spliceTextOp(blockId, cellCoord, range.start, range.start, {
+				text,
+				marks: () => marks,
+			}),
 		);
 	}
 
@@ -93,7 +60,7 @@ export function buildInlineTextEditTransaction(options: {
 
 export function buildInlineTextDiffOps(options: {
 	blockId: string;
-	diff: readonly InlineTextDiffOp[];
+	diff: readonly TextDiffOp[];
 	ytext: FieldEditorTextLike;
 	resolveInsertMarks: (
 		ytext: FieldEditorTextLike,
@@ -105,48 +72,48 @@ export function buildInlineTextDiffOps(options: {
 	const ops: DocumentOp[] = [];
 
 	for (const op of diff) {
-		if (op.type === "delete") {
-			ops.push(
-				cellCoord
-					? {
-							type: "splice-text",
-							blockId,
-							cell: { row: cellCoord.row, col: cellCoord.col },
-							from: op.offset,
-							to: op.offset + op.length,
-							insert: "",
-						}
-					: {
-							type: "splice-text",
-							blockId,
-							from: op.offset,
-							to: op.offset + op.length,
-							insert: "",
-						},
-			);
-			continue;
-		}
-
 		ops.push(
-			cellCoord
-				? {
-						type: "splice-text",
-						blockId,
-						cell: { row: cellCoord.row, col: cellCoord.col },
-						from: op.offset,
-						to: op.offset,
-						insert: op.text,
-					}
-				: {
-						type: "splice-text",
-						blockId,
-						from: op.offset,
-						to: op.offset,
-						insert: op.text,
-						marks: resolveInsertMarks(ytext, op.offset),
-					},
+			op.type === "delete"
+				? spliceTextOp(blockId, cellCoord, op.offset, op.offset + op.length)
+				: spliceTextOp(blockId, cellCoord, op.offset, op.offset, {
+						text: op.text,
+						marks: () => resolveInsertMarks(ytext, op.offset),
+					}),
 		);
 	}
 
 	return ops;
+}
+
+/**
+ * A `splice-text` op in the block or in the active cell. Without `insert` it
+ * deletes `from..to`; an insert outside a cell carries the resolved marks
+ * (a cell insert takes none).
+ */
+function spliceTextOp(
+	blockId: string,
+	cellCoord: ActiveCellCoord | null | undefined,
+	from: number,
+	to: number,
+	insert?: {
+		text: string;
+		marks: () => Record<string, unknown | null> | undefined;
+	},
+): DocumentOp {
+	const text = insert?.text ?? "";
+	if (cellCoord) {
+		const cell = { row: cellCoord.row, col: cellCoord.col };
+		return { type: "splice-text", blockId, cell, from, to, insert: text };
+	}
+	if (!insert) {
+		return { type: "splice-text", blockId, from, to, insert: text };
+	}
+	return {
+		type: "splice-text",
+		blockId,
+		from,
+		to,
+		insert: text,
+		marks: insert.marks(),
+	};
 }

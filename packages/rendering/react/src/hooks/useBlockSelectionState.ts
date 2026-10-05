@@ -1,16 +1,6 @@
-import { isBlockSelected } from "@input/pen-core";
-import type { Editor } from "@input/pen-types";
-import { useSyncExternalStoreWithSelector } from "../utils/useSyncExternalStoreWithSelector";
+import { useBlockSlice } from "./useBlockNotifier";
 
-export function useBlockSelectionState(
-	editor: Editor,
-	blockId: string,
-): boolean {
-	return useSyncExternalStoreWithSelector(
-		(callback) => editor.on("selectionChange", callback),
-		() => editor.selection,
-		() => null,
-		(selection) =>
-			isBlockSelected(editor.documentState.blockOrder, selection, blockId),
-	);
+/** Whether the block is in the selection, from its `selection` slice (SCALE6). */
+export function useBlockSelectionState(blockId: string): boolean {
+	return useBlockSlice(blockId, "selection").inSelection;
 }

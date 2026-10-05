@@ -1,4 +1,8 @@
-import type { ToolDefinition } from "@input/pen-types";
+import type {
+	ToolAuthorityContext,
+	ToolDefinition,
+	ToolDestructiveResolver,
+} from "@input/pen-types";
 import {
 	AI_DESTRUCTIVE_TOOL_NAME_SET,
 	AI_READ_ONLY_TOOL_NAME_SET,
@@ -30,9 +34,18 @@ export type AIToolConfirmFn = (
 	request: AIToolConfirmationRequest,
 ) => AIToolConfirmationDecision | Promise<AIToolConfirmationDecision>;
 
+/**
+ * What happens to a call classified destructive when no confirmation resolver
+ * is installed (AIB3): `"allow"` runs it with `ai-tool-unconfirmed`,
+ * `"refuse"` blocks it with the document unchanged.
+ */
+export type AIUnconfirmedDestructivePolicy = "allow" | "refuse";
+
 export interface AIToolGrant {
 	readonly allowedMutatingTools: readonly string[];
 	readonly confirm?: AIToolConfirmFn;
+	/** Absent resolver: `"allow"` runs with `ai-tool-unconfirmed`; `"refuse"` blocks. Default `"allow"`. */
+	readonly unconfirmedDestructive?: AIUnconfirmedDestructivePolicy;
 }
 
 export interface AIToolBudgetLimits {
@@ -44,6 +57,7 @@ export interface AIToolBudgetLimits {
 export interface AIToolTurnOptions {
 	readonly allowedMutatingTools?: readonly string[];
 	readonly confirm?: AIToolConfirmFn;
+	readonly unconfirmedDestructive?: AIUnconfirmedDestructivePolicy;
 	readonly budget?: Partial<AIToolBudgetLimits>;
 	readonly groupId?: string;
 }
@@ -86,10 +100,12 @@ export interface AIToolTurn {
 	markStatus(status: AIToolCallStatus, reason?: AIToolAuthorityReason): void;
 }
 
-type ToolAuthorityFields = {
-	mutating?: boolean;
-	destructive?: boolean;
-};
+/**
+ * The classification `authorizeAIToolCall` uses when its caller states no
+ * context: a call that cannot say whether it stages is read as landing, the
+ * conservative direction.
+ */
+const UNSTAGED_AUTHORITY_CONTEXT: ToolAuthorityContext = { staged: false };
 
 export function isMutatingAITool(
 	name: string,
@@ -102,25 +118,43 @@ export function isMutatingAITool(
 	return !AI_READ_ONLY_TOOL_NAME_SET.has(name);
 }
 
+/**
+ * AIB3. With `context`, classifies this call: a `destructive` resolver is
+ * evaluated on `input`. Without it, answers "can a call to this tool be
+ * destructive", which is `true` for a resolver.
+ */
 export function isDestructiveAITool(
 	name: string,
 	definition?: ToolDefinition | null,
+	input?: unknown,
+	context?: ToolAuthorityContext,
 ): boolean {
-	const explicit = readOptionalBoolean(definition, "destructive");
-	if (explicit !== undefined) {
-		return explicit;
+	const declared = readDestructiveDeclaration(definition);
+	if (typeof declared === "function") {
+		return context == null
+			? true
+			: evaluateDestructiveResolver(declared, input, context);
+	}
+	if (declared !== undefined) {
+		return declared;
 	}
 	return AI_DESTRUCTIVE_TOOL_NAME_SET.has(name);
 }
 
+/**
+ * Authorizes one call (AIB3). `context` defaults to `{ staged: false }`, the
+ * conservative classification. A resolver is evaluated once, on the
+ * complete input.
+ */
 export async function authorizeAIToolCall(
 	name: string,
 	input: unknown,
 	definition: ToolDefinition | null,
 	grant: AIToolGrant,
+	context: ToolAuthorityContext = UNSTAGED_AUTHORITY_CONTEXT,
 ): Promise<AIToolAuthorization> {
 	const mutating = isMutatingAITool(name, definition);
-	const destructive = isDestructiveAITool(name, definition);
+	const destructive = isDestructiveAITool(name, definition, input, context);
 	if (mutating && !grant.allowedMutatingTools.includes(name)) {
 		return {
 			allowed: false,
@@ -133,15 +167,7 @@ export async function authorizeAIToolCall(
 		return { allowed: true, mutating, destructive };
 	}
 	if (!grant.confirm) {
-		return {
-			allowed: true,
-			mutating,
-			destructive,
-			diagnostic: {
-				code: AI_TOOL_UNCONFIRMED_CODE,
-				message: `Destructive tool "${name}" ran without a confirmation resolver.`,
-			},
-		};
+		return authorizeUnconfirmed(name, mutating, grant);
 	}
 
 	const decision = await grant.confirm({
@@ -170,6 +196,60 @@ export async function authorizeAIToolCall(
 			const _exhaustive: never = decision;
 			return _exhaustive;
 		}
+	}
+}
+
+/** A destructive call with no confirmation resolver: the grant's policy decides. */
+function authorizeUnconfirmed(
+	name: string,
+	mutating: boolean,
+	grant: AIToolGrant,
+): AIToolAuthorization {
+	const policy = grant.unconfirmedDestructive ?? "allow";
+	switch (policy) {
+		case "allow":
+			return {
+				allowed: true,
+				mutating,
+				destructive: true,
+				diagnostic: {
+					code: AI_TOOL_UNCONFIRMED_CODE,
+					message: `Destructive tool "${name}" ran without a confirmation resolver.`,
+				},
+			};
+		case "refuse":
+			return {
+				allowed: false,
+				mutating,
+				destructive: true,
+				reason: "tool-refused",
+				diagnostic: {
+					code: AI_TOOL_UNCONFIRMED_CODE,
+					message: `Destructive tool "${name}" was refused: no confirmation resolver and unconfirmedDestructive is "refuse".`,
+				},
+			};
+		default: {
+			const _exhaustive: never = policy;
+			return _exhaustive;
+		}
+	}
+}
+
+/**
+ * Runs a `destructive` resolver. One that throws or answers with anything but
+ * a boolean classifies the call as destructive: a classifier that cannot
+ * answer must not wave a call past the confirmation seam.
+ */
+function evaluateDestructiveResolver(
+	resolver: ToolDestructiveResolver,
+	input: unknown,
+	context: ToolAuthorityContext,
+): boolean {
+	try {
+		const classified: unknown = resolver(input, context);
+		return typeof classified === "boolean" ? classified : true;
+	} catch {
+		return true;
 	}
 }
 
@@ -250,6 +330,7 @@ class AIToolTurnState implements AIToolTurn {
 		this.grant = {
 			allowedMutatingTools: options.allowedMutatingTools ?? [],
 			confirm: options.confirm,
+			unconfirmedDestructive: options.unconfirmedDestructive,
 		};
 		this.limits = {
 			maxCallsPerTurn:
@@ -341,11 +422,27 @@ class AIToolTurnState implements AIToolTurn {
 
 function readOptionalBoolean(
 	definition: ToolDefinition | null | undefined,
-	key: keyof ToolAuthorityFields,
+	key: "mutating",
 ): boolean | undefined {
 	if (definition == null || !(key in definition)) {
 		return undefined;
 	}
-	const value = (definition as ToolDefinition & ToolAuthorityFields)[key];
+	const value: unknown = definition[key];
 	return typeof value === "boolean" ? value : undefined;
+}
+
+/** `destructive` as declared: a fixed flag, a per-call resolver, or nothing. */
+function readDestructiveDeclaration(
+	definition: ToolDefinition | null | undefined,
+): boolean | ToolDestructiveResolver | undefined {
+	if (definition == null || !("destructive" in definition)) {
+		return undefined;
+	}
+	const value: unknown = definition.destructive;
+	if (typeof value === "boolean") {
+		return value;
+	}
+	return typeof value === "function"
+		? (value as ToolDestructiveResolver)
+		: undefined;
 }

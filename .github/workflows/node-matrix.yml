@@ -1,7 +1,9 @@
-# HOST3 / API7: Node versions at the endpoints of engines.node (^22.22.2 || ^24.15.0 || >=26.0.0)
-# plus one non-Linux runner. Kept out of ci.yml so it can be edited
-# independently. Floor 22 is the setup-node pin in ci/release/docs;
-# 26 is Node Current as of 2026-08 (the open upper end of >=26.0.0).
+# HOST3 / API7: Node versions at the endpoints of engines.node
+# (^22.22.2 || ^24.15.0 || >=26.0.0) plus one non-Linux runner. Kept out of
+# ci.yml so it can be edited independently. The two floors are pinned to
+# their exact patch, because a bare major resolves to the newest release of
+# that line and never runs the floor a host can install; 26 is Node Current
+# as of 2026-08 (the open upper end of >=26.0.0).
 name: Node
 
 on:
@@ -28,14 +30,17 @@ jobs:
         # `label` exists only to render the check name.
         include:
           - os: ubuntu-latest
-            node-version: 22
-            label: 22 on Ubuntu
+            node-version: 22.22.2
+            label: 22.22.2 on Ubuntu
+          - os: ubuntu-latest
+            node-version: 24.15.0
+            label: 24.15.0 on Ubuntu
           - os: ubuntu-latest
             node-version: 26
             label: 26 on Ubuntu
           - os: macos-latest
-            node-version: 22
-            label: 22 on macOS
+            node-version: 22.22.2
+            label: 22.22.2 on macOS
     runs-on: ${{ matrix.os }}
 
     steps:

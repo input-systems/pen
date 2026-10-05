@@ -17,7 +17,6 @@ import type {
 	DocumentOp,
 	ApplyOptions,
 	OpOrigin,
-	MutationGroupMetadata,
 	SelectionState,
 	TextSelection,
 	DocumentRange,
@@ -26,9 +25,6 @@ import type {
 	DocumentState,
 	UndoManager,
 	Unsubscribe,
-	CRDTMap,
-	CRDTArray,
-	Position,
 	DecorationSet,
 	EditorViewMode,
 	ChangeSummary,
@@ -37,37 +33,30 @@ import type {
 	PipelinePhase,
 	SelectionRecord,
 	SelectionOrigin,
+	SelectionWriteOptions,
 	OpenTextStreamOptions,
 	TextStreamWriter,
 	EditorAnchors,
 	SelectAllBehavior,
+	DecorationUpdateScope,
 } from "@input/pen-types";
-import {
-	MUTATION_GROUP_METADATA_KEY,
-	UNDO_HISTORY_METADATA_CONTROLLER_SLOT_KEY,
-	generateId,
-} from "@input/pen-types";
+import { generateId } from "@input/pen-types";
 import { yjsAdapter } from "@input/pen-yjs";
 import { resolveEditorSchema } from "../schema/emptySchema";
 import { SchemaEngineImpl } from "../schema/normalize";
-import { createBlockHandle } from "../schema/handles";
 import { EventEmitter } from "./events";
 import { ApplyPipeline } from "./apply";
-import { resolveCellSelectionMatrix } from "./cellSelection";
-import { filterOpsForDocumentProfile } from "./profilePolicy";
 import type { CRDTUnknownMap } from "./crdtShapes";
-import {
-	getTextProp,
-	getTableContent,
-	getCellText as getCellTextFromRow,
-	isCRDTMap,
-} from "./crdtShapes";
 import { ExtensionManagerImpl } from "./extensionManager";
 import { EditorAnchorsImpl } from "./anchors";
 import { SelectionAuthorityImpl } from "./selection";
 import { DocumentStateImpl } from "./documentState";
-import { emptyDecorationSet, reconcileDecorationSets } from "./decorations";
-import { DocumentRangeImpl } from "./range";
+import {
+	DecorationCollector,
+	type DecorationRefresh,
+	type DecorationTrigger,
+} from "./decorationCollector";
+import { emptyDecorationSet } from "./decorations";
 import { createDocumentSession } from "./documentSession";
 
 import { installEditorCommandRegistry } from "../commands/install";
@@ -93,7 +82,10 @@ import {
 	getEditorBlockRevision,
 	destroyEditor,
 } from "./editorApiHelpers";
-import { createEmptyBlockIndex } from "../changes/blockIndex";
+import {
+	createEmptyBlockIndex,
+	type StoredBlockReader,
+} from "../changes/blockIndex";
 import { snapshotSelectionRecord } from "./commitEvent";
 import { openEditorTextStream } from "./openTextStream";
 import {
@@ -117,6 +109,7 @@ import {
 	syncDocumentProfileFromStorage,
 	wireEditorObservation,
 	teardownEditorObservation,
+	NOOP_UNDO,
 } from "./editorLifecycle";
 import {
 	replaceEditorSelection,
@@ -143,20 +136,7 @@ import {
 	toTransitionSelection,
 } from "../commands/helpers";
 import { escalateSelectAll } from "../selection/transitions";
-type CRDTBlockMap = CRDTMap<CRDTMap<unknown>>;
 
-// Stub undo manager for when @input/pen-undo is excluded
-const NOOP_UNDO: UndoManager = {
-	undo: () => false,
-	redo: () => false,
-	canUndo: () => false,
-	canRedo: () => false,
-	stopCapturing: () => {},
-	syncExplicitUndoGroup: () => {},
-	setGroupTimeout: () => {},
-	registerTrackedOrigins: () => () => {},
-	onStackChange: () => () => {},
-};
 
 class EditorImpl implements Editor {
 	private readonly _adapter: CRDTAdapter;
@@ -186,8 +166,10 @@ class EditorImpl implements Editor {
 	private _lastChangeSummary: ChangeSummary | null = null;
 	private _blockIndex = createEmptyBlockIndex();
 	private _unsubSummary: Unsubscribe | null = null;
+	private _storedBlocks: StoredBlockReader | null = null;
 	private readonly _blockRevisions = new Map<string, number>();
 	private _decorations: DecorationSet;
+	private readonly _decorationCollector: DecorationCollector;
 	private readonly _viewId = generateId();
 	private _extensionLifecycle: Promise<void> = Promise.resolve();
 	private _facetRegistry!: FacetRegistry;
@@ -296,6 +278,9 @@ class EditorImpl implements Editor {
 
 		this.undoManager = NOOP_UNDO;
 		this._decorations = emptyDecorationSet();
+		this._decorationCollector = new DecorationCollector(this, (event) =>
+			this._emitter.emit("diagnostic", event),
+		);
 		this._refreshCoreSlots();
 
 		// Constructing a document is not a change to one, so none of the three
@@ -476,25 +461,30 @@ class EditorImpl implements Editor {
 		return this._selection.getSelection();
 	}
 
-	selectBlock(blockId: string): void {
+	selectBlock(blockId: string, options?: SelectionWriteOptions): void {
 		this._writeSelection(
 			{ type: "block", blockIds: [blockId], head: blockId },
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 
-	selectBlocks(blockIds: string[]): void {
+	selectBlocks(blockIds: string[], options?: SelectionWriteOptions): void {
 		this._writeSelection(
 			{
 				type: "block",
 				blockIds,
 				head: blockIds[blockIds.length - 1] ?? blockIds[0] ?? "",
 			},
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 
-	selectCell(blockId: string, row: number, col: number): void {
+	selectCell(
+		blockId: string,
+		row: number,
+		col: number,
+		options?: SelectionWriteOptions,
+	): void {
 		this._writeSelection(
 			{
 				type: "cell",
@@ -502,7 +492,7 @@ class EditorImpl implements Editor {
 				anchor: { row, col },
 				head: { row, col },
 			},
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 
@@ -510,31 +500,42 @@ class EditorImpl implements Editor {
 		blockId: string,
 		anchor: { row: number; col: number },
 		head: { row: number; col: number },
+		options?: SelectionWriteOptions,
 	): void {
 		this._writeSelection(
 			{ type: "cell", blockId, anchor, head },
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 
-	selectText(blockId: string, from: number, to: number): void {
+	selectText(
+		blockId: string,
+		from: number,
+		to: number,
+		options?: SelectionWriteOptions,
+	): void {
 		this.selectTextRange(
 			{ blockId, offset: from },
 			{ blockId, offset: to },
+			options,
 		);
 	}
 
 	selectTextRange(
 		anchor: { blockId: string; offset: number },
 		focus: { blockId: string; offset: number },
+		options?: SelectionWriteOptions,
 	): void {
 		this._writeSelection(
 			createTextSelection({ anchor, focus }),
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 
-	selectAll(behavior?: SelectAllBehavior): void {
+	selectAll(
+		behavior?: SelectAllBehavior,
+		options?: SelectionWriteOptions,
+	): void {
 		const snapshot = buildTransitionSnapshot(this);
 		const next = escalateSelectAll(
 			snapshot,
@@ -543,7 +544,7 @@ class EditorImpl implements Editor {
 		);
 		this._writeSelection(
 			fromTransitionSelection(next, snapshot.blockOrder),
-			"programmatic",
+			options?.origin ?? "programmatic",
 		);
 	}
 
@@ -565,11 +566,16 @@ class EditorImpl implements Editor {
 
 	// ── Decorations ──────────────────────────────────────────
 
-	requestDecorationUpdate(): void {
-		const previousGeneration = this._decorations.generation;
-		const decoSet = this._refreshDecorations();
-		if (decoSet.generation === previousGeneration) return;
-		this._emitter.emit("decorationsChange", decoSet.generation);
+	requestDecorationUpdate(scope?: DecorationUpdateScope): void {
+		const refresh = this._refreshDecorations(
+			scope ? { kind: "scope", scope } : { kind: "functions" },
+		);
+		if (refresh.changedBlockIds.length === 0) return;
+		this._emitter.emit(
+			"decorationsChange",
+			refresh.set.generation,
+			refresh.changedBlockIds,
+		);
 	}
 
 	getDecorations(): DecorationSet {
@@ -587,14 +593,14 @@ class EditorImpl implements Editor {
 		return this._emitter.on(event, handler);
 	}
 
-	private _refreshDecorations(): DecorationSet {
-		// providers rebuild every decoration on each pass; keep the previous
-		// per-block lists where nothing changed so only touched blocks re-render
-		this._decorations = reconcileDecorationSets(
-			this._decorations,
-			this._extensions.collectDecorations(this._documentState, this),
-		);
-		return this._decorations;
+	private _refreshDecorations(
+		trigger: DecorationTrigger = { kind: "full" },
+	): DecorationRefresh {
+		// Only blocks a source touched are re-merged; the rest keep their list
+		// identity, so only touched blocks re-render (SCALE2).
+		const refresh = this._decorationCollector.refresh(trigger);
+		this._decorations = refresh.set;
+		return refresh;
 	}
 
 	onSelectionChange(callback: PenEventMap["selectionChange"]): Unsubscribe {

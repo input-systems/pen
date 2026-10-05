@@ -318,6 +318,16 @@
         "default": "./dist/utils/dataAttributes.cjs"
       }
     },
+    "./utils/domNodes": {
+      "import": {
+        "types": "./dist/utils/domNodes.d.ts",
+        "default": "./dist/utils/domNodes.mjs"
+      },
+      "require": {
+        "types": "./dist/utils/domNodes.d.cts",
+        "default": "./dist/utils/domNodes.cjs"
+      }
+    },
     "./utils/editorEmptyState": {
       "import": {
         "types": "./dist/utils/editorEmptyState.d.ts",
@@ -558,9 +568,11 @@
   "devDependencies": {
     "@input/pen-schema": "workspace:*",
     "@input/pen-undo": "workspace:*",
+    "@input/pen-yjs": "workspace:*",
     "@types/node": "^25.4.0",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "yjs": "^13.6.32"
   }
 }

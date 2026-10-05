@@ -9,9 +9,15 @@ import { FieldEditorImpl } from "../fieldEditorImpl";
 class ProbeFieldEditor extends FieldEditorImpl {
 	divergenceRequests = 0;
 
-	override requestDivergenceProjection(): void {
-		this.divergenceRequests += 1;
-		super.requestDivergenceProjection();
+	constructor(editor: ConstructorParameters<typeof FieldEditorImpl>[0]) {
+		super(editor);
+		const project = this.projector.requestDivergenceProjection.bind(
+			this.projector,
+		);
+		this.projector.requestDivergenceProjection = (read) => {
+			this.divergenceRequests += 1;
+			project(read);
+		};
 	}
 }
 
@@ -80,7 +86,7 @@ describe("FieldEditorImpl.readDomSelection PR 6", () => {
 
 	it("step 5: an open pointer window writes origin pointer", () => {
 		const { editor, fieldEditor, blockId } = seedEditor();
-		fieldEditor.notifyGestureEvent("pointerdown");
+		fieldEditor.reader.notifyGesture("pointerdown");
 
 		const decision = fieldEditor.readDomSelection({
 			type: "text",
@@ -99,7 +105,7 @@ describe("FieldEditorImpl.readDomSelection PR 6", () => {
 
 	it("step 5: an open ime window writes origin ime", () => {
 		const { editor, fieldEditor, blockId } = seedEditor();
-		fieldEditor.notifyGestureEvent("compositionstart");
+		fieldEditor.reader.notifyGesture("compositionstart");
 
 		const decision = fieldEditor.readDomSelection({
 			type: "text",
@@ -127,7 +133,7 @@ describe("FieldEditorImpl.readDomSelection PR 6", () => {
 			blockIds: [blockId, "second"],
 			head: blockId,
 		});
-		fieldEditor.notifyGestureEvent("pointerdown");
+		fieldEditor.reader.notifyGesture("pointerdown");
 
 		const decision = fieldEditor.readDomSelection({
 			type: "block",
@@ -142,12 +148,10 @@ describe("FieldEditorImpl.readDomSelection PR 6", () => {
 		});
 	});
 
-	it("PR 6: beginPointerSelection opens the window and does not mute reads", () => {
+	it("PR 6: a pointerdown gesture opens the window and does not mute reads", () => {
 		const { fieldEditor } = seedEditor();
-		expect(fieldEditor.shouldHandleDomSelectionChange(0)).toBe(true);
-		fieldEditor.beginPointerSelection();
-		expect(fieldEditor.isAdmissibleGestureRead()).toBe(true);
-		expect(fieldEditor.shouldHandleDomSelectionChange(0)).toBe(true);
+		fieldEditor.reader.notifyGesture("pointerdown");
+		expect(fieldEditor.reader.isAdmissibleRead()).toBe(true);
 	});
 
 	it("I4: a closed-window cell caret move through the reader diverges and requests P2", () => {
@@ -232,7 +236,7 @@ describe("FieldEditorImpl.readDomSelection PR 6", () => {
 			{ blockId, offset: 0 },
 			{ blockId: "second", offset: 5 },
 		);
-		fieldEditor.notifyGestureEvent("pointerdown");
+		fieldEditor.reader.notifyGesture("pointerdown");
 
 		const decision = fieldEditor.readDomSelection({
 			type: "text",
@@ -272,7 +276,7 @@ describe("FieldEditorImpl.readDomSelection PR 6", () => {
 			{ blockId, offset: 0 },
 			{ blockId: "second", offset: 5 },
 		);
-		fieldEditor.notifyGestureEvent("pointerdown");
+		fieldEditor.reader.notifyGesture("pointerdown");
 		const before = getEditorSelectionRecord(editor)!;
 
 		// the engine cannot represent that far end, so it reports the
