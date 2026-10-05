@@ -11,5 +11,6 @@ Block notifier fixes:
 - A container subscribed only through `subscribeListSegments` re-segments when a `parentId`-route child is removed, re-parented or merged away, and a merge re-segments the array its source left (`sourceParentId`).
 - `getListSegments` read before `subscribeListSegments` (React reads in render and subscribes in an effect) is current once subscribed: a read attaches the notifier, a commit that touches an unsubscribed cached list drops it, and the notifier detaches at an event with no subscriber left. A subscribed list is no longer patched from a list cached before it subscribed.
 - `getBlockSnapshot` read before `subscribeBlock` is kept current the same way and keeps its identity across events that do not name the block (a newly mounted React block is no longer re-rendered with new slice identities and a reset `domSyncVersion` by an unrelated event); a commit that names it drops it. A snapshot read while no subscriber existed is no longer returned stale after a commit.
+- `getDocumentSnapshot` attaches like the other reads, and the notifier re-reads COL4 dead root entries from core's preorder whenever it attaches, so a block that died while it was detached is skipped in `rootIds`.
 
 Breaking: no

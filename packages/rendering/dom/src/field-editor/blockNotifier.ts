@@ -128,8 +128,6 @@ class BlockNotifierImpl implements BlockNotifier {
 	private _store: FieldEditorStoreSnapshot | null = null;
 	private _surface: SurfaceSnapshot = buildSurfaceSnapshot(null, undefined);
 	private _document: DocumentSnapshot | null = null;
-	/** `documentState.generation` the cached root ids were read at. */
-	private _rootIdsGeneration = -1;
 	/** Core's top-level list the root ids were last read as, while no dead id was filtered out. */
 	private _coreRootIds: readonly string[] | null = null;
 	/**
@@ -138,6 +136,11 @@ class BlockNotifierImpl implements BlockNotifier {
 	 * the block map entry names no structural change, so renderers skip these.
 	 */
 	private readonly _deadIds = new Set<string>();
+	/**
+	 * Whether `_deadIds` has followed every commit since it was last read
+	 * from core. Detached, the notifier hears none, so attaching re-reads it.
+	 */
+	private _deadIdsTracked = false;
 	/**
 	 * The parents whose cached snapshot lists each child: the pre-commit
 	 * parent a commit's summary does not name. Kept as snapshots change, so
@@ -202,15 +205,11 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	getDocumentSnapshot(): DocumentSnapshot {
-		// Attached, the snapshot is kept current by commits; detached, read now.
-		// Root ids only move with a structural change, which bumps the
-		// generation: a renderer reading every block before it subscribes
-		// (React) must not walk the order once per block (SCALE6).
-		if (!this._document || this._sources.length === 0) {
-			const structural = this._rootIdsGeneration !== this._editor.documentState.generation;
-			this._document = this._buildDocument(this._document ?? undefined, structural);
-		}
-		return this._document;
+		// A read attaches, as block and segment reads do, so commits keep the
+		// snapshot current from here and a renderer reading every block before
+		// it subscribes (React) walks the order once (SCALE6).
+		this._attach();
+		return this._document as DocumentSnapshot;
 	}
 
 	subscribeSurface(onChange: () => void): Unsubscribe {
@@ -341,6 +340,7 @@ class BlockNotifierImpl implements BlockNotifier {
 		this._sharedReadContext = null;
 		this._completion = null;
 		this._completionBlockId = null;
+		this._deadIdsTracked = false;
 		this._clearEntries();
 		// Detached, nothing keeps a list current; a subscribed one re-reads.
 		for (const parentId of [...this._segments.keys()]) this._dropSegments(parentId);
@@ -552,18 +552,31 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	private _liveRootIds(): readonly string[] {
-		this._rootIdsGeneration = this._editor.documentState.generation;
 		const rootIds = getRootBlockIds(this._editor);
-		this._reviveDeadIds();
+		if (this._deadIdsTracked) this._reviveDeadIds();
+		else this._readDeadIds(rootIds);
 		this._coreRootIds = this._deadIds.size === 0 ? rootIds : null;
 		if (this._deadIds.size === 0) return rootIds;
 		return rootIds.filter((id) => !this._deadIds.has(id));
 	}
 
 	/**
-	 * Forgets every dead id core no longer lists or holds a block for again.
-	 * Detached, the notifier hears no commit, so a block re-inserted meanwhile
-	 * is only found here (COL4). O(dead ids).
+	 * Every root entry core's preorder skips because its block is gone (COL4),
+	 * read when the notifier attaches: detached, it heard none of the commits
+	 * that killed or revived one. O(roots) of index lookups, no block reads.
+	 */
+	private _readDeadIds(rootIds: readonly string[]): void {
+		const state = this._editor.documentState;
+		this._deadIds.clear();
+		for (const id of rootIds) {
+			if (state.preorderIndexOf(id) < 0) this._deadIds.add(id);
+		}
+		this._deadIdsTracked = true;
+	}
+
+	/**
+	 * Forgets every dead id core no longer lists or holds a block for again:
+	 * a remote write can revive one without naming it (COL4). O(dead ids).
 	 */
 	private _reviveDeadIds(): boolean {
 		let changed = false;
