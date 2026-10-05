@@ -1,4 +1,10 @@
-import { applyMergeBlocks, createEditor, getListItemSemantics, getListSegments } from "@input/pen-core";
+import {
+	applyMergeBlocks,
+	createEditor,
+	getListItemSemantics,
+	getListSegments,
+	getNumberedListItemValue,
+} from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import type { DocumentOp, Editor } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
@@ -215,7 +221,7 @@ describe("block notifier (AX1 list semantics on every child route)", () => {
 		editor.destroy();
 	});
 
-	it("AX1: merging a parentId numbered item into a block outside the root order renumbers the run it left", () => {
+	it("AX1: merging a parentId numbered item into a block outside the root order keeps the root run's ordinals", () => {
 		const editor = createEditor({ schema: defaultSchema });
 		editor.apply(
 			[
@@ -231,16 +237,51 @@ describe("block notifier (AX1 list semantics on every child route)", () => {
 		);
 		const notifier = createBlockNotifier(editor);
 		const surface = attach(editor, notifier);
-		expect(notifier.getBlockSnapshot("n2").list?.ordinal).toBe(2);
+		// Ordinals count over AX1 sibling lists: n1 renders inside bq, so the
+		// root run starts at n2.
+		expect(notifier.getBlockSnapshot("n1").list?.ordinal).toBe(1);
+		expect(notifier.getBlockSnapshot("n2").list?.ordinal).toBe(1);
 
-		// Ordinals follow root-order runs. The target is a `children`-array
-		// child and the source sat in no root sibling list, so only the
-		// root slot the source vacated reaches n2 and n3.
 		applyMergeBlocks(editor, { targetBlockId: "tg-a", sourceBlockId: "n1", applyOptions: { origin: "user" } });
 
 		expect(editor.getBlock("n1")).toBeNull();
 		expect(notifier.getBlockSnapshot("n2").list?.ordinal).toBe(1);
 		expect(notifier.getBlockSnapshot("n3").list?.ordinal).toBe(2);
+		surface.detach();
+		editor.destroy();
+	});
+
+	it("AX1: a numbered item's ordinal counts over the sibling list its posinset does", () => {
+		const editor = createEditor({ schema: defaultSchema });
+		const first = editor.firstBlock()!.id;
+		editor.apply(
+			[
+				{ type: "set-props", blockId: first, props: { type: "numberedListItem" } },
+				{ type: "insert-block", blockId: "bq", blockType: "blockquote", props: {}, position: "last" },
+				{ type: "insert-block", blockId: "c1", blockType: "numberedListItem", props: { parentId: "bq" }, position: "last" },
+				{ type: "insert-block", blockId: "c2", blockType: "numberedListItem", props: { parentId: "bq" }, position: "last" },
+				{ type: "insert-block", blockId: "n2", blockType: "numberedListItem", props: {}, position: "last" },
+				{ type: "insert-block", blockId: "tg", blockType: "toggle", props: { open: true }, position: "last" },
+				{ type: "insert-block", blockId: "t1", blockType: "numberedListItem", props: {}, position: { parent: "tg", index: 0 } },
+				{ type: "insert-block", blockId: "t2", blockType: "numberedListItem", props: {}, position: { parent: "tg", index: 1 } },
+			],
+			{ origin: "system" },
+		);
+		expect(editor.documentState.blockOrder.slice(0, 5)).toEqual([first, "bq", "c1", "c2", "n2"]);
+		const notifier = createBlockNotifier(editor);
+		const surface = attach(editor, notifier);
+		const view = (id: string) => {
+			const list = notifier.getBlockSnapshot(id).list;
+			return [list?.ordinal, list?.posinset, list?.setsize];
+		};
+		expect(view(first)).toEqual([1, 1, 1]);
+		expect(view("c1")).toEqual([1, 1, 2]);
+		expect(view("c2")).toEqual([2, 2, 2]);
+		expect(view("n2"), "the blockquote ends the root run").toEqual([1, 1, 1]);
+		expect(view("t1")).toEqual([1, 1, 2]);
+		expect(view("t2")).toEqual([2, 2, 2]);
+		expect(getNumberedListItemValue(editor.getBlock("n2"))).toBe(1);
+		expect(getNumberedListItemValue(editor.getBlock("c2"))).toBe(2);
 		surface.detach();
 		editor.destroy();
 	});

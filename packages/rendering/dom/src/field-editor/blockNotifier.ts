@@ -17,7 +17,7 @@ import type {
 } from "@input/pen-types";
 
 import { getDocumentPlaceholderTargetBlockId } from "../utils/editorEmptyState";
-import { numberedRunOrdinals } from "../utils/numberedListRun";
+import { numberedOrdinals, standaloneOrdinal } from "../utils/numberedListRun";
 import { getRootBlockIds } from "../utils/parentIdTree";
 import { arraysEqual } from "../utils/arraysEqual";
 import {
@@ -81,9 +81,11 @@ function newContext(structural = false): EventContext {
 }
 
 const NUMBERED = "numberedListItem";
-const LIST_PROPS = new Set(["type", "indent", "start"]);
-/** Props whose change can move a block into, out of, or within a list group (AX1). */
-const LIST_SEMANTIC_PROPS = new Set(["type", "indent", "parentId"]);
+/**
+ * Props whose change can move a block into, out of, or within a list group
+ * (AX1), or move a numbered item's ordinal.
+ */
+const LIST_SEMANTIC_PROPS = new Set(["type", "indent", "parentId", "start"]);
 const EMPTY_IDS: readonly string[] = Object.freeze([]);
 
 function emptyFanout(): Record<BlockNotifierEventKind, number> {
@@ -363,7 +365,6 @@ class BlockNotifierImpl implements BlockNotifier {
 				ids.add(selection.anchor.blockId);
 				ids.add(selection.focus.blockId);
 			}
-			this._collectListRuns(summary, ids, context);
 		}
 		const liveness = this._trackDeadIds(summary);
 		this._updateDocument(summary.structural.length > 0 || liveness, ids);
@@ -488,28 +489,6 @@ class BlockNotifierImpl implements BlockNotifier {
 	/** Every cached parent whose snapshot lists `blockId` (two under COL4). */
 	private _cachedParentsOf(blockId: string): Iterable<string> {
 		return this._cachedParents.get(blockId) ?? EMPTY_IDS;
-	}
-
-	/**
-	 * Numbered runs around each structural position: every item whose ordinal
-	 * may have moved is named, and the run's ordinals are computed once.
-	 */
-	private _collectListRuns(summary: ChangeSummary, ids: Set<string>, context: EventContext): void {
-		const state = this._editor.documentState;
-		for (const position of listPositions(this._editor, summary)) {
-			for (const at of [position - 1, position, position + 1]) {
-				const id = state.blockAt(at);
-				if (id !== null && !context.ordinals.has(id)) this._addRun(id, ids, context);
-			}
-		}
-	}
-
-	private _addRun(blockId: string, ids: Set<string>, context: EventContext): void {
-		if (this._editor.getBlock(blockId)?.type !== NUMBERED) return;
-		for (const [runId, ordinal] of numberedRunOrdinals(this._editor, blockId)) {
-			context.ordinals.set(runId, ordinal);
-			ids.add(runId);
-		}
 	}
 
 	private _updateDocument(structural: boolean, ids: Set<string>): void {
@@ -667,8 +646,9 @@ class BlockNotifierImpl implements BlockNotifier {
 
 	/**
 	 * The run of consecutive list items around `siblings[index]`, with its
-	 * semantics recorded in the context. A run is bounded by non-list siblings,
-	 * so `getListItemSemantics` over it equals the whole-list result. O(run).
+	 * semantics and numbered ordinals recorded in the context. A run is bounded
+	 * by non-list siblings, so `getListItemSemantics` and `numberedOrdinals`
+	 * over it equal the whole-list result. O(run).
 	 */
 	private _walkRun(siblings: readonly string[], index: number, context: EventContext): readonly string[] {
 		const id = siblings[index];
@@ -680,6 +660,9 @@ class BlockNotifierImpl implements BlockNotifier {
 		const run = siblings.slice(start, end + 1);
 		for (const [blockId, semantics] of getListItemSemantics(this._editor, run)) {
 			context.semantics.set(blockId, semantics);
+		}
+		for (const [blockId, ordinal] of numberedOrdinals(this._editor, run)) {
+			context.ordinals.set(blockId, ordinal);
 		}
 		return run;
 	}
@@ -699,11 +682,14 @@ class BlockNotifierImpl implements BlockNotifier {
 	): BlockListSlice | null {
 		if (!isListItemType(type)) return null;
 		if (previous && !context.structural) return previous;
-		return buildListSlice(
-			this._ordinalFor(blockId, type, context),
-			this._semanticsFor(blockId, context, rootIds),
-			previous,
-		);
+		const semantics = this._semanticsFor(blockId, context, rootIds);
+		// Ordinals count over the same sibling list as the semantics (AX1);
+		// a block in none numbers alone.
+		const ordinal =
+			type === NUMBERED
+				? (context.ordinals.get(blockId) ?? standaloneOrdinal(this._editor.getBlock(blockId)))
+				: null;
+		return buildListSlice(ordinal, semantics, previous);
 	}
 
 	/** One list item's semantics, from the run it sits in now. */
@@ -911,16 +897,6 @@ class BlockNotifierImpl implements BlockNotifier {
 		return previous?.inlineCompletion === mine ? previous.inlineCompletion : mine;
 	}
 
-	private _ordinalFor(blockId: string, type: string | null, context: EventContext): number | null {
-		if (type !== NUMBERED) return null;
-		if (!context.ordinals.has(blockId)) {
-			for (const [id, ordinal] of numberedRunOrdinals(this._editor, blockId)) {
-				context.ordinals.set(id, ordinal);
-			}
-		}
-		return context.ordinals.get(blockId) ?? null;
-	}
-
 	private _deliver(kind: BlockNotifierEventKind, ids: Iterable<string>, context: EventContext = newContext()): void {
 		this._dropUnsubscribed();
 		const changed: string[] = [];
@@ -1045,30 +1021,6 @@ function activeIdsIfChanged(
 	const after = next ?? NO_ACTIVE;
 	if (before.mode === after.mode && before.activeBlockIds === after.activeBlockIds) return EMPTY_IDS;
 	return [...before.activeBlockIds, ...after.activeBlockIds];
-}
-
-/** Root-order positions a structural commit touched that can move list ordinals. */
-function listPositions(editor: Editor, summary: ChangeSummary): Set<number> {
-	const positions = new Set<number>();
-	for (const change of summary.structural) {
-		if (change.type === "block-props-changed" && !change.keys.some((key) => LIST_PROPS.has(key))) continue;
-		for (const id of structuralBlockIds(change)) {
-			const index = editor.documentState.indexOf(id);
-			if (index >= 0) positions.add(index);
-		}
-		// Where a block left the root order: the run it left may renumber.
-		const vacated = vacatedRootIndex(change);
-		if (vacated !== null) positions.add(vacated);
-	}
-	return positions;
-}
-
-function vacatedRootIndex(change: ChangeSummary["structural"][number]): number | null {
-	if (change.type === "block-removed" && change.parentId === null) return change.index;
-	if (change.type === "block-moved" && change.fromParentId === null) return change.fromIndex;
-	// A merge source leaves with no `block-removed`; the recipe carries its slot.
-	if (change.type === "blocks-merged" && change.sourceParentId === null) return change.sourceIndex ?? null;
-	return null;
 }
 
 function structuralBlockIds(change: ChangeSummary["structural"][number]): string[] {

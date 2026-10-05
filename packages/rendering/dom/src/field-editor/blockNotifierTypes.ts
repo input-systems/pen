@@ -52,7 +52,10 @@ export interface BlockFieldSlice {
  * `getListItemSemantics` over the sibling list it renders in.
  */
 export interface BlockListSlice extends ListItemSemantics {
-	/** `numberedListItem` value with `getNumberedListItemValue`'s semantics; null for other types. */
+	/**
+	 * `numberedListItem` value with `getNumberedListItemValue`'s semantics,
+	 * counted over the sibling list the semantics use (AX1); null for other types.
+	 */
 	readonly ordinal: number | null;
 }
 

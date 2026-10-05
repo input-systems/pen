@@ -1,4 +1,3 @@
-import { getNumberedListItemValue } from "@input/pen-core";
 import type { BlockHandle, Editor } from "@input/pen-types";
 
 const NUMBERED = "numberedListItem";
@@ -13,32 +12,29 @@ function startOf(block: BlockHandle): number | undefined {
 	return typeof start === "number" && start > 0 ? start : undefined;
 }
 
+/** A numbered item's value when nothing precedes it: its `start`, or 1. */
+export function standaloneOrdinal(block: BlockHandle | null): number | null {
+	if (block?.type !== NUMBERED) return null;
+	return startOf(block) ?? 1;
+}
+
 /**
- * Ordinals for every item of the numbered run around `blockId`, in O(run)
- * with `documentState.indexOf` / `blockAt` (SCALE2). The run is the maximal
- * stretch of consecutive `numberedListItem` blocks in `blockOrder`; values
- * follow `getNumberedListItemValue`. A block outside `blockOrder` (a
- * children-array child) has no `prev`, so its value is its own.
+ * Ordinals for every `numberedListItem` among `siblingIds`, a stretch of one
+ * sibling list (`getRootBlockIds` or `documentState.childrenOf`, as AX1 list
+ * segments use) that starts at a run boundary. An item counts the numbered
+ * items before it at its indent, back to a shallower item or its run's
+ * start, from the nearest `start`; any other block ends a run. Values follow
+ * `getNumberedListItemValue`. O(n).
  */
-export function numberedRunOrdinals(editor: Editor, blockId: string): Map<string, number> {
+export function numberedOrdinals(editor: Editor, siblingIds: readonly string[]): Map<string, number> {
 	const ordinals = new Map<string, number>();
-	const state = editor.documentState;
-	const index = state.indexOf(blockId);
-	if (index < 0) {
-		const value = getNumberedListItemValue(editor.getBlock(blockId));
-		if (value !== null) ordinals.set(blockId, value);
-		return ordinals;
-	}
-	const isNumbered = (at: number) => {
-		const id = state.blockAt(at);
-		return id !== null && editor.getBlock(id)?.type === NUMBERED;
-	};
-	let start = index;
-	while (start > 0 && isNumbered(start - 1)) start -= 1;
 	const lastByIndent = new Map<number, number>();
-	for (let at = start; isNumbered(at); at += 1) {
-		const id = state.blockAt(at) as string;
-		const block = editor.getBlock(id) as BlockHandle;
+	for (const id of siblingIds) {
+		const block = editor.getBlock(id);
+		if (block?.type !== NUMBERED) {
+			lastByIndent.clear();
+			continue;
+		}
 		const indent = indentOf(block);
 		for (const level of [...lastByIndent.keys()]) {
 			if (level > indent) lastByIndent.delete(level);
