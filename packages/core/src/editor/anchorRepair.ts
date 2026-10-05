@@ -21,20 +21,21 @@ function sitsInMovedRange(
 	offset: number,
 	assoc: Anchor["assoc"],
 	range: ContentMove["fromRange"],
-	sourceRemoved: boolean,
+	sourceRemoved: () => boolean,
 ): boolean {
 	if (offset > range.from && offset < range.to) {
 		return true;
 	}
 	// An anchor on an edge stays with the text on its side of that edge, unless
 	// the commit removed the source block and left nothing there to stay with.
-	if (offset === range.from && (assoc === 1 || sourceRemoved)) {
+	// The block read runs only for an edge anchor its assoc does not decide.
+	if (offset === range.from && (assoc === 1 || sourceRemoved())) {
 		return true;
 	}
 	if (
 		offset === range.to &&
 		range.to > range.from &&
-		(assoc === -1 || sourceRemoved)
+		(assoc === -1 || sourceRemoved())
 	) {
 		return true;
 	}
@@ -179,7 +180,7 @@ export function repairAnchor(
 		if (prior.blockId !== move.fromBlockId) {
 			continue;
 		}
-		const sourceRemoved = editor.getBlock(move.fromBlockId) === null;
+		const sourceRemoved = () => editor.getBlock(move.fromBlockId) === null;
 		if (
 			!sitsInMovedRange(
 				prior.offset,
