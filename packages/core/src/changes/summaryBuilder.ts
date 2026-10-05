@@ -198,21 +198,44 @@ function buildStructuralChanges(
 	{ blockExists, listedMoreThanOnce }: SummaryLookups,
 ): StructuralChange[] {
 	const structural: StructuralChange[] = [];
-	const { inserted, removed } = collectArrayEdits(
-		delta,
-		index,
-		listedMoreThanOnce,
-	);
+	const edits = collectArrayEdits(delta, index, listedMoreThanOnce);
+	const removed = edits.removed;
 	addReplacedChildArrays(removed, delta, index);
 	if (delta.arrivedChildArrays?.size) {
-		addInsertedDescendants(inserted, delta.arrivedChildArrays);
+		addInsertedDescendants(edits.inserted, delta.arrivedChildArrays);
+	}
+	const splitNewId =
+		structuralOrigin?.kind === "split" ? structuralOrigin.newBlockId : null;
+
+	// COL4: an inserted entry can name no block — an undo restoring an
+	// order entry a peer's delete orphaned, a peer's move re-inserting an
+	// entry for a block deleted here (once, or again beside an earlier such
+	// entry), or a move arriving with the delete of the block it moves. It is
+	// no insert and no move. One the index never held is reported removed
+	// where it sits; one it held is reported removed where it sat, by the
+	// removal or deleted-map paths below. Asked only for entries whose map
+	// neither arrived in the commit nor was stored, or was stored and left
+	// in it, so an ordinary insert or move reads nothing (SCALE2).
+	const danglingInserted: ArrayInsert[] = [];
+	const inserted: ArrayInsert[] = [];
+	for (const item of edits.inserted) {
+		const held = index.typeById.has(item.id);
+		const mapChange = delta.blockMapChanges.get(item.id);
+		if (
+			blockExists &&
+			item.id !== splitNewId &&
+			(held ? mapChange?.size === 0 : mapChange === undefined) &&
+			!blockExists(item.id)
+		) {
+			if (!held) danglingInserted.push(item);
+			continue;
+		}
+		inserted.push(item);
 	}
 
 	const insertedIds = new Set(inserted.map((item) => item.id));
 	const removedIds = new Set(removed.map((item) => item.id));
 	const removedById = new Map(removed.map((item) => [item.id, item]));
-	const splitNewId =
-		structuralOrigin?.kind === "split" ? structuralOrigin.newBlockId : null;
 	const mergeSourceId =
 		structuralOrigin?.kind === "merge"
 			? structuralOrigin.sourceBlockId
@@ -242,24 +265,8 @@ function buildStructuralChanges(
 		});
 	}
 
-	const danglingInserted: (typeof inserted)[number][] = [];
 	for (const item of inserted) {
 		if (item.id === splitNewId) continue;
-		// COL4: an entry whose block map neither arrived with it nor was
-		// stored (an undo restoring an order entry a peer's delete orphaned,
-		// a peer's move re-inserting an entry for a block deleted here, once
-		// or again beside an earlier such entry) names no block, so it is no
-		// move either. Asked only for such entries, so an ordinary insert,
-		// whose map arrives in the same commit, reads nothing.
-		if (
-			blockExists &&
-			!index.typeById.has(item.id) &&
-			!delta.blockMapChanges.has(item.id) &&
-			!blockExists(item.id)
-		) {
-			danglingInserted.push(item);
-			continue;
-		}
 		if (removedIds.has(item.id) || index.parentById.has(item.id)) {
 			// An entry deleted and re-inserted moved, even back to the same
 			// index: the index is pre-commit, `item.index` post-commit, and

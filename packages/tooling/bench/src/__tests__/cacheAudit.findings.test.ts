@@ -341,6 +341,32 @@ describe("cache property findings", () => {
 		expect(cacheProblems(deleter)).toEqual([]);
 	});
 
+	it("a move arriving with the delete of the block it moves reports the block removed", () => {
+		const peers = fork(3);
+		const [receiver, deleter, mover] = peers as [TestEditor, TestEditor, TestEditor];
+		deleter.apply([{ type: "delete-block", blockId: "scale-block-5" }]);
+		mover.apply([
+			{ type: "move-block", blockId: "scale-block-5", position: { after: "scale-block-9" } },
+		]);
+		harness!.deliver(2, 1);
+		const summaries: ChangeSummary[] = [];
+		const off = receiver.on("commit", (event: CommitEvent) => {
+			summaries.push(event.summary);
+		});
+		harness!.deliver(1, 0);
+		off();
+		const reported = summaries.flatMap((summary) =>
+			summary.structural.flatMap((change) =>
+				"blockId" in change && change.blockId === "scale-block-5" ? [change] : [],
+			),
+		);
+		expect(reported).toEqual([
+			{ type: "block-removed", blockId: "scale-block-5", parentId: null, index: 5 },
+		]);
+		expect(receiver.documentState.preorderBlockIds()).not.toContain("scale-block-5");
+		expect(cacheProblems(receiver)).toEqual([]);
+	});
+
 	describe.each([
 		{ name: "both keep their first child", deleteOn: null },
 		{ name: "the lower peer deletes its first child", deleteOn: 0 },
