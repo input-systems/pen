@@ -685,19 +685,29 @@ class BlockNotifierImpl implements BlockNotifier {
 	}
 
 	/**
-	 * One list item's semantics, from the run it sits in now. Outside a
-	 * structural commit the previous slice still holds, so typing in a list
-	 * item reads no run (W6.R4).
+	 * One list item's slice. Outside a structural commit neither its semantics
+	 * nor its ordinal can move — both change only with a sibling list or a
+	 * run member's type, indent or `start` — so the previous slice still holds
+	 * and a keystroke or caret move in a list item reads no run (W6.R4, SCALE6).
 	 */
-	private _semanticsFor(
+	private _listFor(
 		blockId: string,
 		type: string | null,
 		context: EventContext,
 		previous: BlockListSlice | null | undefined,
 		rootIds: readonly string[],
-	): ListItemSemantics | null {
+	): BlockListSlice | null {
 		if (!isListItemType(type)) return null;
 		if (previous && !context.structural) return previous;
+		return buildListSlice(
+			this._ordinalFor(blockId, type, context),
+			this._semanticsFor(blockId, context, rootIds),
+			previous,
+		);
+	}
+
+	/** One list item's semantics, from the run it sits in now. */
+	private _semanticsFor(blockId: string, context: EventContext, rootIds: readonly string[]): ListItemSemantics {
 		const cached = context.semantics.get(blockId);
 		if (cached) return cached;
 		const parentId = this._editor.documentState.parentOf(blockId);
@@ -862,11 +872,7 @@ class BlockNotifierImpl implements BlockNotifier {
 			field: buildFieldSlice(editor, this._storeFor(), blockId, entry.domSyncVersion, previous?.field),
 			decorations: editor.getDecorations().forBlock(blockId),
 			childIds: this._childIdsFor(blockId, previous),
-			list: buildListSlice(
-				this._ordinalFor(blockId, commit.type, context),
-				this._semanticsFor(blockId, commit.type, context, previous?.list, document.rootIds),
-				previous?.list,
-			),
+			list: this._listFor(blockId, commit.type, context, previous?.list, document.rootIds),
 			isPlaceholderTarget: document.placeholderTargetBlockId === blockId,
 			inlineCompletion: this._completionFor(blockId, previous),
 			inlineCompletionVisible: this._visibleCompletion() !== null,

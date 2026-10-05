@@ -217,6 +217,35 @@ describe("block notifier (SCALE2 fan-out)", () => {
 		editor.destroy();
 	});
 
+	it("SCALE6: a keystroke and a caret move in a numbered run read the same blocks at 1,000 and 5,000 items", () => {
+		const blockReads = (itemCount: number) => {
+			const editor = createDocument(itemCount, () => "numberedListItem");
+			const notifier = createBlockNotifier(editor);
+			const probe = subscribeAll(editor, notifier);
+			const middle = `b${Math.floor(itemCount / 2)}`;
+			editor.selectText(middle, 0, 0);
+			const getBlock = editor.getBlock.bind(editor);
+			let reads = 0;
+			editor.getBlock = (blockId: string) => {
+				reads += 1;
+				return getBlock(blockId);
+			};
+			editor.apply([{ type: "splice-text", blockId: middle, from: 0, to: 0, insert: "x" }], { origin: "user" });
+			editor.selectText(middle, 1, 1);
+			const keystroke = reads;
+			reads = 0;
+			editor.selectText(middle, 0, 0);
+			const caretMove = reads;
+			expect(notifier.getBlockSnapshot(middle).list?.ordinal).toBe(Math.floor(itemCount / 2) + 1);
+			probe.unsubscribeAll();
+			editor.destroy();
+			return { keystroke, caretMove };
+		};
+		const small = blockReads(1_000);
+		expect(small.keystroke).toBeLessThan(20);
+		expect(blockReads(5_000)).toEqual(small);
+	});
+
 	it("SCALE2: the root list-segment channel fires once on a structural commit and not on a text commit", () => {
 		const editor = createDocument(10);
 		const notifier = createBlockNotifier(editor);
