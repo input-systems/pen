@@ -53,6 +53,118 @@ describe("@input/pen-react field editor Tab handling: autocomplete commit", () =
 		editor.destroy();
 	});
 
+	it("K5: accepts a visible inline completion instead of nesting a list item", () => {
+		const editor = createPresetEditor({
+			preset: {
+				shortcuts: false,
+			},
+			extensions: [aiExtension()],
+		});
+		const firstBlockId = editor.firstBlock()!.id;
+		const secondBlockId = crypto.randomUUID();
+		editor.apply([
+			{
+				type: "set-props",
+				blockId: firstBlockId,
+				props: { type: "bulletListItem" },
+			},
+			{
+				type: "insert-block",
+				blockId: secondBlockId,
+				blockType: "bulletListItem",
+				props: { indent: 0 },
+				position: { after: firstBlockId },
+			},
+			{
+				type: "splice-text",
+				blockId: secondBlockId,
+				from: 0,
+				to: 0,
+				insert: "Hello",
+			},
+		]);
+		editor.selectText(secondBlockId, 5, 5);
+		const fieldEditor = createFieldEditorMock(secondBlockId);
+		getInlineCompletionController(editor)?.showSuggestion({
+			id: "suggestion-1",
+			blockId: secondBlockId,
+			offset: 5,
+			text: " world",
+			type: "inline",
+		});
+
+		const handled = handleFieldEditorKeyDown({
+			event: createKeyEvent("Tab"),
+			editor,
+			fieldEditor: fieldEditor.controller,
+			ytext: getYText(editor, secondBlockId),
+			range: { start: 5, end: 5 },
+		});
+
+		expect(handled).toBe(true);
+		expect(editor.getBlock(secondBlockId)?.textContent()).toBe(
+			"Hello world",
+		);
+		expect(editor.getBlock(secondBlockId)?.props.indent).toBe(0);
+
+		editor.destroy();
+	});
+
+	it("K5: outdents a list item on Shift-Tab while an inline completion is visible", () => {
+		const editor = createPresetEditor({
+			preset: {
+				shortcuts: false,
+			},
+			extensions: [aiExtension()],
+		});
+		const firstBlockId = editor.firstBlock()!.id;
+		const secondBlockId = crypto.randomUUID();
+		editor.apply([
+			{
+				type: "set-props",
+				blockId: firstBlockId,
+				props: { type: "bulletListItem" },
+			},
+			{
+				type: "insert-block",
+				blockId: secondBlockId,
+				blockType: "bulletListItem",
+				props: { indent: 1 },
+				position: { after: firstBlockId },
+			},
+			{
+				type: "splice-text",
+				blockId: secondBlockId,
+				from: 0,
+				to: 0,
+				insert: "Hello",
+			},
+		]);
+		editor.selectText(secondBlockId, 5, 5);
+		const fieldEditor = createFieldEditorMock(secondBlockId);
+		getInlineCompletionController(editor)?.showSuggestion({
+			id: "suggestion-1",
+			blockId: secondBlockId,
+			offset: 5,
+			text: " world",
+			type: "inline",
+		});
+
+		const handled = handleFieldEditorKeyDown({
+			event: createKeyEvent("Tab", { shiftKey: true }),
+			editor,
+			fieldEditor: fieldEditor.controller,
+			ytext: getYText(editor, secondBlockId),
+			range: { start: 5, end: 5 },
+		});
+
+		expect(handled).toBe(true);
+		expect(editor.getBlock(secondBlockId)?.textContent()).toBe("Hello");
+		expect(editor.getBlock(secondBlockId)?.props.indent).toBe(0);
+
+		editor.destroy();
+	});
+
 	it("dismisses visible autocomplete on typing without handling the key event", () => {
 		let dismissReason: string | null = null;
 		let activeEditor: ReturnType<typeof createEditor> | null = null;

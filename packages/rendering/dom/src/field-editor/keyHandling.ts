@@ -91,6 +91,20 @@ export function handleFieldEditorKeyDown(options: {
 		ensureLineEdgeMeasure(editor, keyDocument);
 	}
 
+	// K5: a visible ghost owns Tab, so the keymap's list indent must not win
+	// it. Shift-Tab goes to the keymap first so outdent works under a ghost.
+	if (isTabOrShiftTab(event) && !event.shiftKey) {
+		const accepted = acceptVisibleInlineCompletion(
+			event,
+			editor,
+			fieldEditor,
+			autocomplete,
+		);
+		if (accepted !== null) {
+			return accepted;
+		}
+	}
+
 	if (
 		dispatchKeymapEvent(editor, event, {
 			composing: event.isComposing === true,
@@ -105,22 +119,14 @@ export function handleFieldEditorKeyDown(options: {
 		return true;
 	}
 
-	if (
-		event.key === "Tab" &&
-		!event.metaKey &&
-		!event.ctrlKey &&
-		!event.altKey
-	) {
-		const inlineCompletion = getInlineCompletionController(editor);
-		if (inlineCompletion?.hasVisibleSuggestion()) {
-			event.preventDefault();
-			if (autocomplete?.hasVisibleSuggestion()) {
-				return autocomplete.acceptVisibleSuggestion();
-			}
-			const accepted = inlineCompletion.acceptSuggestion();
-			if (accepted) {
-				syncAcceptedInlineCompletionSelection(editor, fieldEditor);
-			}
+	if (isTabOrShiftTab(event)) {
+		const accepted = acceptVisibleInlineCompletion(
+			event,
+			editor,
+			fieldEditor,
+			autocomplete,
+		);
+		if (accepted !== null) {
 			return accepted;
 		}
 
@@ -153,6 +159,37 @@ export function handleFieldEditorKeyDown(options: {
 	}
 
 	return false;
+}
+
+function isTabOrShiftTab(event: KeyboardEvent): boolean {
+	return (
+		event.key === "Tab" &&
+		!event.metaKey &&
+		!event.ctrlKey &&
+		!event.altKey
+	);
+}
+
+/** Returns null when no inline completion is visible, so the key falls through. */
+function acceptVisibleInlineCompletion(
+	event: KeyboardEvent,
+	editor: Editor,
+	fieldEditor: FieldEditorKeyboardController,
+	autocomplete: ReturnType<typeof getAutocompleteController>,
+): boolean | null {
+	const inlineCompletion = getInlineCompletionController(editor);
+	if (!inlineCompletion?.hasVisibleSuggestion()) {
+		return null;
+	}
+	event.preventDefault();
+	if (autocomplete?.hasVisibleSuggestion()) {
+		return autocomplete.acceptVisibleSuggestion();
+	}
+	const accepted = inlineCompletion.acceptSuggestion();
+	if (accepted) {
+		syncAcceptedInlineCompletionSelection(editor, fieldEditor);
+	}
+	return accepted;
 }
 
 function handleTableCellKey(
