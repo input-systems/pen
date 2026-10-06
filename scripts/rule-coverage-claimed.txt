@@ -304,3 +304,4 @@ rules/dom#FE2
 rules/dom#RI6
 rules/dom#OV4
 rules/selection#P4
+rules/commands#K5
