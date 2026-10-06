@@ -177,6 +177,18 @@ export function shouldHandleEditorKeyboardEvent({
 		return false;
 	}
 
+	// Mod-a and history act on whatever holds focus. A host element focused
+	// beside the editor keeps them, however this editor's selection was left
+	// (HOST9); focus on the body or on a wrapper of the root is nobody else's.
+	if (
+		isDocumentShortcut(event) &&
+		isDomNode(activeElement) &&
+		!root.contains(activeElement) &&
+		!activeElement.contains(root)
+	) {
+		return false;
+	}
+
 	if (hasMappedDomSelection?.()) {
 		return true;
 	}
