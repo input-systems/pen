@@ -4,7 +4,7 @@ import {
 	type SuggestionMenuTarget,
 	type SuggestionMenuTrigger,
 } from "@input/pen-core";
-import type { Editor } from "@input/pen-types";
+import { isPromiseLike, type Editor } from "@input/pen-types";
 import { useIsomorphicLayoutEffect } from "./useIsomorphicLayoutEffect";
 
 export type {
@@ -59,6 +59,51 @@ export interface SuggestionMenuActions {
 
 export type SuggestionMenuController<TItem> = SuggestionMenuState<TItem> &
 	SuggestionMenuActions;
+
+function errorState<TItem>(
+	target: SuggestionMenuTarget,
+	error: unknown,
+): SuggestionMenuState<TItem> {
+	return {
+		open: true,
+		query: target.query,
+		items: [],
+		selectedIndex: 0,
+		status: "error",
+		target,
+		error,
+	};
+}
+
+/** Whether both targets start at the same trigger, whatever the query length. */
+function isSameTriggerRange(
+	previous: SuggestionMenuTarget | null,
+	target: SuggestionMenuTarget,
+): boolean {
+	return (
+		previous?.blockId === target.blockId &&
+		previous.startOffset === target.startOffset
+	);
+}
+
+/** Open state for resolved items, keeping the selection when the target is unchanged. */
+function readyState<TItem>(
+	previous: SuggestionMenuState<TItem>,
+	target: SuggestionMenuTarget,
+	items: readonly TItem[],
+): SuggestionMenuState<TItem> {
+	return {
+		open: true,
+		query: target.query,
+		items,
+		selectedIndex: areSuggestionTargetsEqual(previous.target, target)
+			? Math.min(previous.selectedIndex, Math.max(0, items.length - 1))
+			: 0,
+		status: "ready",
+		target,
+		error: null,
+	};
+}
 
 export function useSuggestionMenu<TItem>(
 	options: UseSuggestionMenuOptions<TItem>,
@@ -136,10 +181,34 @@ export function useSuggestionMenu<TItem>(
 		requestRef.current.abortController?.abort();
 		requestRef.current.abortController = abortController;
 
+		let result: ReturnType<typeof currentOptions.getItems>;
+		try {
+			result = currentOptions.getItems({
+				editor: currentOptions.editor,
+				query: target.query,
+				signal: abortController?.signal ?? null,
+				target,
+			});
+		} catch (error) {
+			setState(errorState(target, error));
+			return;
+		}
+
+		// a synchronous result skips the empty loading state, which would
+		// otherwise blank an open menu for a render on every keystroke
+		if (!isPromiseLike(result)) {
+			setState((previous) => readyState(previous, target, result));
+			return;
+		}
+
 		setState((previous) => ({
 			open: true,
 			query: target.query,
-			items: [],
+			// a refined query keeps the previous items until its own arrive,
+			// so an open menu does not blank while the request is pending
+			items: isSameTriggerRange(previous.target, target)
+				? previous.items
+				: [],
 			selectedIndex: areSuggestionTargetsEqual(previous.target, target)
 				? previous.selectedIndex
 				: 0,
@@ -148,14 +217,7 @@ export function useSuggestionMenu<TItem>(
 			error: null,
 		}));
 
-		void Promise.resolve(
-			currentOptions.getItems({
-				editor: currentOptions.editor,
-				query: target.query,
-				signal: abortController?.signal ?? null,
-				target,
-			}),
-		)
+		void Promise.resolve(result)
 			.then((items) => {
 				if (requestRef.current.id !== requestId) {
 					return;
@@ -171,21 +233,7 @@ export function useSuggestionMenu<TItem>(
 					return;
 				}
 
-				setState((previous) => ({
-					open: true,
-					query: target.query,
-					items,
-					selectedIndex:
-						items.length === 0
-							? 0
-							: Math.min(
-									previous.selectedIndex,
-									items.length - 1,
-								),
-					status: "ready",
-					target,
-					error: null,
-				}));
+				setState((previous) => readyState(previous, target, items));
 			})
 			.catch((error: unknown) => {
 				if (requestRef.current.id !== requestId) {
@@ -194,15 +242,7 @@ export function useSuggestionMenu<TItem>(
 				if (isAbortError(error) || abortController?.signal.aborted) {
 					return;
 				}
-				setState({
-					open: true,
-					query: target.query,
-					items: [],
-					selectedIndex: 0,
-					status: "error",
-					target,
-					error,
-				});
+				setState(errorState(target, error));
 			});
 	}, [dismiss]);
 

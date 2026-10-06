@@ -15,6 +15,7 @@
 - isMessageKey
 - isNestedContent
 - isPluralMessage
+- isPromiseLike
 - isScopedSelectionTarget
 
 ### value

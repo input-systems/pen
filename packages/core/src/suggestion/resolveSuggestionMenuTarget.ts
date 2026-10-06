@@ -25,7 +25,9 @@ export interface SuggestionMenuTrigger {
 	allowSpaces?: boolean;
 	/**
 	 * `"whitespace"` requires start-of-prefix or a whitespace character before
-	 * the trigger (an atom is not whitespace). `"any"` does not.
+	 * the trigger (an atom is not whitespace) and anchors on the last trigger
+	 * that satisfies it, so later trigger characters belong to the query.
+	 * `"any"` anchors on the last trigger regardless.
 	 * @default "any"
 	 */
 	boundary?: SuggestionMenuBoundary;
@@ -64,7 +66,9 @@ export function inlineLogicalText(block: BlockHandle): string {
  * Each inline atom occupies one offset (U+FFFC in {@link inlineLogicalText}).
  * A query range that contains an atom is refused. A trigger immediately after
  * an atom starts at the offset after that atom; `boundary: "whitespace"` still
- * rejects when the preceding unit is the atom.
+ * rejects when the preceding unit is the atom. Under that boundary the
+ * match anchors on the last trigger preceded by whitespace or sitting at the
+ * start of the lookbehind, so a later trigger character is part of the query.
  *
  * @param editor - Editor whose collapsed text caret is read.
  * @param trigger - Trigger character and match constraints. See
@@ -99,16 +103,19 @@ export function resolveSuggestionMenuTarget(
 	const prefixStartOffset = Math.max(0, offset - lookbehind);
 	const { text, atoms } = logicalInline(block);
 	const textBefore = text.slice(prefixStartOffset, offset);
-	const triggerIndex = textBefore.lastIndexOf(trigger.char);
+	let triggerIndex = textBefore.lastIndexOf(trigger.char);
+	if (trigger.boundary === "whitespace") {
+		// a trigger char inside the query ("@ada@example") is query text, so
+		// anchor on the last occurrence the boundary accepts
+		while (triggerIndex > 0 && !/\s/.test(textBefore[triggerIndex - 1]!)) {
+			triggerIndex = textBefore.lastIndexOf(
+				trigger.char,
+				triggerIndex - 1,
+			);
+		}
+	}
 	if (triggerIndex < 0) {
 		return null;
-	}
-
-	if (trigger.boundary === "whitespace") {
-		const previousChar = textBefore[triggerIndex - 1];
-		if (previousChar && !/\s/.test(previousChar)) {
-			return null;
-		}
 	}
 
 	const query = textBefore.slice(triggerIndex + trigger.char.length);

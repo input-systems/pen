@@ -95,6 +95,56 @@ describe("N6 resolveSuggestionMenuTarget logical offsets", () => {
 		editor.destroy();
 	});
 
+	it("N6: a whitespace boundary anchors on the last trigger that satisfies it", () => {
+		const editor = createEditor();
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: "hi @thijs@gm",
+			},
+		]);
+		editor.selectText(blockId, 12, 12);
+
+		expect(
+			resolveSuggestionMenuTarget(editor, AT_WHITESPACE_TRIGGER),
+		).toEqual({
+			blockId,
+			startOffset: 3,
+			endOffset: 12,
+			query: "thijs@gm",
+			trigger: "@",
+		});
+		expect(resolveSuggestionMenuTarget(editor, AT_TRIGGER)).toMatchObject({
+			startOffset: 9,
+			query: "gm",
+		});
+		editor.destroy();
+	});
+
+	it("N6: a whitespace boundary rejects text with no trigger that satisfies it", () => {
+		const editor = createEditor();
+		const blockId = editor.firstBlock()!.id;
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: "hi thijs@gm",
+			},
+		]);
+		editor.selectText(blockId, 11, 11);
+
+		expect(
+			resolveSuggestionMenuTarget(editor, AT_WHITESPACE_TRIGGER),
+		).toBeNull();
+		editor.destroy();
+	});
+
 	it("N6: rejects an atom inside the typed prefix", () => {
 		const editor = createEditor();
 		const blockId = editor.firstBlock()!.id;
