@@ -62,7 +62,7 @@ For substantive changes run `pnpm build`, `pnpm typecheck`, and `pnpm test` befo
 
 ## Releases
 
-- Changesets drive versioning (`pnpm changeset`, `pnpm version-packages`). GitHub opens the Version Packages PR; publish locally with `pnpm release`. Any PR that changes a published package's behavior or API includes a changeset. The train is `0.x`; breaking is `minor`, additive is `patch`, and `major` is rejected until 1.0. The first published train was `0.1.0`.
+- Changesets drive versioning (`pnpm changeset`, `pnpm version-packages`). GitHub opens the Version Packages PR with its built-in token. A maintainer approves the bot PR workflows and merges after required checks pass; release CI then builds, validates, and publishes with `pnpm release` using `NPM_TOKEN`, verifies the full npm train, atomically pushes package tags plus `vX.Y.Z`, and creates the `vX.Y.Z` GitHub Release. Recover failures by re-running the original version-commit workflow. Setup and token rotation are documented in `.changeset/README.md`; no GitHub App is required. Any PR that changes a published package's behavior or API includes a changeset. The train is `0.x`; breaking is `minor`, additive is `patch`, and `major` is rejected until 1.0. The first published train was `0.1.0`.
 - Published packages ship dual ESM/CJS with `exports` maps, `files`, and `sideEffects: false`; keep manifests consistent (`sync-package-metadata.mjs` exists for shared fields).
 
 ## Agent Skills And Reviewers
@@ -71,3 +71,14 @@ For substantive changes run `pnpm build`, `pnpm typecheck`, and `pnpm test` befo
 - `.agents/skills/ligne-blanche` — boundary/structural integrity review for changes.
 - `.cursor/skills/investigate` — root-cause investigation workflow; use before fixing non-trivial bugs.
 - `.cursor/agents/spec-reviewer.md` — reviews a diff against `spec/`, `spec/rules/` rule IDs, and `.cursor/rules`; use proactively after implementing features or refactors.
+
+<!-- BEGIN:turborepo-agent-rules -->
+
+# This is NOT the Turborepo you know
+
+Turborepo configuration, task behavior, and CLI commands can vary between installed versions and may differ from your training data. Resolve the `turbo` package from this file's directory or relevant workspace; in monorepos, it may not be visible from the repository root. For example, run `node -p "require.resolve('turbo/package.json')"` from a workspace that depends on `turbo`.
+
+Read `docs/README.md` inside that installed package first, then read the relevant pages from its `docs/` directory before changing Turborepo configuration or commands. Heed deprecation notices. These bundled docs match the installed package version and are available without network access.
+
+This block is written and re-added by `turbo` before repository-scoped commands when an AI agent is detected. In the Turborepo source repository, its template is defined in `crates/turborepo-cli/src/cli/agent_guidance.rs`. Removing the managed block while updates are enabled means a later qualifying invocation will add it again. Set `"agentGuidance": false` in the root `turbo.json` or `turbo.jsonc` to opt out; this does not remove an existing block. Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
+<!-- END:turborepo-agent-rules -->

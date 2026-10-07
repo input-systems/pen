@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { parse, stringify } from "yaml";
 
 const repoRoot = path.resolve(
 	path.dirname(new URL(import.meta.url).pathname),
@@ -14,61 +15,125 @@ const EXPECTED_REPOSITORY_URL = "https://github.com/input-systems/pen.git";
 //   pnpm exec attw --pack <packageDir>
 //   pnpm dlx publint --pack pnpm <packageDir>
 //   pnpm dlx @arethetypeswrong/cli --pack <packageDir>
-// Prep (API7): the GitHub release workflow versions the train and does
-//   not publish. `pnpm release` (`changeset publish`) is local.
-//   --provenance is an npm flag; @changesets/cli 3 rejects it.
+// API7: CI versions and publishes the train. --provenance is an npm flag;
+// @changesets/cli 3 receives it through NPM_CONFIG_PROVENANCE instead.
 
 function provenanceWorkflowProblems(workflow, rootReleaseScript) {
 	const problems = [];
-	if (/id-token:\s*write/.test(workflow)) {
-		problems.push(
-			".github/workflows/release.yml must not grant id-token: write; publishing is local, not OIDC",
-		);
+	let config;
+	try {
+		config = parse(workflow);
+	} catch {
+		return ["release.yml must be valid YAML"];
 	}
-	if (/NPM_CONFIG_PROVENANCE/.test(workflow)) {
-		problems.push(
-			".github/workflows/release.yml must not set NPM_CONFIG_PROVENANCE; the workflow does not publish",
-		);
+	const job = config?.jobs?.release;
+	const steps = job?.steps ?? [];
+	const checkout = steps.find((step) =>
+		step.uses?.startsWith("actions/checkout@"),
+	);
+	const setup = steps.find((step) => step.uses === "./.github/actions/setup");
+	const action = steps.find((step) =>
+		step.uses?.startsWith("changesets/action@"),
+	);
+	const train = steps.find(
+		(step) =>
+			step.id === "train" &&
+			step.run === "node scripts/release-train.mjs --plan",
+	);
+	const build = steps.find((step) => step.run === "pnpm build");
+	const publish = steps.find((step) => step.run?.startsWith("pnpm release"));
+	const prepare = steps.find((step) => step.id === "prepare");
+	const finish = steps.find(
+		(step) => step.run === "node scripts/release-train.mjs --finish",
+	);
+	const githubRelease = steps.find(
+		(step) =>
+			step.run === "node scripts/release-train.mjs --github-release",
+	);
+	const require = (condition, message) => {
+		if (!condition) problems.push(message);
+	};
+	require(config?.on?.push?.branches?.length === 1 &&
+		config.on.push.branches[0] === "main" &&
+		!Object.keys(config.on).some(
+			(event) => event !== "push" && event !== "workflow_dispatch",
+		), "release.yml must run only on main pushes or manual recovery");
+	require(job?.if?.includes("github.ref == 'refs/heads/main'") &&
+		job.if.includes(
+			"github.repository == 'input-systems/pen'",
+		), "release job must restrict manual dispatch to main in input-systems/pen");
+	for (const permission of ["contents", "pull-requests", "id-token"]) {
+		require(job?.permissions?.[permission] ===
+			"write", `release job must grant ${permission}: write`);
 	}
-	if (
-		/secrets\.NPM_TOKEN/.test(workflow) ||
-		/^\s*NPM_TOKEN:/m.test(workflow)
-	) {
-		problems.push(
-			".github/workflows/release.yml must not set NPM_TOKEN; publishing is local",
-		);
-	}
-	if (/npm install -g npm@/.test(workflow)) {
-		problems.push(
-			".github/workflows/release.yml must not install a publish-only npm CLI; the workflow does not publish",
-		);
-	}
-	if (
-		/^[ \t]*publish-script:/m.test(workflow) ||
-		/^[ \t]*publish:/m.test(workflow)
-	) {
-		problems.push(
-			".github/workflows/release.yml must not pass a publish-script; prep versions only, publish locally with pnpm release",
-		);
-	}
-	if (!/^[ \t]*version-script:/m.test(workflow)) {
-		problems.push(
-			".github/workflows/release.yml must pass changesets/action v2 version-script",
-		);
-	}
-	if (/changesets\/action@\S+ # v1/.test(workflow)) {
-		problems.push(
-			".github/workflows/release.yml must use changesets/action v2 with @changesets/cli 3",
-		);
-	}
-	if (
-		!/fetch-tags:\s*true/.test(workflow) ||
-		!/fetch-depth:\s*0/.test(workflow)
-	) {
-		problems.push(
-			".github/workflows/release.yml must fetch tags (fetch-depth: 0 and fetch-tags: true) so stamp-first-train can see a v* train tag",
-		);
-	}
+	require(config?.concurrency?.queue === "max" &&
+		config.concurrency["cancel-in-progress"] ===
+			false, "release concurrency must queue pending releases without cancelling them");
+	require(checkout?.with?.["fetch-depth"] === 0 &&
+		checkout.with["fetch-tags"] ===
+			true, "release checkout must fetch tags and full history");
+	require(setup?.with?.["registry-url"] ===
+		"https://registry.npmjs.org", "release toolchain must configure the npm registry-url");
+	require(!setup?.with?.[
+		"turbo-cache-scope"
+	], "release artifacts must be built without a restored Turbo cache");
+	require(action?.uses ===
+		"changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51", "release.yml must use pinned changesets/action v2 with CLI 3");
+	require(action?.with?.["github-token"] ===
+		"${{ github.token }}", "Changesets must use the built-in github-token input");
+	require(action?.with?.["version-script"] ===
+		"pnpm version-packages", "Changesets must pass version-script: pnpm version-packages");
+	require(action?.with?.["publish-script"] ===
+		"pnpm release", "Changesets publish-script must describe automatic publishing in the version PR");
+	require(action?.if ===
+		"steps.prepare.outputs.current == 'true'", "Changesets must only prepare a PR from the current main commit");
+	require(prepare?.if === "steps.train.outputs.has-changesets == 'true'" &&
+		prepare.run?.includes(
+			"git ls-remote --exit-code origin refs/heads/main",
+		) &&
+		prepare.run.includes(
+			'"${remote_head%%[[:space:]]*}" == "$GITHUB_SHA"',
+		), "PR preparation must check pending changesets against the live main commit");
+	require(publish?.if ===
+		"steps.train.outputs.publish == 'true'", "npm publishing must run pnpm release only for a version commit");
+	require(publish?.run === 'pnpm release --no-git-tag --tag "$NPM_TAG"' &&
+		publish.env?.NPM_TAG ===
+			"${{ steps.train.outputs.npm-tag }}", "npm publishing must pass the planned npm tag through NPM_TAG");
+	require(build !== undefined &&
+		(build.if === undefined ||
+			build.if ===
+				publish?.if), "release job must build the version commit whenever it publishes");
+	require(publish?.env?.NODE_AUTH_TOKEN ===
+		"${{ secrets.NPM_TOKEN }}", "npm publishing must authenticate with NODE_AUTH_TOKEN from secrets.NPM_TOKEN");
+	require(String(publish?.env?.NPM_CONFIG_PROVENANCE) ===
+		"true", "npm publishing must set NPM_CONFIG_PROVENANCE: true");
+	require(!config?.env?.NODE_AUTH_TOKEN &&
+		!job?.env?.NODE_AUTH_TOKEN &&
+		!action?.env
+			?.NODE_AUTH_TOKEN, "NODE_AUTH_TOKEN must stay scoped to release steps");
+	require(action?.with?.["push-git-tags"] === false &&
+		action.with["create-github-releases"] ===
+			false, "Changesets must defer git tags until the entire npm train is verified");
+	require(train !==
+		undefined, "release job must identify the version commit before publishing");
+	require(finish?.if ===
+		"steps.train.outputs.publish == 'true'", "release job must verify and finish tags even when a retry publishes nothing");
+	require(githubRelease?.if === "steps.train.outputs.publish == 'true'" &&
+		githubRelease.env?.GH_TOKEN ===
+			"${{ github.token }}", "release job must publish the train's GitHub release with the built-in token");
+	const order = [
+		train,
+		build,
+		publish,
+		finish,
+		githubRelease,
+		prepare,
+		action,
+	].map((step) => steps.indexOf(step));
+	require(order.every(
+		(index, position) =>
+			index !== -1 && (position === 0 || order[position - 1] < index),
+	), "release job must plan, build, publish, and finish the train before preparing remaining changesets");
 	if (
 		typeof rootReleaseScript !== "string" ||
 		!/\bchangeset publish\b/.test(rootReleaseScript)
@@ -147,32 +212,190 @@ function versionSyncGroups(packages) {
 }
 
 function runSelfTests() {
-	const healthyWorkflow =
-		"permissions:\n  contents: write\n  pull-requests: write\nversion-script: pnpm version-packages\nfetch-depth: 0\nfetch-tags: true\n";
+	const healthyConfig = {
+		on: { push: { branches: ["main"] }, workflow_dispatch: null },
+		concurrency: {
+			group: "release-main",
+			queue: "max",
+			"cancel-in-progress": false,
+		},
+		jobs: {
+			release: {
+				if: "github.ref == 'refs/heads/main' && github.repository == 'input-systems/pen'",
+				permissions: {
+					contents: "write",
+					"pull-requests": "write",
+					"id-token": "write",
+				},
+				steps: [
+					{
+						uses: "actions/checkout@v7",
+						with: { "fetch-depth": 0, "fetch-tags": true },
+					},
+					{
+						uses: "./.github/actions/setup",
+						with: { "registry-url": "https://registry.npmjs.org" },
+					},
+					{
+						id: "train",
+						run: "node scripts/release-train.mjs --plan",
+					},
+					{
+						if: "steps.train.outputs.publish == 'true'",
+						run: "pnpm build",
+					},
+					{
+						if: "steps.train.outputs.publish == 'true'",
+						run: 'pnpm release --no-git-tag --tag "$NPM_TAG"',
+						env: {
+							NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}",
+							NPM_CONFIG_PROVENANCE: "true",
+							NPM_TAG: "${{ steps.train.outputs.npm-tag }}",
+						},
+					},
+					{
+						if: "steps.train.outputs.publish == 'true'",
+						run: "node scripts/release-train.mjs --finish",
+					},
+					{
+						if: "steps.train.outputs.publish == 'true'",
+						run: "node scripts/release-train.mjs --github-release",
+						env: { GH_TOKEN: "${{ github.token }}" },
+					},
+					{
+						id: "prepare",
+						if: "steps.train.outputs.has-changesets == 'true'",
+						run: 'remote_head=$(git ls-remote --exit-code origin refs/heads/main)\nif [[ "${remote_head%%[[:space:]]*}" == "$GITHUB_SHA" ]]; then\n echo "current=true" >> "$GITHUB_OUTPUT"\nfi',
+					},
+					{
+						if: "steps.prepare.outputs.current == 'true'",
+						uses: "changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51",
+						with: {
+							"github-token": "${{ github.token }}",
+							"version-script": "pnpm version-packages",
+							"publish-script": "pnpm release",
+							"push-git-tags": false,
+							"create-github-releases": false,
+						},
+					},
+				],
+			},
+		},
+	};
+	const healthyWorkflow = stringify(healthyConfig);
 	const healthyReleaseScript = "changeset publish";
 	const healthy = provenanceWorkflowProblems(
 		healthyWorkflow,
 		healthyReleaseScript,
 	);
-	if (healthy.length !== 0) {
+	if (healthy.length !== 0)
 		throw new Error(
-			`self-test: healthy prep-only workflow must pass, got: ${healthy.join("; ")}`,
+			`self-test: healthy publishing workflow must pass: ${healthy.join("; ")}`,
 		);
-	}
 
-	const oidcPublish = provenanceWorkflowProblems(
-		`${healthyWorkflow}      id-token: write\npublish-script: pnpm release\n`,
-		healthyReleaseScript,
-	);
-	if (
-		!oidcPublish.some((problem) => problem.includes("id-token: write")) ||
-		!oidcPublish.some((problem) => problem.includes("publish-script"))
-	) {
-		throw new Error(
-			"self-test: a workflow that still publishes must fail closed",
+	const CHECKOUT = 0;
+	const SETUP = 1;
+	const BUILD = 3;
+	const PUBLISH = 4;
+	const FINISH = 5;
+	const GITHUB_RELEASE = 6;
+	const PREPARE = 7;
+	const ACTION = 8;
+	function mustFail(mutate, expected) {
+		const config = structuredClone(healthyConfig);
+		mutate(config, config.jobs.release, config.jobs.release.steps);
+		const problems = provenanceWorkflowProblems(
+			stringify(config),
+			healthyReleaseScript,
 		);
+		if (!problems.some((problem) => problem.includes(expected))) {
+			throw new Error(`self-test: missing ${expected} must fail closed`);
+		}
 	}
-
+	for (const permission of ["contents", "pull-requests", "id-token"]) {
+		mustFail((config, job) => {
+			delete job.permissions[permission];
+		}, `${permission}: write`);
+	}
+	mustFail((config, job, steps) => {
+		delete steps[ACTION].with["publish-script"];
+	}, "publish-script");
+	mustFail((config, job, steps) => {
+		delete steps[PUBLISH].env.NODE_AUTH_TOKEN;
+	}, "NODE_AUTH_TOKEN");
+	mustFail((config, job, steps) => {
+		steps[PUBLISH].env.NPM_CONFIG_PROVENANCE = "false";
+	}, "NPM_CONFIG_PROVENANCE");
+	mustFail((config, job, steps) => {
+		delete steps[PUBLISH].env.NPM_TAG;
+	}, "NPM_TAG");
+	mustFail((config, job, steps) => {
+		steps[PUBLISH].run =
+			'pnpm release --no-git-tag --tag "${{ steps.train.outputs.npm-tag }}"';
+	}, "NPM_TAG");
+	mustFail((config, job, steps) => {
+		steps[BUILD].if = "steps.train.outputs.has-changesets == 'true'";
+	}, "build the version commit");
+	mustFail((config, job, steps) => {
+		steps[SETUP].with["registry-url"] = "https://npm.pkg.github.com";
+	}, "registry-url");
+	mustFail((config, job, steps) => {
+		steps[CHECKOUT].with["fetch-depth"] = 1;
+	}, "fetch tags");
+	mustFail((config, job, steps) => {
+		steps[ACTION].uses = "changesets/action@v1";
+	}, "changesets/action v2");
+	mustFail((config, job, steps) => {
+		steps[ACTION].with["github-token"] = "${{ secrets.PAT }}";
+	}, "github-token");
+	mustFail((config, job, steps) => {
+		delete steps[ACTION].with["version-script"];
+	}, "version-script");
+	mustFail((config) => {
+		config.on.pull_request = null;
+	}, "main pushes");
+	mustFail((config, job) => {
+		delete job.if;
+	}, "restrict manual dispatch");
+	mustFail((config) => {
+		config.concurrency.queue = "single";
+	}, "queue pending releases");
+	mustFail((config, job) => {
+		job.env = { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}" };
+	}, "scoped to release steps");
+	mustFail((config, job, steps) => {
+		steps[ACTION].with["push-git-tags"] = true;
+	}, "defer git tags");
+	mustFail((config, job, steps) => {
+		steps[FINISH].if = "steps.changesets.outputs.published == 'true'";
+	}, "retry publishes nothing");
+	mustFail((config, job, steps) => {
+		steps[SETUP].with["turbo-cache-scope"] = "release";
+	}, "without a restored Turbo cache");
+	mustFail((config, job, steps) => {
+		steps[PUBLISH].if = "steps.train.outputs.has-changesets == 'false'";
+	}, "only for a version commit");
+	mustFail((config, job, steps) => {
+		delete steps[ACTION].if;
+	}, "current main commit");
+	mustFail((config, job, steps) => {
+		[steps[PUBLISH], steps[ACTION]] = [steps[ACTION], steps[PUBLISH]];
+	}, "before preparing remaining changesets");
+	mustFail((config, job, steps) => {
+		[steps[BUILD], steps[PUBLISH]] = [steps[PUBLISH], steps[BUILD]];
+	}, "before preparing remaining changesets");
+	mustFail((config, job, steps) => {
+		delete steps[PREPARE].if;
+	}, "live main commit");
+	mustFail((config, job, steps) => {
+		delete steps[GITHUB_RELEASE].env;
+	}, "GitHub release");
+	mustFail((config, job, steps) => {
+		[steps[FINISH], steps[GITHUB_RELEASE]] = [
+			steps[GITHUB_RELEASE],
+			steps[FINISH],
+		];
+	}, "before preparing remaining changesets");
 	const cliProvenanceFlag = provenanceWorkflowProblems(
 		healthyWorkflow,
 		"changeset publish --provenance",
@@ -184,58 +407,6 @@ function runSelfTests() {
 	) {
 		throw new Error(
 			"self-test: changeset publish --provenance must fail closed",
-		);
-	}
-
-	const leakedToken = provenanceWorkflowProblems(
-		`${healthyWorkflow}          NPM_TOKEN: \${{ secrets.NPM_TOKEN }}\n`,
-		healthyReleaseScript,
-	);
-	if (
-		!leakedToken.some((problem) =>
-			problem.includes("must not set NPM_TOKEN"),
-		)
-	) {
-		throw new Error(
-			"self-test: NPM_TOKEN in the workflow must fail closed",
-		);
-	}
-
-	const missingTags = provenanceWorkflowProblems(
-		"version-script: pnpm version-packages\n",
-		healthyReleaseScript,
-	);
-	if (!missingTags.some((problem) => problem.includes("fetch tags"))) {
-		throw new Error("self-test: a checkout without tags must fail closed");
-	}
-
-	const publishCli = provenanceWorkflowProblems(
-		`${healthyWorkflow}run: npm install -g npm@11.5.1\n`,
-		healthyReleaseScript,
-	);
-	if (
-		!publishCli.some((problem) => problem.includes("publish-only npm CLI"))
-	) {
-		throw new Error(
-			"self-test: a publish-only npm CLI install must fail closed",
-		);
-	}
-
-	const actionV1 = provenanceWorkflowProblems(
-		`${healthyWorkflow}uses: changesets/action@deadbeef # v1.9.0\n`,
-		healthyReleaseScript,
-	);
-	if (!actionV1.some((problem) => problem.includes("changesets/action v2"))) {
-		throw new Error("self-test: changesets/action v1 must fail closed");
-	}
-
-	const v1Inputs = provenanceWorkflowProblems(
-		"version: pnpm version-packages\nfetch-depth: 0\nfetch-tags: true\n",
-		healthyReleaseScript,
-	);
-	if (!v1Inputs.some((problem) => problem.includes("version-script"))) {
-		throw new Error(
-			"self-test: changesets/action v1 version input must fail closed",
 		);
 	}
 
@@ -302,7 +473,7 @@ function runSelfTests() {
 	}
 
 	console.log(
-		"release-check self-test ok (a publishing workflow, changeset --provenance, NPM_TOKEN, action v1, and a short fixed group fail closed)",
+		"release-check self-test ok (publishing credentials, provenance, main-only triggers, retry tags, and the fixed group are required)",
 	);
 }
 
@@ -422,7 +593,7 @@ async function checkProvenancePreconditions(packages) {
 	);
 
 	if (problems.length > 0) {
-		console.error("Release prep preconditions failed:");
+		console.error("Release publishing preconditions failed:");
 		for (const problem of problems) {
 			console.error(`  ${problem}`);
 		}
@@ -430,8 +601,8 @@ async function checkProvenancePreconditions(packages) {
 	}
 
 	console.log(
-		`Release prep: ${packages.length} packages share ${EXPECTED_REPOSITORY_URL}; ` +
-			"release.yml versions only (no publish-script, no NPM_TOKEN, no OIDC). Publish is local `pnpm release`.",
+		`Release publishing: ${packages.length} packages share ${EXPECTED_REPOSITORY_URL}; ` +
+			"release.yml publishes version commits with NPM_TOKEN and provenance, then verifies the train before pushing tags.",
 	);
 	console.log(
 		`Release trail: ${tagCount} git tag(s), ${changelogPaths.length} packages/**/CHANGELOG.md.`,
