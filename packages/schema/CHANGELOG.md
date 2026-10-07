@@ -1,5 +1,15 @@
 # @input/pen-schema
 
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies [84f4d84]
+- Updated dependencies [cc0b350]
+- Updated dependencies [cc0b350]
+  - @input/pen-core@0.4.0
+  - @input/pen-types@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

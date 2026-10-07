@@ -36,7 +36,7 @@ Schema surface packages in Pen should stay package-first and explicit about owne
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.3.0`; intended usage is current-state but still evolving.
+Workspace package at version `0.4.0`; intended usage is current-state but still evolving.
 
 ## Non-goals
 

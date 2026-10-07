@@ -1,5 +1,30 @@
 # @input/pen-dom
 
+## 0.4.0
+
+### Patch Changes
+
+- 56effc9: A host element focused beside the editor keeps Mod-a, Mod-z and Mod-Shift-z (HOST9). The document key handler claimed them for any editor left with a caret, so Mod-z on a focused host element undid the editor's last edit instead of reaching the host. With focus on the body, or on a wrapper of the editor root, they still reach the editor.
+
+  Breaking: no
+
+- 50a5c8f: Initialize editor root focus when binding, so focus that arrived before the listeners were installed is reflected in the field editor, caret overlay, and autocomplete eligibility across React, Vue, and vanilla mounts.
+
+  Skip unchanged React focus state updates so the initial focus report preserves existing mount render counts.
+
+  Breaking: no
+
+- 9f6e6ed: Tab accepts a visible inline completion inside a list item instead of nesting the item. The completion is checked before the default keymap, so `pen.indent` no longer wins the key. Shift-Tab still outdents while a completion is visible, and Tab still nests when none is.
+
+  Breaking: no
+
+- Updated dependencies [84f4d84]
+- Updated dependencies [cc0b350]
+- Updated dependencies [cc0b350]
+  - @input/pen-core@0.4.0
+  - @input/pen-types@0.4.0
+  - @input/pen-shortcuts@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes
