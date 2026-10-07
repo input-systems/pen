@@ -1,5 +1,36 @@
 # @input/pen-react
 
+## 0.4.0
+
+### Patch Changes
+
+- 50a5c8f: Initialize editor root focus when binding, so focus that arrived before the listeners were installed is reflected in the field editor, caret overlay, and autocomplete eligibility across React, Vue, and vanilla mounts.
+
+  Skip unchanged React focus state updates so the initial focus report preserves existing mount render counts.
+
+  Breaking: no
+
+- cc0b350: `useSuggestionMenu` no longer blanks an open menu on every keystroke. A synchronous `getItems` result is applied in the same state update that opens or retargets the menu, with no intermediate `loading` render. For an async `getItems`, a refined query on the same trigger keeps the previous `items` while `status` is `loading`, then swaps in its own; stale responses are still dropped. A `getItems` that throws synchronously now lands in the `error` state instead of escaping the refresh. `@input/pen-types` exports the `isPromiseLike` guard, which the hook and core's extension lifecycle now share.
+
+  Breaking: no
+
+- Updated dependencies [84f4d84]
+- Updated dependencies [56effc9]
+- Updated dependencies [50a5c8f]
+- Updated dependencies [9f6e6ed]
+- Updated dependencies [cc0b350]
+- Updated dependencies [cc0b350]
+  - @input/pen-core@0.4.0
+  - @input/pen-dom@0.4.0
+  - @input/pen-types@0.4.0
+  - @input/pen-ai@0.4.0
+  - @input/pen-interop@0.4.0
+  - @input/pen-multiplayer@0.4.0
+  - @input/pen-search@0.4.0
+  - @input/pen-shortcuts@0.4.0
+  - @input/pen-snapshots@0.4.0
+  - @input/pen-schema@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes
