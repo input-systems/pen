@@ -9,16 +9,22 @@ on:
 permissions:
   contents: read
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+  # Preserve a queued version commit even when more work lands on main.
+  queue: max
 
 jobs:
   release:
-    name: Prep
+    name: Version or publish
+    if: github.ref == 'refs/heads/main' && github.repository == 'input-systems/pen'
     timeout-minutes: 90
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+      id-token: write # Signs npm provenance; npm uploads use NPM_TOKEN.
 
     steps:
       - name: Check out repository
@@ -31,11 +37,11 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      # No turbo-cache-scope on purpose. This job versions the train; it
-      # builds from nothing so the artifact that is gated is the one this
-      # commit produces, not one a cache handed back.
+      # Release artifacts are built from this commit without a Turbo cache.
       - name: Set up Pen toolchain
         uses: ./.github/actions/setup
+        with:
+          registry-url: https://registry.npmjs.org
 
       - name: Lint repository surfaces
         run: pnpm lint
@@ -56,7 +62,10 @@ jobs:
         run: pnpm typecheck
 
       - name: Run unit and integration tests
-        run: pnpm test
+        run: pnpm test -- --maxWorkers=2
+
+      - name: Test release completion and recovery
+        run: node --test scripts/__tests__/releaseTrain.test.mjs
 
       - name: Check published package metadata
         run: node scripts/sync-package-metadata.mjs --check
@@ -70,19 +79,63 @@ jobs:
       - name: Check published package types
         run: node scripts/release-check.mjs --attw
 
-      - name: Check release prep preconditions
+      - name: Check release publishing preconditions
         run: node scripts/release-check.mjs --provenance-preconditions
 
       - name: Check bundle size against baseline
         run: node scripts/size-limit.mjs
 
+      - name: Identify the release commit
+        id: train
+        run: node scripts/release-train.mjs --plan
+
+      - name: Check npm publishing token
+        if: steps.train.outputs.publish == 'true'
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::Add the NPM_TOKEN repository secret: a granular token with publish access to every public Pen package and Bypass 2FA enabled."
+            exit 1
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish the npm train
+        if: steps.train.outputs.publish == 'true'
+        run: pnpm release --no-git-tag --tag "${{ steps.train.outputs.npm-tag }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+
+      - name: Verify npm train and push release tags
+        if: steps.train.outputs.publish == 'true'
+        run: node scripts/release-train.mjs --finish
+
+      - name: Check main before preparing a version PR
+        id: prepare
+        if: steps.train.outputs.has-changesets == 'true'
+        shell: bash
+        run: |
+          remote_head=$(git ls-remote --exit-code origin refs/heads/main)
+          if [[ "${remote_head%%[[:space:]]*}" == "$GITHUB_SHA" ]]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "Main has advanced; its own release run will prepare the version PR."
+          fi
+
       - name: Create release pull request
+        if: steps.prepare.outputs.current == 'true'
+        id: changesets
         # SHA-pinned, not `@v2`: that tag is a mutable branch. Action v2
-        # needs @changesets/cli 3. Omit the publish command: npm publish is
-        # local (`pnpm release`) because this job cannot authenticate.
+        # needs @changesets/cli 3. Bot PR checks are approved manually;
+        # merging that PR triggers publishing with the built-in GitHub token.
         uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
+          github-token: ${{ github.token }}
           version-script: pnpm version-packages
+          # Declares automatic publishing in the PR body. This step only
+          # runs with pending changesets, so uploads happen in the step above.
+          publish-script: pnpm release
           create-github-releases: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Verify the entire train before atomically pushing all its tags.
+          push-git-tags: false

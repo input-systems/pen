@@ -62,7 +62,7 @@ For substantive changes run `pnpm build`, `pnpm typecheck`, and `pnpm test` befo
 
 ## Releases
 
-- Changesets drive versioning (`pnpm changeset`, `pnpm version-packages`). GitHub opens the Version Packages PR; publish locally with `pnpm release`. Any PR that changes a published package's behavior or API includes a changeset. The train is `0.x`; breaking is `minor`, additive is `patch`, and `major` is rejected until 1.0. The first published train was `0.1.0`.
+- Changesets drive versioning (`pnpm changeset`, `pnpm version-packages`). GitHub opens the Version Packages PR with its built-in token. A maintainer approves the bot PR workflows and merges after required checks pass; release CI then builds, validates, and publishes with `pnpm release` using `NPM_TOKEN`, verifies the full npm train, and atomically pushes package tags plus `vX.Y.Z`. Recover failures by re-running the original version-commit workflow. Setup and token rotation are documented in `.changeset/README.md`; no GitHub App is required. Any PR that changes a published package's behavior or API includes a changeset. The train is `0.x`; breaking is `minor`, additive is `patch`, and `major` is rejected until 1.0. The first published train was `0.1.0`.
 - Published packages ship dual ESM/CJS with `exports` maps, `files`, and `sideEffects: false`; keep manifests consistent (`sync-package-metadata.mjs` exists for shared fields).
 
 ## Agent Skills And Reviewers

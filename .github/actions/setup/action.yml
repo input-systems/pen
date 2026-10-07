@@ -13,6 +13,10 @@ name: Set up Pen toolchain
 description: pnpm, Node, a frozen workspace install, and the Turborepo cache.
 
 inputs:
+  registry-url:
+    description: npm registry to configure for a publishing job. Empty skips authentication setup.
+    required: false
+    default: ""
   node-version:
     description: >-
       Node version to run on. Defaults to the newest release of the 22
@@ -45,6 +49,7 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
         cache: pnpm
+        registry-url: ${{ inputs.registry-url }}
 
     - name: Install dependencies
       shell: bash

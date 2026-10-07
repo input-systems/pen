@@ -377,6 +377,8 @@ pnpm lint
 
 Prefer scoped runs while iterating: `pnpm --filter @input/pen-core test`. Browser coverage is `pnpm test:e2e`, which drives the playground. See [`playground/README.md`](playground/README.md). Any change to a published package needs a changeset (`pnpm changeset`). [`CONTRIBUTING.md`](CONTRIBUTING.md) has the full loop, including which gates run in CI.
 
+Releases use Changesets: approve the **Version Packages** PR workflows, then approve and merge the PR after its checks pass. CI builds and publishes all public packages to npm and completes their tags. See [release setup and recovery](.changeset/README.md); no GitHub App is required.
+
 ## Community
 
 - [Contributing](CONTRIBUTING.md)

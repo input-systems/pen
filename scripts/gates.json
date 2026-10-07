@@ -73,7 +73,12 @@
   {
     "id": "provenance-preconditions",
     "command": "node scripts/release-check.mjs --provenance-preconditions",
-    "description": "Release workflow is prep-only (version PR, no npm publish) and root `pnpm release` still runs changeset publish."
+    "description": "API7: Release CI publishes version commits with npm authentication and provenance, then verifies the train before pushing tags."
+  },
+  {
+    "id": "release-train-tests",
+    "command": "node --test scripts/__tests__/releaseTrain.test.mjs",
+    "description": "API7: Local-registry publishing, partial and older releases, no-op retries, and immutable train tags."
   },
   {
     "id": "doc-refs",
