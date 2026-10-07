@@ -9,7 +9,10 @@ import type {
 import type { DiagnosticEvent } from "@input/pen-types";
 import { toStructuredOrigin } from "./commitEvent";
 import { isCRDTMap } from "./crdtShapes";
-import type { ApplyCapture, ApplyPipelineInternal } from "./applyPipelineContext";
+import type {
+	ApplyCapture,
+	ApplyPipelineInternal,
+} from "./applyPipelineContext";
 import { validateOpProps } from "./validateOpProps";
 import { blockExists, opBlockId } from "./applySharedHelpers";
 import {
@@ -346,38 +349,56 @@ export function transformOpsThroughHooks(
 	return transformedOps;
 }
 
-function snapshotPlain(value: unknown): unknown {
+// a cycle maps to the same cycle in the copy so validate still rejects it
+// (OPB1) instead of the copy recursing until the stack overflows
+function snapshotPlain(
+	value: unknown,
+	seen = new Map<object, unknown>(),
+): unknown {
 	if (value === null || typeof value !== "object") {
 		return value;
 	}
+	if (seen.has(value)) {
+		return seen.get(value);
+	}
 	if (Array.isArray(value)) {
-		return value.map(snapshotPlain);
+		const next: unknown[] = new Array(value.length);
+		seen.set(value, next);
+		value.forEach((item, index) => {
+			next[index] = snapshotPlain(item, seen);
+		});
+		return next;
 	}
 	const prototype = Object.getPrototypeOf(value);
 	if (prototype !== Object.prototype && prototype !== null) {
 		return snapshotInstance(value);
 	}
 	const next: Record<string | symbol, unknown> = Object.create(prototype);
+	seen.set(value, next);
 	for (const key of Object.keys(value as object)) {
 		Object.defineProperty(next, key, {
-			value: snapshotPlain((value as Record<string, unknown>)[key]),
+			value: snapshotPlain((value as Record<string, unknown>)[key], seen),
 			enumerable: true,
 			configurable: true,
 			writable: true,
 		});
 	}
-	snapshotSymbolKeys(value, next);
+	snapshotSymbolKeys(value, next, seen);
 	return next;
 }
 
-function snapshotSymbolKeys(value: object, next: object): void {
+function snapshotSymbolKeys(
+	value: object,
+	next: object,
+	seen: Map<object, unknown>,
+): void {
 	for (const key of Object.getOwnPropertySymbols(value)) {
 		const descriptor = Object.getOwnPropertyDescriptor(value, key);
 		if (!descriptor?.enumerable) {
 			continue;
 		}
 		Object.defineProperty(next, key, {
-			value: snapshotPlain(descriptor.value),
+			value: snapshotPlain(descriptor.value, seen),
 			enumerable: true,
 			configurable: true,
 			writable: true,
@@ -896,7 +917,9 @@ function namedParentIds(op: DocumentOp): string[] {
 function positionParent(
 	position: Extract<DocumentOp, { type: "move-block" }>["position"],
 ): string | null {
-	return typeof position === "object" && "parent" in position ? position.parent : null;
+	return typeof position === "object" && "parent" in position
+		? position.parent
+		: null;
 }
 
 /** A non-empty `parentId` in an op's props, if any. */
