@@ -16,6 +16,10 @@ import {
 } from "../release-train.mjs";
 
 const execFileAsync = promisify(execFile);
+const NO_WAIT = {
+	attempts: 1,
+	delayMs: 0,
+};
 const changesetsCli = fileURLToPath(
 	new URL("../../node_modules/@changesets/cli/bin.js", import.meta.url),
 );
@@ -195,9 +199,37 @@ test("API7: a partial publish cannot create or push the train tag", async (t) =>
 	const versions = published();
 	versions.delete("@input/pen-types/0.4.0");
 	const url = await registry(t, versions);
-	await assert.rejects(finishRelease(repoRoot, url), /pen-types@0\.4\.0/);
+	await assert.rejects(
+		finishRelease(repoRoot, url, NO_WAIT),
+		/pen-types@0\.4\.0/,
+	);
 	assert.equal(git(remote, "tag", "--list"), "");
 	assert.equal(git(repoRoot, "tag", "--list"), "");
+});
+
+test("API7: completion waits for npm to serve a version it just accepted", async (t) => {
+	const { repoRoot, remote } = fixture(t);
+	versionCommit(repoRoot);
+	const versions = published();
+	const lagging = "@input/pen-types/0.4.0";
+	let lookups = 0;
+	const url = await registry(t, {
+		get(key) {
+			if (key !== lagging) return versions.get(key);
+			lookups += 1;
+			return lookups > 1 ? versions.get(key) : undefined;
+		},
+	});
+	await finishRelease(repoRoot, url, {
+		attempts: 2,
+		delayMs: 1,
+	});
+	assert.equal(lookups, 2);
+	assert.deepEqual(git(remote, "tag", "--list").split("\n"), [
+		"@input/pen-core@0.4.0",
+		"@input/pen-types@0.4.0",
+		"v0.4.0",
+	]);
 });
 
 test("API7: retry completes all tags even when npm has nothing left to publish", async (t) => {
@@ -377,7 +409,10 @@ for (const newerTrain of [false, true]) {
 		};
 		await assert.rejects(publish(), /Command failed/);
 		assert.deepEqual([...documents.keys()], ["@input/pen-types"]);
-		await assert.rejects(finishRelease(repoRoot, url), /pen-core@0\.4\.0/);
+		await assert.rejects(
+			finishRelease(repoRoot, url, NO_WAIT),
+			/pen-core@0\.4\.0/,
+		);
 		assert.equal(git(remote, "tag", "--list"), "");
 		assert.equal(git(repoRoot, "tag", "--list"), "");
 		if (newerTrain) {

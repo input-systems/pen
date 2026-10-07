@@ -4,12 +4,23 @@
 import { execFileSync } from "node:child_process";
 import fs, { globSync } from "node:fs";
 import path from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
 	"..",
 );
+const NPM_REGISTRY = "https://registry.npmjs.org";
+const NO_PROPAGATION_WAIT = {
+	attempts: 1,
+	delayMs: 0,
+};
+// npm can answer 404 for a short time after accepting a publish
+const PUBLISH_PROPAGATION = {
+	attempts: 8,
+	delayMs: 15_000,
+};
 
 function git(repoRoot, ...args) {
 	return execFileSync("git", args, {
@@ -53,30 +64,49 @@ export function planRelease(repoRoot) {
 	};
 }
 
-export async function choosePublishTag(
-	plan,
-	registry = "https://registry.npmjs.org",
+async function getRegistryManifest(
+	registry,
+	name,
+	spec,
+	propagation = NO_PROPAGATION_WAIT,
 ) {
+	for (let attempt = 1; ; attempt += 1) {
+		const response = await fetch(
+			`${registry}/${encodeURIComponent(name)}/${spec}`,
+			{
+				signal: AbortSignal.timeout(15_000),
+			},
+		);
+		if (response.ok) {
+			const manifest = await response.json();
+			if (manifest.name !== name) {
+				throw new Error(
+					`${name}@${spec}: registry returned different package metadata`,
+				);
+			}
+			return manifest;
+		}
+		if (response.status !== 404) {
+			throw new Error(
+				`${name}@${spec}: registry returned HTTP ${response.status}`,
+			);
+		}
+		if (attempt >= propagation.attempts) return null;
+		await sleep(propagation.delayMs);
+	}
+}
+
+export async function choosePublishTag(plan, registry = NPM_REGISTRY) {
 	const train = plan.version.split(".").map(Number);
 	const newerVersions = await Promise.all(
 		plan.packages.map(async (pkg) => {
-			const response = await fetch(
-				`${registry}/${encodeURIComponent(pkg.name)}/latest`,
-				{
-					signal: AbortSignal.timeout(15_000),
-				},
+			const manifest = await getRegistryManifest(
+				registry,
+				pkg.name,
+				"latest",
 			);
-			if (response.status === 404) return false;
-			if (!response.ok) {
-				throw new Error(
-					`${pkg.name}: latest lookup returned HTTP ${response.status}`,
-				);
-			}
-			const manifest = await response.json();
-			if (
-				manifest.name !== pkg.name ||
-				!/^\d+\.\d+\.\d+$/.test(manifest.version)
-			) {
+			if (manifest === null) return false;
+			if (!/^\d+\.\d+\.\d+$/.test(manifest.version)) {
 				throw new Error(
 					`${pkg.name}: cannot compare the registry's latest version`,
 				);
@@ -94,7 +124,8 @@ export async function choosePublishTag(
 
 export async function finishRelease(
 	repoRoot,
-	registry = "https://registry.npmjs.org",
+	registry = NPM_REGISTRY,
+	propagation = PUBLISH_PROPAGATION,
 ) {
 	const plan = planRelease(repoRoot);
 	if (!plan.publish) {
@@ -104,22 +135,18 @@ export async function finishRelease(
 	}
 	const results = await Promise.allSettled(
 		plan.packages.map(async (pkg) => {
-			const response = await fetch(
-				`${registry}/${encodeURIComponent(pkg.name)}/${pkg.version}`,
-				{
-					signal: AbortSignal.timeout(15_000),
-				},
+			const manifest = await getRegistryManifest(
+				registry,
+				pkg.name,
+				pkg.version,
+				propagation,
 			);
-			if (!response.ok) {
+			if (manifest === null) {
 				throw new Error(
-					`${pkg.name}@${pkg.version}: registry returned HTTP ${response.status}`,
+					`${pkg.name}@${pkg.version}: not found on the registry`,
 				);
 			}
-			const manifest = await response.json();
-			if (
-				manifest.name !== pkg.name ||
-				manifest.version !== pkg.version
-			) {
+			if (manifest.version !== pkg.version) {
 				throw new Error(
 					`${pkg.name}@${pkg.version}: registry returned different package metadata`,
 				);

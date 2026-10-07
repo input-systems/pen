@@ -20,7 +20,7 @@ Pen uses [Changesets](https://github.com/changesets/changesets) for versioning a
 2. Merge the changeset with the feature work.
 3. Let the release workflow open or update the **Version Packages** PR on `main`. In its merge box, select **Approve workflows to run** so the bot PR's required CI checks execute. The bot uses GitHub's built-in `GITHUB_TOKEN`; no GitHub App or personal access token is required.
 4. After the checks pass, approve and merge the version PR. Refresh a version PR that is behind `main` to include newer changesets in the same train. If any remain after merging, CI publishes the merged version first and then prepares the next version PR.
-5. The **Release / Version or publish** run builds the merged commit, runs the release checks, and calls `pnpm release` (`changeset publish`) to publish every public package. It verifies all expected npm versions before atomically pushing the package tags and the `vX.Y.Z` train tag. Private workspaces stay excluded. Per-package GitHub Releases are disabled.
+5. The **Release / Version or publish** run builds the merged commit, runs the release checks, and calls `pnpm release` (`changeset publish`) to publish every public package. It verifies all expected npm versions, waiting up to two minutes for npm to serve new uploads, before atomically pushing the package tags and the `vX.Y.Z` train tag. Runs for other commits skip the build and gates; they only prepare the version PR, whose own checks validate it. Private workspaces stay excluded. Per-package GitHub Releases are disabled.
 
 ## Release setup
 
