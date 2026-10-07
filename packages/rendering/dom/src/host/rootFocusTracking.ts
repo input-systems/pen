@@ -5,7 +5,7 @@ import { isDomNode } from "../utils/domNodes";
 export interface EditorRootFocusHandlers {
 	/** Focus entered the root or moved within it, after `onFocusChange(true)`. */
 	onFocusIn?(event: FocusEvent): void;
-	/** Whether the root holds focus in an active window; called on every change signal. */
+	/** Whether the root holds focus in an active window; called on bind and every change signal. */
 	onFocusChange(focused: boolean): void;
 }
 
@@ -31,6 +31,7 @@ export function isEditorRootFocused(root: HTMLElement): boolean {
  * the framework bindings alike: `focusin` and `focusout` on the root, plus
  * the window's `blur` and `focus`, because an inactive window leaves the
  * active element inside the root and fires no `focusout` the root can trust.
+ * Reports the current state on bind without replaying focus entry.
  *
  * @param root - An editor root element.
  * @param handlers - Focus entry and focus-state callbacks.
@@ -58,6 +59,7 @@ export function bindEditorRootFocus(
 	root.addEventListener("focusout", handleFocusOut);
 	view?.addEventListener("blur", handleWindowBlur);
 	view?.addEventListener("focus", handleWindowFocus);
+	handlers.onFocusChange(isEditorRootFocused(root));
 	return () => {
 		root.removeEventListener("focusin", handleFocusIn);
 		root.removeEventListener("focusout", handleFocusOut);
