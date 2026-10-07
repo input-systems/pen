@@ -5,6 +5,11 @@
     "description": "Every pull-request workflow aggregates its jobs behind one always() check, bounds every job, declares its permissions, names every job readably, and pins third-party actions."
   },
   {
+    "id": "vitest-config",
+    "command": "node --test scripts/__tests__/vitestConfig.test.mjs",
+    "description": "CH9: core package runs load an explicit test timeout and CI worker budget."
+  },
+  {
     "id": "ch-gates",
     "command": "pnpm ch-gates",
     "description": "Code health: ts-nocheck, empty skips, `this: any`, runtime console calls, orphan packages."

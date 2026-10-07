@@ -31,15 +31,20 @@ function git(repoRoot, ...args) {
 	}).trim();
 }
 
-export function planRelease(repoRoot) {
-	const packages = globSync("packages/**/package.json", {
+function getPublicPackages(repoRoot) {
+	return globSync("packages/**/package.json", {
 		cwd: repoRoot,
 		exclude: ["**/node_modules/**", "**/dist/**"],
 	})
-		.map((file) =>
-			JSON.parse(fs.readFileSync(path.join(repoRoot, file), "utf8")),
-		)
+		.map((file) => ({
+			...JSON.parse(fs.readFileSync(path.join(repoRoot, file), "utf8")),
+			packageDir: path.dirname(file),
+		}))
 		.filter((pkg) => pkg.private !== true);
+}
+
+export function planRelease(repoRoot) {
+	const packages = getPublicPackages(repoRoot);
 	const versions = new Set(packages.map((pkg) => pkg.version));
 	if (packages.length === 0 || versions.size !== 1) {
 		throw new Error("Published packages must share one train version");
@@ -62,6 +67,60 @@ export function planRelease(repoRoot) {
 			}).length > 0,
 		packages,
 	};
+}
+
+const CHANGE_HEADINGS = ["Major Changes", "Minor Changes", "Patch Changes"];
+const DEPENDENCY_ENTRY = /^- (Updated dependencies\b|@\S+@\d+\.\d+\.\d+\s*$)/;
+
+// one fixed group repeats each changeset in every package changelog
+export function getReleaseNotes(repoRoot, version) {
+	const packages = getPublicPackages(repoRoot);
+	const sections = new Map();
+	for (const pkg of packages) {
+		const file = path.join(repoRoot, pkg.packageDir, "CHANGELOG.md");
+		if (!fs.existsSync(file)) continue;
+		const lines = fs.readFileSync(file, "utf8").split("\n");
+		const start = lines.indexOf(`## ${version}`);
+		if (start === -1) continue;
+		let heading = "Changes";
+		let entry = null;
+		const addEntry = () => {
+			if (entry && !DEPENDENCY_ENTRY.test(entry[0])) {
+				const entries = sections.get(heading) ?? new Set();
+				entries.add(entry.join("\n").trimEnd());
+				sections.set(heading, entries);
+			}
+			entry = null;
+		};
+		for (const line of lines.slice(start + 1)) {
+			if (line.startsWith("## ")) break;
+			if (line.startsWith("### ")) {
+				addEntry();
+				heading = line.slice(4).trim();
+			} else if (line.startsWith("- ")) {
+				addEntry();
+				entry = [line];
+			} else if (entry) {
+				entry.push(line);
+			}
+		}
+		addEntry();
+	}
+	const rank = (heading) =>
+		CHANGE_HEADINGS.includes(heading)
+			? CHANGE_HEADINGS.indexOf(heading)
+			: CHANGE_HEADINGS.length;
+	const blocks = [...sections]
+		.sort(([left], [right]) => rank(left) - rank(right))
+		.map(
+			([heading, entries]) =>
+				`## ${heading}\n\n${[...entries].join("\n\n")}`,
+		);
+	if (blocks.length === 0) {
+		blocks.push("No changelog entries beyond dependency updates.");
+	}
+	blocks.push(`Every public Pen package is on npm at \`${version}\`.`);
+	return `${blocks.join("\n\n")}\n`;
 }
 
 async function getRegistryManifest(
@@ -204,15 +263,65 @@ export async function finishRelease(
 	return plan;
 }
 
+function gh(repoRoot, args, input) {
+	return execFileSync("gh", args, {
+		cwd: repoRoot,
+		encoding: "utf8",
+		input,
+		stdio: ["pipe", "pipe", "pipe"],
+		timeout: 60_000,
+	}).trim();
+}
+
+function hasGitHubRelease(repoRoot, tag) {
+	try {
+		gh(repoRoot, ["release", "view", tag, "--json", "tagName"]);
+		return true;
+	} catch (error) {
+		if (String(error.stderr).includes("release not found")) return false;
+		throw error;
+	}
+}
+
+async function publishGitHubRelease(repoRoot, plan) {
+	const tag = `v${plan.version}`;
+	if (hasGitHubRelease(repoRoot, tag)) return false;
+	const latest = (await choosePublishTag(plan)) === "latest";
+	gh(
+		repoRoot,
+		[
+			"release",
+			"create",
+			tag,
+			"--verify-tag",
+			"--title",
+			tag,
+			"--notes-file",
+			"-",
+			`--latest=${latest}`,
+		],
+		getReleaseNotes(repoRoot, plan.version),
+	);
+	return true;
+}
+
+const USAGE =
+	"Usage: node scripts/release-train.mjs --plan | --finish | --github-release | --notes <version>";
+
 async function main() {
-	const command = process.argv[2];
+	const [command, version] = process.argv.slice(2);
+	if (command === "--notes") {
+		if (process.argv.length !== 4 || !/^\d+\.\d+\.\d+$/.test(version)) {
+			throw new Error(USAGE);
+		}
+		process.stdout.write(getReleaseNotes(REPO_ROOT, version));
+		return;
+	}
 	if (
 		process.argv.length !== 3 ||
-		(command !== "--plan" && command !== "--finish")
+		!["--plan", "--finish", "--github-release"].includes(command)
 	) {
-		throw new Error(
-			"Usage: node scripts/release-train.mjs --plan | --finish",
-		);
+		throw new Error(USAGE);
 	}
 	const plan = planRelease(REPO_ROOT);
 	if (process.env.GITHUB_SHA && process.env.GITHUB_SHA !== plan.commit) {
@@ -233,6 +342,20 @@ async function main() {
 		);
 		if (plan.publish)
 			console.log(`npm tag: ${npmTag}; newer releases keep latest`);
+		return;
+	}
+	if (command === "--github-release") {
+		if (!plan.publish) {
+			throw new Error(
+				"Retry the original version commit to finish a release",
+			);
+		}
+		const created = await publishGitHubRelease(REPO_ROOT, plan);
+		console.log(
+			created
+				? `Created GitHub release v${plan.version}`
+				: `GitHub release v${plan.version} already exists`,
+		);
 		return;
 	}
 	await finishRelease(REPO_ROOT);

@@ -76,7 +76,7 @@ jobs:
 
       - name: Run unit and integration tests
         if: steps.train.outputs.publish == 'true'
-        run: pnpm test -- --maxWorkers=2
+        run: pnpm test --concurrency=2 -- --maxWorkers=2
 
       - name: Test release completion and recovery
         if: steps.train.outputs.publish == 'true'
@@ -110,7 +110,7 @@ jobs:
         if: steps.train.outputs.publish == 'true'
         run: |
           if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::error::Add the NPM_TOKEN repository secret: a granular token with publish access to every public Pen package and Bypass 2FA enabled."
+            echo "::error::Add NPM_TOKEN as a repository secret, or as an organization secret this repository can access: a granular token with publish access to every public Pen package and Bypass 2FA enabled."
             exit 1
           fi
         env:
@@ -127,6 +127,12 @@ jobs:
       - name: Verify npm train and push release tags
         if: steps.train.outputs.publish == 'true'
         run: node scripts/release-train.mjs --finish
+
+      - name: Publish the train's GitHub release
+        if: steps.train.outputs.publish == 'true'
+        run: node scripts/release-train.mjs --github-release
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Check main before preparing a version PR
         id: prepare

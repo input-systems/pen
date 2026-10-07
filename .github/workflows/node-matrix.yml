@@ -60,7 +60,7 @@ jobs:
         run: pnpm typecheck
 
       - name: Run unit and integration tests
-        run: pnpm test -- --maxWorkers=2
+        run: pnpm test --concurrency=2 -- --maxWorkers=2
 
   node-matrix:
     # The single required check for this workflow. See

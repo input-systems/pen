@@ -103,10 +103,9 @@ jobs:
         run: pnpm typecheck
 
       - name: Run unit and integration tests
-        # --maxWorkers=2 is forwarded through turbo to every `vitest run`.
-        # Without it each package spawns ~CPU workers on a 4-vCPU runner
-        # that is already running every package at once.
-        run: pnpm test -- --maxWorkers=2
+        # Two Turbo tasks, each with at most two Vitest workers, bound the
+        # test worker pools to four workers across packages.
+        run: pnpm test --concurrency=2 -- --maxWorkers=2
 
   e2e:
     # Check names are Browser tests (Chromium) / (WebKit) / (Firefox). The

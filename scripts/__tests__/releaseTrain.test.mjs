@@ -12,6 +12,7 @@ import { parse } from "yaml";
 import {
 	choosePublishTag,
 	finishRelease,
+	getReleaseNotes,
 	planRelease,
 } from "../release-train.mjs";
 
@@ -182,6 +183,91 @@ test("API7: the workflow prepares version PRs only from the current main commit"
 	fs.writeFileSync(output, "");
 	run();
 	assert.equal(fs.readFileSync(output, "utf8"), "current=false\n");
+});
+
+test("API7: train release notes merge package changelogs once per changeset", (t) => {
+	const { repoRoot } = fixture(t);
+	const changelogs = {
+		core: [
+			"# @input/pen-core",
+			"",
+			"## 0.4.10",
+			"",
+			"### Patch Changes",
+			"",
+			"- 9999999: Later train",
+			"",
+			"## 0.4.0",
+			"",
+			"### Patch Changes",
+			"",
+			"- 2222222: Fix paste",
+			"",
+			"  Details for paste.",
+			"",
+			"### Minor Changes",
+			"",
+			"- 1111111: Add tables",
+			"",
+			"## 0.3.0",
+			"",
+			"### Patch Changes",
+			"",
+			"- 0000000: Previous train",
+		],
+		types: [
+			"# @input/pen-types",
+			"",
+			"## 0.4.0",
+			"",
+			"### Minor Changes",
+			"",
+			"- 1111111: Add tables",
+			"",
+			"### Patch Changes",
+			"",
+			"- Updated dependencies [1111111]",
+			"  - @input/pen-core@0.4.0",
+			"- @input/pen-core@0.4.0",
+			"  - @input/pen-yjs@0.4.0",
+		],
+		private: [
+			"# @input/pen-private",
+			"",
+			"## 0.4.0",
+			"",
+			"### Patch Changes",
+			"",
+			"- 3333333: Internal only",
+		],
+	};
+	for (const [name, lines] of Object.entries(changelogs)) {
+		fs.writeFileSync(
+			path.join(repoRoot, "packages", name, "CHANGELOG.md"),
+			`${lines.join("\n")}\n`,
+		);
+	}
+	assert.equal(
+		getReleaseNotes(repoRoot, "0.4.0"),
+		[
+			"## Minor Changes",
+			"",
+			"- 1111111: Add tables",
+			"",
+			"## Patch Changes",
+			"",
+			"- 2222222: Fix paste",
+			"",
+			"  Details for paste.",
+			"",
+			"Every public Pen package is on npm at `0.4.0`.",
+			"",
+		].join("\n"),
+	);
+	assert.match(
+		getReleaseNotes(repoRoot, "0.5.0"),
+		/^No changelog entries beyond dependency updates\./,
+	);
 });
 
 test("API7: mixed train versions fail before publishing", (t) => {

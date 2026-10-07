@@ -28,98 +28,127 @@ function provenanceWorkflowProblems(workflow, rootReleaseScript) {
 	}
 	const job = config?.jobs?.release;
 	const steps = job?.steps ?? [];
-	const checkout = steps.find((step) => step.uses?.startsWith("actions/checkout@"));
+	const checkout = steps.find((step) =>
+		step.uses?.startsWith("actions/checkout@"),
+	);
 	const setup = steps.find((step) => step.uses === "./.github/actions/setup");
-	const action = steps.find((step) => step.uses?.startsWith("changesets/action@"));
-	const train = steps.find((step) => step.id === "train" && step.run === "node scripts/release-train.mjs --plan");
+	const action = steps.find((step) =>
+		step.uses?.startsWith("changesets/action@"),
+	);
+	const train = steps.find(
+		(step) =>
+			step.id === "train" &&
+			step.run === "node scripts/release-train.mjs --plan",
+	);
 	const build = steps.find((step) => step.run === "pnpm build");
 	const publish = steps.find((step) => step.run?.startsWith("pnpm release"));
 	const prepare = steps.find((step) => step.id === "prepare");
-	const finish = steps.find((step) => step.run === "node scripts/release-train.mjs --finish");
+	const finish = steps.find(
+		(step) => step.run === "node scripts/release-train.mjs --finish",
+	);
+	const githubRelease = steps.find(
+		(step) =>
+			step.run === "node scripts/release-train.mjs --github-release",
+	);
 	const require = (condition, message) => {
 		if (!condition) problems.push(message);
 	};
-	require(
-		config?.on?.push?.branches?.length === 1 && config.on.push.branches[0] === "main" &&
-			!Object.keys(config.on).some((event) => event !== "push" && event !== "workflow_dispatch"),
-		"release.yml must run only on main pushes or manual recovery",
-	);
-	require(
-		job?.if?.includes("github.ref == 'refs/heads/main'") &&
-			job.if.includes("github.repository == 'input-systems/pen'"),
-		"release job must restrict manual dispatch to main in input-systems/pen",
-	);
+	require(config?.on?.push?.branches?.length === 1 &&
+		config.on.push.branches[0] === "main" &&
+		!Object.keys(config.on).some(
+			(event) => event !== "push" && event !== "workflow_dispatch",
+		), "release.yml must run only on main pushes or manual recovery");
+	require(job?.if?.includes("github.ref == 'refs/heads/main'") &&
+		job.if.includes(
+			"github.repository == 'input-systems/pen'",
+		), "release job must restrict manual dispatch to main in input-systems/pen");
 	for (const permission of ["contents", "pull-requests", "id-token"]) {
-		require(job?.permissions?.[permission] === "write", `release job must grant ${permission}: write`);
+		require(job?.permissions?.[permission] ===
+			"write", `release job must grant ${permission}: write`);
 	}
-	require(
-		config?.concurrency?.queue === "max" && config.concurrency["cancel-in-progress"] === false,
-		"release concurrency must queue pending releases without cancelling them",
-	);
-	require(
-		checkout?.with?.["fetch-depth"] === 0 && checkout.with["fetch-tags"] === true,
-		"release checkout must fetch tags and full history",
-	);
-	require(
-		setup?.with?.["registry-url"] === "https://registry.npmjs.org",
-		"release toolchain must configure the npm registry-url",
-	);
-	require(!setup?.with?.["turbo-cache-scope"], "release artifacts must be built without a restored Turbo cache");
-	require(
-		action?.uses === "changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51",
-		"release.yml must use pinned changesets/action v2 with CLI 3",
-	);
-	require(action?.with?.["github-token"] === "${{ github.token }}", "Changesets must use the built-in github-token input");
-	require(action?.with?.["version-script"] === "pnpm version-packages", "Changesets must pass version-script: pnpm version-packages");
-	require(action?.with?.["publish-script"] === "pnpm release", "Changesets publish-script must describe automatic publishing in the version PR");
-	require(
-		action?.if === "steps.prepare.outputs.current == 'true'",
-		"Changesets must only prepare a PR from the current main commit",
-	);
-	require(
-		prepare?.if === "steps.train.outputs.has-changesets == 'true'" &&
-			prepare.run?.includes("git ls-remote --exit-code origin refs/heads/main") &&
-			prepare.run.includes('"${remote_head%%[[:space:]]*}" == "$GITHUB_SHA"'),
-		"PR preparation must check pending changesets against the live main commit",
-	);
-	require(
-		publish?.if === "steps.train.outputs.publish == 'true'",
-		"npm publishing must run pnpm release only for a version commit",
-	);
-	require(
-		publish?.run === 'pnpm release --no-git-tag --tag "$NPM_TAG"' &&
-			publish.env?.NPM_TAG === "${{ steps.train.outputs.npm-tag }}",
-		"npm publishing must pass the planned npm tag through NPM_TAG",
-	);
-	require(
-		build !== undefined && (build.if === undefined || build.if === publish?.if),
-		"release job must build the version commit whenever it publishes",
-	);
-	require(publish?.env?.NODE_AUTH_TOKEN === "${{ secrets.NPM_TOKEN }}", "npm publishing must authenticate with NODE_AUTH_TOKEN from secrets.NPM_TOKEN");
-	require(String(publish?.env?.NPM_CONFIG_PROVENANCE) === "true", "npm publishing must set NPM_CONFIG_PROVENANCE: true");
-	require(
-		!config?.env?.NODE_AUTH_TOKEN && !job?.env?.NODE_AUTH_TOKEN && !action?.env?.NODE_AUTH_TOKEN,
-		"NODE_AUTH_TOKEN must stay scoped to release steps",
-	);
-	require(
-		action?.with?.["push-git-tags"] === false && action.with["create-github-releases"] === false,
-		"Changesets must defer git tags until the entire npm train is verified",
-	);
-	require(train !== undefined, "release job must identify the version commit before publishing");
-	require(
-		finish?.if === "steps.train.outputs.publish == 'true'",
-		"release job must verify and finish tags even when a retry publishes nothing",
-	);
-	const order = [train, build, publish, finish, prepare, action].map((step) => steps.indexOf(step));
-	require(
-		order.every((index, position) => index !== -1 && (position === 0 || order[position - 1] < index)),
-		"release job must plan, build, publish, and finish the train before preparing remaining changesets",
-	);
-	if (typeof rootReleaseScript !== "string" || !/\bchangeset publish\b/.test(rootReleaseScript)) {
-		problems.push('root package.json "release" script must run changeset publish');
+	require(config?.concurrency?.queue === "max" &&
+		config.concurrency["cancel-in-progress"] ===
+			false, "release concurrency must queue pending releases without cancelling them");
+	require(checkout?.with?.["fetch-depth"] === 0 &&
+		checkout.with["fetch-tags"] ===
+			true, "release checkout must fetch tags and full history");
+	require(setup?.with?.["registry-url"] ===
+		"https://registry.npmjs.org", "release toolchain must configure the npm registry-url");
+	require(!setup?.with?.[
+		"turbo-cache-scope"
+	], "release artifacts must be built without a restored Turbo cache");
+	require(action?.uses ===
+		"changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51", "release.yml must use pinned changesets/action v2 with CLI 3");
+	require(action?.with?.["github-token"] ===
+		"${{ github.token }}", "Changesets must use the built-in github-token input");
+	require(action?.with?.["version-script"] ===
+		"pnpm version-packages", "Changesets must pass version-script: pnpm version-packages");
+	require(action?.with?.["publish-script"] ===
+		"pnpm release", "Changesets publish-script must describe automatic publishing in the version PR");
+	require(action?.if ===
+		"steps.prepare.outputs.current == 'true'", "Changesets must only prepare a PR from the current main commit");
+	require(prepare?.if === "steps.train.outputs.has-changesets == 'true'" &&
+		prepare.run?.includes(
+			"git ls-remote --exit-code origin refs/heads/main",
+		) &&
+		prepare.run.includes(
+			'"${remote_head%%[[:space:]]*}" == "$GITHUB_SHA"',
+		), "PR preparation must check pending changesets against the live main commit");
+	require(publish?.if ===
+		"steps.train.outputs.publish == 'true'", "npm publishing must run pnpm release only for a version commit");
+	require(publish?.run === 'pnpm release --no-git-tag --tag "$NPM_TAG"' &&
+		publish.env?.NPM_TAG ===
+			"${{ steps.train.outputs.npm-tag }}", "npm publishing must pass the planned npm tag through NPM_TAG");
+	require(build !== undefined &&
+		(build.if === undefined ||
+			build.if ===
+				publish?.if), "release job must build the version commit whenever it publishes");
+	require(publish?.env?.NODE_AUTH_TOKEN ===
+		"${{ secrets.NPM_TOKEN }}", "npm publishing must authenticate with NODE_AUTH_TOKEN from secrets.NPM_TOKEN");
+	require(String(publish?.env?.NPM_CONFIG_PROVENANCE) ===
+		"true", "npm publishing must set NPM_CONFIG_PROVENANCE: true");
+	require(!config?.env?.NODE_AUTH_TOKEN &&
+		!job?.env?.NODE_AUTH_TOKEN &&
+		!action?.env
+			?.NODE_AUTH_TOKEN, "NODE_AUTH_TOKEN must stay scoped to release steps");
+	require(action?.with?.["push-git-tags"] === false &&
+		action.with["create-github-releases"] ===
+			false, "Changesets must defer git tags until the entire npm train is verified");
+	require(train !==
+		undefined, "release job must identify the version commit before publishing");
+	require(finish?.if ===
+		"steps.train.outputs.publish == 'true'", "release job must verify and finish tags even when a retry publishes nothing");
+	require(githubRelease?.if === "steps.train.outputs.publish == 'true'" &&
+		githubRelease.env?.GH_TOKEN ===
+			"${{ github.token }}", "release job must publish the train's GitHub release with the built-in token");
+	const order = [
+		train,
+		build,
+		publish,
+		finish,
+		githubRelease,
+		prepare,
+		action,
+	].map((step) => steps.indexOf(step));
+	require(order.every(
+		(index, position) =>
+			index !== -1 && (position === 0 || order[position - 1] < index),
+	), "release job must plan, build, publish, and finish the train before preparing remaining changesets");
+	if (
+		typeof rootReleaseScript !== "string" ||
+		!/\bchangeset publish\b/.test(rootReleaseScript)
+	) {
+		problems.push(
+			'root package.json "release" script must run changeset publish',
+		);
 	}
-	if (typeof rootReleaseScript === "string" && rootReleaseScript.includes("--provenance")) {
-		problems.push('root package.json "release" script must not pass --provenance; @changesets/cli 3 rejects it');
+	if (
+		typeof rootReleaseScript === "string" &&
+		rootReleaseScript.includes("--provenance")
+	) {
+		problems.push(
+			'root package.json "release" script must not pass --provenance; @changesets/cli 3 rejects it',
+		);
 	}
 	return problems;
 }
@@ -229,6 +258,11 @@ function runSelfTests() {
 						run: "node scripts/release-train.mjs --finish",
 					},
 					{
+						if: "steps.train.outputs.publish == 'true'",
+						run: "node scripts/release-train.mjs --github-release",
+						env: { GH_TOKEN: "${{ github.token }}" },
+					},
+					{
 						id: "prepare",
 						if: "steps.train.outputs.has-changesets == 'true'",
 						run: 'remote_head=$(git ls-remote --exit-code origin refs/heads/main)\nif [[ "${remote_head%%[[:space:]]*}" == "$GITHUB_SHA" ]]; then\n echo "current=true" >> "$GITHUB_OUTPUT"\nfi',
@@ -264,8 +298,9 @@ function runSelfTests() {
 	const BUILD = 3;
 	const PUBLISH = 4;
 	const FINISH = 5;
-	const PREPARE = 6;
-	const ACTION = 7;
+	const GITHUB_RELEASE = 6;
+	const PREPARE = 7;
+	const ACTION = 8;
 	function mustFail(mutate, expected) {
 		const config = structuredClone(healthyConfig);
 		mutate(config, config.jobs.release, config.jobs.release.steps);
@@ -352,6 +387,15 @@ function runSelfTests() {
 	mustFail((config, job, steps) => {
 		delete steps[PREPARE].if;
 	}, "live main commit");
+	mustFail((config, job, steps) => {
+		delete steps[GITHUB_RELEASE].env;
+	}, "GitHub release");
+	mustFail((config, job, steps) => {
+		[steps[FINISH], steps[GITHUB_RELEASE]] = [
+			steps[GITHUB_RELEASE],
+			steps[FINISH],
+		];
+	}, "before preparing remaining changesets");
 	const cliProvenanceFlag = provenanceWorkflowProblems(
 		healthyWorkflow,
 		"changeset publish --provenance",
