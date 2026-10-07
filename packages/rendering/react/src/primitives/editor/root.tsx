@@ -213,7 +213,9 @@ export function EditorRoot(props: EditorRootProps) {
 
 		return bindEditorRootFocus(root, {
 			onFocusChange(nextFocused) {
-				setFocused(nextFocused);
+				if (fieldEditor.isFocused !== nextFocused) {
+					setFocused(nextFocused);
+				}
 				fieldEditor.setFocused(nextFocused);
 			},
 			onFocusIn(event) {

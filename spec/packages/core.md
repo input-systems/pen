@@ -100,7 +100,7 @@ Headless editors default to the core apply pipeline only, same as bare `createEd
 
 ## Current Maturity / Intended Usage
 
-Workspace package at version `0.3.0`; intended usage is current-state but still evolving. In practice, this is still the package that defines the architecture for the rest of the repo, so churn here has repo-wide impact.
+Workspace package at version `0.4.0`; intended usage is current-state but still evolving. In practice, this is still the package that defines the architecture for the rest of the repo, so churn here has repo-wide impact.
 
 ## Non-goals
 

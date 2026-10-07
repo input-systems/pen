@@ -1,5 +1,27 @@
 # @input/pen-core
 
+## 0.4.0
+
+### Minor Changes
+
+- cc0b350: `resolveSuggestionMenuTarget` with `boundary: "whitespace"` now anchors on the last trigger that has whitespace (or the start of the lookbehind) before it, instead of rejecting when the last trigger character does not. A later trigger character becomes part of the query, so `@ada@example` resolves as one mention query rather than closing the menu at the second `@`. Hosts that relied on a second trigger character closing the menu, such as `:smile:`, should set `closingChar`. `boundary: "any"` is unchanged.
+
+  Breaking: yes — hosts whose `boundary: "whitespace"` trigger relied on a second trigger character closing the menu set `closingChar`
+
+### Patch Changes
+
+- 84f4d84: Snapshot op payloads for `onBeforeApply` hooks without recursing into cycles, so a cyclic payload is dropped with `PEN_APPLY_004` instead of overflowing the stack, reporting `PEN_APPLY_007`, and skipping the document-profile boundary hook.
+
+  Breaking: no
+
+- cc0b350: `useSuggestionMenu` no longer blanks an open menu on every keystroke. A synchronous `getItems` result is applied in the same state update that opens or retargets the menu, with no intermediate `loading` render. For an async `getItems`, a refined query on the same trigger keeps the previous `items` while `status` is `loading`, then swaps in its own; stale responses are still dropped. A `getItems` that throws synchronously now lands in the `error` state instead of escaping the refresh. `@input/pen-types` exports the `isPromiseLike` guard, which the hook and core's extension lifecycle now share.
+
+  Breaking: no
+
+- Updated dependencies [cc0b350]
+  - @input/pen-types@0.4.0
+  - @input/pen-yjs@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

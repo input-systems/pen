@@ -82,7 +82,10 @@ scenario(
 	async (s, page) => {
 		await s.load("hello-world");
 		await clickOffset(page, "hello-p1", 2);
-		await expect(page.locator("[data-pen-editor-caret]")).toHaveCount(1);
+		await expect(page.locator("[data-pen-editor-caret]")).toHaveAttribute(
+			"data-offset",
+			"2",
+		);
 		const start = await caretIdentity(page);
 		expect(start).not.toBeNull();
 
