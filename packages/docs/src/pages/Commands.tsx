@@ -481,7 +481,7 @@ void registry.dispatch(splitBlock, undefined);`}</code>
 			</table>
 			<p>
 				Do not invent catalog names for field-editor helpers (
-				<code>applyEnterBehavior</code>,{" "}
+				<code>applyListInputRule</code>,{" "}
 				<code>handleFieldEditorKeyDown</code>, and the rest). Those are
 				not commands.
 			</p>
