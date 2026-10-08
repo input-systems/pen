@@ -6,11 +6,8 @@ import {
 } from "@input/pen-types";
 import {
 	applyListInputRule,
-	applyBackspaceBehavior,
-	applyEnterBehavior,
 	getLogicalInlineLength,
 	normalizeInlineOffset,
-	splitBlockAtOffset,
 	toggleInlineMark,
 } from "@input/pen-dom/field-editor/commands";
 import { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
@@ -180,60 +177,6 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 
 		fieldEditor.destroy();
 		expect(fieldEditor.getSnapshot().mode).toBe("inactive");
-
-		editor.destroy();
-	});
-
-	it("splits a block and returns the next selection target", () => {
-		const editor = createEditor(editorOpts());
-		const blockId = editor.firstBlock()!.id;
-
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId,
-				from: 0,
-				to: 0,
-				insert: "HelloWorld",
-			},
-		]);
-
-		const target = splitBlockAtOffset(editor, { blockId, offset: 5 });
-
-		expect(editor.blockCount()).toBe(2);
-		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe(
-			"Hello",
-		);
-		expect(
-			visibleText(editor.getBlock(target.blockId)!.textContent()),
-		).toBe("World");
-		expect(target.anchorOffset).toBe(0);
-		expect(target.focusOffset).toBe(0);
-
-		editor.destroy();
-	});
-
-	it("uses newline insertion for code input mode", () => {
-		const editor = createEditor(editorOpts());
-		const blockId = editor.firstBlock()!.id;
-
-		editor.apply([
-			{ type: "set-props", blockId, props: { type: "codeBlock" } },
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "abcd" },
-		]);
-
-		const target = applyEnterBehavior(editor, {
-			blockId,
-			inputMode: "code",
-			ytext: getYText(editor, blockId),
-			range: { start: 2, end: 2 },
-		});
-
-		expect(editor.blockCount()).toBe(1);
-		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe(
-			"ab\ncd",
-		);
-		expect(target).toEqual({ blockId, anchorOffset: 3, focusOffset: 3 });
 
 		editor.destroy();
 	});
@@ -435,46 +378,6 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 
 		expect(getLogicalInlineLength(ytext)).toBe(0);
 		expect(normalizeInlineOffset(ytext, 1)).toBe(0);
-
-		editor.destroy();
-	});
-
-	it("merges backward from an empty paragraph without carrying the placeholder", () => {
-		const editor = createEditor(editorOpts());
-		const firstBlockId = editor.firstBlock()!.id;
-		const secondBlockId = crypto.randomUUID();
-
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: firstBlockId,
-				from: 0,
-				to: 0,
-				insert: "Hello",
-			},
-			{
-				type: "insert-block",
-				blockId: secondBlockId,
-				blockType: "paragraph",
-				props: {},
-				position: { after: firstBlockId },
-			},
-		]);
-
-		const secondYText = getYText(editor, secondBlockId);
-		const target = applyBackspaceBehavior(editor, {
-			blockId: secondBlockId,
-			ytext: secondYText,
-			range: { start: 1, end: 1 },
-		});
-
-		expect(target).toEqual({
-			blockId: firstBlockId,
-			anchorOffset: 5,
-			focusOffset: 5,
-		});
-		expect(editor.blockCount()).toBe(1);
-		expect(editor.getBlock(firstBlockId)!.textContent()).toBe("Hello");
 
 		editor.destroy();
 	});

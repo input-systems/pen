@@ -1,5 +1,4 @@
-import { applySplitBlock, inputRulesEngineFacet } from "@input/pen-core";
-import { generateId } from "@input/pen-types";
+import { inputRulesEngineFacet } from "@input/pen-core";
 import type { DocumentOp, Editor } from "@input/pen-types";
 import {
 	toggleInlineMark as toggleInlineMarkCommand,
@@ -22,52 +21,6 @@ export function setInlineMark(
 	value: Record<string, unknown> | null,
 ): boolean {
 	return setInlineMarkCommand(editor, markType, value);
-}
-
-// ── Commands ─────────────────────────────────────────────────
-
-export function splitBlockAtOffset(
-	editor: Editor,
-	options: {
-		blockId: string;
-		offset: number;
-		newBlockType?: string;
-	},
-): SelectionTarget {
-	const { blockId, offset, newBlockType } = options;
-	const newBlockId = generateId();
-
-	applySplitBlock(editor, {
-		blockId,
-		offset,
-		newBlockId,
-		newBlockType,
-		applyOptions: { origin: "user" },
-	});
-	editor.selectText(newBlockId, 0, 0, { origin: "keyboard" });
-
-	return {
-		blockId: newBlockId,
-		anchorOffset: 0,
-		focusOffset: 0,
-	};
-}
-
-export function convertBlock(
-	editor: Editor,
-	options: {
-		blockId: string;
-		newType: string;
-		newProps?: Record<string, unknown>;
-	},
-): SelectionTarget {
-	editor.apply(getConvertBlockOps(editor, options), { origin: "user" });
-
-	return {
-		blockId: options.blockId,
-		anchorOffset: 0,
-		focusOffset: 0,
-	};
 }
 
 export function getConvertBlockOps(
@@ -96,51 +49,6 @@ export function getConvertBlockOps(
 	}
 
 	return ops;
-}
-
-export function insertTextAtRange(
-	editor: Editor,
-	options: {
-		blockId: string;
-		range: SelectionRange | null;
-		text: string;
-	},
-): SelectionTarget {
-	const { blockId, range, text } = options;
-	const start = range?.start ?? 0;
-	const end = range?.end ?? start;
-	const ops: DocumentOp[] = [];
-
-	if (end > start) {
-		ops.push({
-			type: "splice-text",
-			blockId,
-			from: start,
-			to: end,
-			insert: "",
-		});
-	}
-
-	if (text.length > 0) {
-		ops.push({
-			type: "splice-text",
-			blockId,
-			from: start,
-			to: start,
-			insert: text,
-		});
-	}
-
-	if (ops.length > 0) {
-		editor.apply(ops, { origin: "user" });
-	}
-
-	const nextOffset = start + text.length;
-	return {
-		blockId,
-		anchorOffset: nextOffset,
-		focusOffset: nextOffset,
-	};
 }
 
 export function applyListInputRule(

@@ -47,6 +47,53 @@ describe("text commands", () => {
 		editor.destroy();
 	});
 
+	it("backspace in an empty first code block converts it to a paragraph", () => {
+		const editor = createCommandEditor([{ id: "a", type: "codeBlock" }]);
+		const registry = createCommandHarness(editor);
+		editor.selectText("a", 0, 0);
+
+		expect(
+			registry.dispatch(deleteBackward, { granularity: "grapheme" }),
+		).toBe(true);
+		expect(editor.getBlock("a")?.type).toBe("paragraph");
+		expect(caretOf(editor)).toEqual({ blockId: "a", offset: 0 });
+		editor.destroy();
+	});
+
+	it("backspace in an empty code block after another block converts it to a paragraph", () => {
+		const editor = createCommandEditor([
+			{ id: "a", type: "paragraph", text: "Hello" },
+			{ id: "b", type: "codeBlock" },
+		]);
+		const registry = createCommandHarness(editor);
+		editor.selectText("b", 0, 0);
+
+		expect(
+			registry.dispatch(deleteBackward, { granularity: "grapheme" }),
+		).toBe(true);
+		expect(editor.getBlock("b")?.type).toBe("paragraph");
+		expect(editor.getBlock("a")?.textContent()).toBe("Hello");
+		expect(caretOf(editor)).toEqual({ blockId: "b", offset: 0 });
+		editor.destroy();
+	});
+
+	it("backspace at the start of a code block with text merges it into the previous block", () => {
+		const editor = createCommandEditor([
+			{ id: "a", type: "paragraph", text: "Hello" },
+			{ id: "b", type: "codeBlock", text: "code" },
+		]);
+		const registry = createCommandHarness(editor);
+		editor.selectText("b", 0, 0);
+
+		expect(
+			registry.dispatch(deleteBackward, { granularity: "grapheme" }),
+		).toBe(true);
+		expect(editor.getBlock("a")?.textContent()).toBe("Hellocode");
+		expect(editor.getBlock("b")).toBeNull();
+		expect(caretOf(editor)).toEqual({ blockId: "a", offset: 5 });
+		editor.destroy();
+	});
+
 	it("forward delete at a block end merges the next text block", () => {
 		const editor = createCommandEditor([
 			{ id: "a", type: "paragraph", text: "Hello" },

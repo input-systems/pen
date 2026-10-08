@@ -20,11 +20,7 @@ import type { Command, Editor } from "@input/pen-types";
 import type { FieldEditorInputController } from "./controller";
 import type { FieldEditorTextLike } from "./crdt";
 import { resolveFieldInsertMarks } from "./pendingMarkController";
-import {
-	applyDeleteBehavior,
-	applyEnterBehavior,
-	toggleInlineMark,
-} from "./commands";
+import { toggleInlineMark } from "./commands";
 import {
 	dispatchAndActivate,
 	dispatchEditorCommand,
@@ -149,21 +145,6 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 		if (!resolved) return;
 		const { blockId, range } = resolved;
 
-		// A cell's text is not the table block's: block-level delete
-		// would select on the table and clear the cell, so it edits inline.
-		const target = isCellEditing(editor, fe)
-			? null
-			: applyDeleteBehavior(editor, {
-					blockId,
-					ytext,
-					range,
-					direction: "backward",
-				});
-		if (target) {
-			activateDeleteTarget(editor, fe, target);
-			return;
-		}
-
 		if (range.start !== range.end) {
 			deleteInlineRange(backend, blockId, range);
 			return;
@@ -193,21 +174,6 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 		);
 		if (!resolved) return;
 		const { blockId, range } = resolved;
-
-		// A cell's text is not the table block's: block-level delete
-		// would select on the table and clear the cell, so it edits inline.
-		const target = isCellEditing(editor, fe)
-			? null
-			: applyDeleteBehavior(editor, {
-					blockId,
-					ytext,
-					range,
-					direction: "forward",
-				});
-		if (target) {
-			activateDeleteTarget(editor, fe, target);
-			return;
-		}
 
 		if (range.start !== range.end) {
 			deleteInlineRange(backend, blockId, range);
@@ -253,38 +219,15 @@ export const DIRECT_HANDLERS: Record<string, DirectHandler> = {
 			),
 	),
 
-	insertParagraph: (_event, editor, ytext, fe, element, backend) => {
-		const blockId = fe.focusBlockId;
-		if (!blockId) return;
-		const range = backend.resolveCurrentInputRange();
-		if (
-			tryDispatchMapped(editor, fe, backend, splitBlock, undefined, range)
-		) {
-			return;
-		}
-		const target = applyEnterBehavior(editor, {
-			blockId,
-			inputMode: fe.inputMode,
-			ytext,
-			range,
-		});
-		if (!target) return;
-
-		if (typeof fe.commitProgrammaticTextSelection === "function") {
-			fe.commitProgrammaticTextSelection(
-				target.blockId,
-				target.anchorOffset,
-				target.focusOffset,
-				{ origin: "keyboard" },
-			);
-			return;
-		}
-
-		fe.activateTextSelection(
-			target.blockId,
-			target.anchorOffset,
-			target.focusOffset,
-			{ origin: "keyboard" },
+	insertParagraph: (_event, editor, _ytext, fe, _element, backend) => {
+		if (!fe.focusBlockId) return;
+		tryDispatchMapped(
+			editor,
+			fe,
+			backend,
+			splitBlock,
+			undefined,
+			backend.resolveCurrentInputRange(),
 		);
 	},
 
@@ -436,7 +379,10 @@ function insertTextOverRange(
 /**
  * Resolve the focused block and input range for a delete, and try the mapped
  * core command first. Returns `null` when there is nothing to delete or the
- * command already handled it; otherwise the caller falls back to a direct edit.
+ * command already handled it; otherwise the caller edits the field's own text
+ * and nothing else. Block-level outcomes (merge, convert, select) are the core
+ * command's alone. A cell never dispatches: its text is not the table block's,
+ * so a block-level delete would select the table and clear the cell.
  */
 function resolveUndispatchedDelete(
 	editor: Editor,
@@ -467,24 +413,6 @@ function deleteInlineRange(
 		range,
 		text: "",
 	});
-}
-
-function activateDeleteTarget(
-	editor: Editor,
-	fe: FieldEditorInputController,
-	target: NonNullable<ReturnType<typeof applyDeleteBehavior>>,
-): void {
-	if (target.selectBlock) {
-		fe.deactivate();
-		editor.selectBlock(target.blockId, { origin: "keyboard" });
-		return;
-	}
-	fe.activateTextSelection(
-		target.blockId,
-		target.anchorOffset,
-		target.focusOffset,
-		{ origin: "keyboard" },
-	);
 }
 
 function resolveFieldInsertRange(

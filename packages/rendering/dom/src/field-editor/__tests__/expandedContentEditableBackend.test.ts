@@ -105,19 +105,8 @@ describe("ExpandedContentEditableBackend handleBeforeInput enter", () => {
 		expect(frames).toHaveLength(0);
 	});
 
-	it.each([
-		["applyEnterBehavior is the fallback", true],
-		["a dispatched splitBlock", false],
-	])("activates the split caret in-turn after %s", (_name, declineDispatch) => {
+	it("activates the split caret in-turn after a dispatched splitBlock", () => {
 		const { editor, blockIds, host, recording } = mountExpanded(["Hello"], caretAt(2));
-		const dispatched: string[] = [];
-		if (declineDispatch) {
-			const registry = getCommandRegistry(editor)!;
-			registry.dispatch = ((command) => {
-				dispatched.push(command.name);
-				return false;
-			}) as typeof registry.dispatch;
-		}
 		const frames = stubFrames();
 
 		dispatchBeforeInput(host, "insertParagraph");
@@ -130,8 +119,24 @@ describe("ExpandedContentEditableBackend handleBeforeInput enter", () => {
 		expect(recording.activations).toEqual([
 			{ blockId: order[1], anchorOffset: 0, focusOffset: 0, kind: "activate" },
 		]);
-		expect(dispatched).toEqual(declineDispatch ? ["pen.splitBlock"] : []);
 		expect(frames).toHaveLength(0);
+	});
+
+	it("leaves the document alone when splitBlock declines", () => {
+		const { editor, blockIds, host, recording } = mountExpanded(["Hello"], caretAt(2));
+		const dispatched: string[] = [];
+		const registry = getCommandRegistry(editor)!;
+		registry.dispatch = ((command) => {
+			dispatched.push(command.name);
+			return false;
+		}) as typeof registry.dispatch;
+
+		dispatchBeforeInput(host, "insertParagraph");
+
+		expect(dispatched).toEqual(["pen.splitBlock"]);
+		expect(editor.documentState.blockOrder).toHaveLength(1);
+		expect(editor.getBlock(blockIds[0]!)?.textContent()).toBe("Hello");
+		expect(recording.activations).toEqual([]);
 	});
 });
 

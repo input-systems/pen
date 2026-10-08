@@ -33,6 +33,8 @@ export const BACKSPACE_EXIT_TYPES = new Set([
 	...LIST_BLOCK_TYPES,
 	...CONTAINER_EXIT_TYPES,
 	...HEADING_TYPES,
+	// Enter inserts a newline in a code block, so Backspace is its only exit.
+	"codeBlock",
 ]);
 
 /**

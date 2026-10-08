@@ -1,10 +1,5 @@
 import { INLINE_ATOM_REPLACEMENT_TEXT } from "./inlineAtomModel";
 import { type DocumentOp, type Editor } from "@input/pen-types";
-import { getAdjacentVisibleBlockId } from "../utils/parentIdTree";
-import {
-	getEditorFlowCapability,
-	isContinuousTextFlowCapability,
-} from "../utils/flowCapabilities";
 
 export interface SelectionRange {
 	start: number;
@@ -33,65 +28,11 @@ export type BlockInputRuleEngine = {
 	): DocumentOp[] | null;
 };
 
-// ── Enter action resolution ──────────────────────────────────
-
-export type EnterAction =
-	| { action: "split"; newBlockType: string | undefined }
-	| { action: "convert"; newType: string }
-	| { action: "lift" }
-	| { action: "insert-text"; text: string };
-
-export type BackspaceAction =
-	| { action: "convert"; newType: string }
-	| { action: "delete"; targetBlockId: string }
-	| { action: "select-block"; targetBlockId: string }
-	| { action: "merge"; targetBlockId: string };
-
-export type DeleteDirection = "backward" | "forward";
-
 export const LIST_BLOCK_TYPES = new Set([
 	"bulletListItem",
 	"numberedListItem",
 	"checkListItem",
 ]);
-
-export const HEADING_TYPES = new Set(["heading"]);
-
-export const CONTAINER_EXIT_TYPES = new Set(["blockquote", "callout"]);
-export const BACKSPACE_EXIT_TYPES = new Set([
-	...LIST_BLOCK_TYPES,
-	...CONTAINER_EXIT_TYPES,
-	...HEADING_TYPES,
-]);
-
-export function isBlockEmpty(ytext: InlineTextLike): boolean {
-	return getLogicalInlineLength(ytext) === 0;
-}
-
-export function getAdjacentEditableBlock(
-	editor: Editor,
-	blockId: string,
-	direction: "previous" | "next",
-): ReturnType<Editor["getBlock"]> {
-	let adjacentBlockId = getAdjacentVisibleBlockId(editor, blockId, direction);
-	while (adjacentBlockId) {
-		const adjacentBlock = editor.getBlock(adjacentBlockId);
-		if (
-			adjacentBlock &&
-			isContinuousTextFlowCapability(
-				getEditorFlowCapability(editor, adjacentBlock.id),
-			)
-		) {
-			return adjacentBlock;
-		}
-		adjacentBlockId = getAdjacentVisibleBlockId(
-			editor,
-			adjacentBlockId,
-			direction,
-		);
-	}
-	return null;
-}
 
 /**
  * The field's text in the logical domain: each inline embed is one
@@ -172,42 +113,6 @@ export function getSelectionTarget(
 
 export function isCollapsedRange(range: SelectionRange | null): boolean {
 	return !range || range.start === range.end;
-}
-
-export function getInlineNodeSelectionTarget(
-	editor: Editor,
-	options: {
-		blockId: string;
-		offset: number;
-		direction: DeleteDirection;
-	},
-): SelectionTarget | null {
-	const block = editor.getBlock(options.blockId);
-	if (!block) {
-		return null;
-	}
-
-	let currentOffset = 0;
-	for (const delta of block.inlineDeltas()) {
-		const length =
-			typeof delta.insert === "string" ? delta.insert.length : 1;
-		const nextOffset = currentOffset + length;
-		const isInlineNode = typeof delta.insert !== "string";
-
-		const atomOffset =
-			options.direction === "backward" ? nextOffset : currentOffset;
-		if (isInlineNode && options.offset === atomOffset) {
-			return {
-				blockId: options.blockId,
-				anchorOffset: currentOffset,
-				focusOffset: nextOffset,
-			};
-		}
-
-		currentOffset = nextOffset;
-	}
-
-	return null;
 }
 
 export function getListIndent(
