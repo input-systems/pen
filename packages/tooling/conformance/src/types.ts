@@ -436,6 +436,8 @@ export type PenConformanceBridge = {
 	/** W3.R1: drop the next native selection write and count writes from here. */
 	installSelectionWriteFault(): void;
 	readonly selectionWriteFault: { dropped: number; writes: number };
+	/** HOST9: a `selectionChange` listener that ends a text range reaching `blockId` before it. */
+	installSelectionRewriteListener(blockId: string): void;
 	/** W3.R17: confine the next multi-block selection write to the anchor field. */
 	installConfiningWriteFault(): void;
 	/** Clamped writes, the lone clears that task ended with, and writes after it. */

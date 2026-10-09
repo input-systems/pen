@@ -789,6 +789,39 @@ function selectionWriteFaultCounters(): { dropped: number; writes: number } {
 	);
 }
 
+/**
+ * HOST9: a host listener that rewrites the record from inside `selectionChange`: a
+ * text range reaching `blockId` is ended at the end of the block before it.
+ */
+function installSelectionRewriteListener(blockId: string): void {
+	const { editor } = getHarnessSession();
+	editor.onSelectionChange(() => {
+		const selection = editor.selection;
+		if (selection?.type !== "text") {
+			return;
+		}
+		const anchorHit = selection.anchor.blockId === blockId;
+		const focusHit = selection.focus.blockId === blockId;
+		if (!anchorHit && !focusHit) {
+			return;
+		}
+		const previousId = editor.documentState.blockAt(
+			editor.documentState.indexOf(blockId) - 1,
+		);
+		if (previousId === null) {
+			return;
+		}
+		const end = {
+			blockId: previousId,
+			offset: editor.getBlock(previousId)?.length() ?? 0,
+		};
+		editor.selectTextRange(
+			anchorHit ? end : selection.anchor,
+			focusHit ? end : selection.focus,
+		);
+	});
+}
+
 function installBrokenProjector(): void {
 	const current = getHarnessSession();
 	const root = editorRoot();
@@ -1492,6 +1525,7 @@ function installBridge(): void {
 		serializePresenceAnchor,
 		installBrokenProjector,
 		installSelectionWriteFault,
+		installSelectionRewriteListener,
 		get selectionWriteFault() {
 			return selectionWriteFaultCounters();
 		},
