@@ -82,6 +82,23 @@ export function isTextEntryTarget(
 }
 
 /**
+ * A field of some editor: an inline field or the expanded blocks host. The
+ * backend makes one editable and focuses it in the turn it attaches, and a
+ * framework binding paints the field-surface marker in a later render, so the
+ * marker alone does not name a field.
+ */
+function isEditorFieldElement(
+	target: EventTarget | null,
+): target is HTMLElement {
+	return (
+		isFieldEditorTextEntryTarget(target) ||
+		(isDomHTMLElement(target) &&
+			(target.hasAttribute(DATA_ATTRS.editorBlocksHost) ||
+				target.hasAttribute(DATA_ATTRS.inlineContent)))
+	);
+}
+
+/**
  * Text entry that is not `root`'s own field. Host chrome — a prompt textarea
  * nested in the root, or an input outside it — keeps its own caret, and so
  * does another editor's field surface (HOST9). `root`'s field surface is
@@ -91,7 +108,7 @@ export function isForeignNativeTextEntryTarget(
 	target: EventTarget | null,
 	root: HTMLElement,
 ): boolean {
-	if (isFieldEditorTextEntryTarget(target)) {
+	if (isEditorFieldElement(target)) {
 		return getClosestEditorRoot(target) !== root;
 	}
 	return isNativeTextEntryTarget(target);

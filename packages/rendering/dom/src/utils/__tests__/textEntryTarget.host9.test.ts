@@ -3,7 +3,10 @@
 import type { ReadonlySelectionState } from "@input/pen-types";
 import { afterEach, describe, expect, it } from "vitest";
 import { DATA_ATTRS } from "../dataAttributes";
-import { shouldHandleEditorKeyboardEvent } from "../textEntryTarget";
+import {
+	isForeignNativeTextEntryTarget,
+	shouldHandleEditorKeyboardEvent,
+} from "../textEntryTarget";
 
 const caret: ReadonlySelectionState = {
 	type: "text",
@@ -90,5 +93,51 @@ describe("HOST9 document shortcuts and host focus", () => {
 				selection: caret,
 			}),
 		).toBe(true);
+	});
+});
+
+describe("HOST9: the editor's own field before its surface marker is painted", () => {
+	afterEach(() => {
+		document.body.replaceChildren();
+	});
+
+	/** jsdom does not compute `isContentEditable`. */
+	function editable(root: HTMLElement, marker: string): HTMLElement {
+		const element = document.createElement("div");
+		element.setAttribute(marker, "");
+		Object.defineProperty(element, "isContentEditable", { value: true });
+		root.appendChild(element);
+		return element;
+	}
+
+	it.each([
+		["expanded blocks host", DATA_ATTRS.editorBlocksHost],
+		["inline field", DATA_ATTRS.inlineContent],
+	])("HOST9: the %s is not foreign to its own root", (_name, marker) => {
+		const root = mountRoot();
+
+		expect(
+			isForeignNativeTextEntryTarget(editable(root, marker), root),
+		).toBe(false);
+	});
+
+	it("HOST9: another editor's expanded blocks host is foreign", () => {
+		const root = mountRoot();
+		const other = mountRoot();
+
+		expect(
+			isForeignNativeTextEntryTarget(
+				editable(other, DATA_ATTRS.editorBlocksHost),
+				root,
+			),
+		).toBe(true);
+	});
+
+	it("HOST9: host chrome nested in the root stays foreign", () => {
+		const root = mountRoot();
+		const prompt = document.createElement("textarea");
+		root.appendChild(prompt);
+
+		expect(isForeignNativeTextEntryTarget(prompt, root)).toBe(true);
 	});
 });
