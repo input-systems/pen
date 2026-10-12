@@ -54,7 +54,7 @@
     "@input/pen-core": "workspace:^",
     "@input/pen-types": "workspace:^",
     "htmlparser2": "^12.0.0",
-    "mdast-util-from-markdown": "^2.0.0",
+    "mdast-util-from-markdown": "^2.1.0",
     "mdast-util-gfm": "^3.0.0",
     "micromark-extension-gfm": "^3.0.0"
   },
