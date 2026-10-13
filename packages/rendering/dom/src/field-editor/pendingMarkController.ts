@@ -223,6 +223,11 @@ export class PendingMarkController {
 		from: number;
 		to: number;
 	}): void {
+		// A rejoin armed by an earlier deletion counts toward this one, but only
+		// re-arms if the run still survives it; deleting the whole link must
+		// not leave its marks pending for the next typed character.
+		const carried = this.rejoin?.remaining ?? 0;
+		this.dropRejoin();
 		const ytext = this.getYText(deletion.blockId);
 		if (!ytext) return;
 		const deltas = ytext.toDelta();
@@ -242,8 +247,7 @@ export class PendingMarkController {
 		if (Object.keys(marks).length === 0) return;
 		this.rejoin = {
 			marks,
-			remaining:
-				deletion.to - deletion.from + (this.rejoin?.remaining ?? 0),
+			remaining: deletion.to - deletion.from + carried,
 		};
 		this.pendingMarks = { ...this.pendingMarks, ...marks };
 		this.pendingCaret = `${deletion.blockId}:${deletion.from}`;
@@ -259,6 +263,12 @@ export class PendingMarkController {
 		if (!rejoin) return;
 		rejoin.remaining -= inserted;
 		if (rejoin.remaining > 0) return;
+		this.dropRejoin();
+	}
+
+	private dropRejoin(): void {
+		const rejoin = this.rejoin;
+		if (!rejoin) return;
 		this.rejoin = null;
 		const nextPendingMarks = { ...this.pendingMarks };
 		for (const [markType, value] of Object.entries(rejoin.marks)) {

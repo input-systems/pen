@@ -248,6 +248,37 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 		editor.destroy();
 	});
 
+	it("deleting a whole link one character at a time leaves nothing to rejoin", () => {
+		const editor = createEditor(editorOpts());
+		const blockId = editor.firstBlock()!.id;
+		const fieldEditor = new FieldEditorImpl(editor);
+		const ytext = getYText(editor, blockId);
+		const link = { href: "https://example.com", title: null };
+		const pendingMarks = fieldEditorInternals(fieldEditor).pendingMarks;
+
+		editor.internals.assignSlot(FIELD_EDITOR_SLOT_KEY, fieldEditor);
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "go ab" },
+			{ type: "format-text", blockId, from: 3, to: 5, marks: { link } },
+		]);
+		fieldEditor.activate(blockId);
+		fieldEditor.setTextSelection(blockId, 5, 5);
+
+		editor.apply([
+			{ type: "splice-text", blockId, from: 4, to: 5, insert: "" },
+		]);
+		expect(pendingMarks.resolveInsertMarks(ytext, 4)).toEqual({ link });
+
+		editor.apply([
+			{ type: "splice-text", blockId, from: 3, to: 4, insert: "" },
+		]);
+		expect(editor.getBlock(blockId)!.textContent()).toBe("go ");
+		expect(pendingMarks.resolveInsertMarks(ytext, 3)).toEqual({});
+
+		fieldEditor.destroy();
+		editor.destroy();
+	});
+
 	it("ends a mark at the caret so the next typed text does not extend it", () => {
 		const editor = createEditor(editorOpts());
 		const blockId = editor.firstBlock()!.id;
