@@ -5,6 +5,7 @@ import {
 import type { DocumentOp, Editor } from "@input/pen-types";
 import { matchInlineInputRule } from "../utils/inlineInputRule";
 import type { InlineInputRuleEngine } from "./crdt";
+import { applyInputRule } from "./inputRuleApply";
 
 export type InlineInputRuleSelectionTarget = {
 	blockId: string;
@@ -68,7 +69,7 @@ export function applyInlineInputRule(
 		return null;
 	}
 
-	editor.apply(ops, { origin: "input-rule" });
+	applyInputRule(editor, { blockId, offset, text }, ops);
 	return selectionTarget;
 }
 

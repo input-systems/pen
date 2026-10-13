@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEditor } from "@input/pen-core";
+import { defaultPreset } from "@input/pen";
 import { defaultSchema } from "@input/pen-schema";
 import {
 	FIELD_EDITOR_SLOT_KEY,
@@ -362,6 +363,32 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 		expect(target).toEqual({ blockId, anchorOffset: 0, focusOffset: 0 });
 		expect(editor.getBlock(blockId)?.type).toBe("bulletListItem");
 		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe("");
+
+		editor.destroy();
+	});
+
+	it("undo right after '- ' becomes a bullet gives back the typed '- ' as text", async () => {
+		const editor = createEditor({
+			preset: defaultPreset({ tools: false, deltaStream: false }),
+		});
+		await editor.whenReady();
+		const blockId = editor.firstBlock()!.id;
+
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "-" },
+		]);
+		editor.selectText(blockId, 1, 1);
+		applyListInputRule(editor, {
+			blockId,
+			range: { start: 1, end: 1 },
+			text: " ",
+		});
+		expect(editor.getBlock(blockId)?.type).toBe("bulletListItem");
+		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe("");
+
+		expect(editor.undoManager.undo()).toBe(true);
+		expect(editor.getBlock(blockId)?.type).toBe("paragraph");
+		expect(editor.getBlock(blockId)!.textContent()).toBe("- ");
 
 		editor.destroy();
 	});
