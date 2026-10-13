@@ -13,7 +13,8 @@ type FieldEditorInternals = {
 		resolveInsertMarks(
 			ytext: unknown,
 			offset: number,
-		): Record<string, unknown | null> | undefined;
+		): Record<string, unknown | null>;
+		endMarks(markTypes: readonly string[]): void;
 	};
 };
 

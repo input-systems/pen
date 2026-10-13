@@ -1,3 +1,4 @@
+import type { Editor } from "@input/pen-types";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -162,6 +163,52 @@ describe("text commands", () => {
 		editor.destroy();
 	});
 
+	it("an empty nested list item steps out one level before leaving the list", () => {
+		const editor = createCommandEditor([
+			{ id: "a", type: "bulletListItem", text: "one" },
+			{ id: "li", type: "bulletListItem", props: { indent: 1 } },
+		]);
+		const registry = createCommandHarness(editor);
+		editor.selectText("li", 0, 0);
+
+		expect(registry.dispatch(splitBlock, undefined)).toBe(true);
+		expect(editor.getBlock("li")?.type).toBe("bulletListItem");
+		expect(editor.getBlock("li")?.props.indent).toBe(0);
+		expect(caretOf(editor)).toEqual({ blockId: "li", offset: 0 });
+
+		expect(registry.dispatch(splitBlock, undefined)).toBe(true);
+		expect(editor.getBlock("li")?.type).toBe("paragraph");
+		editor.destroy();
+	});
+
+	it("Enter on an empty last line leaves a code block", () => {
+		const editor = createCommandEditor([
+			{ id: "code", type: "codeBlock", text: "a = 1\n" },
+		]);
+		const registry = createCommandHarness(editor);
+		editor.selectText("code", 6, 6);
+
+		expect(registry.dispatch(splitBlock, undefined)).toBe(true);
+		const next = editor.getBlock("code")?.next;
+		expect(editor.getBlock("code")?.textContent()).toBe("a = 1");
+		expect(next?.type).toBe("paragraph");
+		expect(caretOf(editor)).toEqual({ blockId: next?.id, offset: 0 });
+		editor.destroy();
+	});
+
+	it("Enter elsewhere in a code block inserts a newline", () => {
+		const editor = createCommandEditor([
+			{ id: "code", type: "codeBlock", text: "a = 1\nb" },
+		]);
+		const registry = createCommandHarness(editor);
+		editor.selectText("code", 5, 5);
+
+		expect(registry.dispatch(splitBlock, undefined)).toBe(true);
+		expect(editor.getBlock("code")?.textContent()).toBe("a = 1\n\nb");
+		expect(editor.getBlock("code")?.next ?? null).toBeNull();
+		editor.destroy();
+	});
+
 	it("insertText uses explicit marks instead of inherited caret marks", () => {
 		const editor = createCommandEditor([
 			{ id: "a", type: "paragraph", text: "Hi" },
@@ -180,6 +227,77 @@ describe("text commands", () => {
 			{ insert: "X", attributes: { italic: true } },
 		]);
 		editor.destroy();
+	});
+
+	describe("D7: insertText at a collapsed caret follows the mark expand policy", () => {
+		const href = "https://example.com";
+
+		function editorWithMarkedText(marks: Record<string, unknown>): Editor {
+			const editor = createCommandEditor([
+				{ id: "a", type: "paragraph" },
+			]);
+			editor.apply([
+				{
+					type: "splice-text",
+					blockId: "a",
+					from: 0,
+					to: 0,
+					insert: "Hi",
+					marks,
+				},
+			]);
+			return editor;
+		}
+
+		it("does not extend a link past its end", () => {
+			const editor = editorWithMarkedText({ link: { href } });
+			const registry = createCommandHarness(editor);
+			editor.selectText("a", 2, 2);
+
+			expect(registry.dispatch(insertText, { text: "X" })).toBe(true);
+			expect(editor.getBlock("a")?.textDeltas()).toEqual([
+				{ insert: "Hi", attributes: { link: { href } } },
+				{ insert: "X" },
+			]);
+			editor.destroy();
+		});
+
+		it("keeps an expanding mark and drops the link at the link's end", () => {
+			const editor = editorWithMarkedText({ bold: true, link: { href } });
+			const registry = createCommandHarness(editor);
+			editor.selectText("a", 2, 2);
+
+			expect(registry.dispatch(insertText, { text: "X" })).toBe(true);
+			expect(editor.getBlock("a")?.textDeltas()).toEqual([
+				{ insert: "Hi", attributes: { bold: true, link: { href } } },
+				{ insert: "X", attributes: { bold: true } },
+			]);
+			editor.destroy();
+		});
+
+		it("extends an expand-after mark past its end", () => {
+			const editor = editorWithMarkedText({ bold: true });
+			const registry = createCommandHarness(editor);
+			editor.selectText("a", 2, 2);
+
+			expect(registry.dispatch(insertText, { text: "X" })).toBe(true);
+			expect(editor.getBlock("a")?.textDeltas()).toEqual([
+				{ insert: "HiX", attributes: { bold: true } },
+			]);
+			editor.destroy();
+		});
+
+		it("keeps the link for text typed inside it", () => {
+			const editor = editorWithMarkedText({ link: { href } });
+			const registry = createCommandHarness(editor);
+			editor.selectText("a", 1, 1);
+
+			expect(registry.dispatch(insertText, { text: "X" })).toBe(true);
+			expect(editor.getBlock("a")?.textDeltas()).toEqual([
+				{ insert: "HXi", attributes: { link: { href } } },
+			]);
+			editor.destroy();
+		});
 	});
 
 	it("insertText replaces the current text selection", () => {

@@ -319,7 +319,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 					!isCollapsed(selection) ||
 					isMultiBlock(selection)
 				) {
-					this.pendingMarks.clear(true);
+					this.pendingMarks.releaseCaret();
+				} else {
+					this.pendingMarks.followCaret(record.origin);
 				}
 				const scheduler = this._ensureScheduler();
 				const alreadyProjected =

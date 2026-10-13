@@ -582,6 +582,7 @@ export class EditContextBackend extends FieldInputBackendBase {
 				inlineInputRuleTarget.anchorOffset,
 				inlineInputRuleTarget.focusOffset,
 			);
+			this.fieldEditor.pendingMarks?.endMarks(inlineInputRuleTarget.marks);
 			this.updateSelection();
 			return false;
 		}

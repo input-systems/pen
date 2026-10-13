@@ -4,6 +4,7 @@ import type {
 	DocumentOp,
 	Editor,
 	FlowBlockCapability,
+	SchemaRegistry,
 } from "@input/pen-types";
 
 import {
@@ -260,25 +261,53 @@ export function getInlineNodeRange(
 	return null;
 }
 
+/**
+ * The marks text typed at a collapsed `offset` carries, under the same
+ * `InlineSchema.expand` policy as pen-dom's `resolveMarksAtPosition`: at a
+ * run's end only `after`/`both` marks extend, at the block start every mark
+ * but `none` does, so typing after a link or inline code is unmarked.
+ */
 export function marksAtOffset(
 	block: BlockHandle,
 	offset: number,
-): Record<string, unknown> | undefined {
+	schema: SchemaRegistry,
+): Record<string, unknown> {
 	let current = 0;
-	let inherited: Record<string, unknown> | undefined;
 	for (const delta of block.textDeltas()) {
 		const length = delta.insert.length;
 		const start = current;
 		const end = current + length;
 		current = end;
-		if (offset > start && offset <= end && delta.attributes) {
+		if (offset > start && offset < end) {
 			return { ...delta.attributes };
 		}
-		if (offset === start && delta.attributes) {
-			inherited = { ...delta.attributes };
+		if (offset === end && offset > start) {
+			return marksExpandingPast(delta.attributes, "after", schema);
+		}
+		if (offset === start) {
+			return marksExpandingPast(delta.attributes, "before", schema);
 		}
 	}
-	return inherited;
+	return {};
+}
+
+function marksExpandingPast(
+	attributes: Record<string, unknown> | undefined,
+	boundary: "before" | "after",
+	schema: SchemaRegistry,
+): Record<string, unknown> {
+	const marks: Record<string, unknown> = {};
+	for (const [type, value] of Object.entries(attributes ?? {})) {
+		const expand = schema.resolveInline(type)?.expand ?? "after";
+		const expands =
+			boundary === "after"
+				? expand === "after" || expand === "both"
+				: expand !== "none";
+		if (expands) {
+			marks[type] = value;
+		}
+	}
+	return marks;
 }
 
 /**

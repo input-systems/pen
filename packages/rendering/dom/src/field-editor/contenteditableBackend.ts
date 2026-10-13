@@ -8,6 +8,7 @@ import {
 	writeNativeRangeFromField,
 } from "./selectionProjector";
 import { applyListInputRule } from "./commands";
+import { applyInlineInputRule } from "./inlineInputRules";
 import { isHistoryTransactionOrigin } from "./transactionOrigin";
 import {
 	applyInlineTextDiffInput,
@@ -178,6 +179,34 @@ export class ContentEditableBackend extends FieldInputBackendBase {
 			target.anchorOffset,
 			target.focusOffset,
 		);
+		this.updateSelection();
+		return true;
+	}
+
+	/**
+	 * Runs the inline input rules (`**bold**`, `` `code` ``) for one typed
+	 * character at a caret, the same pass the EditContext backend makes, and
+	 * ends the applied marks at the caret it leaves.
+	 */
+	applyInlineInputRule(options: {
+		blockId: string;
+		range: { start: number; end: number };
+		text: string;
+	}): boolean {
+		if (options.range.start !== options.range.end) return false;
+		const target = applyInlineInputRule(this.editor, {
+			blockId: options.blockId,
+			offset: options.range.start,
+			text: options.text,
+		});
+		if (!target) return false;
+
+		this.fieldEditor.syncTextSelection(
+			target.blockId,
+			target.anchorOffset,
+			target.focusOffset,
+		);
+		this.fieldEditor.pendingMarks?.endMarks(target.marks);
 		this.updateSelection();
 		return true;
 	}

@@ -242,10 +242,45 @@ export function parseSafeStyleDeclarations(
 	return [...declarations.values()];
 }
 
+/**
+ * Properties only a browser's copy serializer writes, together, onto the
+ * element wrapping a selection: Chrome inlines the computed style there,
+ * including the surface colour of the page the text sat on.
+ */
+const BROWSER_COPY_WRAPPER_PROPS = [
+	"orphans",
+	"widows",
+	"-webkit-text-stroke-width",
+] as const;
+
+/** Colours on a copy wrapper describe the page, not the text. */
+const PAGE_COLOR_PROPS = new Set(["color", "background-color"]);
+
+function isBrowserCopyWrapperStyle(value: string): boolean {
+	const properties = new Set(
+		value
+			.split(";")
+			.map((declaration) =>
+				declaration
+					.slice(0, declaration.indexOf(":"))
+					.trim()
+					.toLowerCase(),
+			),
+	);
+	return BROWSER_COPY_WRAPPER_PROPS.every((property) =>
+		properties.has(property),
+	);
+}
+
 function filterInlineStyleDeclarations(value: string): string {
+	const isCopyWrapper = isBrowserCopyWrapperStyle(value);
 	return parseSafeStyleDeclarations(value)
-		.map(({ property, value: propertyValue }) =>
-			`${property}: ${propertyValue}`,
+		.filter(
+			({ property }) => !isCopyWrapper || !PAGE_COLOR_PROPS.has(property),
+		)
+		.map(
+			({ property, value: propertyValue }) =>
+				`${property}: ${propertyValue}`,
 		)
 		.join("; ");
 }

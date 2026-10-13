@@ -37,6 +37,11 @@ export interface ContentEditableDirectInputBackend {
 		range: { start: number; end: number };
 		text: string;
 	}): boolean;
+	applyInlineInputRule?(options: {
+		blockId: string;
+		range: { start: number; end: number };
+		text: string;
+	}): boolean;
 	applyInlineTextEdit(options: {
 		blockId: string;
 		range: { start: number; end: number };
@@ -356,7 +361,7 @@ function insertTextOverRange(
 	if (!blockId) return;
 	const range = resolveFieldInsertRange(editor, fe, resolveInputRange());
 	if (!range) return;
-	if (backend.applyListInputRule({ blockId, range, text })) {
+	if (applyTypedInputRule(backend, { blockId, range, text })) {
 		return;
 	}
 	const marks = resolveFieldInsertMarks(
@@ -374,6 +379,21 @@ function insertTextOverRange(
 		text,
 		marks,
 	});
+}
+
+/** A list marker or an inline shorthand the typed text completes, applied in place of the insert. */
+function applyTypedInputRule(
+	backend: ContentEditableDirectInputBackend,
+	options: {
+		blockId: string;
+		range: { start: number; end: number };
+		text: string;
+	},
+): boolean {
+	return (
+		backend.applyListInputRule(options) ||
+		backend.applyInlineInputRule?.(options) === true
+	);
 }
 
 /**

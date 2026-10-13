@@ -102,6 +102,16 @@ describe("sanitizeHTML", () => {
 		expect(result).not.toContain("z-index:");
 	});
 
+	it("SEC3: drops the page colours a browser copy wrapper carries and keeps authored highlights", () => {
+		const result = sanitizeHTML(
+			'<span style="color: rgb(0, 0, 0); font-family: Times; font-weight: 400; orphans: 2; widows: 2; -webkit-text-stroke-width: 0px; background-color: rgb(240, 240, 245); display: inline !important;">Quoted <span style="background-color: yellow">marked</span></span>',
+		);
+		expect(result).not.toContain("rgb(240, 240, 245)");
+		expect(result).not.toContain("color: rgb(0, 0, 0)");
+		expect(result).toContain('style="font-weight: 400"');
+		expect(result).toContain('style="background-color: yellow"');
+	});
+
 	it("SEC3: keeps enumerated mark-bearing inline styles", () => {
 		const result = sanitizeHTML(
 			'<span style="font-weight: 700; font-style: italic; text-decoration: underline line-through">styled</span>',
