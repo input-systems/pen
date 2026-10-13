@@ -2,7 +2,7 @@
 
 Thanks for your interest in improving Pen.
 
-Pen is an MIT-licensed SDK, copyright Input B.V. Contributions to the repository are welcome.
+Pen is an MIT-licensed SDK, copyright Input Systems B.V. Contributions to the repository are welcome.
 
 ## Local Setup
 
@@ -141,12 +141,12 @@ Examples from this repository:
 
 ## License
 
-Outbound license is the [MIT License](LICENSE.md), copyright Input B.V.
+Outbound license is the [MIT License](LICENSE.md), copyright Input Systems B.V.
 By contributing you agree that your work may be distributed under those
 terms. The previous license-enforcement clause is retired: MIT has no
 such clause, and the repository has no license-enforcement code.
 
-Inbound, the [Contributor License Agreement](CLA.md) grants Input B.V.
+Inbound, the [Contributor License Agreement](CLA.md) grants Input Systems B.V.
 copyright and patent licenses over your contribution. The asymmetry with the
 outbound MIT license is deliberate:
 keeping one copyright holder is what lets Input relicense Pen at all, and the

@@ -394,4 +394,4 @@ Pen is created and maintained by [Noud Adrichem](https://www.x.com/noudadrichem)
 
 The Pen SDK is provided under the [MIT License](LICENSE.md).
 
-Copyright (c) 2026-present Input B.V.
+Copyright (c) 2026-present Input Systems B.V.
