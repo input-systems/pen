@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEditor } from "@input/pen-core";
+import { defaultSchema } from "@input/pen-schema";
 import {
 	FIELD_EDITOR_SLOT_KEY,
 	INPUT_RULES_ENGINE_SLOT_KEY,
@@ -346,6 +347,30 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 		expect(target).toBeNull();
 		expect(editor.getBlock(blockId)?.type).toBe("heading");
 		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe("");
+
+		editor.destroy();
+	});
+
+	it("keeps a list marker as text when the schema has no list block for it", () => {
+		const editor = createEditor({
+			...editorOpts(),
+			schema: defaultSchema.without(["numberedListItem"]),
+		});
+		const blockId = editor.firstBlock()!.id;
+
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "1." },
+		]);
+
+		const target = applyListInputRule(editor, {
+			blockId,
+			range: { start: 2, end: 2 },
+			text: " ",
+		});
+
+		expect(target).toBeNull();
+		expect(editor.getBlock(blockId)?.type).toBe("paragraph");
+		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe("1.");
 
 		editor.destroy();
 	});

@@ -107,6 +107,46 @@ describe("autoformatExtension editor activation", () => {
 		editor.destroy();
 	});
 
+	it("keeps a list marker as text when the schema has no list block", async () => {
+		const editor = createEditor();
+		const blockId = editor.firstBlock()!.id;
+		await editor.whenReady();
+
+		editor.apply(
+			[
+				{
+					type: "splice-text",
+					blockId,
+					from: 0,
+					to: 0,
+					insert: "1.",
+				},
+			],
+			{ origin: "user" },
+		);
+		editor.selectTextRange({ blockId, offset: 2 }, { blockId, offset: 2 });
+		editor.apply(
+			[
+				{
+					type: "splice-text",
+					blockId,
+					from: 2,
+					to: 2,
+					insert: " ",
+				},
+			],
+			{ origin: "user" },
+		);
+		await flushMicrotasks();
+
+		expect(editor.getBlock(blockId)?.type).toBe("paragraph");
+		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe(
+			"1. ",
+		);
+
+		editor.destroy();
+	});
+
 	it("activates autoformat extensions and applies inline markdown conversions", async () => {
 		const editor = createEditor();
 		const blockId = editor.firstBlock()!.id;

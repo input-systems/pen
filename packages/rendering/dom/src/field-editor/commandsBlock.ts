@@ -109,6 +109,15 @@ export function applyListInputRule(
 		return null;
 	}
 
+	// Core drops a conversion to a type the schema does not register but still
+	// applies the marker deletion, so the typed marker would vanish.
+	const registered = editor.schema
+		.allBlocks()
+		.some((schema) => schema.type === match.blockType);
+	if (!registered) {
+		return null;
+	}
+
 	editor.apply(
 		[
 			{
