@@ -225,15 +225,15 @@ the PR description. A green `api-reports` run is not review of the
 shape.
 
 Release trains share one version across every published package. The
-changesets `fixed` group produces that; release CI runs the build, tests,
-metadata checks, `publint`, `are-the-types-wrong` (node16 profile), and
-bundle budgets before publishing. GitHub opens or updates the **Version
-Packages** PR using its built-in `GITHUB_TOKEN`. A maintainer selects
-**Approve workflows to run**, reviews the changelogs, and merges the PR
-once its required checks pass. That merge triggers `pnpm release`
-(`changeset publish`) in CI, with npm authentication through the
-`NPM_TOKEN` Actions secret and provenance from the GitHub-hosted build.
-CI verifies every expected npm package version before atomically pushing
+changesets `fixed` group produces that. Pull request CI runs the build,
+tests, metadata checks, `publint`, `are-the-types-wrong` (node16 profile),
+and bundle budgets, so the release job does not repeat them. GitHub opens
+or updates the **Version Packages** PR using its built-in `GITHUB_TOKEN`.
+A maintainer selects **Approve workflows to run**, reviews the changelogs,
+and merges the PR once its required checks pass. That merge triggers a
+build and `pnpm release` (`changeset publish`) in CI, with npm
+authentication through the `NPM_TOKEN` Actions secret and provenance from
+the GitHub-hosted build. When every package publishes, CI atomically pushes
 package tags and `vX.Y.Z`, then creates the `vX.Y.Z` GitHub Release from
 the merged package changelogs. No GitHub App or personal access token is
 needed.

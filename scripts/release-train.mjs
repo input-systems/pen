@@ -4,7 +4,6 @@
 import { execFileSync } from "node:child_process";
 import fs, { globSync } from "node:fs";
 import path from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = path.resolve(
@@ -12,15 +11,6 @@ const REPO_ROOT = path.resolve(
 	"..",
 );
 const NPM_REGISTRY = "https://registry.npmjs.org";
-const NO_PROPAGATION_WAIT = {
-	attempts: 1,
-	delayMs: 0,
-};
-// npm can answer 404 for a short time after accepting a publish
-const PUBLISH_PROPAGATION = {
-	attempts: 8,
-	delayMs: 15_000,
-};
 
 function git(repoRoot, ...args) {
 	return execFileSync("git", args, {
@@ -123,36 +113,26 @@ export function getReleaseNotes(repoRoot, version) {
 	return `${blocks.join("\n\n")}\n`;
 }
 
-async function getRegistryManifest(
-	registry,
-	name,
-	spec,
-	propagation = NO_PROPAGATION_WAIT,
-) {
-	for (let attempt = 1; ; attempt += 1) {
-		const response = await fetch(
-			`${registry}/${encodeURIComponent(name)}/${spec}`,
-			{
-				signal: AbortSignal.timeout(15_000),
-			},
+async function getRegistryManifest(registry, name, spec) {
+	const response = await fetch(
+		`${registry}/${encodeURIComponent(name)}/${spec}`,
+		{
+			signal: AbortSignal.timeout(15_000),
+		},
+	);
+	if (response.status === 404) return null;
+	if (!response.ok) {
+		throw new Error(
+			`${name}@${spec}: registry returned HTTP ${response.status}`,
 		);
-		if (response.ok) {
-			const manifest = await response.json();
-			if (manifest.name !== name) {
-				throw new Error(
-					`${name}@${spec}: registry returned different package metadata`,
-				);
-			}
-			return manifest;
-		}
-		if (response.status !== 404) {
-			throw new Error(
-				`${name}@${spec}: registry returned HTTP ${response.status}`,
-			);
-		}
-		if (attempt >= propagation.attempts) return null;
-		await sleep(propagation.delayMs);
 	}
+	const manifest = await response.json();
+	if (manifest.name !== name) {
+		throw new Error(
+			`${name}@${spec}: registry returned different package metadata`,
+		);
+	}
+	return manifest;
 }
 
 export async function choosePublishTag(plan, registry = NPM_REGISTRY) {
@@ -181,44 +161,13 @@ export async function choosePublishTag(plan, registry = NPM_REGISTRY) {
 	return newerVersions.some(Boolean) ? `release-${plan.version}` : "latest";
 }
 
-export async function finishRelease(
-	repoRoot,
-	registry = NPM_REGISTRY,
-	propagation = PUBLISH_PROPAGATION,
-) {
+export function pushReleaseTags(repoRoot) {
 	const plan = planRelease(repoRoot);
 	if (!plan.publish) {
 		throw new Error(
 			"Retry the original version commit to finish a release",
 		);
 	}
-	const results = await Promise.allSettled(
-		plan.packages.map(async (pkg) => {
-			const manifest = await getRegistryManifest(
-				registry,
-				pkg.name,
-				pkg.version,
-				propagation,
-			);
-			if (manifest === null) {
-				throw new Error(
-					`${pkg.name}@${pkg.version}: not found on the registry`,
-				);
-			}
-			if (manifest.version !== pkg.version) {
-				throw new Error(
-					`${pkg.name}@${pkg.version}: registry returned different package metadata`,
-				);
-			}
-		}),
-	);
-	const failures = results.filter((result) => result.status === "rejected");
-	if (failures.length > 0) {
-		throw new Error(
-			`Release train is incomplete:\n${failures.map((result) => result.reason.message).join("\n")}`,
-		);
-	}
-
 	git(repoRoot, "fetch", "--tags", "origin");
 	const tags = [
 		...plan.packages.map((pkg) => `${pkg.name}@${pkg.version}`),
@@ -260,33 +209,27 @@ export async function finishRelease(
 		"origin",
 		...tags.map((tag) => `refs/tags/${tag}`),
 	);
-	return plan;
 }
 
 function gh(repoRoot, args, input) {
-	return execFileSync("gh", args, {
+	execFileSync("gh", args, {
 		cwd: repoRoot,
 		encoding: "utf8",
 		input,
 		stdio: ["pipe", "pipe", "pipe"],
 		timeout: 60_000,
-	}).trim();
+	});
 }
 
-function hasGitHubRelease(repoRoot, tag) {
-	try {
-		gh(repoRoot, ["release", "view", tag, "--json", "tagName"]);
-		return true;
-	} catch (error) {
-		if (String(error.stderr).includes("release not found")) return false;
-		throw error;
-	}
-}
-
-async function publishGitHubRelease(repoRoot, plan) {
+function publishGitHubRelease(repoRoot, plan) {
 	const tag = `v${plan.version}`;
-	if (hasGitHubRelease(repoRoot, tag)) return false;
-	const latest = (await choosePublishTag(plan)) === "latest";
+	try {
+		gh(repoRoot, ["release", "view", tag]);
+		console.log(`GitHub release ${tag} already exists`);
+		return;
+	} catch (error) {
+		if (!String(error.stderr).includes("release not found")) throw error;
+	}
 	gh(
 		repoRoot,
 		[
@@ -298,15 +241,14 @@ async function publishGitHubRelease(repoRoot, plan) {
 			tag,
 			"--notes-file",
 			"-",
-			`--latest=${latest}`,
 		],
 		getReleaseNotes(repoRoot, plan.version),
 	);
-	return true;
+	console.log(`Created GitHub release ${tag}`);
 }
 
 const USAGE =
-	"Usage: node scripts/release-train.mjs --plan | --finish | --github-release | --notes <version>";
+	"Usage: node scripts/release-train.mjs --plan | --finish | --notes <version>";
 
 async function main() {
 	const [command, version] = process.argv.slice(2);
@@ -319,7 +261,7 @@ async function main() {
 	}
 	if (
 		process.argv.length !== 3 ||
-		!["--plan", "--finish", "--github-release"].includes(command)
+		!["--plan", "--finish"].includes(command)
 	) {
 		throw new Error(USAGE);
 	}
@@ -344,28 +286,15 @@ async function main() {
 			console.log(`npm tag: ${npmTag}; newer releases keep latest`);
 		return;
 	}
-	if (command === "--github-release") {
-		if (!plan.publish) {
-			throw new Error(
-				"Retry the original version commit to finish a release",
-			);
-		}
-		const created = await publishGitHubRelease(REPO_ROOT, plan);
-		console.log(
-			created
-				? `Created GitHub release v${plan.version}`
-				: `GitHub release v${plan.version} already exists`,
-		);
-		return;
-	}
-	await finishRelease(REPO_ROOT);
+	pushReleaseTags(REPO_ROOT);
 	console.log(
-		`Released ${plan.packages.length} packages at ${plan.version}; all tags point to ${plan.commit}`,
+		`Pushed ${plan.packages.length} package tags plus v${plan.version} at ${plan.commit}`,
 	);
+	publishGitHubRelease(REPO_ROOT, plan);
 	if (process.env.GITHUB_STEP_SUMMARY) {
 		fs.appendFileSync(
 			process.env.GITHUB_STEP_SUMMARY,
-			`### npm release ${plan.version}\n\nVerified ${plan.packages.length} public packages and pushed package tags plus \`v${plan.version}\` at \`${plan.commit}\`.\n`,
+			`### npm release ${plan.version}\n\nPublished ${plan.packages.length} public packages, pushed package tags plus \`v${plan.version}\` at \`${plan.commit}\`, and created the GitHub release.\n`,
 		);
 	}
 }

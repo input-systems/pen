@@ -78,7 +78,7 @@
   {
     "id": "provenance-preconditions",
     "command": "node scripts/release-check.mjs --provenance-preconditions",
-    "description": "API7: Release CI publishes version commits with npm authentication and provenance, then verifies the train before pushing tags."
+    "description": "API7: Release CI publishes version commits with npm authentication and provenance, then pushes tags and creates the GitHub release."
   },
   {
     "id": "release-train-tests",

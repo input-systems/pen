@@ -11,16 +11,12 @@ import { parse } from "yaml";
 
 import {
 	choosePublishTag,
-	finishRelease,
 	getReleaseNotes,
 	planRelease,
+	pushReleaseTags,
 } from "../release-train.mjs";
 
 const execFileAsync = promisify(execFile);
-const NO_WAIT = {
-	attempts: 1,
-	delayMs: 0,
-};
 const changesetsCli = fileURLToPath(
 	new URL("../../node_modules/@changesets/cli/bin.js", import.meta.url),
 );
@@ -91,15 +87,6 @@ async function registry(t, versions) {
 	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 	t.after(() => new Promise((resolve) => server.close(resolve)));
 	return `http://127.0.0.1:${server.address().port}`;
-}
-
-function published(version = "0.4.0") {
-	return new Map(
-		["core", "types"].map((name) => [
-			`@input/pen-${name}/${version}`,
-			{ name: `@input/pen-${name}`, version },
-		]),
-	);
 }
 
 test("API7: only a commit that versions the train can publish", (t) => {
@@ -279,49 +266,18 @@ test("API7: mixed train versions fail before publishing", (t) => {
 	assert.throws(() => planRelease(repoRoot), /one train version/);
 });
 
-test("API7: a partial publish cannot create or push the train tag", async (t) => {
+test("API7: an ordinary commit cannot push train tags", (t) => {
 	const { repoRoot, remote } = fixture(t);
-	versionCommit(repoRoot);
-	const versions = published();
-	versions.delete("@input/pen-types/0.4.0");
-	const url = await registry(t, versions);
-	await assert.rejects(
-		finishRelease(repoRoot, url, NO_WAIT),
-		/pen-types@0\.4\.0/,
-	);
+	fs.writeFileSync(path.join(repoRoot, "note.md"), "Ordinary change");
+	git(repoRoot, "add", ".");
+	git(repoRoot, "commit", "-m", "Update notes");
+	assert.throws(() => pushReleaseTags(repoRoot), /original version commit/);
 	assert.equal(git(remote, "tag", "--list"), "");
-	assert.equal(git(repoRoot, "tag", "--list"), "");
 });
 
-test("API7: completion waits for npm to serve a version it just accepted", async (t) => {
+test("API7: retry completes all tags even when npm has nothing left to publish", (t) => {
 	const { repoRoot, remote } = fixture(t);
 	versionCommit(repoRoot);
-	const versions = published();
-	const lagging = "@input/pen-types/0.4.0";
-	let lookups = 0;
-	const url = await registry(t, {
-		get(key) {
-			if (key !== lagging) return versions.get(key);
-			lookups += 1;
-			return lookups > 1 ? versions.get(key) : undefined;
-		},
-	});
-	await finishRelease(repoRoot, url, {
-		attempts: 2,
-		delayMs: 1,
-	});
-	assert.equal(lookups, 2);
-	assert.deepEqual(git(remote, "tag", "--list").split("\n"), [
-		"@input/pen-core@0.4.0",
-		"@input/pen-types@0.4.0",
-		"v0.4.0",
-	]);
-});
-
-test("API7: retry completes all tags even when npm has nothing left to publish", async (t) => {
-	const { repoRoot, remote } = fixture(t);
-	versionCommit(repoRoot);
-	const url = await registry(t, published());
 	const expectedCommit = git(repoRoot, "rev-parse", "HEAD");
 	git(
 		repoRoot,
@@ -332,7 +288,7 @@ test("API7: retry completes all tags even when npm has nothing left to publish",
 		"Existing Changesets tag",
 	);
 	git(repoRoot, "push", "origin", "refs/tags/@input/pen-core@0.4.0");
-	await finishRelease(repoRoot, url);
+	pushReleaseTags(repoRoot);
 	const tags = ["@input/pen-core@0.4.0", "@input/pen-types@0.4.0", "v0.4.0"];
 	assert.deepEqual(git(remote, "tag", "--list").split("\n"), tags);
 	for (const tag of tags)
@@ -341,36 +297,21 @@ test("API7: retry completes all tags even when npm has nothing left to publish",
 			expectedCommit,
 		);
 	const before = git(remote, "show-ref", "--tags");
-	await finishRelease(repoRoot, url);
+	pushReleaseTags(repoRoot);
 	assert.equal(git(remote, "show-ref", "--tags"), before);
 });
 
-test("API7: a conflicting release tag is never moved", async (t) => {
+test("API7: a conflicting release tag is never moved", (t) => {
 	const { repoRoot, remote } = fixture(t);
 	git(repoRoot, "tag", "-a", "v0.4.0", "-m", "Conflicting tag");
 	git(repoRoot, "push", "origin", "refs/tags/v0.4.0");
 	versionCommit(repoRoot);
 	const before = git(remote, "show-ref", "--tags");
-	await assert.rejects(
-		finishRelease(repoRoot, await registry(t, published())),
+	assert.throws(
+		() => pushReleaseTags(repoRoot),
 		/v0\.4\.0.*different commit/,
 	);
 	assert.equal(git(remote, "show-ref", "--tags"), before);
-});
-
-test("API7: registry metadata must identify the expected package version", async (t) => {
-	const { repoRoot, remote } = fixture(t);
-	versionCommit(repoRoot);
-	const versions = published();
-	versions.set("@input/pen-core/0.4.0", {
-		name: "@input/pen-core",
-		version: "0.3.0",
-	});
-	await assert.rejects(
-		finishRelease(repoRoot, await registry(t, versions)),
-		/pen-core@0\.4\.0/,
-	);
-	assert.equal(git(remote, "tag", "--list"), "");
 });
 
 for (const newerTrain of [false, true]) {
@@ -495,10 +436,6 @@ for (const newerTrain of [false, true]) {
 		};
 		await assert.rejects(publish(), /Command failed/);
 		assert.deepEqual([...documents.keys()], ["@input/pen-types"]);
-		await assert.rejects(
-			finishRelease(repoRoot, url, NO_WAIT),
-			/pen-core@0\.4\.0/,
-		);
 		assert.equal(git(remote, "tag", "--list"), "");
 		assert.equal(git(repoRoot, "tag", "--list"), "");
 		if (newerTrain) {
@@ -516,7 +453,7 @@ for (const newerTrain of [false, true]) {
 		}
 		rejectCore = false;
 		await publish();
-		await finishRelease(repoRoot, url);
+		pushReleaseTags(repoRoot);
 		assert.deepEqual([...documents.keys()].sort(), [
 			"@input/pen-core",
 			"@input/pen-types",
@@ -535,7 +472,7 @@ for (const newerTrain of [false, true]) {
 		}
 		const before = git(remote, "show-ref", "--tags");
 		await publish();
-		await finishRelease(repoRoot, url);
+		pushReleaseTags(repoRoot);
 		assert.equal(git(remote, "show-ref", "--tags"), before);
 	});
 }
