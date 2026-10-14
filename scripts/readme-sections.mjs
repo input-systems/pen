@@ -333,7 +333,7 @@ The public signatures of record are in \`api-report.md\` next to this package's 
 
 ## License
 
-MIT © Input B.V. See [\`LICENSE.md\`](./LICENSE.md).
+MIT © Input Systems B.V. See [\`LICENSE.md\`](./LICENSE.md).
 ${extras}`;
 }
 
@@ -397,7 +397,7 @@ See the Core concepts page (\`#/core-concepts\`). Signatures live in \`api-repor
 
 ## License
 
-MIT © Input B.V.
+MIT © Input Systems B.V.
 `,
 		peers: [],
 	});

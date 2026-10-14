@@ -342,7 +342,7 @@ describe("@input/pen-undo editor document restore", () => {
 		editor.destroy();
 	});
 
-	it("an input-rule origin apply is not captured on the local undo stack", () => {
+	it("an input-rule origin apply is captured, so undo reverts the rewrite", () => {
 		const { editor } = createUndoEditor();
 
 		editor.apply(
@@ -351,8 +351,8 @@ describe("@input/pen-undo editor document restore", () => {
 					type: "splice-text",
 					blockId: TITLE_ID,
 					from: TITLE_TEXT.length,
-				to: TITLE_TEXT.length,
-				insert: " expanded",
+					to: TITLE_TEXT.length,
+					insert: " expanded",
 				},
 			],
 			{ origin: "input-rule" },
@@ -360,11 +360,9 @@ describe("@input/pen-undo editor document restore", () => {
 		expect(editor.getBlock(TITLE_ID)?.textContent()).toBe(
 			`${TITLE_TEXT} expanded`,
 		);
-		expect(editor.undoManager.canUndo()).toBe(false);
-		expect(editor.undoManager.undo()).toBe(false);
-		expect(editor.getBlock(TITLE_ID)?.textContent()).toBe(
-			`${TITLE_TEXT} expanded`,
-		);
+		expect(editor.undoManager.canUndo()).toBe(true);
+		expect(editor.undoManager.undo()).toBe(true);
+		expect(editor.getBlock(TITLE_ID)?.textContent()).toBe(TITLE_TEXT);
 
 		editor.destroy();
 	});

@@ -3,6 +3,19 @@ import { InputRuleEngine } from "../engine";
 import { defaultBlockRules } from "../defaultRules";
 import type { Editor, InputRule } from "@input/pen-types";
 
+// Every block type the rules under test convert to.
+const registeredBlocks = [
+	"paragraph",
+	"heading",
+	"bulletListItem",
+	"numberedListItem",
+	"checkListItem",
+	"blockquote",
+	"codeBlock",
+	"divider",
+	"callout",
+].map((type) => ({ type }));
+
 type InputRuleTestEditor = {
 	getBlock(): {
 		type: string;
@@ -19,6 +32,7 @@ type InputRuleTestEditor = {
 			fieldEditor: "richtext" | "code";
 		};
 		resolveInline(): { kind: "mark" } | null;
+		allBlocks(): readonly { type: string }[];
 	};
 };
 
@@ -44,6 +58,7 @@ function mockEditor(opts: {
 				fieldEditor: "richtext",
 			}),
 			resolveInline: () => ({ kind: "mark" }),
+			allBlocks: () => registeredBlocks,
 		},
 	} satisfies InputRuleTestEditor;
 
@@ -72,6 +87,7 @@ function mockEditorWithSelection(opts: {
 				fieldEditor: "richtext",
 			}),
 			resolveInline: () => ({ kind: "mark" }),
+			allBlocks: () => registeredBlocks,
 		},
 	} satisfies InputRuleTestEditor;
 
@@ -554,6 +570,7 @@ describe("InputRuleEngine", () => {
 						fieldEditor: "code",
 					}),
 					resolveInline: () => ({ kind: "mark" }),
+					allBlocks: () => registeredBlocks,
 				},
 			} satisfies InputRuleTestEditor;
 

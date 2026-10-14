@@ -2,8 +2,7 @@ import { getSelectionBlockRange, resolveEditorMessage } from "@input/pen-core";
 import type { Editor, SelectionState } from "@input/pen-types";
 
 import type { S2ExceptionKind } from "../field-editor/selectionProjector";
-import { DATA_ATTRS } from "../utils/dataAttributes";
-import { isDomHTMLElement, isDomNode } from "../utils/domNodes";
+import { isDomNode } from "../utils/domNodes";
 import { isForeignNativeTextEntryTarget } from "../utils/textEntryTarget";
 import type { FocusSink } from "./focusSink";
 
@@ -75,19 +74,6 @@ export function syncFocusSink(
 }
 
 /**
- * The editor's own field (an inline field or the expanded blocks host),
- * which is ours to move focus from even before its field-surface marker is
- * painted: the D5 fallback leaves the expanded host it just focused.
- */
-function isEditorSurface(active: Element | null): boolean {
-	return (
-		isDomHTMLElement(active) &&
-		(active.hasAttribute(DATA_ATTRS.editorBlocksHost) ||
-			active.hasAttribute(DATA_ATTRS.inlineContent))
-	);
-}
-
-/**
  * Move DOM focus to `target` so a host can attribute a keystroke to this
  * editor by containment (HOST9), but only when the editor owns focus or,
  * with `fromDocument`, focus fell to the document. Synchronous: S4 forbids a deferred restore. Never steals from a
@@ -107,7 +93,7 @@ function claimFocus(
 	if (active === target) {
 		return;
 	}
-	if (isForeignNativeTextEntryTarget(active, root) && !isEditorSurface(active)) {
+	if (isForeignNativeTextEntryTarget(active, root)) {
 		return;
 	}
 	const editorOwnsFocus = isDomNode(active) && root.contains(active);

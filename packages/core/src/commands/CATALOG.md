@@ -43,7 +43,7 @@ Param `{ extend: boolean }` unless noted.
 | `pen.deleteBackward` | `{ granularity }` | core | Grapheme/word/line within the block (F2); merge/select/convert at block start. Adjacent inline atom: first press **selects** (`selectAdjacentInlineAtom`); second press deletes via ordinary selection-delete. N2 mixed-boundary (text endpoint mid-paragraph, other endpoint a non-text 0..1 span): keep the text prefix/suffix and `delete-block` the structural end — do not escalate to `BlockSelection` of both. Pinned in `__tests__/mixedBoundaryDelete.n2.test.ts`. |
 | `pen.deleteForward` | `{ granularity }` | core | Symmetric to backward, including merge at block end. Same select-then-delete for adjacent atoms. |
 | `pen.insertLineBreak` | `void` | core | Insert `"\n"`. |
-| `pen.splitBlock` | `void` | core | Port of `applyEnterBehavior`: split, list continuation, empty-list convert, heading → paragraph. |
+| `pen.splitBlock` | `void` | core | Split, list continuation, empty-list convert, heading → paragraph. |
 | `pen.indent` | `void` | core | Port of `applyListTabBehavior` (`shiftKey: false`). |
 | `pen.outdent` | `void` | core | Port of `applyListTabBehavior` (`shiftKey: true`). |
 | `pen.toggleMark` | `{ mark; value? }` | core | `format-text` over a range. Collapsed caret is a miss (no pending-mark host). |
@@ -91,10 +91,10 @@ Cell-editing arrows are `pen.caretLeft` / `pen.caretRight` / `pen.caretUp` / `pe
 
 I6 headless half: `__tests__/keymapParity.headless.test.ts` iterates the default keymap table and dispatches every binding on the live registry. The browser-harness half is outstanding — do not compare `createEditor` to `createHeadlessEditor` in Node; they are the same factory.
 
-Inline-atom delete (owner decision, applied 2026-08-23). First Backspace / Delete next to an atom SELECTs (`selectAdjacentInlineAtom`); the second press deletes through ordinary non-collapsed `handleDelete`. Live keystroke is `FieldEditorImpl` → `handleFieldEditorKeyDown` → `dispatchKeymapEvent` → `registry.dispatch`. `applyDeleteBehavior` is the no-dispatch fallback and already selected. `deleteAdjacentInlineAtom` remains a helper, not the live path. Pinned in `__tests__/inlineAtomDelete.test.ts` and field-editor `__tests__/commandsDelete.inlineAtomDivergence.test.ts`.
+Inline-atom delete (owner decision, applied 2026-08-23). First Backspace / Delete next to an atom SELECTs (`selectAdjacentInlineAtom`); the second press deletes through ordinary non-collapsed `handleDelete`. Live keystroke is `FieldEditorImpl` → `handleFieldEditorKeyDown` → `dispatchKeymapEvent` → `registry.dispatch`. `deleteAdjacentInlineAtom` remains a helper, not the live path. Pinned in `__tests__/inlineAtomDelete.test.ts` and field-editor `__tests__/commandsDelete.inlineAtomDivergence.test.ts`.
 
 ## Field-editor names that are not catalog commands
 
-From `commands*.ts` / `keyHandling*.ts` / `keyBindingShortcuts.ts`: `applyListInputRule`, `setInlineMark`, `normalizeInlineOffset`, `getConvertBlockOps`, `resolveBackspaceAction`, `resolveEnterAction`, `handleFieldEditorKeyDown`, `handleEditorKeyBindings`, `collectKeyBindings`, `matchesKey`, `matchesBindingContext`, plus `commandsShared.ts` helpers. Do not invent catalog names for these.
+From `commands*.ts` / `keyHandling*.ts` / `keyBindingShortcuts.ts`: `applyListInputRule`, `setInlineMark`, `normalizeInlineOffset`, `getConvertBlockOps`, `handleFieldEditorKeyDown`, `handleEditorKeyBindings`, `collectKeyBindings`, `matchesKey`, `matchesBindingContext`, plus `commandsShared.ts` helpers. Do not invent catalog names for these.
 
 `handleBlockSelectionArrow` / `handleBlockSelectionEnter` / `handleDeleteSelectionShortcut` (`utils/documentShortcuts.ts`) fold into caret / split / delete when those handlers move; they are not extra commands.

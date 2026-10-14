@@ -107,6 +107,9 @@ const TEXT_INPUT_ORIGINS: ReadonlySet<SelectionOrigin> = new Set([
 	"ime",
 ]);
 
+/** Pending marks only observe the ops an apply carries, so they read them last. */
+const PENDING_MARK_APPLY_HOOK_PRIORITY = 1000;
+
 export class FieldEditorImpl implements FieldEditorSession {
 	protected _focusBlockId: string | null = null;
 	protected _activeBlockIds: string[] = [];
@@ -122,6 +125,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected _deactivateListeners = new Set<(blockIds: string[]) => void>();
 	protected _storeListeners = new Set<() => void>();
 	protected _unsubscribeSelection: Unsubscribe | null = null;
+	protected _unsubscribeBeforeApply: Unsubscribe | null = null;
 	protected _unsubscribeCommit: Unsubscribe | null = null;
 	protected _unsubscribeHistoryApplied: Unsubscribe | null = null;
 	protected _focusSink: FocusSink | null = null;
@@ -304,6 +308,11 @@ export class FieldEditorImpl implements FieldEditorSession {
 			};
 			this._ensureScheduler()?.acceptCommit(event);
 		});
+		// Read-only, after every transforming hook: it sees the ops that apply.
+		this._unsubscribeBeforeApply = this._editor.onBeforeApply(
+			(ops, options) => this.pendingMarks.noteApply(ops, options),
+			{ priority: PENDING_MARK_APPLY_HOOK_PRIORITY },
+		);
 		this._unsubscribeSelection = this._editor.onSelectionChange(
 			(record) => {
 				this.reader.notifyAuthorityWrite(record.origin);
@@ -319,7 +328,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 					!isCollapsed(selection) ||
 					isMultiBlock(selection)
 				) {
-					this.pendingMarks.clear(true);
+					this.pendingMarks.releaseCaret();
+				} else {
+					this.pendingMarks.followCaret(record.origin);
 				}
 				const scheduler = this._ensureScheduler();
 				const alreadyProjected =
@@ -1368,6 +1379,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._rootElement = null;
 		this._unsubscribeSelection?.();
 		this._unsubscribeSelection = null;
+		this._unsubscribeBeforeApply?.();
+		this._unsubscribeBeforeApply = null;
 		this._unsubscribeCommit?.();
 		this._unsubscribeCommit = null;
 		this._unsubscribeHistoryApplied?.();

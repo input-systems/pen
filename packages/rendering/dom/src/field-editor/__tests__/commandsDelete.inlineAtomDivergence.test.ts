@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { Editor } from "@input/pen-types";
-import { applyDeleteBehavior } from "../commandsDelete";
 import { handleFieldEditorKeyDown } from "../keyHandling";
 import {
 	getYText,
@@ -13,9 +12,8 @@ import {
 
 /**
  * Owner-approved UX: Backspace next to an inline atom SELECTs on the first
- * press and deletes on the second. Live keydown / beforeinput go through
- * `registry.dispatch`. `applyDeleteBehavior` is the no-dispatch fallback
- * and already selected; both paths must stay on SELECT.
+ * press and deletes on the second. Live keydown and beforeinput both go
+ * through `registry.dispatch` and must stay on SELECT.
  *
  * Second press is ordinary delete-the-selection (`handleDelete` on a
  * non-collapsed range), not a second atom-specific step.
@@ -68,27 +66,6 @@ function expectAtomDeleted(editor: Editor, blockId: string, dispatched: string[]
 }
 
 describe("inline atom delete select-then-delete", () => {
-	it.each([
-		["backward", 3],
-		["forward", 2],
-	] as const)(
-		"fallback applyDeleteBehavior %s selects the adjacent atom and does not mutate",
-		(direction, caret) => {
-			const { editor, blockId } = createMentionEditor();
-
-			const target = applyDeleteBehavior(editor, {
-				blockId,
-				ytext: getYText(editor, blockId),
-				range: { start: caret, end: caret },
-				direction,
-			});
-
-			expect(target).toEqual({ blockId, anchorOffset: 2, focusOffset: 3 });
-			expect(hasMention(editor, blockId)).toBe(true);
-			editor.destroy();
-		},
-	);
-
 	it("handleFieldEditorKeyDown Backspace selects the adjacent atom, then deletes it on the second press", () => {
 		const { editor, blockId } = createMentionEditor();
 		const dispatched = spyDispatch(editor);

@@ -5,11 +5,14 @@ import {
 import type { DocumentOp, Editor } from "@input/pen-types";
 import { matchInlineInputRule } from "../utils/inlineInputRule";
 import type { InlineInputRuleEngine } from "./crdt";
+import { applyInputRule } from "./inputRuleApply";
 
 export type InlineInputRuleSelectionTarget = {
 	blockId: string;
 	anchorOffset: number;
 	focusOffset: number;
+	/** The marks the rule applied; they end at the caret it leaves. */
+	marks: readonly string[];
 };
 
 /**
@@ -19,8 +22,8 @@ export type InlineInputRuleSelectionTarget = {
  *
  * @param editor - The editor whose document receives the resulting ops.
  * @param options - The block, the caret offset, and the single character typed.
- * @returns The selection target to restore after the rewrite, or `null` when no
- * rule matches.
+ * @returns The selection target to restore after the rewrite and the marks it
+ * applied, or `null` when no rule matches.
  */
 export function applyInlineInputRule(
 	editor: Editor,
@@ -66,7 +69,7 @@ export function applyInlineInputRule(
 		return null;
 	}
 
-	editor.apply(ops, { origin: "input-rule" });
+	applyInputRule(editor, { blockId, offset, text }, ops);
 	return selectionTarget;
 }
 
@@ -111,12 +114,14 @@ function resolveInlineSelectionTarget(
 	ops: DocumentOp[],
 ): InlineInputRuleSelectionTarget | null {
 	let nextOffset: number | null = null;
+	let marks: readonly string[] = [];
 	for (const op of ops) {
 		if (op.type !== "splice-text" || op.blockId !== blockId) {
 			continue;
 		}
 		if (typeof op.insert === "string" && op.insert.length > 0) {
 			nextOffset = op.from + op.insert.length;
+			marks = Object.keys(op.marks ?? {});
 		}
 	}
 
@@ -128,5 +133,6 @@ function resolveInlineSelectionTarget(
 		blockId,
 		anchorOffset: nextOffset,
 		focusOffset: nextOffset,
+		marks,
 	};
 }

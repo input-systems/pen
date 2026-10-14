@@ -3,7 +3,7 @@ import type { FieldEditorTextLike } from "./crdt";
 
 /**
  * Enforces InlineSchema.expand policy at every text insertion point.
- * See Spec Section 4.3.
+ * See `spec/rules/commands.md` D7.
  */
 export function resolveMarksAtPosition(
 	ytext: FieldEditorTextLike,

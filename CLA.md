@@ -2,7 +2,7 @@
 
 **Version 1.0 — March 6th 2026**
 
-In order to clarify the intellectual property license granted with Contributions from any person, Input B.V. ("Input") must have a Contributor License Agreement on file that has been signed by each contributor, indicating agreement to the license terms below. This license is for Your protection as a contributor as well as the protection of Input; it does not change your rights to use Your own contributions for any other purpose.
+In order to clarify the intellectual property license granted with Contributions from any person, Input Systems B.V. ("Input") must have a Contributor License Agreement on file that has been signed by each contributor, indicating agreement to the license terms below. This license is for Your protection as a contributor as well as the protection of Input; it does not change your rights to use Your own contributions for any other purpose.
 
 You accept and agree to the following terms and conditions for Your Contributions (present and future) that you submit to Input. Except for the license granted herein to Input, You reserve all right, title, and interest in and to Your Contributions.
 

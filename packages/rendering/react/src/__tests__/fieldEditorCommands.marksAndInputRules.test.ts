@@ -1,16 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { createEditor } from "@input/pen-core";
+import { defaultPreset } from "@input/pen";
+import { defaultSchema } from "@input/pen-schema";
 import {
 	FIELD_EDITOR_SLOT_KEY,
 	INPUT_RULES_ENGINE_SLOT_KEY,
 } from "@input/pen-types";
 import {
 	applyListInputRule,
-	applyBackspaceBehavior,
-	applyEnterBehavior,
 	getLogicalInlineLength,
 	normalizeInlineOffset,
-	splitBlockAtOffset,
 	toggleInlineMark,
 } from "@input/pen-dom/field-editor/commands";
 import { FieldEditorImpl } from "@input/pen-dom/field-editor/fieldEditorImpl";
@@ -123,7 +122,7 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 				ytext,
 				0,
 			),
-		).toBeUndefined();
+		).toEqual({});
 
 		fieldEditor.destroy();
 		editor.destroy();
@@ -165,6 +164,155 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 		editor.destroy();
 	});
 
+	it("drops a pending mark when the caret moves elsewhere, keeps it through typing and a same-caret re-assert", () => {
+		const editor = createEditor(editorOpts());
+		const blockId = editor.firstBlock()!.id;
+		const fieldEditor = new FieldEditorImpl(editor);
+
+		editor.internals.assignSlot(FIELD_EDITOR_SLOT_KEY, fieldEditor);
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "one two" },
+		]);
+		fieldEditor.activate(blockId);
+		fieldEditor.setTextSelection(blockId, 3, 3);
+
+		expect(toggleInlineMark(editor, "bold")).toBe(true);
+		expect(fieldEditor.getPendingMarks()).toEqual({ bold: true });
+
+		// focus returning from a toolbar re-asserts the same caret
+		editor.selectText(blockId, 3, 3, { origin: "restore" });
+		expect(fieldEditor.getPendingMarks()).toEqual({ bold: true });
+
+		// typing before the caret maps it along with the edit
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "X" },
+		]);
+		expect(editor.selection).toMatchObject({ focus: { offset: 4 } });
+		expect(fieldEditor.getPendingMarks()).toEqual({ bold: true });
+
+		editor.selectText(blockId, 6, 6, { origin: "keyboard" });
+		expect(fieldEditor.getPendingMarks()).toEqual({});
+
+		fieldEditor.destroy();
+		editor.destroy();
+	});
+
+	it("text retyped after deleting the end of a link rejoins it, for as many characters as were deleted", () => {
+		const editor = createEditor(editorOpts());
+		const blockId = editor.firstBlock()!.id;
+		const fieldEditor = new FieldEditorImpl(editor);
+		const ytext = getYText(editor, blockId);
+		const link = { href: "https://example.com", title: null };
+		const pendingMarks = fieldEditorInternals(fieldEditor).pendingMarks;
+
+		editor.internals.assignSlot(FIELD_EDITOR_SLOT_KEY, fieldEditor);
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: "go here now",
+			},
+			{ type: "format-text", blockId, from: 3, to: 7, marks: { link } },
+		]);
+		fieldEditor.activate(blockId);
+		fieldEditor.setTextSelection(blockId, 7, 7);
+		expect(pendingMarks.resolveInsertMarks(ytext, 7)).toEqual({});
+
+		// Backspace takes the link's last character
+		editor.apply([
+			{ type: "splice-text", blockId, from: 6, to: 7, insert: "" },
+		]);
+		expect(editor.selection).toMatchObject({ focus: { offset: 6 } });
+		expect(pendingMarks.resolveInsertMarks(ytext, 6)).toEqual({ link });
+
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 6,
+				to: 6,
+				insert: "E",
+				marks: pendingMarks.resolveInsertMarks(ytext, 6),
+			},
+		]);
+		expect(editor.getBlock(blockId)!.textDeltas()).toEqual([
+			{ insert: "go " },
+			{ insert: "herE", attributes: { link } },
+			{ insert: " now" },
+		]);
+		// one character deleted, one retyped: the next one stays outside
+		expect(pendingMarks.resolveInsertMarks(ytext, 7)).toEqual({});
+
+		fieldEditor.destroy();
+		editor.destroy();
+	});
+
+	it("deleting a whole link one character at a time leaves nothing to rejoin", () => {
+		const editor = createEditor(editorOpts());
+		const blockId = editor.firstBlock()!.id;
+		const fieldEditor = new FieldEditorImpl(editor);
+		const ytext = getYText(editor, blockId);
+		const link = { href: "https://example.com", title: null };
+		const pendingMarks = fieldEditorInternals(fieldEditor).pendingMarks;
+
+		editor.internals.assignSlot(FIELD_EDITOR_SLOT_KEY, fieldEditor);
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "go ab" },
+			{ type: "format-text", blockId, from: 3, to: 5, marks: { link } },
+		]);
+		fieldEditor.activate(blockId);
+		fieldEditor.setTextSelection(blockId, 5, 5);
+
+		editor.apply([
+			{ type: "splice-text", blockId, from: 4, to: 5, insert: "" },
+		]);
+		expect(pendingMarks.resolveInsertMarks(ytext, 4)).toEqual({ link });
+
+		editor.apply([
+			{ type: "splice-text", blockId, from: 3, to: 4, insert: "" },
+		]);
+		expect(editor.getBlock(blockId)!.textContent()).toBe("go ");
+		expect(pendingMarks.resolveInsertMarks(ytext, 3)).toEqual({});
+
+		fieldEditor.destroy();
+		editor.destroy();
+	});
+
+	it("ends a mark at the caret so the next typed text does not extend it", () => {
+		const editor = createEditor(editorOpts());
+		const blockId = editor.firstBlock()!.id;
+		const fieldEditor = new FieldEditorImpl(editor);
+		const ytext = getYText(editor, blockId);
+		const pendingMarks = fieldEditorInternals(fieldEditor).pendingMarks;
+
+		editor.internals.assignSlot(FIELD_EDITOR_SLOT_KEY, fieldEditor);
+		editor.apply([
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: "bold",
+				marks: { bold: true },
+			},
+		]);
+		fieldEditor.activate(blockId);
+		fieldEditor.setTextSelection(blockId, 4, 4);
+		expect(pendingMarks.resolveInsertMarks(ytext, 4)).toEqual({
+			bold: true,
+		});
+
+		pendingMarks.endMarks(["bold"]);
+		expect(pendingMarks.resolveInsertMarks(ytext, 4)).toEqual({
+			bold: null,
+		});
+
+		fieldEditor.destroy();
+		editor.destroy();
+	});
+
 	it("opens the pointer window on a pointerdown gesture without muting reads", () => {
 		const editor = createEditor(editorOpts());
 		const blockId = editor.firstBlock()!.id;
@@ -180,60 +328,6 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 
 		fieldEditor.destroy();
 		expect(fieldEditor.getSnapshot().mode).toBe("inactive");
-
-		editor.destroy();
-	});
-
-	it("splits a block and returns the next selection target", () => {
-		const editor = createEditor(editorOpts());
-		const blockId = editor.firstBlock()!.id;
-
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId,
-				from: 0,
-				to: 0,
-				insert: "HelloWorld",
-			},
-		]);
-
-		const target = splitBlockAtOffset(editor, { blockId, offset: 5 });
-
-		expect(editor.blockCount()).toBe(2);
-		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe(
-			"Hello",
-		);
-		expect(
-			visibleText(editor.getBlock(target.blockId)!.textContent()),
-		).toBe("World");
-		expect(target.anchorOffset).toBe(0);
-		expect(target.focusOffset).toBe(0);
-
-		editor.destroy();
-	});
-
-	it("uses newline insertion for code input mode", () => {
-		const editor = createEditor(editorOpts());
-		const blockId = editor.firstBlock()!.id;
-
-		editor.apply([
-			{ type: "set-props", blockId, props: { type: "codeBlock" } },
-			{ type: "splice-text", blockId, from: 0, to: 0, insert: "abcd" },
-		]);
-
-		const target = applyEnterBehavior(editor, {
-			blockId,
-			inputMode: "code",
-			ytext: getYText(editor, blockId),
-			range: { start: 2, end: 2 },
-		});
-
-		expect(editor.blockCount()).toBe(1);
-		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe(
-			"ab\ncd",
-		);
-		expect(target).toEqual({ blockId, anchorOffset: 3, focusOffset: 3 });
 
 		editor.destroy();
 	});
@@ -269,6 +363,32 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 		expect(target).toEqual({ blockId, anchorOffset: 0, focusOffset: 0 });
 		expect(editor.getBlock(blockId)?.type).toBe("bulletListItem");
 		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe("");
+
+		editor.destroy();
+	});
+
+	it("undo right after '- ' becomes a bullet gives back the typed '- ' as text", async () => {
+		const editor = createEditor({
+			preset: defaultPreset({ tools: false, deltaStream: false }),
+		});
+		await editor.whenReady();
+		const blockId = editor.firstBlock()!.id;
+
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "-" },
+		]);
+		editor.selectText(blockId, 1, 1);
+		applyListInputRule(editor, {
+			blockId,
+			range: { start: 1, end: 1 },
+			text: " ",
+		});
+		expect(editor.getBlock(blockId)?.type).toBe("bulletListItem");
+		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe("");
+
+		expect(editor.undoManager.undo()).toBe(true);
+		expect(editor.getBlock(blockId)?.type).toBe("paragraph");
+		expect(editor.getBlock(blockId)!.textContent()).toBe("- ");
 
 		editor.destroy();
 	});
@@ -407,6 +527,30 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 		editor.destroy();
 	});
 
+	it("keeps a list marker as text when the schema has no list block for it", () => {
+		const editor = createEditor({
+			...editorOpts(),
+			schema: defaultSchema.without(["numberedListItem"]),
+		});
+		const blockId = editor.firstBlock()!.id;
+
+		editor.apply([
+			{ type: "splice-text", blockId, from: 0, to: 0, insert: "1." },
+		]);
+
+		const target = applyListInputRule(editor, {
+			blockId,
+			range: { start: 2, end: 2 },
+			text: " ",
+		});
+
+		expect(target).toBeNull();
+		expect(editor.getBlock(blockId)?.type).toBe("paragraph");
+		expect(visibleText(editor.getBlock(blockId)!.textContent())).toBe("1.");
+
+		editor.destroy();
+	});
+
 	it("does not convert paragraphs that already contain text", () => {
 		const editor = createEditor(editorOpts());
 		const blockId = editor.firstBlock()!.id;
@@ -435,46 +579,6 @@ describe("@input/pen-react field-editor commands: inline marks and input rules",
 
 		expect(getLogicalInlineLength(ytext)).toBe(0);
 		expect(normalizeInlineOffset(ytext, 1)).toBe(0);
-
-		editor.destroy();
-	});
-
-	it("merges backward from an empty paragraph without carrying the placeholder", () => {
-		const editor = createEditor(editorOpts());
-		const firstBlockId = editor.firstBlock()!.id;
-		const secondBlockId = crypto.randomUUID();
-
-		editor.apply([
-			{
-				type: "splice-text",
-				blockId: firstBlockId,
-				from: 0,
-				to: 0,
-				insert: "Hello",
-			},
-			{
-				type: "insert-block",
-				blockId: secondBlockId,
-				blockType: "paragraph",
-				props: {},
-				position: { after: firstBlockId },
-			},
-		]);
-
-		const secondYText = getYText(editor, secondBlockId);
-		const target = applyBackspaceBehavior(editor, {
-			blockId: secondBlockId,
-			ytext: secondYText,
-			range: { start: 1, end: 1 },
-		});
-
-		expect(target).toEqual({
-			blockId: firstBlockId,
-			anchorOffset: 5,
-			focusOffset: 5,
-		});
-		expect(editor.blockCount()).toBe(1);
-		expect(editor.getBlock(firstBlockId)!.textContent()).toBe("Hello");
 
 		editor.destroy();
 	});

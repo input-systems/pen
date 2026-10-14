@@ -198,8 +198,8 @@ describe("HOST9: the vanilla document tree's expanded blocks host", () => {
 		expect(blocksHost.hasAttribute(DATA_ATTRS.fieldEditorActiveSurface)).toBe(true);
 		expect(blocksHost.getAttribute("role")).toBe("textbox");
 		expect(blocksHost.getAttribute("aria-multiline")).toBe("true");
-		// Unmarked, its contenteditable read as a foreign text control, and a
-		// return to a single block attached passively and lost keyboard input.
+		// HOST9: the expanded host is this editor's own field, never a
+		// foreign text control.
 		expect(isForeignNativeTextEntryTarget(blocksHost, root)).toBe(false);
 	});
 

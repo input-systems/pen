@@ -11,6 +11,25 @@ interface InputRuleMatchOptions {
 	offset?: number;
 }
 
+// Core drops a conversion to a type the schema does not register but still
+// applies the rule's trigger deletion, so a rule that converts to one must not
+// fire.
+function convertsToUnregisteredType(
+	editor: Editor,
+	ops: DocumentOp[],
+): boolean {
+	return ops.some((op) => {
+		if (op.type !== "set-props" || typeof op.props.type !== "string") {
+			return false;
+		}
+
+		const type = op.props.type;
+		return !editor.schema
+			.allBlocks()
+			.some((schema) => schema.type === type);
+	});
+}
+
 export class InputRuleEngine {
 	private _rules: InputRule[] = [];
 	private _inlineRules: InlineInputRule[] = [];
@@ -71,7 +90,10 @@ export class InputRuleEngine {
 			if (!match) continue;
 
 			const ops = rule.handler(match, ctx);
-			if (ops && ops.length > 0) return ops;
+			if (!ops || ops.length === 0) continue;
+			if (convertsToUnregisteredType(editor, ops)) continue;
+
+			return ops;
 		}
 
 		return null;

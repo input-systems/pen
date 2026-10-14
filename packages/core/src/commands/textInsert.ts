@@ -21,11 +21,10 @@ export function handleInsertText(
 	}
 	const block = editor.getBlock(selection.focus.blockId);
 	const marks =
-		param.marks !== undefined
-			? param.marks
-			: block
-				? marksAtOffset(block, selection.focus.offset)
-				: undefined;
+		param.marks ??
+		(block
+			? marksAtOffset(block, selection.focus.offset, editor.schema)
+			: {});
 	const replacement = replaceRangeOps(editor, selection, param.text, marks);
 	if (!replacement) {
 		return false;
@@ -111,7 +110,9 @@ function toggleMarkAcrossBlocks(
 		return false;
 	}
 	const order = documentPreorderBlockIds(editor);
-	const startIndex = editor.documentState.preorderIndexOf(range.start.blockId);
+	const startIndex = editor.documentState.preorderIndexOf(
+		range.start.blockId,
+	);
 	const endIndex = editor.documentState.preorderIndexOf(range.end.blockId);
 	if (startIndex < 0 || endIndex < 0) {
 		return false;

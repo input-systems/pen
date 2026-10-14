@@ -188,7 +188,8 @@ test("pnpm test is src/hosts/*.test.js; Playwright specs are a separate populati
 	// 104 -> 102: scenarios/{m2-arrow-swap,m5-vertical-no-swap}.spec.ts merged into
 	// suites/bidi/{live-rules,m2-shift-word,m5-vertical-no-swap}.spec.ts (same M2/M5 scenarios).
 	// 102 -> 103: suites/selection/t6-cell-editing-delete.spec.ts (T6/A1, Backspace and Delete in an edited cell).
-	const expectedPlaywrightSpecs = 103;
+	// 103 -> 104: suites/selection/p-listener-write.spec.ts (HOST9/P1, a `selectionChange` listener rewriting select-all).
+	const expectedPlaywrightSpecs = 104;
 	assert.equal(
 		playwrightSpecs.length,
 		expectedPlaywrightSpecs,

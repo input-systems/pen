@@ -1,11 +1,11 @@
-import { applySplitBlock, inputRulesEngineFacet } from "@input/pen-core";
-import { generateId } from "@input/pen-types";
+import { inputRulesEngineFacet } from "@input/pen-core";
 import type { DocumentOp, Editor } from "@input/pen-types";
 import {
 	toggleInlineMark as toggleInlineMarkCommand,
 	setInlineMark as setInlineMarkCommand,
 } from "@input/pen-shortcuts";
 import { matchListInputRule } from "../utils/listInputRule";
+import { applyInputRule } from "./inputRuleApply";
 import {
 	type BlockInputRuleEngine,
 	type SelectionRange,
@@ -22,52 +22,6 @@ export function setInlineMark(
 	value: Record<string, unknown> | null,
 ): boolean {
 	return setInlineMarkCommand(editor, markType, value);
-}
-
-// ── Commands ─────────────────────────────────────────────────
-
-export function splitBlockAtOffset(
-	editor: Editor,
-	options: {
-		blockId: string;
-		offset: number;
-		newBlockType?: string;
-	},
-): SelectionTarget {
-	const { blockId, offset, newBlockType } = options;
-	const newBlockId = generateId();
-
-	applySplitBlock(editor, {
-		blockId,
-		offset,
-		newBlockId,
-		newBlockType,
-		applyOptions: { origin: "user" },
-	});
-	editor.selectText(newBlockId, 0, 0, { origin: "keyboard" });
-
-	return {
-		blockId: newBlockId,
-		anchorOffset: 0,
-		focusOffset: 0,
-	};
-}
-
-export function convertBlock(
-	editor: Editor,
-	options: {
-		blockId: string;
-		newType: string;
-		newProps?: Record<string, unknown>;
-	},
-): SelectionTarget {
-	editor.apply(getConvertBlockOps(editor, options), { origin: "user" });
-
-	return {
-		blockId: options.blockId,
-		anchorOffset: 0,
-		focusOffset: 0,
-	};
 }
 
 export function getConvertBlockOps(
@@ -98,51 +52,6 @@ export function getConvertBlockOps(
 	return ops;
 }
 
-export function insertTextAtRange(
-	editor: Editor,
-	options: {
-		blockId: string;
-		range: SelectionRange | null;
-		text: string;
-	},
-): SelectionTarget {
-	const { blockId, range, text } = options;
-	const start = range?.start ?? 0;
-	const end = range?.end ?? start;
-	const ops: DocumentOp[] = [];
-
-	if (end > start) {
-		ops.push({
-			type: "splice-text",
-			blockId,
-			from: start,
-			to: end,
-			insert: "",
-		});
-	}
-
-	if (text.length > 0) {
-		ops.push({
-			type: "splice-text",
-			blockId,
-			from: start,
-			to: start,
-			insert: text,
-		});
-	}
-
-	if (ops.length > 0) {
-		editor.apply(ops, { origin: "user" });
-	}
-
-	const nextOffset = start + text.length;
-	return {
-		blockId,
-		anchorOffset: nextOffset,
-		focusOffset: nextOffset,
-	};
-}
-
 export function applyListInputRule(
 	editor: Editor,
 	options: {
@@ -169,21 +78,7 @@ export function applyListInputRule(
 			offset: range.start,
 		});
 		if (ops) {
-			// Rule ops target the document after the pending input. Apply it
-			// separately because ops in one batch share pre-apply coordinates.
-			editor.apply(
-				[
-					{
-						type: "splice-text",
-						blockId,
-						from: range.start,
-						to: range.end,
-						insert: text,
-					},
-				],
-				{ origin: "input-rule" },
-			);
-			editor.apply(ops, { origin: "input-rule" });
+			applyInputRule(editor, { blockId, offset: range.start, text }, ops);
 			return {
 				blockId,
 				anchorOffset: 0,
@@ -201,23 +96,29 @@ export function applyListInputRule(
 		return null;
 	}
 
-	editor.apply(
-		[
-			{
-				type: "splice-text",
-				blockId,
-				from: match.deleteRange.start,
-				to: match.deleteRange.end,
-				insert: "",
-			},
-			{
-				type: "set-props",
-				blockId,
-				props: { type: match.blockType, ...match.newProps },
-			},
-		],
-		{ origin: "input-rule" },
-	);
+	// Core drops a conversion to a type the schema does not register but still
+	// applies the marker deletion, so the typed marker would vanish.
+	const registered = editor.schema
+		.allBlocks()
+		.some((schema) => schema.type === match.blockType);
+	if (!registered) {
+		return null;
+	}
+
+	applyInputRule(editor, { blockId, offset: range.start, text }, [
+		{
+			type: "splice-text",
+			blockId,
+			from: match.deleteRange.start,
+			to: match.deleteRange.end,
+			insert: "",
+		},
+		{
+			type: "set-props",
+			blockId,
+			props: { type: match.blockType, ...match.newProps },
+		},
+	]);
 
 	return {
 		blockId,

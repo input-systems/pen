@@ -3,7 +3,6 @@ import { writeNativeRange } from "./selectionProjector";
 import { getPasteImporters, handlePaste } from "./clipboard";
 import { InputBackendBase } from "./inputBackendBase";
 import type { PenFieldEditorFocusOptions } from "./controller";
-import { getResolvedYText } from "./contentResolution";
 import {
 	deleteBackward,
 	deleteForward,
@@ -15,7 +14,7 @@ import {
 	splitBlock,
 	toggleMark,
 } from "@input/pen-core";
-import { applyEnterBehavior, toggleInlineMark } from "./commands";
+import { toggleInlineMark } from "./commands";
 import {
 	activateFieldEditorFromSelection,
 	applyBeforeInputPolicy,
@@ -155,36 +154,7 @@ export class ExpandedContentEditableBackend extends InputBackendBase {
 						: splitBlock;
 				if (dispatchEditorCommand(this.editor, command, undefined)) {
 					this.activateSingleBlockTextSelection();
-					return;
 				}
-
-				const blockId = selection.anchor.blockId;
-				const ytext = getResolvedYText(this.editor, blockId, null);
-				if (!ytext) return;
-
-				const target = applyEnterBehavior(this.editor, {
-					blockId,
-					inputMode: this.fieldEditor.inputMode,
-					ytext,
-					range: {
-						start: Math.min(
-							selection.anchor.offset,
-							selection.focus.offset,
-						),
-						end: Math.max(
-							selection.anchor.offset,
-							selection.focus.offset,
-						),
-					},
-				});
-				if (!target) return;
-
-				this.fieldEditor.activateTextSelection(
-					target.blockId,
-					target.anchorOffset,
-					target.focusOffset,
-					{ origin: "keyboard" },
-				);
 				return;
 			}
 			case "deleteContentBackward":

@@ -125,4 +125,4 @@ The public signatures of record are in `api-report.md` next to this package's so
 
 ## License
 
-MIT © Input B.V. See [`LICENSE.md`](./LICENSE.md).
+MIT © Input Systems B.V. See [`LICENSE.md`](./LICENSE.md).

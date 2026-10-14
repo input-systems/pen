@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { splitBlock } from "@input/pen-core";
-import { applyEnterBehavior } from "../commandsEnter";
 import { handleFieldEditorKeyDown } from "../keyHandling";
 import {
 	getYText,
@@ -73,33 +72,6 @@ describe("field-editor command registry dispatch", () => {
 		expect(dispatched).toContain("pen.splitBlock");
 		expect(editor.documentState.blockOrder).toHaveLength(2);
 		expectCaretOnNewBlock(editor, activations);
-		editor.destroy();
-	});
-
-	it("applyEnterBehavior lands authority on the new block after an enter split", () => {
-		const {
-			editor,
-			blockIds: [blockId],
-		} = seedParagraphs(["Hello"]);
-		// start off the split offset so onCommit mapping cannot hide a missing write
-		editor.selectText(blockId!, 0, 0);
-
-		const target = applyEnterBehavior(editor, {
-			blockId: blockId!,
-			inputMode: "richtext",
-			ytext: getYText(editor, blockId!),
-			range: { start: 5, end: 5 },
-		});
-
-		const newBlockId = editor.documentState.blockOrder[1];
-		expect(target).toEqual({ blockId: newBlockId, anchorOffset: 0, focusOffset: 0 });
-		expect(editor.getBlock(blockId!)?.textContent()).toBe("Hello");
-		expect(editor.getBlock(newBlockId!)?.textContent()).toBe("");
-		expect(editor.selection).toMatchObject({
-			type: "text",
-			anchor: { blockId: newBlockId, offset: 0 },
-			focus: { blockId: newBlockId, offset: 0 },
-		});
 		editor.destroy();
 	});
 

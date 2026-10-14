@@ -351,10 +351,20 @@ Expanded field-editor mode and table-cell editing always use contenteditable, ev
 
 ## Development
 
+We recommend [mise](https://mise.jdx.dev/) instead of nvm to manage Node
+and pnpm together. [`mise.toml`](mise.toml) selects Node 24 and pnpm
+10.34.5. [Install and activate mise](https://mise.jdx.dev/getting-started.html),
+review `mise.toml`, then run from the repository root:
+
 ```bash
+mise trust
+mise install
 pnpm install
 pnpm dev
 ```
+
+See [local setup](CONTRIBUTING.md#local-setup) for usage without shell
+activation and the optional nvm setup.
 
 `pnpm dev` builds workspace `dist/` once, then watches the libraries and starts every Vite app on a fixed port. If a port is taken, Vite exits instead of hopping:
 
@@ -377,6 +387,8 @@ pnpm lint
 
 Prefer scoped runs while iterating: `pnpm --filter @input/pen-core test`. Browser coverage is `pnpm test:e2e`, which drives the playground. See [`playground/README.md`](playground/README.md). Any change to a published package needs a changeset (`pnpm changeset`). [`CONTRIBUTING.md`](CONTRIBUTING.md) has the full loop, including which gates run in CI.
 
+Releases use Changesets: approve the **Version Packages** PR workflows, then approve and merge the PR after its checks pass. CI builds and publishes all public packages to npm and completes their tags. See [release setup and recovery](.changeset/README.md); no GitHub App is required.
+
 ## Community
 
 - [Contributing](CONTRIBUTING.md)
@@ -392,4 +404,4 @@ Pen is created and maintained by [Noud Adrichem](https://www.x.com/noudadrichem)
 
 The Pen SDK is provided under the [MIT License](LICENSE.md).
 
-Copyright (c) 2026-present Input B.V.
+Copyright (c) 2026-present Input Systems B.V.

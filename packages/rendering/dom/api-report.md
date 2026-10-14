@@ -260,20 +260,11 @@
 
 ### function
 
-- applyBackspaceBehavior
-- applyDeleteBehavior
-- applyEnterBehavior
 - applyListInputRule
 - applyListTabBehavior
-- convertBlock
 - getConvertBlockOps
-- insertTextAtRange
-- mergeBackwardAtBlockStart
 - moveCaretAcrossBlocks
-- resolveBackspaceAction
-- resolveEnterAction
 - setInlineMark
-- splitBlockAtOffset
 - toggleInlineMark
 
 ### value

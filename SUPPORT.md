@@ -16,7 +16,7 @@ There is no Discord, Slack, or GitHub Discussions channel for Pen.
 
 ## Licensing
 
-Pen is licensed under the [MIT License](LICENSE.md), copyright Input B.V. For questions about Input, contact [input.so](https://www.input.so/).
+Pen is licensed under the [MIT License](LICENSE.md), copyright Input Systems B.V. For questions about Input, contact [input.so](https://www.input.so/).
 
 ## Security Issues
 

@@ -19,6 +19,7 @@ Add optional runtime behavior on top of the editor core without changing the can
 - Peer dependencies: No peer dependencies declared.
 - Boundary: Extensions compose through the core editor and slots/events rather than side channels. The extension publishes a rules engine on `inputRulesEngineFacet` / `INPUT_RULES_ENGINE_SLOT_KEY` and rewrites matching input from an `onBeforeApply` hook; `@input/pen-dom` reads that engine facet.
 - Rules are bypassed for the `input-rule`, `collaborator`, `import`, `history`, and `system` origins, so a rule cannot fire on a peer's text or on its own rewrite.
+- A block rule whose ops convert a block to a type the schema does not register is skipped, as an inline rule is for an unregistered mark: core would drop the conversion but apply the trigger deletion, so the trigger stays as typed text.
 - Not installed by `defaultPreset()`. This is opt-in like `@input/pen-search`.
 
 ## Data Flow / Runtime Model

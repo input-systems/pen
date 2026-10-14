@@ -138,6 +138,17 @@ const underline = {
 	serialize: {},
 };
 
+const link = {
+	type: "link",
+	propSchema: {
+		href: prop.string().default(""),
+	},
+	kind: "mark" as const,
+	expand: "none" as const,
+	priority: 70,
+	serialize: {},
+};
+
 const mention = {
 	type: "mention",
 	propSchema: {
@@ -165,6 +176,7 @@ export function createCommandTestSchema() {
 			bold,
 			italic,
 			underline,
+			link,
 			mention,
 		] as unknown as InlineSchema[],
 		onUnknownBlock: () => "passthrough",

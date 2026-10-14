@@ -423,10 +423,13 @@ export function undoExtension(options?: UndoExtensionOptions): Extension {
 
 // ── Constants ────────────────────────────────────────────────
 
+// `input-rule` is tracked so undo right after `- ` → bullet or `**x**` →
+// bold gives back the typed shorthand instead of skipping the rewrite.
 const DEFAULT_TRACKED_ORIGINS: OpOrigin[] = [
 	"user",
 	"ai",
 	"import",
+	"input-rule",
 ];
 const CURSOR_BEFORE_KEY = "pen:cursor-before";
 const CURSOR_AFTER_KEY = "pen:cursor-after";

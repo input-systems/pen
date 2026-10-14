@@ -2,7 +2,7 @@
 /**
  * API8 positioning gate (spec/rules/api.md).
  *
- * LICENSE.md is MIT, copyright Input B.V. Retired source-available /
+ * LICENSE.md is MIT, copyright Input Systems B.V. Retired source-available /
  * commercial wording must stay in the license decision record. A future
  * "requires a commercial license for production use" in a package
  * README is a legal-accuracy failure, not a style one.

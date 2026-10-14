@@ -28,6 +28,7 @@ type AutoformatExtensionTestEditor = {
 			fieldEditor: "richtext";
 		};
 		resolveInline(): { kind: "mark" };
+		allBlocks(): readonly { type: string }[];
 	};
 };
 
@@ -61,6 +62,7 @@ function createMockEditor(textContent: string) {
 				fieldEditor: "richtext",
 			}),
 			resolveInline: () => ({ kind: "mark" }),
+			allBlocks: () => [{ type: "paragraph" }, { type: "heading" }],
 		},
 	} satisfies AutoformatExtensionTestEditor;
 
