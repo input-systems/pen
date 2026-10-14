@@ -74,7 +74,7 @@
     "@input/pen-types": "workspace:*",
     "@input/pen-undo": "workspace:*",
     "@input/pen-yjs": "workspace:*",
-    "@types/node": "^26.6.4",
+    "@types/node": "^26.6.5",
     "@typescript/native": "npm:typescript@^7.0.2",
     "tsup": "^8.4.0",
     "tsx": "^4.23.15",
