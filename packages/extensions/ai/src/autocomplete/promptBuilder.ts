@@ -7,9 +7,14 @@ import type {
 	AutocompleteProviderTiming,
 } from "./providers/types";
 
+// The cursor prompt JSON-encodes its context; without this a model answers in the same encoding.
+const PLAIN_TEXT_ANSWER_RULE =
+	"The prefix, suffix, and block values are JSON-encoded; your answer is plain text, so write a line break as a real line break, never as an escape sequence.";
+
 export const AUTOCOMPLETE_SYSTEM_PROMPT = [
 	"You are generating inline editor autocomplete.",
 	"Return only the text that should be inserted at the cursor.",
+	PLAIN_TEXT_ANSWER_RULE,
 	"Do not repeat the existing prefix unless it must be changed.",
 	"The first character of your answer must be the next character after the cursor, not the start of the already-typed prefix.",
 	"If the user already typed `hey`, do not answer `hey` or `hey `.",
@@ -30,6 +35,7 @@ export const AUTOCOMPLETE_SYSTEM_PROMPT = [
 const AUTOCOMPLETE_CONTINUATION_SYSTEM_PROMPT = [
 	"You are generating the next inline continuation after a visible autocomplete suggestion has already been accepted.",
 	"Return only the text that should be inserted at the cursor.",
+	PLAIN_TEXT_ANSWER_RULE,
 	"Do not repeat the already accepted text unless it truly must be changed.",
 	"Continue with the next natural thought after the cursor, not a restatement of what was just completed.",
 	"For prose, each accepted continuation should usually expand scope rather than stay equally short.",
