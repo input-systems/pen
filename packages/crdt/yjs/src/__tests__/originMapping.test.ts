@@ -288,7 +288,7 @@ describe("COL1 origin mapping", () => {
 			/trackedOriginTypes \?\? \[[^\]]*(collaborator|unknown)/,
 		);
 		expect(undoExtensionSource).toMatch(
-			/const DEFAULT_TRACKED_ORIGINS: OpOrigin\[] = \[\s*"user",\s*"ai",\s*"import",\s*]/,
+			/const DEFAULT_TRACKED_ORIGINS: OpOrigin\[] = \[\s*"user",\s*"ai",\s*"import",\s*"input-rule",\s*]/,
 		);
 		expect(undoExtensionSource).not.toMatch(
 			/DEFAULT_TRACKED_ORIGINS: OpOrigin\[] = \[[^\]]*(collaborator|unknown)/,
