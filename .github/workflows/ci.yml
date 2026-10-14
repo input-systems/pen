@@ -99,6 +99,9 @@ jobs:
       - name: Check @internal stripping
         run: node scripts/strip-internal.mjs
 
+      - name: Check published package exports and types
+        run: node scripts/release-check.mjs --publint --attw
+
       - name: Typecheck packages
         run: pnpm typecheck
 
