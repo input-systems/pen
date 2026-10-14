@@ -339,7 +339,7 @@ function runSelfTests() {
 	}, "scoped to release steps");
 	mustFail((config, job, steps) => {
 		steps[ACTION].with["push-git-tags"] = true;
-	}, "defer git tags");
+	}, "leave git tags");
 	mustFail((config, job, steps) => {
 		steps[SETUP].with["turbo-cache-scope"] = "release";
 	}, "without a restored Turbo cache");
