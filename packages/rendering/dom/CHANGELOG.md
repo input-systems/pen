@@ -1,5 +1,54 @@
 # @input/pen-dom
 
+## 0.5.0
+
+### Minor Changes
+
+- 978f8c0: The field editor no longer carries its own copy of block-level Enter and delete. Enter, Backspace and Delete are decided by the core `pen.splitBlock`, `pen.deleteBackward` and `pen.deleteForward` commands alone; when a delete command declines, the field editor edits only the field's own text, and when `pen.splitBlock` declines nothing happens. The copies could only run after the command had already declined the same case, so no keystroke changes. Removed from `@input/pen-dom/field-editor/commands`: `applyBackspaceBehavior`, `applyDeleteBehavior`, `mergeBackwardAtBlockStart`, `resolveBackspaceAction`, `applyEnterBehavior`, `resolveEnterAction`, `splitBlockAtOffset`, `insertTextAtRange` and `convertBlock`.
+
+  Breaking: yes — hosts that called the removed `@input/pen-dom/field-editor/commands` helpers dispatch `splitBlock`, `deleteBackward`, `deleteForward`, `insertText` or `convertBlock` from `@input/pen-core` instead
+
+### Patch Changes
+
+- b23ee9e: Editing and paste fixes (D7, D8, SEC3):
+
+  - Typing `**bold**`, `*italic*`, `` `code` `` or another inline shortcut now ends that mark at the caret, so the text typed next is plain. Both the EditContext and contenteditable input paths run the inline rules in pen-dom.
+  - Deleting the last characters of a link and retyping them puts the new characters back inside the link, up to as many characters as were deleted.
+  - Enter on an empty last line of a code block leaves the block and opens a paragraph below.
+  - Pasting HTML copied from a web page no longer turns the page's own background and text colour into highlight and colour marks; colours authored on the copied text itself are kept.
+
+  Breaking: no
+
+- b23ee9e: Typing a block marker such as `1. `, `- ` or `[] ` no longer deletes it when the schema does not register the block type it would convert to. The field editor's built-in list markers and autoformat's block rules converted anyway: core dropped the conversion (`PEN_APPLY_002`) but kept the marker deletion, so the typed text vanished and the caret moved to the start of the block, and a schema with only paragraphs, such as a chat input, could not hold a line starting `1. `. Both now skip a conversion to an unregistered type, the way autoformat's inline rules already skip an unregistered mark, and the marker stays as typed text.
+
+  Breaking: no
+
+- b23ee9e: Typing at the end of a link no longer extends the link (D7). The `expand: "none"` policy on `link` and inline `code` was computed but then lost at the insert: pen-dom passed no marks when none applied, core's `pen.insertText` fell back to the marks at the caret without the expand policy, and a Yjs insert without attributes inherits its left neighbour's formatting. Inserts now always carry an explicit marks object (`{}` when unmarked), and core's fallback applies the same expand policy as pen-dom. Expanding marks such as bold still extend.
+
+  Breaking: no
+
+- 9275ba1: A selection a `selectionChange` listener writes in the same turn as a multi-block range is projected. The expanded blocks host counted as a foreign text control until the framework binding painted its field-surface marker, so the write was withheld and focus fell to the document body with the earlier range left in the DOM (HOST9).
+
+  Breaking: no
+
+- b23ee9e: A mark toggled with no text selected (Cmd+B at a caret) now applies only at that caret (D7). It follows the caret while you type or delete, but moving the caret with the arrow keys, a click, or a host `selectText` drops it; before, it stayed pending for the whole block and bolded text typed anywhere else.
+
+  Enter on an empty nested list item now outdents it one level instead of turning it straight into a paragraph; an empty top-level item still leaves the list.
+
+  Breaking: no
+
+- b23ee9e: Undo right after an input rule now gives back what was typed. Typing `- ` (or `1. `, `**bold**`, `` `code` ``) and pressing Cmd+Z leaves the literal `- ` as text, so a line such as a `- ben` sign-off can stay a paragraph. Before, `input-rule` writes were not tracked by undo, so Cmd+Z skipped the conversion and undid the text typed before it instead. The undo extension now tracks the `input-rule` origin by default, and the field editor applies each rule as its own undo step after the character that completed it.
+
+  Breaking: no
+
+- Updated dependencies [978f8c0]
+- Updated dependencies [b23ee9e]
+- Updated dependencies [b23ee9e]
+- Updated dependencies [b23ee9e]
+  - @input/pen-core@0.5.0
+  - @input/pen-shortcuts@0.5.0
+  - @input/pen-types@0.5.0
+
 ## 0.4.0
 
 ### Patch Changes

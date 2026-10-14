@@ -1,5 +1,35 @@
 # @input/pen-core
 
+## 0.5.0
+
+### Patch Changes
+
+- 978f8c0: Backspace in an empty code block now converts it to a paragraph, the same as an empty heading, list item or quote. Before, a code block had no exit of its own: Backspace only removed it by merging towards the block above, so a code block that opened the document could never be turned back into a paragraph. An empty code block below another block now takes two presses to remove (convert, then delete) where it took one.
+
+  Breaking: no
+
+- b23ee9e: Editing and paste fixes (D7, D8, SEC3):
+
+  - Typing `**bold**`, `*italic*`, `` `code` `` or another inline shortcut now ends that mark at the caret, so the text typed next is plain. Both the EditContext and contenteditable input paths run the inline rules in pen-dom.
+  - Deleting the last characters of a link and retyping them puts the new characters back inside the link, up to as many characters as were deleted.
+  - Enter on an empty last line of a code block leaves the block and opens a paragraph below.
+  - Pasting HTML copied from a web page no longer turns the page's own background and text colour into highlight and colour marks; colours authored on the copied text itself are kept.
+
+  Breaking: no
+
+- b23ee9e: Typing at the end of a link no longer extends the link (D7). The `expand: "none"` policy on `link` and inline `code` was computed but then lost at the insert: pen-dom passed no marks when none applied, core's `pen.insertText` fell back to the marks at the caret without the expand policy, and a Yjs insert without attributes inherits its left neighbour's formatting. Inserts now always carry an explicit marks object (`{}` when unmarked), and core's fallback applies the same expand policy as pen-dom. Expanding marks such as bold still extend.
+
+  Breaking: no
+
+- b23ee9e: A mark toggled with no text selected (Cmd+B at a caret) now applies only at that caret (D7). It follows the caret while you type or delete, but moving the caret with the arrow keys, a click, or a host `selectText` drops it; before, it stayed pending for the whole block and bolded text typed anywhere else.
+
+  Enter on an empty nested list item now outdents it one level instead of turning it straight into a paragraph; an empty top-level item still leaves the list.
+
+  Breaking: no
+
+- @input/pen-yjs@0.5.0
+  - @input/pen-types@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes

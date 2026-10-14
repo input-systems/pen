@@ -1,5 +1,18 @@
 # @input/pen-ai
 
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies [978f8c0]
+- Updated dependencies [b23ee9e]
+- Updated dependencies [b23ee9e]
+- Updated dependencies [b23ee9e]
+  - @input/pen-core@0.5.0
+  - @input/pen-tools@0.5.0
+  - @input/pen-ingest@0.5.0
+  - @input/pen-types@0.5.0
+
 ## 0.4.0
 
 ### Patch Changes
