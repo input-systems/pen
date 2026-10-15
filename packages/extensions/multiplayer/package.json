@@ -56,7 +56,7 @@
     "@input/pen-yjs": "workspace:^"
   },
   "peerDependencies": {
-    "y-protocols": "^1.0.7",
+    "y-protocols": "catalog:",
     "yjs": "^13.6"
   },
   "devDependencies": {
@@ -64,10 +64,10 @@
     "@input/pen-schema": "workspace:*",
     "@input/pen-test": "workspace:*",
     "@input/pen-undo": "workspace:*",
-    "@typescript/native": "npm:typescript@^7.0.2",
-    "tsup": "^8.4.0",
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vitest": "^5.0.3",
-    "yjs": "^13.6.32"
+    "@typescript/native": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "yjs": "catalog:"
   }
 }
