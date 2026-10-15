@@ -8,7 +8,7 @@ Pen is an MIT-licensed SDK, copyright Input Systems B.V. Contributions to the re
 
 We recommend [mise](https://mise.jdx.dev/) instead of nvm for local
 development. The root [`mise.toml`](mise.toml) selects Node 24 and pnpm
-10.34.5, matching `.nvmrc` and `packageManager` in `package.json`.
+12.13.0, matching `.nvmrc` and `packageManager` in `package.json`.
 
 [Install mise and activate it in your shell](https://mise.jdx.dev/getting-started.html),
 then review `mise.toml` and run these commands from the repository root:

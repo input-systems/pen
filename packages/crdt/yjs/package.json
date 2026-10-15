@@ -64,7 +64,7 @@
     "@input/pen-types": "workspace:^"
   },
   "peerDependencies": {
-    "y-protocols": "^1.0.7",
+    "y-protocols": "catalog:",
     "yjs": "^13.6"
   },
   "peerDependenciesMeta": {
@@ -73,13 +73,13 @@
     }
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
-    "@typescript/native": "npm:typescript@^7.0.2",
-    "tsup": "^8.4.0",
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vitest": "^5.0.3",
-    "y-protocols": "^1.0.7",
-    "yjs": "^13.6.33",
-    "yjs-duplicate": "npm:yjs@13.6.33"
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "y-protocols": "catalog:",
+    "yjs": "catalog:",
+    "yjs-duplicate": "catalog:"
   }
 }

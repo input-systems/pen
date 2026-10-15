@@ -1,59 +1,352 @@
+---
+lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    configDependencies: {}
+    packageManagerDependencies:
+      pnpm:
+        specifier: 12.13.0
+        version: 12.13.0
+
+packages:
+
+  '@pnpm/exe.android-arm64@12.13.0':
+    resolution: {integrity: sha512-BI++xXYAk3lTLQ1695b3pAAaLwzUTQqKyT5UukVd1NU5qv7h/rUfVCiV5hrLksdbgPMWcic8gf9uXMiqTlerzg==}
+    cpu: [arm64]
+    os: [android]
+
+  '@pnpm/exe.android-x64@12.13.0':
+    resolution: {integrity: sha512-bFq6cnbSB3fezJ0siOtuoRqLiR3VXFCZvUUFa0wlZ4a3EaJYsnnDli4ZTe8/bDfX1UhNMFxAAiSAKg7xITu+Zw==}
+    cpu: [x64]
+    os: [android]
+
+  '@pnpm/exe.darwin-arm64@12.13.0':
+    resolution: {integrity: sha512-9rRpaMGxxrv5YbptsRTIeG+q2IzQyrkRKXkD30pb7weCC6Xz6vQzfkItzrUZsb2bXyYd7fSsq+luTsreXBQYyQ==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@pnpm/exe.darwin-x64@12.13.0':
+    resolution: {integrity: sha512-A+VFQakozmXIo8kxtcP9sZCKIi94f9uB5jLXRvwnNSA5G6/G6Iq/8E17+fIPf4bm7xvR+qeM794Nz98Q52lutQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@pnpm/exe.freebsd-x64@12.13.0':
+    resolution: {integrity: sha512-HqT2ppLDxmpO8jTgl44BLdrBQoQXE73HHBElYRKvxL47d4maQ0sfk+fI+bfeDpRTqKzc5JZfj85yjRo7anqioA==}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@pnpm/exe.linux-arm64-musl@12.13.0':
+    resolution: {integrity: sha512-yZfm/7h1Kdd1XTNf9+F2Gt5R4WuQKMRbkMIpbzCtxpzniPEKGo/2kymNxdHq3jIcfnzHnP+KBR/YONZ+4Icq+g==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@pnpm/exe.linux-arm64@12.13.0':
+    resolution: {integrity: sha512-jp29ia+fTNhheXzt4FRUw5CwFW9caPNEdLRuy7/Dlbv3sj+iHldfJXfCojkPE4g71NPVwMpY5Eoc7nkfWexqrA==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@pnpm/exe.linux-ppc64@12.13.0':
+    resolution: {integrity: sha512-BO8Nz70baL6KV0G9p+Lx8l6BQYFE11KDEOTTjSNZdiUMMyN1byeDlls10ZgCIaIq5ELlLJ0F/LKieNjubOC7BA==}
+    cpu: [ppc64]
+    os: [linux]
+    libc: [glibc]
+
+  '@pnpm/exe.linux-riscv64@12.13.0':
+    resolution: {integrity: sha512-LrGM+VzpNghXuHK1XSMNEsochaLscAYkllSPLF3Y4CQpaOFYmiZoX+G3TN+T3pYRxdgvwWJCqbbdwRJZFykrig==}
+    cpu: [riscv64]
+    os: [linux]
+    libc: [glibc]
+
+  '@pnpm/exe.linux-s390x@12.13.0':
+    resolution: {integrity: sha512-0Xetcb9OJpXYmJ7rMDh3oFszIvbQl0F8UNh7oJnbLJY1K5PtDgYVkjqwb1JpjU0mkr0b4HKkFdZhlYh7XEGTvw==}
+    cpu: [s390x]
+    os: [linux]
+    libc: [glibc]
+
+  '@pnpm/exe.linux-x64-musl@12.13.0':
+    resolution: {integrity: sha512-LSD/snRsouEGA52HrTfEbGrCGdkkr5gXfQym26Ogu3I7sc5dJHUHyp8GnA7ewXrFOSRCJXH25mnmQ6Jpit572Q==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@pnpm/exe.linux-x64@12.13.0':
+    resolution: {integrity: sha512-t4EYUFG4SPYaJJVQToWIPq/lLBquCPCxMtt9vV//HirSDl332dnxDnwgvdW29sqLg3Ob2x7zFQ69HZLyoCyfpQ==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@pnpm/exe.win32-arm64@12.13.0':
+    resolution: {integrity: sha512-aDzzll9stgP+p6KKYHNzuShZhBCaxabv481xK5BjfvSnyFbjzu7ksKUIVlsiAw4xAXnrIqvEj0lQarsbBRcIQA==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@pnpm/exe.win32-x64@12.13.0':
+    resolution: {integrity: sha512-Nkw4hDJTcmuO6zDjkTo4Dz7pG2ojEifSBGC4QbFJFIfBoRbN88GIMu/Lm1woxd7ONhJFlfJ+dJeiDyuP0NKtSA==}
+    cpu: [x64]
+    os: [win32]
+
+  pnpm@12.13.0:
+    resolution: {integrity: sha512-HlVxm/JugJ3OXFCE/euqZO+z2pA4rl1oqfimgxHxpFhByMO3ajcpjDtm9rzIBAmpt/M8eKcWij6Q+2Wl2CNa5A==}
+    engines: {node: '>=18.*'}
+    hasBin: true
+
+snapshots:
+
+  '@pnpm/exe.android-arm64@12.13.0':
+    optional: true
+
+  '@pnpm/exe.android-x64@12.13.0':
+    optional: true
+
+  '@pnpm/exe.darwin-arm64@12.13.0':
+    optional: true
+
+  '@pnpm/exe.darwin-x64@12.13.0':
+    optional: true
+
+  '@pnpm/exe.freebsd-x64@12.13.0':
+    optional: true
+
+  '@pnpm/exe.linux-arm64-musl@12.13.0':
+    optional: true
+
+  '@pnpm/exe.linux-arm64@12.13.0':
+    optional: true
+
+  '@pnpm/exe.linux-ppc64@12.13.0':
+    optional: true
+
+  '@pnpm/exe.linux-riscv64@12.13.0':
+    optional: true
+
+  '@pnpm/exe.linux-s390x@12.13.0':
+    optional: true
+
+  '@pnpm/exe.linux-x64-musl@12.13.0':
+    optional: true
+
+  '@pnpm/exe.linux-x64@12.13.0':
+    optional: true
+
+  '@pnpm/exe.win32-arm64@12.13.0':
+    optional: true
+
+  '@pnpm/exe.win32-x64@12.13.0':
+    optional: true
+
+  pnpm@12.13.0:
+    optionalDependencies:
+      '@pnpm/exe.android-arm64': 12.13.0
+      '@pnpm/exe.android-x64': 12.13.0
+      '@pnpm/exe.darwin-arm64': 12.13.0
+      '@pnpm/exe.darwin-x64': 12.13.0
+      '@pnpm/exe.freebsd-x64': 12.13.0
+      '@pnpm/exe.linux-arm64': 12.13.0
+      '@pnpm/exe.linux-arm64-musl': 12.13.0
+      '@pnpm/exe.linux-ppc64': 12.13.0
+      '@pnpm/exe.linux-riscv64': 12.13.0
+      '@pnpm/exe.linux-s390x': 12.13.0
+      '@pnpm/exe.linux-x64': 12.13.0
+      '@pnpm/exe.linux-x64-musl': 12.13.0
+      '@pnpm/exe.win32-arm64': 12.13.0
+      '@pnpm/exe.win32-x64': 12.13.0
+
+---
 lockfileVersion: '9.0'
 
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@axe-core/playwright':
+      specifier: ^4.13.0
+      version: 4.13.0
+    '@changesets/cli':
+      specifier: ^3.0.3
+      version: 3.0.3
+    '@cloudflare/workers-types':
+      specifier: ^5.20261002.1
+      version: 5.20261011.1
+    '@eslint/js':
+      specifier: ^10.0.1
+      version: 10.0.1
+    '@playwright/test':
+      specifier: ^1.63.0
+      version: 1.64.0
+    '@types/node':
+      specifier: ^24.18.3
+      version: 24.19.2
+    '@types/react':
+      specifier: ^19.3.0
+      version: 19.3.0
+    '@types/react-dom':
+      specifier: ^19.3.0
+      version: 19.3.0
+    '@types/ws':
+      specifier: ^8.18.2
+      version: 8.18.2
+    '@typescript/native':
+      specifier: npm:typescript@^7.0.2
+      version: 7.0.2
+    '@vitejs/plugin-react':
+      specifier: ^6.1.1
+      version: 6.1.2
+    '@vitejs/plugin-vue':
+      specifier: ^6.0.9
+      version: 6.0.10
+    '@vue/test-utils':
+      specifier: ^2.5.1
+      version: 2.5.1
+    '@y/websocket-server':
+      specifier: ^0.1.5
+      version: 0.1.5
+    axe-core:
+      specifier: ^4.13.0
+      version: 4.14.0
+    domhandler:
+      specifier: ^6.0.1
+      version: 6.0.1
+    eslint:
+      specifier: ^10.11.0
+      version: 10.12.0
+    globals:
+      specifier: ^17.13.0
+      version: 17.13.0
+    htmlparser2:
+      specifier: ^12.0.0
+      version: 12.0.0
+    isomorphic-dompurify:
+      specifier: ~4.5.0
+      version: 4.5.0
+    jsdom:
+      specifier: ^30.1.1
+      version: 30.1.2
+    lib0:
+      specifier: ^0.2.118
+      version: 0.2.119
+    mdast-util-from-markdown:
+      specifier: ^2.1.0
+      version: 2.1.0
+    mdast-util-gfm:
+      specifier: ^3.0.0
+      version: 3.1.0
+    micromark-extension-gfm:
+      specifier: ^3.0.0
+      version: 3.0.0
+    prettier:
+      specifier: ^3.9.9
+      version: 3.9.10
+    react:
+      specifier: ^19.3.0
+      version: 19.3.0
+    react-dom:
+      specifier: ^19.3.0
+      version: 19.3.0
+    tsup:
+      specifier: ^8.4.0
+      version: 8.5.1
+    tsx:
+      specifier: ^4.23.15
+      version: 4.23.15
+    turbo:
+      specifier: ^2.11.6
+      version: 2.11.7
+    typescript:
+      specifier: npm:@typescript/typescript6@^6.0.2
+      version: 6.0.2
+    typescript-eslint:
+      specifier: ^8.71.0
+      version: 8.71.1
+    vite:
+      specifier: ^8.3.2
+      version: 8.3.4
+    vitest:
+      specifier: ^5.0.3
+      version: 5.0.3
+    vue:
+      specifier: ^3.5.43
+      version: 3.5.43
+    vue-tsc:
+      specifier: ^3.3.12
+      version: 3.3.13
+    wrangler:
+      specifier: ^4.147.0
+      version: 4.149.0
+    ws:
+      specifier: ^8.22.0
+      version: 8.22.0
+    y-protocols:
+      specifier: ^1.0.7
+      version: 1.0.7
+    y-websocket:
+      specifier: ^3.1.0
+      version: 3.1.0
+    yaml:
+      specifier: ^2.9.1
+      version: 2.9.1
+    yjs:
+      specifier: ^13.6.33
+      version: 13.6.33
+    yjs-duplicate:
+      specifier: npm:yjs@13.6.33
+      version: 13.6.33
+
 overrides:
-  undici@<8: 7.29.1
   dompurify: 3.4.16
   esbuild@>=0.27.3 <0.28.1: 0.28.2
+  undici@<8: 7.29.1
 
 importers:
 
   .:
     devDependencies:
       '@changesets/cli':
-        specifier: ^3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
       '@eslint/js':
-        specifier: ^10.0.1
-        version: 10.0.1(eslint@10.12.0)
+        specifier: 'catalog:'
+        version: 10.0.1(eslint@10.12.0(supports-color@10.2.2))
       '@input/pen-eslint-plugin':
         specifier: workspace:*
         version: link:packages/tooling/eslint-plugin
       '@playwright/test':
-        specifier: ^1.64.0
+        specifier: 'catalog:'
         version: 1.64.0
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       eslint:
-        specifier: ^10.12.0
-        version: 10.12.0
+        specifier: 'catalog:'
+        version: 10.12.0(supports-color@10.2.2)
       globals:
-        specifier: ^17.13.0
+        specifier: 'catalog:'
         version: 17.13.0
       prettier:
-        specifier: ^3.9.10
+        specifier: 'catalog:'
         version: 3.9.10
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       turbo:
-        specifier: ^2.11.7
+        specifier: 'catalog:'
         version: 2.11.7
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       typescript-eslint:
-        specifier: ^8.71.1
-        version: 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0)
+        specifier: 'catalog:'
+        version: 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)
       vitest:
-        specifier: ^5.0.3
+        specifier: 'catalog:'
         version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       yaml:
-        specifier: ^2.9.1
+        specifier: 'catalog:'
         version: 2.9.1
 
   examples/react:
@@ -65,29 +358,29 @@ importers:
         specifier: workspace:*
         version: link:../../packages/rendering/react
       react:
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       react-dom:
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       '@vitejs/plugin-react':
-        specifier: ^6.1.2
+        specifier: 'catalog:'
         version: 6.1.2(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vite:
-        specifier: ^8.3.4
+        specifier: 'catalog:'
         version: 8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
 
   examples/vanilla:
@@ -100,13 +393,13 @@ importers:
         version: link:../../packages/rendering/dom
     devDependencies:
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vite:
-        specifier: ^8.3.4
+        specifier: 'catalog:'
         version: 8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
 
   examples/vue:
@@ -118,23 +411,23 @@ importers:
         specifier: workspace:*
         version: link:../../packages/rendering/vue
       vue:
-        specifier: ^3.5.43
+        specifier: 'catalog:'
         version: 3.5.43(@typescript/typescript6@6.0.2)
     devDependencies:
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       '@vitejs/plugin-vue':
-        specifier: ^6.0.10
+        specifier: 'catalog:'
         version: 6.0.10(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(vue@3.5.43(@typescript/typescript6@6.0.2))
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vite:
-        specifier: ^8.3.4
+        specifier: 'catalog:'
         version: 8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
       vue-tsc:
-        specifier: ^3.3.13
+        specifier: 'catalog:'
         version: 3.3.13(@typescript/typescript6@6.0.2)
 
   packages/core:
@@ -147,22 +440,22 @@ importers:
         version: link:../crdt/yjs
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       yjs:
-        specifier: ^13.6.33
+        specifier: 'catalog:'
         version: 13.6.33
 
   packages/crdt/yjs:
@@ -172,37 +465,37 @@ importers:
         version: link:../../types
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       y-protocols:
-        specifier: ^1.0.7
+        specifier: 'catalog:'
         version: 1.0.7(yjs@13.6.33)
       yjs:
-        specifier: ^13.6.33
+        specifier: 'catalog:'
         version: 13.6.33
       yjs-duplicate:
-        specifier: npm:yjs@13.6.33
+        specifier: 'catalog:'
         version: yjs@13.6.33
 
   packages/docs:
     dependencies:
       react:
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       react-dom:
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@input/pen':
@@ -275,22 +568,22 @@ importers:
         specifier: workspace:*
         version: link:../crdt/yjs
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       '@vitejs/plugin-react':
-        specifier: ^6.1.2
+        specifier: 'catalog:'
         version: 6.1.2(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vite:
-        specifier: ^8.3.4
+        specifier: 'catalog:'
         version: 8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
 
   packages/extensions/ai:
@@ -318,20 +611,20 @@ importers:
         specifier: workspace:*
         version: link:../undo
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/extensions/autoformat:
     dependencies:
@@ -343,16 +636,16 @@ importers:
         version: link:../../types
     devDependencies:
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
+        specifier: 'catalog:'
         version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/extensions/interop:
@@ -370,33 +663,33 @@ importers:
         specifier: workspace:^
         version: link:../../types
       domhandler:
-        specifier: ^6.0.1
+        specifier: 'catalog:'
         version: 6.0.1
       htmlparser2:
-        specifier: ^12.0.0
+        specifier: 'catalog:'
         version: 12.0.0
       isomorphic-dompurify:
-        specifier: ~4.5.0
+        specifier: 'catalog:'
         version: 4.5.0
     devDependencies:
       '@input/pen-schema':
         specifier: workspace:^
         version: link:../../schema
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/extensions/multiplayer:
     dependencies:
@@ -410,7 +703,7 @@ importers:
         specifier: workspace:^
         version: link:../../crdt/yjs
       y-protocols:
-        specifier: ^1.0.7
+        specifier: 'catalog:'
         version: 1.0.7(yjs@13.6.33)
     devDependencies:
       '@input/pen-schema':
@@ -423,19 +716,19 @@ importers:
         specifier: workspace:*
         version: link:../undo
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
+        specifier: 'catalog:'
         version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       yjs:
-        specifier: ^13.6.32
+        specifier: 'catalog:'
         version: 13.6.33
 
   packages/extensions/search:
@@ -454,16 +747,16 @@ importers:
         specifier: workspace:*
         version: link:../../tooling/test
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
+        specifier: 'catalog:'
         version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/extensions/shortcuts:
@@ -479,16 +772,16 @@ importers:
         specifier: workspace:*
         version: link:../../schema
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
+        specifier: 'catalog:'
         version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/extensions/snapshots:
@@ -510,19 +803,19 @@ importers:
         specifier: workspace:*
         version: link:../../crdt/yjs
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
+        specifier: 'catalog:'
         version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       yjs:
-        specifier: ^13.6.33
+        specifier: 'catalog:'
         version: 13.6.33
 
   packages/extensions/tools:
@@ -547,20 +840,20 @@ importers:
         specifier: workspace:*
         version: link:../../tooling/test
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/extensions/undo:
     dependencies:
@@ -581,22 +874,22 @@ importers:
         specifier: workspace:*
         version: link:../../crdt/yjs
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       yjs:
-        specifier: ^13.6.33
+        specifier: 'catalog:'
         version: 13.6.33
 
   packages/pen:
@@ -627,20 +920,20 @@ importers:
         version: link:../extensions/undo
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/rendering/dom:
     dependencies:
@@ -664,22 +957,22 @@ importers:
         specifier: workspace:*
         version: link:../../crdt/yjs
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       yjs:
-        specifier: ^13.6.32
+        specifier: 'catalog:'
         version: 13.6.33
 
   packages/rendering/react:
@@ -725,35 +1018,35 @@ importers:
         specifier: workspace:*
         version: link:../../extensions/undo
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       jsdom:
-        specifier: ^30.1.2
+        specifier: 'catalog:'
         version: 30.1.2
       react:
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       react-dom:
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(react@19.3.0)
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/rendering/vue:
     dependencies:
@@ -783,28 +1076,28 @@ importers:
         specifier: workspace:*
         version: link:../../extensions/undo
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       '@vue/test-utils':
-        specifier: ^2.5.1
+        specifier: 'catalog:'
         version: 2.5.1(@vue/compiler-dom@3.5.43)(@vue/server-renderer@3.5.43)(vue@3.5.43(@typescript/typescript6@6.0.2))
       jsdom:
-        specifier: ^30.1.2
+        specifier: 'catalog:'
         version: 30.1.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       vue:
-        specifier: ^3.5.43
+        specifier: 'catalog:'
         version: 3.5.43(@typescript/typescript6@6.0.2)
 
   packages/schema:
@@ -817,16 +1110,16 @@ importers:
         version: link:../types
     devDependencies:
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
+        specifier: 'catalog:'
         version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/shared/ingest:
@@ -838,29 +1131,29 @@ importers:
         specifier: workspace:^
         version: link:../../types
       htmlparser2:
-        specifier: ^12.0.0
+        specifier: 'catalog:'
         version: 12.0.0
       mdast-util-from-markdown:
-        specifier: ^2.1.0
-        version: 2.1.0
+        specifier: 'catalog:'
+        version: 2.1.0(supports-color@10.2.2)
       mdast-util-gfm:
-        specifier: ^3.0.0
-        version: 3.1.0
+        specifier: 'catalog:'
+        version: 3.1.0(supports-color@10.2.2)
       micromark-extension-gfm:
-        specifier: ^3.0.0
+        specifier: 'catalog:'
         version: 3.0.0
     devDependencies:
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
+        specifier: 'catalog:'
         version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/shared/markdown:
@@ -873,16 +1166,16 @@ importers:
         version: link:../../types
     devDependencies:
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
+        specifier: 'catalog:'
         version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/tooling/assets:
@@ -892,16 +1185,16 @@ importers:
         version: link:../../types
     devDependencies:
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
+        specifier: 'catalog:'
         version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/tooling/bench:
@@ -937,25 +1230,25 @@ importers:
         specifier: workspace:*
         version: link:../../crdt/yjs
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       yjs:
-        specifier: ^13.6.33
+        specifier: 'catalog:'
         version: 13.6.33
 
   packages/tooling/conformance:
@@ -994,17 +1287,17 @@ importers:
         specifier: workspace:*
         version: link:../../crdt/yjs
       react:
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       react-dom:
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(react@19.3.0)
       yjs:
-        specifier: ^13.6.33
+        specifier: 'catalog:'
         version: 13.6.33
     devDependencies:
       '@axe-core/playwright':
-        specifier: ^4.13.0
+        specifier: 'catalog:'
         version: 4.13.0(playwright-core@1.64.0)
       '@input/pen-assets':
         specifier: workspace:*
@@ -1043,46 +1336,46 @@ importers:
         specifier: workspace:*
         version: link:../../rendering/vue
       '@playwright/test':
-        specifier: ^1.64.0
+        specifier: 'catalog:'
         version: 1.64.0
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       '@vitejs/plugin-react':
-        specifier: ^6.1.2
+        specifier: 'catalog:'
         version: 6.1.2(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       axe-core:
-        specifier: ^4.14.0
+        specifier: 'catalog:'
         version: 4.14.0
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vite:
-        specifier: ^8.3.4
+        specifier: 'catalog:'
         version: 8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
       vue:
-        specifier: ^3.5.42
+        specifier: 'catalog:'
         version: 3.5.43(@typescript/typescript6@6.0.2)
 
   packages/tooling/eslint-plugin:
     devDependencies:
       eslint:
-        specifier: ^10.12.0
-        version: 10.12.0
+        specifier: 'catalog:'
+        version: 10.12.0(supports-color@10.2.2)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       typescript-eslint:
-        specifier: ^8.71.1
-        version: 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0)
+        specifier: 'catalog:'
+        version: 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)
       vitest:
-        specifier: ^5.0.3
+        specifier: 'catalog:'
         version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/tooling/test:
@@ -1103,24 +1396,24 @@ importers:
         specifier: workspace:^
         version: link:../../crdt/yjs
       yjs:
-        specifier: ^13.6.33
+        specifier: 'catalog:'
         version: 13.6.33
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/transport:
     dependencies:
@@ -1135,38 +1428,38 @@ importers:
         version: link:../types
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/types:
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       tsup:
-        specifier: ^8.4.0
-        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   playground:
     dependencies:
@@ -1201,63 +1494,63 @@ importers:
         specifier: workspace:*
         version: link:../packages/crdt/yjs
       '@y/websocket-server':
-        specifier: ^0.1.5
+        specifier: 'catalog:'
         version: 0.1.5(@y/y@14.0.0-16)
       lib0:
-        specifier: ^0.2.118
+        specifier: 'catalog:'
         version: 0.2.119
       react:
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       react-dom:
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(react@19.3.0)
       ws:
-        specifier: ^8.22.0
+        specifier: 'catalog:'
         version: 8.22.0
       y-protocols:
-        specifier: ^1.0.7
+        specifier: 'catalog:'
         version: 1.0.7(yjs@13.6.33)
       y-websocket:
-        specifier: ^3.1.0
+        specifier: 'catalog:'
         version: 3.1.0(yjs@13.6.33)
       yjs:
-        specifier: 13.6.33
+        specifier: 'catalog:'
         version: 13.6.33
     devDependencies:
       '@cloudflare/workers-types':
-        specifier: ^5.20261011.1
+        specifier: 'catalog:'
         version: 5.20261011.1
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: 'catalog:'
+        version: 24.19.2
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
       '@types/ws':
-        specifier: ^8.18.2
+        specifier: 'catalog:'
         version: 8.18.2
       '@typescript/native':
-        specifier: npm:typescript@^7.0.2
+        specifier: 'catalog:'
         version: typescript@7.0.2
       '@vitejs/plugin-react':
-        specifier: ^6.1.2
-        version: 6.1.2(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 6.1.2(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       typescript:
-        specifier: npm:@typescript/typescript6@^6.0.2
+        specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vite:
-        specifier: ^8.3.4
-        version: 8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 'catalog:'
+        version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
       vitest:
-        specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       wrangler:
-        specifier: ^4.149.0
-        version: 4.149.0(@cloudflare/workers-types@5.20261011.1)(@types/node@26.6.5)
+        specifier: 'catalog:'
+        version: 4.149.0(@cloudflare/workers-types@5.20261011.1)(@types/node@24.19.2)
 
 packages:
 
@@ -2207,6 +2500,9 @@ packages:
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
+  '@types/node@24.19.2':
+    resolution: {integrity: sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==}
+
   '@types/node@26.6.5':
     resolution: {integrity: sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg==}
 
@@ -2455,6 +2751,11 @@ packages:
 
   '@volar/typescript@2.4.28':
     resolution: {integrity: sha512-Ja6yvWrbis2QtN4ClAKreeUZPVYMARDYZl9LMEv1iQ1QdepB6wn0jTRxA9MftYmYa4DQ4k/DaSZpFPUfxl8giw==}
+    peerDependencies:
+      typescript: '*'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   '@vue/compiler-core@3.5.43':
     resolution: {integrity: sha512-zdiLhnbe1QQqgDT8xZMpNmyqZ3qlI+/Q/FHQco57Kwl/b05HhCzN6eVGN9QU9rbga4CrS0H5SYY8VGHZCt/1Hg==}
@@ -3508,6 +3809,9 @@ packages:
   ufo@1.6.3:
     resolution: {integrity: sha512-yDJTmhydvl5lJzBmy/hyOAA0d+aqCBuwl818haVdYCRrWV84o7YyeVm4QlVHStqNrrJSTb6jKuFAVqAFsr+K3Q==}
 
+  undici-types@7.24.6:
+    resolution: {integrity: sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg==}
+
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
@@ -4069,17 +4373,17 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@eslint-community/eslint-utils@4.10.1(eslint@10.12.0)':
+  '@eslint-community/eslint-utils@4.10.1(eslint@10.12.0(supports-color@10.2.2))':
     dependencies:
-      eslint: 10.12.0
+      eslint: 10.12.0(supports-color@10.2.2)
       eslint-visitor-keys: 3.4.3
 
   '@eslint-community/regexpp@4.12.2': {}
 
-  '@eslint/config-array@0.23.5':
+  '@eslint/config-array@0.23.5(supports-color@10.2.2)':
     dependencies:
       '@eslint/object-schema': 3.0.5
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       minimatch: 10.2.6
     transitivePeerDependencies:
       - supports-color
@@ -4092,9 +4396,9 @@ snapshots:
     dependencies:
       '@types/json-schema': 7.0.15
 
-  '@eslint/js@10.0.1(eslint@10.12.0)':
+  '@eslint/js@10.0.1(eslint@10.12.0(supports-color@10.2.2))':
     optionalDependencies:
-      eslint: 10.12.0
+      eslint: 10.12.0(supports-color@10.2.2)
 
   '@eslint/object-schema@3.0.5': {}
 
@@ -4460,6 +4764,10 @@ snapshots:
 
   '@types/ms@2.1.0': {}
 
+  '@types/node@24.19.2':
+    dependencies:
+      undici-types: 7.24.6
+
   '@types/node@26.6.5':
     dependencies:
       undici-types: 8.9.0
@@ -4481,15 +4789,15 @@ snapshots:
     dependencies:
       '@types/node': 26.6.5
 
-  '@typescript-eslint/eslint-plugin@8.71.1(@typescript-eslint/parser@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0))(@typescript/typescript6@6.0.2)(eslint@10.12.0)':
+  '@typescript-eslint/eslint-plugin@8.71.1(@typescript-eslint/parser@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2))(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)':
     dependencies:
       '@eslint-community/regexpp': 4.12.2
-      '@typescript-eslint/parser': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0)
+      '@typescript-eslint/parser': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)
       '@typescript-eslint/scope-manager': 8.71.1
-      '@typescript-eslint/type-utils': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0)
-      '@typescript-eslint/utils': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0)
+      '@typescript-eslint/type-utils': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)
+      '@typescript-eslint/utils': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)
       '@typescript-eslint/visitor-keys': 8.71.1
-      eslint: 10.12.0
+      eslint: 10.12.0(supports-color@10.2.2)
       ignore: 7.0.12
       natural-compare: 1.4.0
       ts-api-utils: 2.5.0(@typescript/typescript6@6.0.2)
@@ -4497,23 +4805,23 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/parser@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0)':
+  '@typescript-eslint/parser@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)':
     dependencies:
       '@typescript-eslint/scope-manager': 8.71.1
       '@typescript-eslint/types': 8.71.1
-      '@typescript-eslint/typescript-estree': 8.71.1(@typescript/typescript6@6.0.2)
+      '@typescript-eslint/typescript-estree': 8.71.1(@typescript/typescript6@6.0.2)(supports-color@10.2.2)
       '@typescript-eslint/visitor-keys': 8.71.1
-      debug: 4.4.3
-      eslint: 10.12.0
+      debug: 4.4.3(supports-color@10.2.2)
+      eslint: 10.12.0(supports-color@10.2.2)
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/project-service@8.71.1(@typescript/typescript6@6.0.2)':
+  '@typescript-eslint/project-service@8.71.1(@typescript/typescript6@6.0.2)(supports-color@10.2.2)':
     dependencies:
       '@typescript-eslint/tsconfig-utils': 8.71.1(@typescript/typescript6@6.0.2)
       '@typescript-eslint/types': 8.71.1
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
       - supports-color
@@ -4527,13 +4835,13 @@ snapshots:
     dependencies:
       typescript: '@typescript/typescript6@6.0.2'
 
-  '@typescript-eslint/type-utils@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0)':
+  '@typescript-eslint/type-utils@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)':
     dependencies:
       '@typescript-eslint/types': 8.71.1
-      '@typescript-eslint/typescript-estree': 8.71.1(@typescript/typescript6@6.0.2)
-      '@typescript-eslint/utils': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0)
-      debug: 4.4.3
-      eslint: 10.12.0
+      '@typescript-eslint/typescript-estree': 8.71.1(@typescript/typescript6@6.0.2)(supports-color@10.2.2)
+      '@typescript-eslint/utils': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)
+      debug: 4.4.3(supports-color@10.2.2)
+      eslint: 10.12.0(supports-color@10.2.2)
       ts-api-utils: 2.5.0(@typescript/typescript6@6.0.2)
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
@@ -4541,13 +4849,13 @@ snapshots:
 
   '@typescript-eslint/types@8.71.1': {}
 
-  '@typescript-eslint/typescript-estree@8.71.1(@typescript/typescript6@6.0.2)':
+  '@typescript-eslint/typescript-estree@8.71.1(@typescript/typescript6@6.0.2)(supports-color@10.2.2)':
     dependencies:
-      '@typescript-eslint/project-service': 8.71.1(@typescript/typescript6@6.0.2)
+      '@typescript-eslint/project-service': 8.71.1(@typescript/typescript6@6.0.2)(supports-color@10.2.2)
       '@typescript-eslint/tsconfig-utils': 8.71.1(@typescript/typescript6@6.0.2)
       '@typescript-eslint/types': 8.71.1
       '@typescript-eslint/visitor-keys': 8.71.1
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       minimatch: 10.2.6
       semver: 7.8.5
       tinyglobby: 0.2.17
@@ -4556,13 +4864,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/utils@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0)':
+  '@typescript-eslint/utils@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)':
     dependencies:
-      '@eslint-community/eslint-utils': 4.10.1(eslint@10.12.0)
+      '@eslint-community/eslint-utils': 4.10.1(eslint@10.12.0(supports-color@10.2.2))
       '@typescript-eslint/scope-manager': 8.71.1
       '@typescript-eslint/types': 8.71.1
-      '@typescript-eslint/typescript-estree': 8.71.1(@typescript/typescript6@6.0.2)
-      eslint: 10.12.0
+      '@typescript-eslint/typescript-estree': 8.71.1(@typescript/typescript6@6.0.2)(supports-color@10.2.2)
+      eslint: 10.12.0(supports-color@10.2.2)
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
       - supports-color
@@ -4636,6 +4944,11 @@ snapshots:
     dependencies:
       '@typescript/old': typescript@6.0.3
 
+  '@vitejs/plugin-react@6.1.2(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))':
+    dependencies:
+      '@rolldown/pluginutils': 1.0.1
+      vite: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
+
   '@vitejs/plugin-react@6.1.2(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
@@ -4646,6 +4959,15 @@ snapshots:
       '@rolldown/pluginutils': 1.0.1
       vite: 8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
       vue: 3.5.43(@typescript/typescript6@6.0.2)
+
+  '@vitest/mocker@5.0.3(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))':
+    dependencies:
+      '@jridgewell/trace-mapping': 0.3.31
+      '@vitest/spy': 5.0.3
+      estree-walker: 3.0.3
+      magic-string: 1.4.2
+    optionalDependencies:
+      vite: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
 
   '@vitest/mocker@5.0.3(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
@@ -4664,11 +4986,13 @@ snapshots:
 
   '@volar/source-map@2.4.28': {}
 
-  '@volar/typescript@2.4.28':
+  '@volar/typescript@2.4.28(@typescript/typescript6@6.0.2)':
     dependencies:
       '@volar/language-core': 2.4.28
       path-browserify: 1.0.1
       vscode-uri: 3.2.0
+    optionalDependencies:
+      typescript: '@typescript/typescript6@6.0.2'
 
   '@vue/compiler-core@3.5.43':
     dependencies:
@@ -4864,9 +5188,11 @@ snapshots:
     transitivePeerDependencies:
       - '@noble/hashes'
 
-  debug@4.4.3:
+  debug@4.4.3(supports-color@10.2.2):
     dependencies:
       ms: 2.1.3
+    optionalDependencies:
+      supports-color: 10.2.2
 
   decimal.js@10.6.0: {}
 
@@ -4965,11 +5291,11 @@ snapshots:
 
   eslint-visitor-keys@5.0.1: {}
 
-  eslint@10.12.0:
+  eslint@10.12.0(supports-color@10.2.2):
     dependencies:
-      '@eslint-community/eslint-utils': 4.10.1(eslint@10.12.0)
+      '@eslint-community/eslint-utils': 4.10.1(eslint@10.12.0(supports-color@10.2.2))
       '@eslint-community/regexpp': 4.12.2
-      '@eslint/config-array': 0.23.5
+      '@eslint/config-array': 0.23.5(supports-color@10.2.2)
       '@eslint/config-helpers': 0.7.0
       '@eslint/core': 1.2.1
       '@eslint/plugin-kit': 0.7.3
@@ -4979,7 +5305,7 @@ snapshots:
       '@types/estree': 1.0.9
       ajv: 6.15.0
       cross-spawn: 7.0.6
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       escape-string-regexp: 4.0.0
       eslint-scope: 9.1.2
       eslint-visitor-keys: 5.0.1
@@ -5284,14 +5610,14 @@ snapshots:
       unist-util-is: 6.0.1
       unist-util-visit-parents: 6.0.2
 
-  mdast-util-from-markdown@2.1.0:
+  mdast-util-from-markdown@2.1.0(supports-color@10.2.2):
     dependencies:
       '@types/mdast': 4.0.4
       '@types/unist': 3.0.3
       decode-named-character-reference: 1.3.0
       devlop: 1.1.0
       mdast-util-to-string: 4.0.0
-      micromark: 4.0.2
+      micromark: 4.0.2(supports-color@10.2.2)
       micromark-util-decode-numeric-character-reference: 2.0.2
       micromark-util-decode-string: 2.0.1
       micromark-util-normalize-identifier: 2.0.1
@@ -5309,51 +5635,51 @@ snapshots:
       mdast-util-find-and-replace: 3.0.2
       micromark-util-character: 2.1.1
 
-  mdast-util-gfm-footnote@2.1.0:
+  mdast-util-gfm-footnote@2.1.0(supports-color@10.2.2):
     dependencies:
       '@types/mdast': 4.0.4
       devlop: 1.1.0
-      mdast-util-from-markdown: 2.1.0
+      mdast-util-from-markdown: 2.1.0(supports-color@10.2.2)
       mdast-util-to-markdown: 2.1.2
       micromark-util-normalize-identifier: 2.0.1
     transitivePeerDependencies:
       - supports-color
 
-  mdast-util-gfm-strikethrough@2.0.0:
+  mdast-util-gfm-strikethrough@2.0.0(supports-color@10.2.2):
     dependencies:
       '@types/mdast': 4.0.4
-      mdast-util-from-markdown: 2.1.0
+      mdast-util-from-markdown: 2.1.0(supports-color@10.2.2)
       mdast-util-to-markdown: 2.1.2
     transitivePeerDependencies:
       - supports-color
 
-  mdast-util-gfm-table@2.0.0:
+  mdast-util-gfm-table@2.0.0(supports-color@10.2.2):
     dependencies:
       '@types/mdast': 4.0.4
       devlop: 1.1.0
       markdown-table: 3.0.4
-      mdast-util-from-markdown: 2.1.0
+      mdast-util-from-markdown: 2.1.0(supports-color@10.2.2)
       mdast-util-to-markdown: 2.1.2
     transitivePeerDependencies:
       - supports-color
 
-  mdast-util-gfm-task-list-item@2.0.0:
+  mdast-util-gfm-task-list-item@2.0.0(supports-color@10.2.2):
     dependencies:
       '@types/mdast': 4.0.4
       devlop: 1.1.0
-      mdast-util-from-markdown: 2.1.0
+      mdast-util-from-markdown: 2.1.0(supports-color@10.2.2)
       mdast-util-to-markdown: 2.1.2
     transitivePeerDependencies:
       - supports-color
 
-  mdast-util-gfm@3.1.0:
+  mdast-util-gfm@3.1.0(supports-color@10.2.2):
     dependencies:
-      mdast-util-from-markdown: 2.1.0
+      mdast-util-from-markdown: 2.1.0(supports-color@10.2.2)
       mdast-util-gfm-autolink-literal: 2.0.1
-      mdast-util-gfm-footnote: 2.1.0
-      mdast-util-gfm-strikethrough: 2.0.0
-      mdast-util-gfm-table: 2.0.0
-      mdast-util-gfm-task-list-item: 2.0.0
+      mdast-util-gfm-footnote: 2.1.0(supports-color@10.2.2)
+      mdast-util-gfm-strikethrough: 2.0.0(supports-color@10.2.2)
+      mdast-util-gfm-table: 2.0.0(supports-color@10.2.2)
+      mdast-util-gfm-task-list-item: 2.0.0(supports-color@10.2.2)
       mdast-util-to-markdown: 2.1.2
     transitivePeerDependencies:
       - supports-color
@@ -5550,10 +5876,10 @@ snapshots:
 
   micromark-util-types@2.0.2: {}
 
-  micromark@4.0.2:
+  micromark@4.0.2(supports-color@10.2.2):
     dependencies:
       '@types/debug': 4.1.12
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       decode-named-character-reference: 1.3.0
       devlop: 1.1.0
       micromark-core-commonmark: 2.0.3
@@ -5572,10 +5898,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  miniflare@5.20261006.1-alpha(@types/node@26.6.5):
+  miniflare@5.20261006.1-alpha(@types/node@24.19.2):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
-      sharp: 0.35.5(@types/node@26.6.5)
+      sharp: 0.35.5(@types/node@24.19.2)
       undici: 7.29.1
       workerd: 1.20261006.1
       ws: 8.21.0
@@ -5775,7 +6101,7 @@ snapshots:
 
   semver@7.8.5: {}
 
-  sharp@0.35.5(@types/node@26.6.5):
+  sharp@0.35.5(@types/node@24.19.2):
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
@@ -5806,7 +6132,7 @@ snapshots:
       '@img/sharp-win32-arm64': 0.35.5
       '@img/sharp-win32-ia32': 0.35.5
       '@img/sharp-win32-x64': 0.35.5
-      '@types/node': 26.6.5
+      '@types/node': 24.19.2
 
   shebang-command@2.0.0:
     dependencies:
@@ -5880,13 +6206,13 @@ snapshots:
   tslib@2.8.1:
     optional: true
 
-  tsup@8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(tsx@4.23.15)(yaml@2.9.1):
+  tsup@8.5.1(@typescript/typescript6@6.0.2)(postcss@8.5.29)(supports-color@10.2.2)(tsx@4.23.15)(yaml@2.9.1):
     dependencies:
       bundle-require: 5.1.0(esbuild@0.28.2)
       cac: 6.7.14
       chokidar: 4.0.3
       consola: 3.4.2
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       esbuild: 0.28.2
       fix-dts-default-cjs-exports: 1.0.1
       joycon: 3.1.1
@@ -5927,13 +6253,13 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
 
-  typescript-eslint@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0):
+  typescript-eslint@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2):
     dependencies:
-      '@typescript-eslint/eslint-plugin': 8.71.1(@typescript-eslint/parser@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0))(@typescript/typescript6@6.0.2)(eslint@10.12.0)
-      '@typescript-eslint/parser': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0)
-      '@typescript-eslint/typescript-estree': 8.71.1(@typescript/typescript6@6.0.2)
-      '@typescript-eslint/utils': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0)
-      eslint: 10.12.0
+      '@typescript-eslint/eslint-plugin': 8.71.1(@typescript-eslint/parser@8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2))(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)
+      '@typescript-eslint/parser': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)
+      '@typescript-eslint/typescript-estree': 8.71.1(@typescript/typescript6@6.0.2)(supports-color@10.2.2)
+      '@typescript-eslint/utils': 8.71.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(supports-color@10.2.2))(supports-color@10.2.2)
+      eslint: 10.12.0(supports-color@10.2.2)
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
       - supports-color
@@ -5964,6 +6290,8 @@ snapshots:
       '@typescript/typescript-win32-x64': 7.0.2
 
   ufo@1.6.3: {}
+
+  undici-types@7.24.6: {}
 
   undici-types@8.9.0: {}
 
@@ -5998,6 +6326,20 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
+  vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1):
+    dependencies:
+      lightningcss: 1.33.0
+      picomatch: 4.0.7
+      postcss: 8.5.29
+      rolldown: 1.2.13
+      tinyglobby: 0.2.17
+    optionalDependencies:
+      '@types/node': 24.19.2
+      esbuild: 0.28.2
+      fsevents: 2.3.3
+      tsx: 4.23.15
+      yaml: 2.9.1
+
   vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
@@ -6011,6 +6353,28 @@ snapshots:
       fsevents: 2.3.3
       tsx: 4.23.15
       yaml: 2.9.1
+
+  vitest@5.0.3(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)):
+    dependencies:
+      '@types/chai': 5.2.3
+      '@vitest/mocker': 5.0.3(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+      chai: 6.3.0
+      es-module-lexer: 2.3.2
+      expect-type: 1.4.0
+      magic-string: 1.4.2
+      obug: 2.2.1
+      picomatch: 4.0.7
+      std-env: 4.3.0
+      tinybench: 6.2.0
+      tinyexec: 1.3.1
+      tinyglobby: 0.2.17
+      vite: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
+      why-is-node-running: 3.2.1
+    optionalDependencies:
+      '@types/node': 24.19.2
+      jsdom: 30.1.2
+    transitivePeerDependencies:
+      - msw
 
   vitest@5.0.3(@types/node@26.6.5)(jsdom@30.1.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)):
     dependencies:
@@ -6040,7 +6404,7 @@ snapshots:
 
   vue-tsc@3.3.13(@typescript/typescript6@6.0.2):
     dependencies:
-      '@volar/typescript': 2.4.28
+      '@volar/typescript': 2.4.28(@typescript/typescript6@6.0.2)
       '@vue/language-core': 3.3.13
       typescript: '@typescript/typescript6@6.0.2'
 
@@ -6086,13 +6450,13 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20261006.1
       '@cloudflare/workerd-windows-64': 1.20261006.1
 
-  wrangler@4.149.0(@cloudflare/workers-types@5.20261011.1)(@types/node@26.6.5):
+  wrangler@4.149.0(@cloudflare/workers-types@5.20261011.1)(@types/node@24.19.2):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.5.0
       '@cloudflare/unenv-preset': 2.16.2(unenv@2.0.0-rc.24)(workerd@1.20261006.1)
       blake3-wasm: 2.1.5
       esbuild: 0.28.2
-      miniflare: 5.20261006.1-alpha(@types/node@26.6.5)
+      miniflare: 5.20261006.1-alpha(@types/node@24.19.2)
       path-to-regexp: 6.3.0
       unenv: 2.0.0-rc.24
       workerd: 1.20261006.1
