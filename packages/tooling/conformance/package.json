@@ -41,23 +41,23 @@
     "test:scale-render:large": "SCALE_RENDER_LARGE=1 SCALE_RENDER_CLOCKS=1 playwright test scenarios/scale-render.record.spec.ts scenarios/scale-render.clocks.record.spec.ts --project=chromium --workers=1"
   },
   "dependencies": {
+    "@input/pen": "workspace:*",
     "@input/pen-ai": "workspace:*",
     "@input/pen-core": "workspace:*",
-    "@input/pen-yjs": "workspace:*",
-    "@input/pen-tools": "workspace:*",
     "@input/pen-dom": "workspace:*",
     "@input/pen-interop": "workspace:*",
-    "@input/pen": "workspace:*",
     "@input/pen-react": "workspace:*",
     "@input/pen-schema": "workspace:*",
     "@input/pen-test": "workspace:*",
+    "@input/pen-tools": "workspace:*",
     "@input/pen-types": "workspace:*",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "yjs": "^13.6.33"
+    "@input/pen-yjs": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "yjs": "catalog:"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.13.0",
+    "@axe-core/playwright": "catalog:",
     "@input/pen-assets": "workspace:*",
     "@input/pen-autoformat": "workspace:*",
     "@input/pen-bench": "workspace:*",
@@ -70,14 +70,14 @@
     "@input/pen-transport": "workspace:*",
     "@input/pen-undo": "workspace:*",
     "@input/pen-vue": "workspace:*",
-    "@playwright/test": "^1.64.0",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@typescript/native": "npm:typescript@^7.0.2",
-    "@vitejs/plugin-react": "^6.1.2",
-    "axe-core": "^4.14.0",
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.3.4",
-    "vue": "^3.5.42"
+    "@playwright/test": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@typescript/native": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "axe-core": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vue": "catalog:"
   }
 }

@@ -66,14 +66,25 @@ function importerIdFromLine(line) {
 	return match ? [match[1].replace(/^(['"])(.*)\1$/, "$2")] : [];
 }
 
-/** Importer ids (`.`, `packages/core`, ...) from the `importers:` block. */
+/**
+ * Importer ids (`.`, `packages/core`, ...) from every `importers:` block.
+ * pnpm 12 writes a multi-document lockfile whose first document only
+ * locks the package manager and config dependencies under importer `.`;
+ * the workspace importers live in a later document.
+ */
 export function parseLockfileImporters(lockfileText) {
 	const lines = lockfileText.split(/\r?\n/);
-	const start = lines.indexOf("importers:") + 1;
-	if (start === 0) return [];
-	const rest = lines.slice(start);
-	const end = rest.findIndex((line) => /^\S/.test(line));
-	return (end === -1 ? rest : rest.slice(0, end)).flatMap(importerIdFromLine);
+	const ids = new Set();
+	lines.forEach((line, index) => {
+		if (line !== "importers:") return;
+		const rest = lines.slice(index + 1);
+		const end = rest.findIndex((next) => /^\S/.test(next));
+		for (const id of (end === -1 ? rest : rest.slice(0, end)).flatMap(
+			importerIdFromLine,
+		))
+			ids.add(id);
+	});
+	return [...ids];
 }
 
 function describeImporter(repoRoot, id) {
@@ -337,6 +348,26 @@ const SELF_TESTS = [
 		() =>
 			parseLockfileImporters(SELF_TEST_LOCKFILE).join(",") ===
 			".,examples/react,packages/extensions/interop",
+	],
+	[
+		"a pnpm 12 multi-document lockfile yields the workspace importers",
+		() =>
+			parseLockfileImporters(
+				[
+					"---",
+					"lockfileVersion: '9.0'",
+					"",
+					"importers:",
+					"",
+					"  .:",
+					"    configDependencies: {}",
+					"",
+					"packages:",
+					"",
+					"---",
+					SELF_TEST_LOCKFILE,
+				].join("\n"),
+			).join(",") === ".,examples/react,packages/extensions/interop",
 	],
 	[
 		"the importer segment is the first `>` segment, trimmed",

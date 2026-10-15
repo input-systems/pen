@@ -376,7 +376,9 @@ for (const newerTrain of [false, true]) {
 		);
 		fs.writeFileSync(
 			path.join(repoRoot, "pnpm-workspace.yaml"),
-			'packages:\n  - "packages/*"\n',
+			// The fixture's registry is the local mock, which has no pnpm
+			// packument; resolving the packageManager pin offline would fail.
+			'packages:\n  - "packages/*"\npmOnFail: ignore\n',
 		);
 		fs.writeFileSync(
 			path.join(repoRoot, ".npmrc"),

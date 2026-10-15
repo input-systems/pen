@@ -10,12 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@input/pen-dom": "workspace:*",
-    "@input/pen": "workspace:*"
+    "@input/pen": "workspace:*",
+    "@input/pen-dom": "workspace:*"
   },
   "devDependencies": {
-    "@typescript/native": "npm:typescript@^7.0.2",
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.3.4"
+    "@typescript/native": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
   }
 }

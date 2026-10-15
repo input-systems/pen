@@ -353,7 +353,7 @@ Expanded field-editor mode and table-cell editing always use contenteditable, ev
 
 We recommend [mise](https://mise.jdx.dev/) instead of nvm to manage Node
 and pnpm together. [`mise.toml`](mise.toml) selects Node 24 and pnpm
-10.34.5. [Install and activate mise](https://mise.jdx.dev/getting-started.html),
+12.13.0. [Install and activate mise](https://mise.jdx.dev/getting-started.html),
 review `mise.toml`, then run from the repository root:
 
 ```bash
