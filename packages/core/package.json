@@ -52,15 +52,15 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@input/pen-yjs": "workspace:^",
-    "@input/pen-types": "workspace:^"
+    "@input/pen-types": "workspace:^",
+    "@input/pen-yjs": "workspace:^"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
-    "@typescript/native": "npm:typescript@^7.0.2",
-    "tsup": "^8.4.0",
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vitest": "^5.0.3",
-    "yjs": "^13.6.33"
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "yjs": "catalog:"
   }
 }

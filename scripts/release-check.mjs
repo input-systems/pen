@@ -517,10 +517,24 @@ async function checkProvenancePreconditions(packages) {
 		rootPackage.scripts?.release,
 	);
 	const cliSpec = rootPackage.devDependencies?.["@changesets/cli"];
-	if (typeof cliSpec !== "string" || !/^[\^~]?3(\.|$)/.test(cliSpec)) {
+	if (
+		typeof cliSpec !== "string" ||
+		(!/^[\^~]?3(\.|$)/.test(cliSpec) && cliSpec !== "catalog:")
+	) {
 		problems.push(
 			"root package.json must depend on @changesets/cli 3.x (changesets/action v2 requires it)",
 		);
+	}
+	if (cliSpec === "catalog:") {
+		const workspaceYaml = parse(
+			await fs.readFile(path.join(repoRoot, "pnpm-workspace.yaml"), "utf8"),
+		);
+		const catalogSpec = workspaceYaml?.catalog?.["@changesets/cli"];
+		if (typeof catalogSpec !== "string" || !/^[\^~]?3(\.|$)/.test(catalogSpec)) {
+			problems.push(
+				"pnpm-workspace.yaml catalog must pin @changesets/cli 3.x (changesets/action v2 requires it)",
+			);
+		}
 	}
 
 	const urls = new Set();
