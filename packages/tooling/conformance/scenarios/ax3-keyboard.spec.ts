@@ -100,6 +100,59 @@ function fieldOf(blockId: string): string {
 	return `[data-pen-editor-block][data-block-id="${blockId}"] ${FIELD_SURFACE}`;
 }
 
+interface FocusedPopupAria {
+	role: string | null;
+	expanded: string | null;
+	controls: string | null;
+	controlsRole: string | null;
+	activeDescendant: string | null;
+	activeDescendantRole: string | null;
+	activeDescendantSelected: string | null;
+	selectedOptionId: string | null;
+}
+
+/**
+ * Reads the popup relationship off `document.activeElement` itself, since
+ * a screen reader only follows `aria-activedescendant` on the focused
+ * element, and resolves both IDREFs so a dangling one fails the scenario.
+ */
+async function readFocusedPopupAria(page: Page): Promise<FocusedPopupAria> {
+	return page.evaluate(() => {
+		const read = (element: Element | null | undefined, name: string) =>
+			element?.getAttribute(name) ?? null;
+		const resolve = (id: string | null) => (id ? document.getElementById(id) : null);
+		const active = document.activeElement;
+		const controls = read(active, "aria-controls");
+		const activeDescendant = read(active, "aria-activedescendant");
+		const option = resolve(activeDescendant);
+		const selectedOption = document.querySelector("[data-pen-slash-menu-item][data-selected]");
+		return {
+			role: read(active, "role"),
+			expanded: read(active, "aria-expanded"),
+			controls,
+			controlsRole: read(resolve(controls), "role"),
+			activeDescendant,
+			activeDescendantRole: read(option, "role"),
+			activeDescendantSelected: read(option, "aria-selected"),
+			selectedOptionId: selectedOption?.id ?? null,
+		};
+	});
+}
+
+async function expectFocusedFieldControlsOpenListbox(page: Page): Promise<string> {
+	const aria = await readFocusedPopupAria(page);
+	expect(aria.role, "AX3: the focused field is the textbox").toBe("textbox");
+	expect(aria.expanded, "AX3: the focused field is expanded").toBe("true");
+	expect(aria.controlsRole, "AX3: aria-controls names the listbox").toBe("listbox");
+	expect(
+		aria.activeDescendant,
+		"AX3: aria-activedescendant names the highlighted option",
+	).toBe(aria.selectedOptionId);
+	expect(aria.activeDescendantRole).toBe("option");
+	expect(aria.activeDescendantSelected).toBe("true");
+	return aria.activeDescendant!;
+}
+
 async function assertNoPointerEvents(page: Page): Promise<void> {
 	const count = await page.evaluate(
 		() =>
@@ -144,6 +197,43 @@ scenario(
 			"confirm must not leave the slash trigger in the document",
 		).not.toContain("/head");
 		await expectFocused(page, fieldOf(blockId!), "the heading's field");
+		await assertNoPointerEvents(page);
+	},
+	{ url: AX3_URL },
+);
+
+scenario(
+	"AX3: the focused field carries the slash-menu listbox relationship while it is open",
+	async (s, page) => {
+		await loadKeyboardOnly(s, page, "hello-world");
+		const blockId = await firstBlockId(page);
+		expect(blockId).toBeTruthy();
+		await s.apply([
+			{
+				type: "splice-text",
+				blockId: blockId!,
+				from: 0,
+				to: 0 + 11,
+				insert: "",
+			},
+		]);
+		await s.keyboard.type("/");
+		await expect(page.locator("[data-pen-slash-menu-item]").nth(1)).toBeVisible();
+		await expectFocused(page, fieldOf(blockId!), "the slash trigger's field");
+		const firstOptionId = await expectFocusedFieldControlsOpenListbox(page);
+
+		await page.keyboard.press("ArrowDown");
+		await expectFocused(page, fieldOf(blockId!), "the slash trigger's field");
+		const nextOptionId = await expectFocusedFieldControlsOpenListbox(page);
+		expect(nextOptionId).not.toBe(firstOptionId);
+
+		await page.keyboard.press("Escape");
+		await expect(page.locator("[data-pen-slash-menu-item]")).toHaveCount(0);
+		await expectFocused(page, fieldOf(blockId!), "the slash trigger's field");
+		const closed = await readFocusedPopupAria(page);
+		expect(closed.expanded, "AX3: a closed popup leaves no aria-expanded").toBeNull();
+		expect(closed.controls).toBeNull();
+		expect(closed.activeDescendant).toBeNull();
 		await assertNoPointerEvents(page);
 	},
 	{ url: AX3_URL },
