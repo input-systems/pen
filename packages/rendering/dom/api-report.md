@@ -288,7 +288,13 @@
 
 `./dist/field-editor/crdt.d.ts`
 
-_no exports_
+### type
+
+- FieldEditorDelta
+- FieldEditorObserver
+- FieldEditorTextChangeEvent
+- FieldEditorTextLike
+- InlineInputRuleEngine
 
 ## ./field-editor/dropResolver
 
