@@ -103,9 +103,11 @@ export function splitExportSpecifiers(inner) {
 
 export function collectExportNames(text) {
 	const names = new Map();
-	for (const match of text.matchAll(/export\s*\{([^}]+)\}/g)) {
-		for (const spec of splitExportSpecifiers(match[1])) {
-			names.set(spec.exported, spec.typeOnly);
+	// tsup 9 emits type exports as a separate `export type { Name }` statement.
+	for (const match of text.matchAll(/export\s*(type\s*)?\{([^}]+)\}/g)) {
+		const typeStatement = match[1] != null;
+		for (const spec of splitExportSpecifiers(match[2])) {
+			names.set(spec.exported, typeStatement || spec.typeOnly);
 		}
 	}
 	const named = [
@@ -445,6 +447,14 @@ export { type Foo, isFoo, isBar, doWork, Box, FLAG };
 	}
 	if (byName.FLAG !== "value") {
 		throw new Error("self-test: const");
+	}
+	const statementTypes = Object.fromEntries(
+		classifyExports(
+			`interface Bar {}\ndeclare function make(): Bar;\nexport { make };\nexport type { Bar };\n`,
+		).map((entry) => [entry.name, entry.kind]),
+	);
+	if (statementTypes.Bar !== "type" || statementTypes.make !== "function") {
+		throw new Error("self-test: export type statement lists type exports");
 	}
 
 	const merged = exportKeys({
