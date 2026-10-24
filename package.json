@@ -60,7 +60,7 @@
   "pnpm": {
     "overrides": {
       "undici@<8": "7.29.1",
-      "dompurify": "3.4.16",
+      "dompurify": "3.4.17",
       "esbuild@>=0.27.3 <0.28.1": "0.28.2"
     }
   },
