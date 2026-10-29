@@ -164,6 +164,11 @@ function collapseTextRange(
 	}
 
 	const edge = direction === 1 ? ordered.end : ordered.start;
+	// N2: an edge on a block with no text positions selects it, as
+	// `crossBlock` does; a caret there has no field to show it (S2).
+	if (!isEditableTextBlock(editor, edge.blockId)) {
+		return { selection: blockSelectionResult([edge.blockId]) };
+	}
 	return { selection: collapsedAt(edge.blockId, edge.offset) };
 }
 

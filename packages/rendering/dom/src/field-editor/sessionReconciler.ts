@@ -13,6 +13,7 @@ interface SessionSnapshot {
 	focusBlockId: string | null;
 	activeBlockIds: readonly string[];
 	isEditing: boolean;
+	isComposing: boolean;
 	mode: "inactive" | "single" | "expanded" | "block";
 }
 
@@ -78,6 +79,11 @@ export class SessionReconciler {
 		this.pendingBlockIds.clear();
 		this.seenDecorations = emptyDecorationSet();
 		this.shouldProjectSelection = false;
+	}
+
+	/** Whether a commit queued a rebuild the next flush has not run yet. */
+	hasPendingRebuild(): boolean {
+		return this.pendingBlockIds.size > 0;
 	}
 
 	notifyFrameAvailable(): void {
@@ -202,6 +208,12 @@ export class SessionReconciler {
 		}
 
 		const snapshot = this.options.getSnapshot();
+		if (snapshot.mode === "expanded" && snapshot.isComposing) {
+			// C2: the expanded host composes in its start block's field DOM,
+			// and rebuilding a block under it ends the composition with no
+			// `compositionend`. Held until the composition ends.
+			return;
+		}
 		const blockIds = [...this.pendingBlockIds];
 		this.pendingBlockIds.clear();
 		const shouldProjectSelection = this.shouldProjectSelection;

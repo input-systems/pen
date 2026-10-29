@@ -1,6 +1,7 @@
 import { isCollapsed } from "@input/pen-core";
 import type { Editor } from "@input/pen-types";
 import type { FieldEditorEscapeController } from "../field-editor/controller";
+import { isStructuralBlock } from "./blockSelectionSemantics";
 
 /**
  * Escape walks the selection outward (W3.R16): an editing cell or a text
@@ -40,6 +41,15 @@ export function handleEscapeSelectionTransition(options: {
 	}
 
 	if (selection?.type === "text" && !isCollapsed(selection)) {
+		// N2: a focus on a block with no text of its own (a divider, an image,
+		// a table) has no caret to collapse to, and a text caret there leaves
+		// focus nowhere (S2); select that block instead.
+		const focusBlockId = selection.focus.blockId;
+		if (isStructuralBlock(editor, focusBlockId)) {
+			fieldEditor.deactivate();
+			editor.selectBlock(focusBlockId, { origin: "keyboard" });
+			return true;
+		}
 		fieldEditor.collapseSelectionToFocus();
 		return true;
 	}

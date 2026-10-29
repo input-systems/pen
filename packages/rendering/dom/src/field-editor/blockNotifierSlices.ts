@@ -230,7 +230,9 @@ export function buildFieldSlice(
 	const next: BlockFieldSlice = {
 		isFieldFocus,
 		isEditing: isFieldFocus && (store?.isEditing ?? false),
-		isComposing: isFieldFocus && (store?.isComposing ?? false),
+		// C2: an expanded host composes in its range's start block, not
+		// necessarily the focus block, so every block it spans holds.
+		isComposing: (isFieldFocus || expanded) && (store?.isComposing ?? false),
 		expandedRole: expanded ? getExpandedBlockRole(editor, blockId) : null,
 		domSyncVersion,
 		activeCell:

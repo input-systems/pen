@@ -6,7 +6,10 @@ import {
 } from "@input/pen-core";
 import { generateId, type Editor, type Point } from "@input/pen-types";
 import { measureWithRoot } from "../geometry/rootGeometry";
-import { getEditorBlockSelectionRole } from "../utils/blockSelectionSemantics";
+import {
+	getEditorBlockSelectionRole,
+	isStructuralBlock,
+} from "../utils/blockSelectionSemantics";
 import { getDocumentPlaceholderTargetBlockId } from "../utils/editorEmptyState";
 import { getRootBlockEndpoints } from "../utils/parentIdTree";
 import {
@@ -289,6 +292,17 @@ export function createPointerSelectionGestures<
 				);
 				if (!pointerPoint) {
 					return false;
+				}
+				// N2, T5: a click on a block with no text positions selects
+				// it; a caret there has no field to show it (S2).
+				if (isStructuralBlock(editor, pointerPoint.blockId)) {
+					if (!blockSelectionEnabled) {
+						return false;
+					}
+					selectClickedBlock(ctx, pointerPoint.blockId);
+					fieldEditor.deactivate();
+					ensureEditorFocus(ctx, root);
+					return true;
 				}
 				fieldEditor.collapseSelectionToPoint(pointerPoint, "pointer");
 				return true;

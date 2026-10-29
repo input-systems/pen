@@ -88,6 +88,7 @@ import {
 import { getPreorderBlockIds } from "../utils/documentPreorder";
 import { arraysEqual } from "../utils/arraysEqual";
 import { closestDomElement, isDomElement } from "../utils/domNodes";
+import { bindLinkActivation } from "../utils/linkActivation";
 import {
 	forgetEditorRootElement,
 	recordEditorRootElement,
@@ -133,6 +134,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected _overlay: ReturnType<typeof attachRootOverlay> | null = null;
 	protected _isReadOnly = false;
 	protected _unsubscribeAnnouncer: Unsubscribe | null = null;
+	protected _unbindLinkActivation: (() => void) | null = null;
 	protected _unbindRootPointerGesture: (() => void) | null = null;
 	protected _domSyncVersion = 0;
 	protected readonly _sessionReconciler: SessionReconciler;
@@ -190,7 +192,16 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this.reader = createSelectionReader({
 			editor: this._editor,
 			read: (proposal) => this.readDomSelection(proposal),
-			onGesture: (kind) => this.projector.onGesture(kind),
+			onGesture: (kind) => {
+				this.projector.onGesture(kind);
+				// S2: a gesture that left the record as it was writes no
+				// selectionChange, so the focus target is projected here: a
+				// press on a link inside a block selection focuses the link
+				// (Chromium), and the sink takes focus back at pointerup.
+				if (kind === "pointerup") {
+					this._projectFocusTarget();
+				}
+			},
 		});
 		this.projector = new SelectionProjector({
 			isEditing: () => this._isEditing,
@@ -343,9 +354,20 @@ export class FieldEditorImpl implements FieldEditorSession {
 				// the DOM selection the same way.
 				// C1/C2: the composing field keeps its range until
 				// compositionend-completed releases the projection.
+				// P: a range mapped by a commit that queued an expanded
+				// rebuild names blocks whose DOM is not current yet; the
+				// rebuild projects it once it lands (P3). A mapping that
+				// leaves the expanded host projects now.
+				const awaitingRebuild =
+					record.origin === "mapped" &&
+					this._mode === "expanded" &&
+					record.state?.type === "text" &&
+					isMultiBlock(record.state) &&
+					this._sessionReconciler.hasPendingRebuild();
 				const withheld =
 					!alreadyProjected &&
-					(this.projector.isFocusHeldElsewhere() ||
+					(awaitingRebuild ||
+						this.projector.isFocusHeldElsewhere() ||
 						this.projector.withholdForComposition());
 				// surface first so P1 sees the new focus block. skip is
 				// not delivery — the projector has not run yet.
@@ -498,6 +520,10 @@ export class FieldEditorImpl implements FieldEditorSession {
 		if (this._isComposing === composing) return;
 		this._isComposing = composing;
 		this._emitStateChange();
+		if (!composing) {
+			// C2: rebuilds the expanded host held while it composed.
+			this._sessionReconciler.notifyFrameAvailable();
+		}
 	}
 
 	protected _deactivate(options: { restoreFocus: boolean }): void {
@@ -650,6 +676,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 				fieldEditor: this,
 			});
 			this._bindRootPointerGesture(element);
+			this._unbindLinkActivation = bindLinkActivation(element);
 			this._focusController.notifyRootAttached(element);
 		} else {
 			this.reader.detach();
@@ -716,6 +743,8 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._unsubscribeAnnouncer = null;
 		this._unbindRootPointerGesture?.();
 		this._unbindRootPointerGesture = null;
+		this._unbindLinkActivation?.();
+		this._unbindLinkActivation = null;
 	}
 
 	protected _bindRootPointerGesture(root: HTMLElement): void {
@@ -812,8 +841,12 @@ export class FieldEditorImpl implements FieldEditorSession {
 		});
 		this._backendLifecycle.replace(this._resolveBackendClass());
 
+		// The expanded host spans blocks and reads no field text, so it attaches
+		// when the focus block has none: a drag that starts in a table cell and
+		// leaves the grid keeps the table as focus block with no active cell
+		// (T2), and refusing here left that range with no native range (S2).
 		const ytext = this._getYText(this._focusBlockId);
-		if (!ytext) return false;
+		if (!ytext && this._mode !== "expanded") return false;
 
 		// A passive or `domFocus: false` attach reaches the backend's own
 		// focus request, which the focus controller then leaves unfocused.

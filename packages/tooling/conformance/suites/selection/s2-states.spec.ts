@@ -5,6 +5,7 @@ import {
 	readSettledLayer,
 	type LayerSnapshot,
 } from "../../src/overlayLayer";
+import { runFuzzSession } from "../../src/fuzz/dom/driver";
 import { scenario } from "../../src/scenario";
 import type { LogicalPoint, ScenarioApi } from "../../src/types";
 import { dispatchUnidentifiedKeyThenInput } from "../ime/compose";
@@ -230,6 +231,49 @@ scenario(
 );
 
 scenario(
+	"S2, T2: a drag from a table cell out of the grid projects a native range from the table",
+	async (s, page) => {
+		const tableId = "s2-table";
+		await s.load("two-paragraph");
+		await s.apply([
+			{
+				type: "insert-block",
+				blockId: tableId,
+				blockType: "table",
+				props: {},
+				position: { after: "two-p1" },
+			},
+		]);
+		await idle(page);
+		const cell = page
+			.locator(
+				`[data-pen-editor-block][data-block-id="${tableId}"] [data-pen-table-cell][data-cell-row="0"][data-cell-col="0"]`,
+			)
+			.first();
+		const box = await cell.boundingBox();
+		if (!box) throw new Error("table cell is not laid out");
+		// The press activates the cell and can reflow; measure the end after it.
+		await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+		await page.mouse.down();
+		await idle(page);
+		const to = await getInlineOffsetPoint(page, {
+			blockId: "two-p2",
+			offset: 3,
+		});
+		await page.mouse.move(to.x, to.y, { steps: 8 });
+		await page.mouse.up();
+		await idle(page);
+
+		// T2: leaving the grid collapses the origin to the table at offset 0.
+		await s.assert.selectionEquals({
+			anchor: { blockId: tableId, offset: 0 },
+			focus: { blockId: "two-p2", offset: 3 },
+		});
+		await s.assert.domMatchesAuthority();
+	},
+);
+
+scenario(
 	"S2: an engine-confined multi-block range falls back once to the substitute state",
 	async (s, page) => {
 		await s.load("two-paragraph");
@@ -438,5 +482,68 @@ scenario(
 		await page.keyboard.press("Backspace");
 		await expectCaretInAnchorField(s, page, ANCHOR.offset);
 		expect(await readModelBlockText(page, ANCHOR.blockId)).toBe(COLLAPSED_TEXT);
+	},
+);
+
+scenario(
+	"P, W3.R1: typing over a dragged range from a divider projects once the blocks rebuild, with no mismatch",
+	async (s, page) => {
+		// fuzz:dom seed 1155371618: the delete maps the range to the image
+		// before the expanded blocks rebuild.
+		const trace = await runFuzzSession(s, page, {
+			seed: 1155371618,
+			engine: test.info().project.name,
+			fixture: "fuzz-mixed",
+			steps: 2,
+			forceFailAt: null,
+			actionSet: "full",
+			replay: [
+				{
+					i: 0,
+					kind: "drag",
+					args: {
+						from: { blockId: "fuzz-divider", offset: 0 },
+						to: { blockId: "fuzz-combining", offset: 19 },
+					},
+				},
+				{ i: 1, kind: "type", args: { graphemes: ["\u{1D4B3}", " ", "a"] } },
+			],
+		});
+		expect(trace.failure).toBeNull();
+	},
+	{ axe: false },
+);
+
+scenario(
+	"S2, FE6: an edited table cell shows its caret as the native range in the cell's field",
+	async (s, page) => {
+		const tableId = "s2-table";
+		await s.load("hello-world");
+		await s.apply([
+			{
+				type: "insert-block",
+				blockId: tableId,
+				blockType: "table",
+				props: {},
+				position: "last",
+			},
+		]);
+		const cell = page
+			.locator(
+				`[data-pen-editor-block][data-block-id="${tableId}"] [data-pen-table-cell][data-cell-row="1"][data-cell-col="0"]`,
+			)
+			.first();
+		await cell.dblclick();
+		await idle(page);
+		await page.keyboard.type("ab");
+		await idle(page);
+
+		expect(await readSelection(page)).toMatchObject({
+			type: "cell",
+			blockId: tableId,
+			head: { row: 1, col: 0 },
+			text: { anchor: 2, focus: 2 },
+		});
+		await s.assert.domMatchesAuthority();
 	},
 );

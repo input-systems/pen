@@ -19,6 +19,12 @@ export interface ExtendedS2Observations {
 	readonly focusedSinkRole: string | null;
 	/** Text only: the mapped DOM selection is equivalent to the authority (reader step 3). */
 	readonly equivalent: boolean;
+	/**
+	 * FE6: an edited cell (a cell selection with `text`) shows its caret as
+	 * the native range in that cell's field, at its text offsets, with focus
+	 * on the field.
+	 */
+	readonly editedCellShown?: boolean;
 	/** D5: the field editor's substitute state (`getSubstituteState`), or null. */
 	readonly substitute?: string | null;
 	/** D5: what the overlay painted for the substitute, read only while one holds. */
@@ -133,8 +139,9 @@ function resolveExtendedCheck(
 		case "null":
 		case "app":
 			return checkNoNativeRange(authority, mapped, extended);
-		case "block":
 		case "cell":
+			return checkCell(authority, mapped, extended);
+		case "block":
 			return checkSinkFocus(authority, mapped, extended);
 		default:
 			return checkTextEquivalence(input, extended);
@@ -156,6 +163,16 @@ function checkSinkFocus(authority: SerializedSelection, mapped: Mapped, extended
 	return onSink
 		? checked(authority, mapped, true)
 		: checked(authority, mapped, false, `focus is not on the revealed sink (role group or grid) for a ${kind} selection`);
+}
+
+/** FE6: an edited cell (with `text`) shows its caret in its field; a grid selection is the sink's. */
+function checkCell(authority: SerializedSelection, mapped: Mapped, extended: ExtendedS2Observations): DomAuthorityCheck {
+	if (authority?.type !== "cell" || !authority.text) {
+		return checkSinkFocus(authority, mapped, extended);
+	}
+	return extended.editedCellShown
+		? checked(authority, mapped, true)
+		: checked(authority, mapped, false, "the edited cell's caret is not the native range in its field, with focus there");
 }
 
 /**

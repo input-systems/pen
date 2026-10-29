@@ -201,6 +201,36 @@ describe("caret commands", () => {
 		editor.destroy();
 	});
 
+	it("T7, N2: a plain arrow on a range whose edge is on a divider selects the divider", () => {
+		const editor = createCommandEditor([
+			{ id: "a", type: "paragraph", text: "hello" },
+			{ id: "div", type: "divider" },
+			{ id: "b", type: "paragraph", text: "world" },
+		]);
+		const registry = createCommandHarness(editor);
+
+		editor.selectTextRange(
+			{ blockId: "a", offset: 2 },
+			{ blockId: "div", offset: 1 },
+		);
+		expect(registry.dispatch(caretRight, { extend: false })).toBe(true);
+		expect(editor.selection).toMatchObject({
+			type: "block",
+			blockIds: ["div"],
+		});
+
+		editor.selectTextRange(
+			{ blockId: "b", offset: 3 },
+			{ blockId: "div", offset: 0 },
+		);
+		expect(registry.dispatch(caretLeft, { extend: false })).toBe(true);
+		expect(editor.selection).toMatchObject({
+			type: "block",
+			blockIds: ["div"],
+		});
+		editor.destroy();
+	});
+
 	it("T1: selectAll escalates from field text to the whole block, then the document", () => {
 		const editor = createCommandEditor([
 			{ id: "a", type: "paragraph", text: "hello" },

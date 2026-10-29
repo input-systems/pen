@@ -36,7 +36,7 @@ export class BackendLifecycleController {
 
 	activate(
 		element: HTMLElement,
-		ytext: FieldEditorTextLike,
+		ytext: FieldEditorTextLike | null,
 		focusOptions?: PenFieldEditorFocusOptions,
 	): void {
 		this.backend?.activate(element, ytext, focusOptions);

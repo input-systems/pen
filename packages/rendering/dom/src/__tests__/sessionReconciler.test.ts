@@ -113,6 +113,43 @@ describe("SessionReconciler", () => {
 		editor.destroy();
 	});
 
+	it("C2: holds an expanded rebuild while the host composes, and runs it once composing ends", () => {
+		// Two frames: the shared stub runs a frame inside the call that
+		// requests it, so the scheduler would keep that handle and never
+		// request the second.
+		const frames: FrameRequestCallback[] = [];
+		vi.stubGlobal(
+			"requestAnimationFrame",
+			(callback: FrameRequestCallback) => frames.push(callback),
+		);
+		const runFrames = () => {
+			for (const frame of frames.splice(0)) frame(0);
+		};
+		const editor = createHeadlessEditor({ schema: defaultSchema });
+		const blockId = editor.firstBlock()!.id;
+		const getYText = vi.fn(() => null);
+		let isComposing = true;
+		const reconciler = createReconciler(editor, blockId, getYText, {
+			mode: "expanded",
+			isComposing: () => isComposing,
+		});
+
+		editor.apply(
+			[{ type: "splice-text", blockId, from: 0, to: 0, insert: "a" }],
+			{ origin: "collaborator" },
+		);
+		runFrames();
+		expect(getYText).not.toHaveBeenCalled();
+
+		isComposing = false;
+		reconciler.notifyFrameAvailable();
+		runFrames();
+		expect(getYText).toHaveBeenCalledWith(blockId);
+
+		reconciler.destroy();
+		editor.destroy();
+	});
+
 	it("SCALE2: rebuilds the focus block only when its own decorations changed", () => {
 		let markedBlockId: string | null = null;
 		const editor = createHeadlessEditor({
@@ -186,6 +223,7 @@ function createReconciler(
 	getYText: () => null,
 	options: {
 		mode?: "single" | "expanded";
+		isComposing?: () => boolean;
 		projectSelection?: () => void;
 		projectAfterRebuild?: (blockIds: readonly string[]) => void;
 	} = {},
@@ -197,6 +235,7 @@ function createReconciler(
 			focusBlockId: blockId,
 			activeBlockIds: [blockId],
 			isEditing: true,
+			isComposing: options.isComposing?.() ?? false,
 			mode: options.mode ?? "single",
 		}),
 		getAttachedElement: () => null,

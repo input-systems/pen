@@ -19,7 +19,7 @@ import {
 	BEFOREINPUT_MAP,
 	mapBeforeInput,
 } from "@input/pen-dom/field-editor/beforeinputMap";
-import { domSelectionToEditor } from "@input/pen-dom/field-editor";
+import { domSelectionToEditor, getSelectionOffsets } from "@input/pen-dom/field-editor";
 import { applyValidatedOps } from "@input/pen-tools";
 import { parsePenClipboardPayload } from "@input/pen-dom/utils/clipboardPayload";
 import {
@@ -570,6 +570,7 @@ function observeExtendedS2(editor: Editor, root: HTMLElement): ExtendedS2Observa
 		nativeRangeInRoot: hasNativeRangeIn(root),
 		focusedSinkRole: focusedSinkRole(root),
 		equivalent: isDomEquivalentToText(editor, root),
+		editedCellShown: isEditedCellShown(editor, root),
 		substitute,
 		substitutePaint: substitute ? observeSubstitutePaint(root) : null,
 	};
@@ -748,6 +749,22 @@ function focusedSinkRole(root: HTMLElement): string | null {
 	if (!(active instanceof HTMLElement) || !root.contains(active)) return null;
 	const role = active.getAttribute("role");
 	return role === "group" || role === "grid" ? role : null;
+}
+
+/** FE6: the edited cell's caret is the native range in its field, with focus there. */
+function isEditedCellShown(editor: Editor, root: HTMLElement): boolean {
+	const record = editor.selection;
+	if (record?.type !== "cell" || !record.text) return false;
+	const inline = root.querySelector(
+		`[data-block-id="${CSS.escape(record.blockId)}"] [data-pen-table-cell][data-cell-row="${record.head.row}"][data-cell-col="${record.head.col}"] [data-pen-inline-content]`,
+	);
+	const active = document.activeElement;
+	if (!(inline instanceof HTMLElement) || !(active instanceof Node) || !inline.contains(active)) {
+		return false;
+	}
+	const offsets = getSelectionOffsets(inline);
+	const { anchor, focus } = record.text;
+	return offsets?.start === Math.min(anchor, focus) && offsets.end === Math.max(anchor, focus);
 }
 
 function isDomEquivalentToText(editor: Editor, root: HTMLElement): boolean {

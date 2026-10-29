@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { getInlineOffsetPoint } from "../../src/domGeometry";
 import { scenario } from "../../src/scenario";
 import { clickOffset, readSelection } from "../specHelpers";
 
@@ -62,6 +63,126 @@ scenario("P: deactivate with a block selection focuses the sink", async (s, page
 		.toMatchObject({ type: "block", blockIds: ["focus-divider"] });
 	await expect.poll(() => activeTarget(page)).toBe("sink:group:revealed");
 });
+
+scenario(
+	"N2, W3.R16: Escape over a range whose focus is on a divider selects the divider",
+	async (s, page) => {
+		await s.load("hello-world");
+		await s.apply([
+			{
+				type: "insert-block",
+				blockId: "focus-divider",
+				blockType: "divider",
+				props: {},
+				position: "last",
+			},
+		]);
+		const from = await getInlineOffsetPoint(page, {
+			blockId: BLOCK_ID,
+			offset: 3,
+		});
+		const divider = await page
+			.locator('[data-block-id="focus-divider"]')
+			.boundingBox();
+		if (!divider) throw new Error("divider is not laid out");
+		await page.mouse.move(from.x, from.y);
+		await page.mouse.down();
+		await page.mouse.move(
+			divider.x + divider.width / 2,
+			divider.y + divider.height / 2,
+			{ steps: 8 },
+		);
+		await page.mouse.up();
+		await expect
+			.poll(() => readSelection(page))
+			.toMatchObject({ type: "text", focus: { blockId: "focus-divider" } });
+
+		await s.keyboard.press("Escape");
+		await expect
+			.poll(() => readSelection(page))
+			.toMatchObject({ type: "block", blockIds: ["focus-divider"] });
+		await expect.poll(() => activeTarget(page)).toBe("sink:group:revealed");
+	},
+);
+
+scenario(
+	"N2, T5: a click on a divider inside a multi-block range selects the divider",
+	async (s, page) => {
+		await s.load("two-paragraph");
+		await s.apply([
+			{
+				type: "insert-block",
+				blockId: "focus-divider",
+				blockType: "divider",
+				props: {},
+				position: { after: "two-p1" },
+			},
+		]);
+		await page.evaluate(() => {
+			window.__penConformance.selectTextRangeById(
+				{ blockId: "two-p1", offset: 0 },
+				{ blockId: "two-p2", offset: 3 },
+			);
+		});
+		await expect
+			.poll(() => readSelection(page))
+			.toMatchObject({ type: "text", focus: { blockId: "two-p2" } });
+
+		await page.locator('[data-block-id="focus-divider"]').click();
+		await expect
+			.poll(() => readSelection(page))
+			.toMatchObject({ type: "block", blockIds: ["focus-divider"] });
+		await expect.poll(() => activeTarget(page)).toBe("sink:group:revealed");
+	},
+);
+
+scenario(
+	"S2: a drag that starts on a link inside a block selection leaves focus on the revealed sink",
+	async (s, page) => {
+		await s.load("two-paragraph");
+		await s.apply([
+			{
+				type: "format-text",
+				blockId: "two-p1",
+				from: 0,
+				to: 5,
+				marks: { link: { href: "https://example.com" } },
+			},
+		]);
+		await page
+			.locator('[data-block-id="two-p2"] [data-pen-inline-content]')
+			.first()
+			.click();
+		// Content-first select-all, then the block rung.
+		await s.keyboard.press("ControlOrMeta+a");
+		await s.keyboard.press("ControlOrMeta+a");
+		await expect
+			.poll(() => readSelection(page))
+			.toMatchObject({ type: "block", blockIds: ["two-p1", "two-p2"] });
+
+		const link = await page
+			.locator('[data-block-id="two-p1"] a')
+			.first()
+			.boundingBox();
+		const target = await page
+			.locator('[data-block-id="two-p2"]')
+			.first()
+			.boundingBox();
+		if (!link || !target) throw new Error("link or target is not laid out");
+		// Chromium focuses a link on press, outside any field.
+		await page.mouse.move(link.x + 3, link.y + link.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(target.x + 20, target.y + target.height / 2, {
+			steps: 6,
+		});
+		await page.mouse.up();
+
+		await expect
+			.poll(() => readSelection(page))
+			.toMatchObject({ type: "block", blockIds: ["two-p1", "two-p2"] });
+		await expect.poll(() => activeTarget(page)).toBe("sink:group:revealed");
+	},
+);
 
 const SECOND_EDITOR = "[data-pen-conformance-second-editor]";
 

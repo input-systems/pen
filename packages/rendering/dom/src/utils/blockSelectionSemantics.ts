@@ -1,5 +1,6 @@
 import type { BlockSelectionRole, Editor } from "@input/pen-types";
 import {
+	buildTransitionSnapshot,
 	getBlockSelectionRoleFromSchema as getSharedBlockSelectionRoleFromSchema,
 	getBlockSelectionRoleFromType as getSharedBlockSelectionRoleFromType,
 } from "@input/pen-core";
@@ -60,4 +61,16 @@ export function isInlineEditableBlock(
 	blockId: string,
 ): boolean {
 	return getEditorBlockSelectionRole(editor, blockId) === "editable-inline";
+}
+
+/**
+ * N2: whether the block has no text positions of its own (a divider, an
+ * image, a table), by core's text/structural split, so a code block holds
+ * text. A collapse onto such a block selects it rather than placing a caret.
+ */
+export function isStructuralBlock(editor: Editor, blockId: string): boolean {
+	return (
+		buildTransitionSnapshot(editor, { blockIds: [blockId] }).blocks[blockId]
+			?.kind === "structural"
+	);
 }

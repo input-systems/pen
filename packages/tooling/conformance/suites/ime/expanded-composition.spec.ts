@@ -172,3 +172,38 @@ scenario(
 		},
 	},
 );
+
+scenario(
+	"C2 FE2: a collaborator edit to the block an expanded host composes in waits for compositionend, and the caret's field takes focus",
+	async (s, page) => {
+		test.skip(test.info().project.name !== "chromium", "CDP IME is Chromium-only");
+		await s.load("two-paragraph");
+		// Backward, so the composition's start block (two-p1) is not the
+		// session's focus block.
+		await page.evaluate(() => {
+			window.__penConformance.selectTextRangeById(
+				{ blockId: "two-p2", offset: 6 },
+				{ blockId: "two-p1", offset: 6 },
+			);
+		});
+		await whenIdle(page);
+		const cdp = await page.context().newCDPSession(page);
+		await cdp.send("Input.imeSetComposition", {
+			text: "ni",
+			selectionStart: 2,
+			selectionEnd: 2,
+		});
+		await whenIdle(page);
+		await page.evaluate(() => {
+			window.__penConformance.remoteApply([
+				{ type: "splice-text", blockId: "two-p1", from: 0, to: 0, insert: "X" },
+			]);
+		});
+		await whenIdle(page);
+		await cdp.send("Input.insertText", { text: "你" });
+		await whenIdle(page);
+
+		expect(await page.evaluate(() => window.__penConformance.composing)).toBe(false);
+		await expectSettled(s, page, "XAlpha 你echo foxtrot", 8);
+	},
+);
