@@ -1,8 +1,10 @@
 import { isYjsCRDTDocument, type YjsCRDTDocument } from "@input/pen-yjs";
 import { createYjsAwareness } from "@input/pen-yjs/awareness";
+import { fieldEditorHostFacet } from "@input/pen-core";
 import type {
 	Awareness,
 	Editor,
+	FieldEditor,
 	MultiplayerSession,
 	SelectionRecord,
 	SelectionState,
@@ -109,8 +111,9 @@ class MultiplayerScopeRuntime {
 	private readonly awareness: Awareness;
 	private readonly buildLocalAwarenessState: BuildLocalAwarenessState;
 	private readonly editors = new Set<Editor>();
-	private readonly selectionUnsubscribers = new Map<Editor, Unsubscribe>();
-	private readonly commitUnsubscribers = new Map<Editor, Unsubscribe>();
+	private readonly editorUnsubscribers = new Map<Editor, Unsubscribe[]>();
+	/** Last `focusChange` per editor; absent until a renderer reports one. */
+	private readonly focusByEditor = new Map<Editor, boolean>();
 	private readonly presenceWriter: LocalPresenceWriter;
 	private readonly session: MultiplayerSession | null;
 	private readonly unsubscribeSessionState: Unsubscribe | null;
@@ -189,43 +192,59 @@ class MultiplayerScopeRuntime {
 		}
 
 		this.editors.add(editor);
-		this.selectionUnsubscribers.set(
-			editor,
+		this.editorUnsubscribers.set(editor, [
 			editor.onSelectionChange(() => {
-				this.presenceTarget = editor;
-				this.presenceWriter.request();
-			}),
-		);
-		this.commitUnsubscribers.set(
-			editor,
-			editor.on("commit", (event) => {
-				if (event.summary.structural.length === 0) {
+				if (!this.isFocused(editor)) {
 					return;
 				}
 				this.presenceTarget = editor;
 				this.presenceWriter.request();
 			}),
-		);
+			editor.on("commit", (event) => {
+				if (
+					event.summary.structural.length === 0 ||
+					!this.isFocused(editor)
+				) {
+					return;
+				}
+				this.presenceTarget = editor;
+				this.presenceWriter.request();
+			}),
+			editor.on("focusChange", (focused) => {
+				this.focusByEditor.set(editor, focused);
+				// a blur clears presence only when this editor is the one it describes
+				if (!focused && this.presenceTarget !== editor) {
+					return;
+				}
+				this.presenceTarget = editor;
+				this.presenceWriter.requestTrailing();
+			}),
+		]);
 		editor.requestDecorationUpdate();
 	}
 
 	detachEditor(editor: Editor): void {
-		this.selectionUnsubscribers.get(editor)?.();
-		this.selectionUnsubscribers.delete(editor);
-		this.commitUnsubscribers.get(editor)?.();
-		this.commitUnsubscribers.delete(editor);
+		for (const unsubscribe of this.editorUnsubscribers.get(editor) ?? []) {
+			unsubscribe();
+		}
+		this.editorUnsubscribers.delete(editor);
+		this.focusByEditor.delete(editor);
 		this.editors.delete(editor);
-		this.presenceWriter.cancel();
 
-		const remainingEditor = this.editors.values().next().value as
-			| Editor
-			| undefined;
-		if (!remainingEditor) {
+		const remainingEditors = [...this.editors];
+		if (remainingEditors.length === 0) {
+			this.presenceWriter.cancel();
 			this.presenceTarget = null;
 			this.awareness.setLocalState(null);
 			return;
 		}
-		this.presenceTarget = remainingEditor;
+		if (this.presenceTarget !== editor) {
+			return;
+		}
+		this.presenceWriter.cancel();
+		this.presenceTarget =
+			remainingEditors.find((remaining) => this.isFocused(remaining)) ??
+			remainingEditors[0]!;
 		this.writeLocalPresence();
 	}
 
@@ -237,14 +256,13 @@ class MultiplayerScopeRuntime {
 		this.presenceWriter.cancel();
 		this.presenceTarget = null;
 		this.awareness.setLocalState(null);
-		for (const unsubscribe of this.selectionUnsubscribers.values()) {
-			unsubscribe();
+		for (const unsubscribers of this.editorUnsubscribers.values()) {
+			for (const unsubscribe of unsubscribers) {
+				unsubscribe();
+			}
 		}
-		this.selectionUnsubscribers.clear();
-		for (const unsubscribe of this.commitUnsubscribers.values()) {
-			unsubscribe();
-		}
-		this.commitUnsubscribers.clear();
+		this.editorUnsubscribers.clear();
+		this.focusByEditor.clear();
 		this.editors.clear();
 		this.unsubscribeSessionState?.();
 		this.session?.destroy();
@@ -264,8 +282,20 @@ class MultiplayerScopeRuntime {
 		// selection change.
 		this.awareness.setLocalState({
 			...(this.awareness.getLocalState() ?? {}),
-			...this.buildLocalAwarenessState(target, this.user, target.selection),
+			...this.buildLocalAwarenessState(
+				target,
+				this.user,
+				this.isFocused(target) ? target.selection : null,
+			),
 		});
+	}
+
+	/** A runtime built after the root's last focus report reads it from the field editor; a headless editor counts as focused. */
+	private isFocused(editor: Editor): boolean {
+		const fieldEditor = editor.facet(fieldEditorHostFacet) as FieldEditor | null;
+		return (
+			this.focusByEditor.get(editor) ?? fieldEditor?.hasFocusWithin ?? true
+		);
 	}
 
 	private readonly handleAwarenessChange = (): void => {

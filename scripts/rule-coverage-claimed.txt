@@ -307,3 +307,4 @@ rules/selection#P4
 rules/commands#K5
 rules/api#API7
 rules/commands#D7
+rules/collaboration#COL7
