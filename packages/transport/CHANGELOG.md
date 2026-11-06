@@ -1,5 +1,13 @@
 # @input/pen-transport
 
+## 0.5.1
+
+### Patch Changes
+
+- @input/pen-core@0.5.1
+  - @input/pen-ai@0.5.1
+  - @input/pen-types@0.5.1
+
 ## 0.5.0
 
 ### Patch Changes
