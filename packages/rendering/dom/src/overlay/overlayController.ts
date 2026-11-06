@@ -509,23 +509,13 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 
 	/**
 	 * A decoration change re-renders its blocks without a commit, and commits
-	 * are what invalidate geometry (OV1). The changed blocks that hold a
-	 * painted item drop their geometry; every painted item then re-reads,
-	 * because a block that grew or shrank moves the ones after it, and the
+	 * are what invalidate geometry (OV1), so the changed blocks drop theirs
+	 * here; the reader re-measures only the ones read again. Painted items then
+	 * re-read: a block that grew or shrank moves the ones after it, and the
 	 * reader re-measures a cached neighbour whose live box moved.
 	 */
 	private handleDecorationsChange(changedBlockIds: readonly string[]): void {
-		const painted = new Set(
-			this._plan?.items.flatMap((item) => [
-				item.blockId,
-				item.fromBlockId,
-				item.toBlockId,
-			]),
-		);
-		const touched = changedBlockIds.filter((blockId) => painted.has(blockId));
-		if (touched.length > 0) {
-			this.reader.invalidateBlocks(touched);
-		}
+		this.reader.invalidateBlocks(changedBlockIds);
 		this.requestPaintForInputs();
 	}
 

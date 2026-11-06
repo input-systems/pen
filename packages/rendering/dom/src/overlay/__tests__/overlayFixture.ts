@@ -61,8 +61,8 @@ export type OverlayFixture = {
 	readonly mounted: Set<string>;
 	/**
 	 * Hide the first block's text from `offset` with an `omitFromRender`
-	 * decoration, or show it all with null. Carets past it measure at it,
-	 * as a painted line would place them.
+	 * decoration, or show it all with null. Carets and range ends past it
+	 * measure at it, as a painted line would place them.
 	 */
 	hideTextFrom(offset: number | null): void;
 	setField(
@@ -77,7 +77,8 @@ export type OverlayFixture = {
 /**
  * A headless controller over a fake geometry adapter: carets sit at
  * x = (offset % 100) * 10 on 20px-tall lines, offsets from 100 on the second
- * line; blocks are 100x20 boxes. jsdom has no layout, so the layer origin
+ * line; a range within one first-line run is one box between its ends;
+ * blocks are 100x20 boxes. jsdom has no layout, so the layer origin
  * reads as zero.
  */
 export function createOverlayFixture(): OverlayFixture {
@@ -152,8 +153,15 @@ export function createOverlayFixture(): OverlayFixture {
 				measured.block += 1;
 				return mounted.has(id) ? box(0, 0, 100, 20) : null;
 			},
-			rangeRects() {
-				return [];
+			rangeRects({ anchor, focus }) {
+				if (!mounted.has(anchor.blockId)) {
+					return [];
+				}
+				const paintedEnd =
+					hiddenFrom === null
+						? focus.offset
+						: Math.min(focus.offset, hiddenFrom);
+				return [box(anchor.offset * 10, 0, (paintedEnd - anchor.offset) * 10, 20)];
 			},
 		},
 	});
