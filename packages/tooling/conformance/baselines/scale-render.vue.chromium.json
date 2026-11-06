@@ -70,9 +70,9 @@
 				"listeners.live.selectionChange": 5,
 				"listeners.live.historyApplied": 3,
 				"listeners.live.diagnostic": 1,
-				"listeners.live.decorationsChange": 2,
+				"listeners.live.decorationsChange": 3,
 				"listeners.live.store": 1,
-				"listeners.live.total": 20,
+				"listeners.live.total": 21,
 				"notifier.blockSubscribers": 2053,
 				"mount.blocksMounted": 1050
 			},
@@ -233,9 +233,9 @@
 				"listeners.live.selectionChange": 5,
 				"listeners.live.historyApplied": 3,
 				"listeners.live.diagnostic": 1,
-				"listeners.live.decorationsChange": 2,
+				"listeners.live.decorationsChange": 3,
 				"listeners.live.store": 1,
-				"listeners.live.total": 20,
+				"listeners.live.total": 21,
 				"notifier.blockSubscribers": 10265,
 				"mount.blocksMounted": 5250
 			},
@@ -1317,6 +1317,22 @@
 			"moved": [
 				"vue/scale-5k/enterParagraph/scan.blocksMapReads: 188 !== 190",
 				"vue/scale-5k/enterNumbered/scan.blocksMapReads: 396 !== 398"
+			]
+		},
+		{
+			"date": "2026-11-06",
+			"reason": "OV1: the overlay controller listens to decorationsChange to re-measure painted overlay items (one editor-level listener, same at 1k and 5k)",
+			"moved": [
+				"vue/scale-1k/mount/listeners.live.decorationsChange: 3 !== 2",
+				"vue/scale-1k/mount/listeners.live.total: 21 !== 20"
+			]
+		},
+		{
+			"date": "2026-11-06",
+			"reason": "OV1: the overlay controller listens to decorationsChange to re-measure painted overlay items (one editor-level listener, same at 1k and 5k)",
+			"moved": [
+				"vue/scale-5k/mount/listeners.live.decorationsChange: 3 !== 2",
+				"vue/scale-5k/mount/listeners.live.total: 21 !== 20"
 			]
 		}
 	]

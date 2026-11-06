@@ -1,4 +1,9 @@
-import { createEditor } from "@input/pen-core";
+import {
+	createDecorationSet,
+	createEditor,
+	decorationsFacet,
+	defineExtension,
+} from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import type { Editor } from "@input/pen-types";
 import { vi } from "vitest";
@@ -54,6 +59,12 @@ export type OverlayFixture = {
 	readonly measured: { caret: number; block: number };
 	/** Blocks the fake geometry treats as mounted. */
 	readonly mounted: Set<string>;
+	/**
+	 * Hide the first block's text from `offset` with an `omitFromRender`
+	 * decoration, or show it all with null. Carets and range ends past it
+	 * measure at it, as a painted line would place them.
+	 */
+	hideTextFrom(offset: number | null): void;
 	setField(
 		patch: Partial<FieldSnapshot> & {
 			readonly?: boolean;
@@ -65,11 +76,42 @@ export type OverlayFixture = {
 
 /**
  * A headless controller over a fake geometry adapter: carets sit at
- * x = offset * 10 in a 20px-tall line, blocks are 100x20 boxes. jsdom has no
- * layout, so the layer origin reads as zero.
+ * x = (offset % 100) * 10 on 20px-tall lines, offsets from 100 on the second
+ * line; a range within one first-line run is one box between its ends;
+ * blocks are 100x20 boxes. jsdom has no layout, so the layer origin
+ * reads as zero.
  */
 export function createOverlayFixture(): OverlayFixture {
-	const editor = createEditor({ schema: defaultSchema });
+	let hiddenFrom: number | null = null;
+	const editor = createEditor({
+		schema: defaultSchema,
+		extensions: [
+			defineExtension({
+				name: "overlay-fixture-hidden-text",
+				facets: [
+					decorationsFacet.of((_state, currentEditor) => {
+						const firstBlockId = currentEditor.firstBlock()?.id;
+						if (hiddenFrom === null || !firstBlockId) {
+							return createDecorationSet([]);
+						}
+						return createDecorationSet([
+							{
+								type: "inline",
+								blockId: firstBlockId,
+								from: hiddenFrom,
+								to:
+									currentEditor
+										.getBlock(firstBlockId)
+										?.length() ?? hiddenFrom,
+								attributes: {},
+								omitFromRender: true,
+							},
+						]);
+					}),
+				],
+			}),
+		],
+	});
 	const blockId = editor.firstBlock()!.id;
 	editor.apply(
 		[
@@ -95,16 +137,31 @@ export function createOverlayFixture(): OverlayFixture {
 		measure: {
 			caretRect(point: Point): Rect | null {
 				measured.caret += 1;
-				return mounted.has(point.blockId)
-					? collapsedRect(point.offset * 10, 0, 20)
-					: null;
+				if (!mounted.has(point.blockId)) {
+					return null;
+				}
+				const column = point.offset % 100;
+				const painted =
+					hiddenFrom === null ? column : Math.min(column, hiddenFrom);
+				return collapsedRect(
+					painted * 10,
+					Math.floor(point.offset / 100) * 20,
+					20,
+				);
 			},
 			blockRect(id: string): Rect | null {
 				measured.block += 1;
 				return mounted.has(id) ? box(0, 0, 100, 20) : null;
 			},
-			rangeRects() {
-				return [];
+			rangeRects({ anchor, focus }) {
+				if (!mounted.has(anchor.blockId)) {
+					return [];
+				}
+				const paintedEnd =
+					hiddenFrom === null
+						? focus.offset
+						: Math.min(focus.offset, hiddenFrom);
+				return [box(anchor.offset * 10, 0, (paintedEnd - anchor.offset) * 10, 20)];
 			},
 		},
 	});
@@ -150,6 +207,10 @@ export function createOverlayFixture(): OverlayFixture {
 		controller,
 		measured,
 		mounted,
+		hideTextFrom(offset) {
+			hiddenFrom = offset;
+			editor.requestDecorationUpdate();
+		},
 		setField(patch) {
 			const {
 				readonly: nextReadonly,

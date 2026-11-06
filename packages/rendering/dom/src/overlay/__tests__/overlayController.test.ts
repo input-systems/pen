@@ -141,6 +141,31 @@ describe("overlay controller (OV1)", () => {
 		expect(controller.layer.childElementCount).toBe(0);
 	});
 
+	it("OV1: hiding or showing text inside a painted range re-measures the range without a commit", () => {
+		const { controller, blockId } = fixture;
+		controller.registerContributor({
+			id: "host",
+			requests: () => [
+				{
+					kind: "range",
+					key: "r",
+					anchor: { blockId, offset: 2 },
+					focus: { blockId, offset: 8 },
+				},
+			],
+		});
+		flushFrame();
+		expect(controller.plan?.items[0]?.width).toBe(60);
+
+		fixture.hideTextFrom(5);
+		flushFrame();
+		expect(controller.plan?.items[0]?.width).toBe(30);
+
+		fixture.hideTextFrom(null);
+		flushFrame();
+		expect(controller.plan?.items[0]?.width).toBe(60);
+	});
+
 	it("OV1: a contributor that throws is dropped with a diagnostic, and the others still paint", () => {
 		const { controller, editor, blockId } = fixture;
 		const diagnostics: DiagnosticEvent[] = [];

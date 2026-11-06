@@ -35,6 +35,12 @@ export interface RemoteCaretSource {
 export interface AttachRemoteCaretsOptions {
 	/** `"binding"` when a framework binding renders the carets from the plan. Defaults to `"layer"`. */
 	readonly paint?: OverlayPaintMode;
+	/**
+	 * Glide in ms when a caret moves along its line, as a linear transform
+	 * transition on the caret and its label; a new caret, a line change or
+	 * reduced motion jumps (OV3, AX6). Omitted, pen-dom writes no transition.
+	 */
+	readonly glideMs?: number;
 }
 
 /** The contributor id remote carets are painted under (`OverlayPaintItem.contributor`). */
@@ -71,7 +77,7 @@ export function getRemoteCaretSource(editor: Editor): RemoteCaretSource | null {
  *
  * @param overlay - The root overlay, from `getRootOverlay(root)`.
  * @param source - Remote cursors, usually `getRemoteCaretSource(editor)`.
- * @param options - Who paints the carets.
+ * @param options - Who paints the carets, and how far they glide.
  * @returns Releases the contributor and the source subscription.
  */
 export function attachRemoteCarets(
@@ -85,7 +91,9 @@ export function attachRemoteCarets(
 		id: REMOTE_CARET_CONTRIBUTOR,
 		requests: () => {
 			cursors = source.getRemoteCursors();
-			return cursors.map((cursor) => remoteCaretRequest(cursor, paint));
+			return cursors.map((cursor) =>
+				remoteCaretRequest(cursor, paint, options.glideMs),
+			);
 		},
 	});
 	const unsubscribe = source.subscribe(() => {
@@ -104,6 +112,7 @@ export function attachRemoteCarets(
 function remoteCaretRequest(
 	cursor: RemoteCaretCursor,
 	paint: OverlayPaintMode,
+	glideMs: number | undefined,
 ): OverlayRequest {
 	const attributes: Record<string, string> = {
 		"data-pen-multiplayer-caret": "",
@@ -124,6 +133,7 @@ function remoteCaretRequest(
 		attributes,
 		label: cursor.user.name,
 		color: cursor.user.color,
+		glideMs,
 		paint,
 	};
 }

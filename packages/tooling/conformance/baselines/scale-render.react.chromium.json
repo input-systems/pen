@@ -71,9 +71,9 @@
 				"listeners.live.selectionChange": 5,
 				"listeners.live.historyApplied": 3,
 				"listeners.live.diagnostic": 1,
-				"listeners.live.decorationsChange": 2,
+				"listeners.live.decorationsChange": 3,
 				"listeners.live.store": 1,
-				"listeners.live.total": 20,
+				"listeners.live.total": 21,
 				"notifier.blockSubscribers": 13802,
 				"mount.blocksMounted": 1050
 			},
@@ -242,9 +242,9 @@
 				"listeners.live.selectionChange": 5,
 				"listeners.live.historyApplied": 3,
 				"listeners.live.diagnostic": 1,
-				"listeners.live.decorationsChange": 2,
+				"listeners.live.decorationsChange": 3,
 				"listeners.live.store": 1,
-				"listeners.live.total": 20,
+				"listeners.live.total": 21,
 				"notifier.blockSubscribers": 69010,
 				"mount.blocksMounted": 5250
 			},
@@ -1533,6 +1533,22 @@
 				"react/scale-5k/enterNumbered/render.blockRenders: 13 !== 4",
 				"react/scale-5k/enterNumbered/render.blocksRendered: 3 !== 2",
 				"react/scale-5k/remoteInsert/render.blockRenders: 6 !== 2"
+			]
+		},
+		{
+			"date": "2026-11-06",
+			"reason": "OV1: the overlay controller listens to decorationsChange to re-measure painted overlay items (one editor-level listener, same at 1k and 5k)",
+			"moved": [
+				"react/scale-1k/mount/listeners.live.decorationsChange: 3 !== 2",
+				"react/scale-1k/mount/listeners.live.total: 21 !== 20"
+			]
+		},
+		{
+			"date": "2026-11-06",
+			"reason": "OV1: the overlay controller listens to decorationsChange to re-measure painted overlay items (one editor-level listener, same at 1k and 5k)",
+			"moved": [
+				"react/scale-5k/mount/listeners.live.decorationsChange: 3 !== 2",
+				"react/scale-5k/mount/listeners.live.total: 21 !== 20"
 			]
 		}
 	]
