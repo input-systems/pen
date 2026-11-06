@@ -244,6 +244,30 @@ describe("@input/pen-react multiplayer caret overlay (OV3)", () => {
 		editor.destroy();
 	});
 
+	it("OV3: glideMs reaches the remote caret request, and a first paint jumps on the caret and its label", async () => {
+		const seen: MultiplayerCaretRenderProps[] = [];
+		const renderCaret = (props: MultiplayerCaretRenderProps) => {
+			seen.push(props);
+			return <span data-host-caret="" style={props.caretStyle} />;
+		};
+		const { editor, view } = await mountWithRemoteCaret(
+			<Pen.Multiplayer.CaretOverlay
+				renderCaret={renderCaret}
+				glideMs={33}
+			/>,
+		);
+
+		expect(
+			getRootOverlay(editorRoot(view.container))?.plan?.items.find(
+				(item) => item.role === "remote",
+			)?.glideMs,
+		).toBe(0);
+		expect(seen.at(-1)?.caretStyle.transition).toBe("none");
+		expect(seen.at(-1)?.labelStyle.transition).toBe("none");
+		await view.unmount();
+		editor.destroy();
+	});
+
 	it("OV3: a local keystroke that leaves the remote caret in place re-renders no host caret", async () => {
 		let renders = 0;
 		const renderCaret = (props: MultiplayerCaretRenderProps) => {

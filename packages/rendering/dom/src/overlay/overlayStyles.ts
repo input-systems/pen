@@ -179,6 +179,7 @@ function remoteCaretStyle(item: OverlayPaintItem): OverlayInlineStyle {
 		"background-color": `var(${OVERLAY_TOKENS.peerColor})`,
 		// AX6: only the local caret blinks.
 		animation: "none",
+		...glideStyle(item),
 		[OVERLAY_TOKENS.peerColor]: peerColorValue(item.color),
 		[OVERLAY_TOKENS.remoteCaretHeight]: `${height}px`,
 	};
@@ -189,13 +190,14 @@ function remoteCaretStyle(item: OverlayPaintItem): OverlayInlineStyle {
  * placed above the caret at the item's position, its bottom edge 8px above
  * the caret's top. pen-dom paints the label inside the caret element (at
  * `x = y = 0` relative to it); a binding that renders the label as the
- * caret's sibling passes the item itself.
+ * caret's sibling passes the item itself, and the label then glides with
+ * the caret (OV3).
  *
  * @param item - A caret item (or its position) from an `OverlayPaintPlan`.
  * @returns CSS property name to value.
  */
 export function overlayLabelStyle(
-	item: Pick<OverlayPaintItem, "x" | "y" | "color">,
+	item: Pick<OverlayPaintItem, "x" | "y" | "color" | "glideMs">,
 ): OverlayInlineStyle {
 	return {
 		position: "absolute",
@@ -212,6 +214,7 @@ export function overlayLabelStyle(
 		"line-height": "1.2",
 		"white-space": "nowrap",
 		"pointer-events": "none",
+		...glideStyle(item),
 		[OVERLAY_TOKENS.peerColor]: peerColorValue(item.color),
 	};
 }
@@ -223,6 +226,23 @@ export function overlayLabelStyle(
  */
 function peerColorValue(color: string | undefined): string {
 	return isSafeCssColor(color) ? color : "currentColor";
+}
+
+/**
+ * OV3: a linear transform transition while a remote caret glides, `none`
+ * when this paint jumps, and nothing when the request never asked, so a
+ * host's own transition stays in force.
+ */
+function glideStyle(
+	item: Pick<OverlayPaintItem, "glideMs">,
+): OverlayInlineStyle {
+	if (item.glideMs === undefined) {
+		return {};
+	}
+	return {
+		transition:
+			item.glideMs > 0 ? `transform ${item.glideMs}ms linear` : "none",
+	};
 }
 
 function outlineStyle(): OverlayInlineStyle {

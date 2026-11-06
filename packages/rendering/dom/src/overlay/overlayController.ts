@@ -188,6 +188,9 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 			motion.subscribe(() => {
 				this.requestPaintForInputs();
 			}),
+			this.editor.on("decorationsChange", (_generation, changedBlockIds) => {
+				this.handleDecorationsChange(changedBlockIds);
+			}),
 		);
 		this.fieldKey = fieldStateKey(this.readFieldState());
 		this.requestPaint();
@@ -504,6 +507,28 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 		this.caretMoved = true;
 	}
 
+	/**
+	 * A decoration change re-renders its blocks without a commit, and commits
+	 * are what invalidate geometry (OV1). The changed blocks that hold a
+	 * painted item drop their geometry; every painted item then re-reads,
+	 * because a block that grew or shrank moves the ones after it, and the
+	 * reader re-measures a cached neighbour whose live box moved.
+	 */
+	private handleDecorationsChange(changedBlockIds: readonly string[]): void {
+		const painted = new Set(
+			this._plan?.items.flatMap((item) => [
+				item.blockId,
+				item.fromBlockId,
+				item.toBlockId,
+			]),
+		);
+		const touched = changedBlockIds.filter((blockId) => painted.has(blockId));
+		if (touched.length > 0) {
+			this.reader.invalidateBlocks(touched);
+		}
+		this.requestPaintForInputs();
+	}
+
 	/** The field's state; the D5 substitute is the projector's own (W3.R17). */
 	private readFieldState(): OverlayFieldState {
 		const snapshot = this.field.getSnapshot();
@@ -601,9 +626,10 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 					return;
 				}
 				const local = request.role === "local";
+				const position = relative(rect, origin);
 				items.push({
 					...base,
-					...relative(rect, origin),
+					...position,
 					role: request.role,
 					blockId: request.point.blockId,
 					offset: request.point.offset,
@@ -612,6 +638,10 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 					attributes: request.attributes,
 					label: request.label,
 					color: request.color,
+					glideMs:
+						request.role === "remote"
+							? this.remoteCaretGlide(request.key, request.glideMs, position.y)
+							: undefined,
 					paint:
 						local && this.caretPaintHolds > 0
 							? "binding"
@@ -718,6 +748,25 @@ export class OverlayController implements RootOverlay, OverlayPainter {
 				return _exhaustive;
 			}
 		}
+	}
+
+	/**
+	 * OV3, AX6: a remote caret glides only along the line it was last painted
+	 * on. A new caret, a line change (a glide would cut diagonally through the
+	 * text) or reduced motion jumps with 0; a request without a glide leaves
+	 * the transition to the host.
+	 */
+	private remoteCaretGlide(
+		key: string,
+		glideMs: number | undefined,
+		y: number,
+	): number | undefined {
+		if (glideMs === undefined) {
+			return undefined;
+		}
+		const painted = this._plan?.items.find((item) => item.key === key);
+		const reduced = this.reducedMotion?.reduced ?? false;
+		return !reduced && painted?.y === y ? glideMs : 0;
 	}
 
 	/** Write phase: OV4's painted version and the caret-visible flag on the layer. */
@@ -911,6 +960,7 @@ function itemsEqual(left: OverlayPaintItem, right: OverlayPaintItem): boolean {
 		cellEqual(left.headCell, right.headCell) &&
 		left.label === right.label &&
 		left.color === right.color &&
+		left.glideMs === right.glideMs &&
 		left.paint === right.paint &&
 		left.epoch === right.epoch &&
 		recordsEqual(left.attributes, right.attributes)

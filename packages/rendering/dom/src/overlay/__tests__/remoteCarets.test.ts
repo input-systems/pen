@@ -6,6 +6,7 @@ import {
 	type RemoteCaretCursor,
 	type RemoteCaretSource,
 } from "../remoteCarets";
+import { overlayLabelStyle } from "../overlayStyles";
 import {
 	createOverlayFixture,
 	flushFrame,
@@ -179,5 +180,89 @@ describe("remote carets on the paint plan (OV1)", () => {
 		expect(
 			controller.layer.querySelector("[data-pen-multiplayer-caret]"),
 		).toBeNull();
+	});
+
+	it("OV1: hiding or showing text in a caret's block re-measures the caret without a commit", () => {
+		const { controller, blockId } = fixture;
+		attachRemoteCarets(controller, stubSource([cursor(blockId, 5)]));
+		flushFrame();
+		expect(controller.plan?.items[0]?.x).toBe(50);
+
+		fixture.hideTextFrom(3);
+		expect(pendingFrames()).toBe(1);
+		flushFrame();
+		expect(controller.plan?.items[0]?.x).toBe(30);
+
+		fixture.hideTextFrom(null);
+		flushFrame();
+		expect(controller.plan?.items[0]?.x).toBe(50);
+	});
+
+	it("OV1: a decoration change costs no flush while nothing is painted", () => {
+		flushFrame();
+		fixture.hideTextFrom(3);
+		expect(pendingFrames()).toBe(0);
+	});
+
+	it("OV3: a caret glides along its line, jumps to a new line, and its binding label glides with it", () => {
+		const { controller, blockId } = fixture;
+		const source = stubSource([cursor(blockId, 3)]);
+		attachRemoteCarets(controller, source, { glideMs: 33 });
+		flushFrame();
+		const node = () =>
+			controller.layer.querySelector<HTMLElement>(
+				"[data-pen-multiplayer-caret]",
+			);
+		// A caret painted for the first time has nothing to glide from.
+		expect(controller.plan?.items[0]?.glideMs).toBe(0);
+		expect(node()?.style.transition).toBe("none");
+
+		source.set([cursor(blockId, 5)]);
+		flushFrame();
+		expect(controller.plan?.items[0]?.glideMs).toBe(33);
+		expect(node()?.style.transition).toBe("transform 33ms linear");
+		expect(overlayLabelStyle(controller.plan!.items[0]!).transition).toBe(
+			"transform 33ms linear",
+		);
+
+		source.set([cursor(blockId, 105)]);
+		flushFrame();
+		expect(controller.plan?.items[0]?.glideMs).toBe(0);
+		expect(node()?.style.transition).toBe("none");
+	});
+
+	it("OV3: a caret attached without glideMs carries no transition", () => {
+		const { controller, blockId } = fixture;
+		const source = stubSource([cursor(blockId, 3)]);
+		attachRemoteCarets(controller, source);
+		flushFrame();
+		source.set([cursor(blockId, 5)]);
+		flushFrame();
+
+		expect(controller.plan?.items[0]?.glideMs).toBeUndefined();
+		expect(
+			controller.layer.querySelector<HTMLElement>(
+				"[data-pen-multiplayer-caret]",
+			)?.style.transition,
+		).toBe("");
+	});
+
+	it("AX6: under reduced motion a caret never glides", () => {
+		fixture.destroy();
+		vi.stubGlobal("matchMedia", (query: string) => ({
+			matches: query.includes("prefers-reduced-motion"),
+			media: query,
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+		}));
+		fixture = createOverlayFixture();
+		const { controller, blockId } = fixture;
+		const source = stubSource([cursor(blockId, 3)]);
+		attachRemoteCarets(controller, source, { glideMs: 33 });
+		flushFrame();
+		source.set([cursor(blockId, 5)]);
+		flushFrame();
+
+		expect(controller.plan?.items[0]?.glideMs).toBe(0);
 	});
 });

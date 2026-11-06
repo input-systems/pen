@@ -44,6 +44,11 @@ export interface MultiplayerCaretOverlayProps extends AsChildProps {
 	editor?: Editor;
 	renderCaret?: (props: MultiplayerCaretRenderProps) => React.ReactNode;
 	renderLabel?: (props: MultiplayerCaretRenderProps) => React.ReactNode;
+	/**
+	 * Glide in ms when a caret moves along its line; a new caret, a line
+	 * change or reduced motion jumps (OV3, AX6). Omitted, no transition is written.
+	 */
+	glideMs?: number;
 	ref?: React.Ref<HTMLElement>;
 }
 
@@ -57,7 +62,13 @@ export interface MultiplayerCaretOverlayProps extends AsChildProps {
  * into the layer at the plan's positions.
  */
 export function MultiplayerCaretOverlay(props: MultiplayerCaretOverlayProps) {
-	const { editor: editorProp, renderCaret, renderLabel, ...rest } = props;
+	const {
+		editor: editorProp,
+		renderCaret,
+		renderLabel,
+		glideMs,
+		...rest
+	} = props;
 	const editorContext = useContext(EditorContext);
 	const regionSelection = useContext(EditorRegionSelectionContext);
 	const editor = editorProp ?? editorContext?.editor;
@@ -88,8 +99,8 @@ export function MultiplayerCaretOverlay(props: MultiplayerCaretOverlayProps) {
 		if (!overlay || !source) {
 			return;
 		}
-		return attachRemoteCarets(overlay, source, { paint });
-	}, [overlay, editor, paint]);
+		return attachRemoteCarets(overlay, source, { paint, glideMs });
+	}, [overlay, editor, paint, glideMs]);
 
 	if (!overlay) {
 		return null;

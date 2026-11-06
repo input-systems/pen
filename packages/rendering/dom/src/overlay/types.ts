@@ -42,6 +42,11 @@ export type OverlayRequest =
 			readonly label?: string;
 			/** A remote caret's colour, written as `--pen-peer-color` on the item. */
 			readonly color?: string;
+			/**
+			 * A remote caret's glide in ms when it moves along its line (OV3).
+			 * Omitted, no transition is written, so a host's own stays in force.
+			 */
+			readonly glideMs?: number;
 			readonly paint?: OverlayPaintMode;
 	  }
 	| {
@@ -102,6 +107,12 @@ export interface OverlayPaintItem {
 	readonly label?: string;
 	/** A remote caret's colour (`--pen-peer-color`). */
 	readonly color?: string;
+	/**
+	 * This paint's glide, present only when the request asked for one (OV3):
+	 * the requested ms when the caret moved along the line it was painted on,
+	 * 0 when it is new, changed line, or reduced motion is on (AX6).
+	 */
+	readonly glideMs?: number;
 	readonly paint: OverlayPaintMode;
 	/** Blink epoch for role "local", 0 otherwise. Part of the caret element's identity. */
 	readonly epoch: number;

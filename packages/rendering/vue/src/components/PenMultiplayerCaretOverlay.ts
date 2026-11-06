@@ -12,16 +12,23 @@ import { useEditorContext } from "../internal/editorContext";
  * `@input/pen-multiplayer` cursors are a registered contributor, and pen-dom
  * measures and paints each caret and its name label into the overlay layer.
  * It renders nothing and measures nothing; without a multiplayer controller
- * it does nothing.
+ * it does nothing. `glideMs` glides a caret along its line; a new caret, a
+ * line change or reduced motion jumps (OV3, AX6).
  */
 export const PenMultiplayerCaretOverlay = defineComponent({
 	name: "PenMultiplayerCaretOverlay",
-	setup() {
+	props: {
+		glideMs: {
+			type: Number,
+			default: undefined,
+		},
+	},
+	setup(props) {
 		const context = useEditorContext();
 
 		watch(
-			context.rootElement,
-			(root, _previous, onCleanup) => {
+			[context.rootElement, () => props.glideMs],
+			([root, glideMs], _previous, onCleanup) => {
 				const overlay = root ? getRootOverlay(root) : null;
 				const source = overlay
 					? getRemoteCaretSource(context.editor)
@@ -29,7 +36,7 @@ export const PenMultiplayerCaretOverlay = defineComponent({
 				if (!overlay || !source) {
 					return;
 				}
-				onCleanup(attachRemoteCarets(overlay, source));
+				onCleanup(attachRemoteCarets(overlay, source, { glideMs }));
 			},
 			{ immediate: true },
 		);
