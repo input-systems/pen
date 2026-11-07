@@ -207,7 +207,7 @@ describe("COL7: local presence follows focus", () => {
 	};
 
 	const blur = (): void => {
-		editor.internals.emit("focusChange", false);
+		editor.internals.emit("focusWithinChange", false);
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 	};
 
@@ -216,7 +216,7 @@ describe("COL7: local presence follows focus", () => {
 		editor = createPresenceEditor();
 		blockId = editor.firstBlock()!.id;
 		insertText(editor, blockId, "Ada and Charles");
-		editor.internals.emit("focusChange", true);
+		editor.internals.emit("focusWithinChange", true);
 		editor.selectText(blockId, 3, 3);
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 	});
@@ -248,7 +248,7 @@ describe("COL7: local presence follows focus", () => {
 	it("COL7: a refocus publishes the selection again", () => {
 		blur();
 
-		editor.internals.emit("focusChange", true);
+		editor.internals.emit("focusWithinChange", true);
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 
 		expect(localCursorOffset(editor)).toBe(3);
@@ -273,7 +273,7 @@ describe("COL7: local presence follows focus", () => {
 			offsets.push(localCursorOffset(editor));
 		});
 
-		editor.internals.emit("focusChange", true);
+		editor.internals.emit("focusWithinChange", true);
 		editor.selectText(blockId, 10, 10);
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 
@@ -283,8 +283,8 @@ describe("COL7: local presence follows focus", () => {
 	it("COL7: a blur and refocus within one interval publish the caret once", () => {
 		const writes = countLocalWrites();
 
-		editor.internals.emit("focusChange", false);
-		editor.internals.emit("focusChange", true);
+		editor.internals.emit("focusWithinChange", false);
+		editor.internals.emit("focusWithinChange", true);
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 
 		expect(writes.count).toBe(1);
@@ -301,7 +301,7 @@ describe("COL7: presence without a focus report, and across editors", () => {
 		vi.useFakeTimers();
 		const editor = createPresenceEditor();
 
-		editor.internals.emit("focusChange", false);
+		editor.internals.emit("focusWithinChange", false);
 		editor.selectText(editor.firstBlock()!.id, 0, 0);
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 
@@ -327,7 +327,7 @@ describe("COL7: presence without a focus report, and across editors", () => {
 		editor.internals.assignSlot(FIELD_EDITOR_SLOT_KEY, {
 			hasFocusWithin: false,
 		});
-		editor.internals.emit("focusChange", false);
+		editor.internals.emit("focusWithinChange", false);
 
 		editor.loadDocument(editor.internals.adapter.createDocument());
 		await editor.whenReady();
@@ -351,8 +351,8 @@ describe("COL7: presence without a focus report, and across editors", () => {
 		const detached = createPresenceEditor(session);
 		const blockId = focused.firstBlock()!.id;
 		insertText(focused, blockId, "Ada");
-		blurred.internals.emit("focusChange", false);
-		focused.internals.emit("focusChange", true);
+		blurred.internals.emit("focusWithinChange", false);
+		focused.internals.emit("focusWithinChange", true);
 		focused.selectText(blockId, 3, 3);
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 

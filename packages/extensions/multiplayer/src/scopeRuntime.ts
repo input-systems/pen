@@ -112,8 +112,8 @@ class MultiplayerScopeRuntime {
 	private readonly buildLocalAwarenessState: BuildLocalAwarenessState;
 	private readonly editors = new Set<Editor>();
 	private readonly editorUnsubscribers = new Map<Editor, Unsubscribe>();
-	/** Last `focusChange` per editor; absent until a renderer reports one. */
-	private readonly focusByEditor = new Map<Editor, boolean>();
+	/** Last `focusWithinChange` per editor; absent until a renderer reports one. */
+	private readonly focusWithinByEditor = new Map<Editor, boolean>();
 	private readonly presenceWriter: LocalPresenceWriter;
 	private readonly session: MultiplayerSession | null;
 	private readonly unsubscribeSessionState: Unsubscribe | null;
@@ -193,7 +193,7 @@ class MultiplayerScopeRuntime {
 
 		this.editors.add(editor);
 		const publishSelection = (): void => {
-			if (!this.isFocused(editor)) {
+			if (!this.hasFocusWithin(editor)) {
 				return;
 			}
 			this.presenceTarget = editor;
@@ -206,10 +206,10 @@ class MultiplayerScopeRuntime {
 					publishSelection();
 				}
 			}),
-			editor.on("focusChange", (focused) => {
-				this.focusByEditor.set(editor, focused);
+			editor.on("focusWithinChange", (hasFocusWithin) => {
+				this.focusWithinByEditor.set(editor, hasFocusWithin);
 				// a blur clears presence only when this editor is the one it describes
-				if (!focused && this.presenceTarget !== editor) {
+				if (!hasFocusWithin && this.presenceTarget !== editor) {
 					return;
 				}
 				this.presenceTarget = editor;
@@ -227,12 +227,12 @@ class MultiplayerScopeRuntime {
 	detachEditor(editor: Editor): void {
 		this.editorUnsubscribers.get(editor)?.();
 		this.editorUnsubscribers.delete(editor);
-		this.focusByEditor.delete(editor);
+		this.focusWithinByEditor.delete(editor);
 		this.editors.delete(editor);
 
 		const remainingEditors = [...this.editors];
 		const nextTarget =
-			remainingEditors.find((remaining) => this.isFocused(remaining)) ??
+			remainingEditors.find((remaining) => this.hasFocusWithin(remaining)) ??
 			remainingEditors[0];
 		if (!nextTarget) {
 			this.presenceWriter.cancel();
@@ -260,7 +260,7 @@ class MultiplayerScopeRuntime {
 			unsubscribe();
 		}
 		this.editorUnsubscribers.clear();
-		this.focusByEditor.clear();
+		this.focusWithinByEditor.clear();
 		this.editors.clear();
 		this.unsubscribeSessionState?.();
 		this.session?.destroy();
@@ -283,15 +283,15 @@ class MultiplayerScopeRuntime {
 			...this.buildLocalAwarenessState(
 				target,
 				this.user,
-				this.isFocused(target) ? target.selection : null,
+				this.hasFocusWithin(target) ? target.selection : null,
 			),
 		});
 	}
 
 	/** The last focus report, else the field editor's state; a headless editor counts as focused. */
-	private isFocused(editor: Editor): boolean {
+	private hasFocusWithin(editor: Editor): boolean {
 		return (
-			this.focusByEditor.get(editor) ??
+			this.focusWithinByEditor.get(editor) ??
 			(editor.facet(fieldEditorHostFacet) as FieldEditor | null)
 				?.hasFocusWithin ??
 			true

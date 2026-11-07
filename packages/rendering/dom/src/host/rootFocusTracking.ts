@@ -9,6 +9,11 @@ export interface EditorRootFocusHandlers {
 	onFocusChange(focused: boolean): void;
 }
 
+/** Whether `node` is inside `root`, for a node from any window. */
+function isInsideRoot(root: HTMLElement, node: unknown): boolean {
+	return isDomNode(node) && root.contains(node);
+}
+
 /**
  * Whether focus is inside `root` and its window is the active one (O5).
  * Switching windows leaves `document.activeElement` where it was, so the
@@ -18,19 +23,17 @@ export interface EditorRootFocusHandlers {
  */
 export function isEditorRootFocused(root: HTMLElement): boolean {
 	const ownerDocument = root.ownerDocument;
-	const activeElement = ownerDocument.activeElement;
 	return (
-		isDomNode(activeElement) &&
-		root.contains(activeElement) &&
+		isInsideRoot(root, ownerDocument.activeElement) &&
 		ownerDocument.hasFocus()
 	);
 }
 
 /**
- * Track whether focus is inside an editor root whatever the window's state,
- * for `focusChange`. A window switch blurs the focused element without
- * moving it, so it reads as no change, where O5 counts it as a blur.
- * Reports the current state on bind.
+ * Track whether focus is within an editor root whatever the window's state
+ * (COL7). A window switch blurs the focused element without moving it, so
+ * it reads as no change, where O5 counts it as a blur. Reports the current
+ * state on bind.
  *
  * @param root - An editor root element.
  * @param onChange - Called on bind and on every focus entry or exit signal.
@@ -38,10 +41,8 @@ export function isEditorRootFocused(root: HTMLElement): boolean {
  */
 export function bindEditorRootFocusWithin(
 	root: HTMLElement,
-	onChange: (focused: boolean) => void,
+	onChange: (hasFocusWithin: boolean) => void,
 ): Unsubscribe {
-	const containsNode = (node: unknown): boolean =>
-		isDomNode(node) && root.contains(node);
 	const handleFocusIn = (): void => {
 		onChange(true);
 	};
@@ -50,11 +51,11 @@ export function bindEditorRootFocusWithin(
 		const destination = isDomNode(event.relatedTarget)
 			? event.relatedTarget
 			: root.ownerDocument.activeElement;
-		onChange(containsNode(destination));
+		onChange(isInsideRoot(root, destination));
 	};
 	root.addEventListener("focusin", handleFocusIn);
 	root.addEventListener("focusout", handleFocusOut);
-	onChange(containsNode(root.ownerDocument.activeElement));
+	onChange(isInsideRoot(root, root.ownerDocument.activeElement));
 	return () => {
 		root.removeEventListener("focusin", handleFocusIn);
 		root.removeEventListener("focusout", handleFocusOut);

@@ -21,8 +21,8 @@ function mount() {
 	const root = document.createElement("div");
 	const outside = document.createElement("button");
 	document.body.append(root, outside);
-	const onFocusChange = vi.fn();
-	cleanups.push(editor.on("focusChange", onFocusChange));
+	const onFocusWithinChange = vi.fn();
+	cleanups.push(editor.on("focusWithinChange", onFocusWithinChange));
 	const mounted = mountEditor(editor, root);
 	const first = document.createElement("button");
 	const second = document.createElement("button");
@@ -31,33 +31,33 @@ function mount() {
 		mounted.destroy();
 		void editor.destroy();
 	});
-	return { mounted, outside, first, second, onFocusChange };
+	return { mounted, outside, first, second, onFocusWithinChange };
 }
 
-describe("COL7: focusChange follows focus inside the root", () => {
+describe("COL7: focusWithinChange follows focus within the root", () => {
 	it("COL7: reports an unfocused root once on mount", () => {
-		const { onFocusChange } = mount();
+		const { onFocusWithinChange } = mount();
 
-		expect(onFocusChange.mock.calls).toEqual([[false]]);
+		expect(onFocusWithinChange.mock.calls).toEqual([[false]]);
 	});
 
 	it("COL7: fires once per entry and exit, not for moves inside the root", () => {
-		const { mounted, outside, first, second, onFocusChange } = mount();
-		onFocusChange.mockClear();
+		const { mounted, outside, first, second, onFocusWithinChange } = mount();
+		onFocusWithinChange.mockClear();
 
 		first.focus();
 		second.focus();
 		expect(mounted.fieldEditor.hasFocusWithin).toBe(true);
 		outside.focus();
 
-		expect(onFocusChange.mock.calls).toEqual([[true], [false]]);
+		expect(onFocusWithinChange.mock.calls).toEqual([[true], [false]]);
 		expect(mounted.fieldEditor.hasFocusWithin).toBe(false);
 	});
 
 	it("COL7: a window switch is no change, the focused element stays", () => {
-		const { first, onFocusChange } = mount();
+		const { first, onFocusWithinChange } = mount();
 		first.focus();
-		onFocusChange.mockClear();
+		onFocusWithinChange.mockClear();
 
 		first.dispatchEvent(
 			new FocusEvent("focusout", { bubbles: true, relatedTarget: null }),
@@ -65,29 +65,29 @@ describe("COL7: focusChange follows focus inside the root", () => {
 		window.dispatchEvent(new FocusEvent("blur"));
 
 		expect(document.activeElement).toBe(first);
-		expect(onFocusChange).not.toHaveBeenCalled();
+		expect(onFocusWithinChange).not.toHaveBeenCalled();
 	});
 
 	it("COL7: a focus leave to an outside target is a blur even before the active element moves", () => {
-		const { outside, first, onFocusChange } = mount();
+		const { outside, first, onFocusWithinChange } = mount();
 		first.focus();
-		onFocusChange.mockClear();
+		onFocusWithinChange.mockClear();
 
 		first.dispatchEvent(
 			new FocusEvent("focusout", { bubbles: true, relatedTarget: outside }),
 		);
 
 		expect(document.activeElement).toBe(first);
-		expect(onFocusChange.mock.calls).toEqual([[false]]);
+		expect(onFocusWithinChange.mock.calls).toEqual([[false]]);
 	});
 
 	it("COL7: a focused root reports a blur when it unmounts", () => {
-		const { mounted, first, onFocusChange } = mount();
+		const { mounted, first, onFocusWithinChange } = mount();
 		first.focus();
-		onFocusChange.mockClear();
+		onFocusWithinChange.mockClear();
 
 		mounted.destroy();
 
-		expect(onFocusChange.mock.calls).toEqual([[false]]);
+		expect(onFocusWithinChange.mock.calls).toEqual([[false]]);
 	});
 });
