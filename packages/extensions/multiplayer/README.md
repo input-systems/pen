@@ -60,7 +60,8 @@ A bad `user` drops the whole peer. A bad cursor, selection, or streaming payload
 ### Peer cap and rate limit
 
 - **Rate limit.** After `MAX_PRESENCE_UPDATES_PER_SECOND` accepted updates from a peer in a one-second window, further updates are ignored and that peer keeps its last accepted state.
-- **Send rate.** Because a rejected update leaves a peer holding a caret that has already moved, Pen coalesces its own presence writes to one per `LOCAL_PRESENCE_MIN_INTERVAL_MS`. The first move of an interval is published immediately and everything after it folds into one trailing write carrying the latest selection, which keeps a fast typist well inside what peers accept. Publishing on every selection change would not.
+- **Send rate.** Because a rejected update leaves a peer holding a caret that has already moved, Pen coalesces its own presence writes to one per `LOCAL_PRESENCE_MIN_INTERVAL_MS`. The first move of an interval is published immediately and everything after it folds into one trailing write carrying the latest selection, which keeps a fast typist well inside what peers accept. Publishing on every selection change would not. A focus change instead waits for the interval's trailing write, so a click into the editor publishes where it lands, not the selection it left.
+- **Focus.** Presence carries a caret and a selection only while focus is inside the editor (COL7). When focus moves elsewhere in the page, the extension publishes `cursor: null, selection: null` and keeps `user`, `streaming`, and your own keys; a window or tab switch keeps the caret. A host that shows who is editing reads `user` for that, not `cursor`.
 - **Peer cap.** After `MAX_TRACKED_PEERS` remote peers, extra peers are counted (`untrackedPeerCount` on the diagnostic) and not rendered. The document does not degrade.
 
 | Bound                         | Constant                           | Default |

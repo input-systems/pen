@@ -69,6 +69,7 @@ import {
 	type EditorSelectAllBehavior,
 } from "../constants/selectAll";
 import { bindEditorAnnouncer } from "../a11y/bindEditorAnnouncer";
+import { bindEditorRootFocusWithin } from "../host/rootFocusTracking";
 import {
 	createFocusSink,
 	FOCUS_SINK_ATTR,
@@ -133,6 +134,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected _overlay: ReturnType<typeof attachRootOverlay> | null = null;
 	protected _isReadOnly = false;
 	protected _unsubscribeAnnouncer: Unsubscribe | null = null;
+	/** `null` without a root, so an attach always reports. */
+	protected _hasFocusWithin: boolean | null = null;
+	protected _unbindRootFocusWithin: Unsubscribe | null = null;
 	protected _unbindRootPointerGesture: (() => void) | null = null;
 	protected _domSyncVersion = 0;
 	protected readonly _sessionReconciler: SessionReconciler;
@@ -385,6 +389,9 @@ export class FieldEditorImpl implements FieldEditorSession {
 	}
 	get isFocused(): boolean {
 		return this._isFocused;
+	}
+	get hasFocusWithin(): boolean {
+		return this._hasFocusWithin === true;
 	}
 	get isComposing(): boolean {
 		return this._isComposing;
@@ -650,6 +657,12 @@ export class FieldEditorImpl implements FieldEditorSession {
 				fieldEditor: this,
 			});
 			this._bindRootPointerGesture(element);
+			this._unbindRootFocusWithin = bindEditorRootFocusWithin(
+				element,
+				(hasFocusWithin) => {
+					this._setHasFocusWithin(hasFocusWithin);
+				},
+			);
 			this._focusController.notifyRootAttached(element);
 		} else {
 			this.reader.detach();
@@ -716,6 +729,18 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this._unsubscribeAnnouncer = null;
 		this._unbindRootPointerGesture?.();
 		this._unbindRootPointerGesture = null;
+		this._unbindRootFocusWithin?.();
+		this._unbindRootFocusWithin = null;
+		if (this._hasFocusWithin) {
+			this._setHasFocusWithin(false);
+		}
+		this._hasFocusWithin = null;
+	}
+
+	protected _setHasFocusWithin(hasFocusWithin: boolean): void {
+		if (this._hasFocusWithin === hasFocusWithin) return;
+		this._hasFocusWithin = hasFocusWithin;
+		this._editor.internals.emit("focusWithinChange", hasFocusWithin);
 	}
 
 	protected _bindRootPointerGesture(root: HTMLElement): void {
