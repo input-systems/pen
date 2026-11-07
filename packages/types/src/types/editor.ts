@@ -243,12 +243,7 @@ export interface PenEventMap {
 		changedBlockIds: readonly string[],
 	) => void;
 	selectionChange: (record: SelectionRecord) => void;
-	/**
-	 * `FieldEditor.hasFocusWithin` changed, from `@input/pen-dom`: on root
-	 * attach, when focus enters or leaves the root, and `false` when a focused
-	 * root detaches. A window switch is no change, because it leaves the
-	 * focused element in place. A headless editor never fires it.
-	 */
+	/** `FieldEditor.hasFocusWithin` changed (COL7); a headless editor never fires it. */
 	focusWithinChange: (hasFocusWithin: boolean) => void;
 	diagnostic: (event: DiagnosticEvent) => void;
 	"crdt:corruption": (errors: DocumentValidationError[]) => void;

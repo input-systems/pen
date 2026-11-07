@@ -37,10 +37,7 @@ export class LocalPresenceWriter {
 		this.openInterval();
 	}
 
-	/**
-	 * Publishes at the end of the interval rather than now, so a change that
-	 * lands within it wins: a click focuses before it moves the selection.
-	 */
+	/** Publishes at the end of the interval, so a selection change within it wins. */
 	requestTrailing(): void {
 		this.hasPendingWrite = true;
 		if (this.timer === null) {

@@ -12,7 +12,6 @@ afterEach(() => {
 	document.body.replaceChildren();
 });
 
-/** A mounted editor whose root holds two focusable buttons, beside one outside it. */
 function mount() {
 	const editor = createEditor({
 		schema: defaultSchema,

@@ -27,7 +27,7 @@ export interface FieldEditor {
 	readonly activeBlockIds: readonly string[];
 	readonly isEditing: boolean;
 	readonly isFocused: boolean;
-	/** Whether focus is within the root whatever the window's state (COL7), where `isFocused` also needs an active window (O5). */
+	/** Focus is within the root, even in an inactive window (COL7). */
 	readonly hasFocusWithin: boolean;
 	readonly isComposing: boolean;
 	readonly inputMode: FieldEditorInputMode;

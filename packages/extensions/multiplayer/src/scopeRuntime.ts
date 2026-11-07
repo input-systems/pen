@@ -112,7 +112,6 @@ class MultiplayerScopeRuntime {
 	private readonly buildLocalAwarenessState: BuildLocalAwarenessState;
 	private readonly editors = new Set<Editor>();
 	private readonly editorUnsubscribers = new Map<Editor, Unsubscribe>();
-	/** Last `focusWithinChange` per editor; absent until a renderer reports one. */
 	private readonly focusWithinByEditor = new Map<Editor, boolean>();
 	private readonly presenceWriter: LocalPresenceWriter;
 	private readonly session: MultiplayerSession | null;
@@ -208,7 +207,7 @@ class MultiplayerScopeRuntime {
 			}),
 			editor.on("focusWithinChange", (hasFocusWithin) => {
 				this.focusWithinByEditor.set(editor, hasFocusWithin);
-				// a blur clears presence only when this editor is the one it describes
+				// another editor's blur leaves presence alone
 				if (!hasFocusWithin && this.presenceTarget !== editor) {
 					return;
 				}
@@ -288,7 +287,7 @@ class MultiplayerScopeRuntime {
 		});
 	}
 
-	/** The last focus report, else the field editor's state; a headless editor counts as focused. */
+	/** A headless editor counts as focused. */
 	private hasFocusWithin(editor: Editor): boolean {
 		return (
 			this.focusWithinByEditor.get(editor) ??

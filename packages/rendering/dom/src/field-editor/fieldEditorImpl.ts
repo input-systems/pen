@@ -134,7 +134,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected _overlay: ReturnType<typeof attachRootOverlay> | null = null;
 	protected _isReadOnly = false;
 	protected _unsubscribeAnnouncer: Unsubscribe | null = null;
-	/** `hasFocusWithin`; `null` while no root is attached, so an attach always reports. */
+	/** `null` without a root, so an attach always reports. */
 	protected _hasFocusWithin: boolean | null = null;
 	protected _unbindRootFocusWithin: Unsubscribe | null = null;
 	protected _unbindRootPointerGesture: (() => void) | null = null;

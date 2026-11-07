@@ -9,7 +9,6 @@ export interface EditorRootFocusHandlers {
 	onFocusChange(focused: boolean): void;
 }
 
-/** Whether `node` is inside `root`, for a node from any window. */
 function isInsideRoot(root: HTMLElement, node: unknown): boolean {
 	return isDomNode(node) && root.contains(node);
 }
@@ -29,16 +28,7 @@ export function isEditorRootFocused(root: HTMLElement): boolean {
 	);
 }
 
-/**
- * Track whether focus is within an editor root whatever the window's state
- * (COL7). A window switch blurs the focused element without moving it, so
- * it reads as no change, where O5 counts it as a blur. Reports the current
- * state on bind.
- *
- * @param root - An editor root element.
- * @param onChange - Called on bind and on every focus entry or exit signal.
- * @returns Removes every listener.
- */
+/** Track focus within an editor root, ignoring window activity unlike O5 (COL7); reports on bind. */
 export function bindEditorRootFocusWithin(
 	root: HTMLElement,
 	onChange: (hasFocusWithin: boolean) => void,
@@ -46,7 +36,7 @@ export function bindEditorRootFocusWithin(
 	const handleFocusIn = (): void => {
 		onChange(true);
 	};
-	// the related target names where focus went; without one, a window switch keeps the active element
+	// no related target: a window switch, which keeps the active element
 	const handleFocusOut = (event: FocusEvent): void => {
 		const destination = isDomNode(event.relatedTarget)
 			? event.relatedTarget
