@@ -1,6 +1,10 @@
 import { createDocumentSession, createEditor } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
-import { FIELD_EDITOR_SLOT_KEY, type Editor } from "@input/pen-types";
+import {
+	FIELD_EDITOR_SLOT_KEY,
+	type DocumentSession,
+	type Editor,
+} from "@input/pen-types";
 import { yjsAdapter } from "@input/pen-yjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { multiplayerExtension } from "../index";
@@ -9,6 +13,62 @@ import {
 	MAX_PRESENCE_UPDATES_PER_SECOND,
 } from "../presence/constants";
 import { LocalPresenceWriter } from "../presence/localPresenceWriter";
+
+type LocalState = {
+	user?: { id: string };
+	cursor?: { anchor: string } | null;
+	selection?: unknown;
+	streaming?: unknown;
+	host?: unknown;
+};
+
+function createPresenceEditor(documentSession?: DocumentSession): Editor {
+	return createEditor({
+		schema: defaultSchema,
+		documentSession,
+		extensions: [multiplayerExtension({ user: { id: "u1", name: "Ada" } })],
+	});
+}
+
+function localState(editor: Editor): LocalState {
+	return editor.internals.awareness?.getLocalState() as LocalState;
+}
+
+function localCursorOffset(editor: Editor): number | undefined {
+	const cursor = localState(editor).cursor;
+	const anchor = cursor ? editor.anchors.deserialize(cursor.anchor) : null;
+	return anchor ? editor.anchors.resolve(anchor)?.offset : undefined;
+}
+
+function insertText(editor: Editor, blockId: string, text: string): void {
+	editor.apply(
+		[
+			{
+				type: "splice-text",
+				blockId,
+				from: 0,
+				to: 0,
+				insert: text,
+			},
+		],
+		{ origin: "user" },
+	);
+}
+
+function insertParagraph(editor: Editor, blockId: string): void {
+	editor.apply(
+		[
+			{
+				type: "insert-block",
+				blockId,
+				blockType: "paragraph",
+				props: {},
+				position: "last",
+			},
+		],
+		{ origin: "collaborator" },
+	);
+}
 
 describe("LocalPresenceWriter", () => {
 	beforeEach(() => {
@@ -98,12 +158,7 @@ describe("local presence over an editor", () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers();
-		editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				multiplayerExtension({ user: { id: "u1", name: "Ada" } }),
-			],
-		});
+		editor = createPresenceEditor();
 	});
 
 	afterEach(async () => {
@@ -113,18 +168,7 @@ describe("local presence over an editor", () => {
 
 	it("coalesces a burst of selection changes and keeps the last one", () => {
 		const blockId = editor.firstBlock()!.id;
-		editor.apply(
-			[
-				{
-					type: "splice-text",
-					blockId,
-					from: 0,
-					to: 0,
-					insert: "Ada and Charles",
-				},
-			],
-			{ origin: "user" },
-		);
+		insertText(editor, blockId, "Ada and Charles");
 
 		const localWrites: number[] = [];
 		const countWrite = () => {
@@ -142,14 +186,7 @@ describe("local presence over an editor", () => {
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 		expect(localWrites.length).toBe(2);
 
-		const local = editor.internals.awareness?.getLocalState() as {
-			cursor?: { anchor?: string };
-		};
-		const cursor = editor.anchors.deserialize(local.cursor!.anchor!);
-		expect(editor.anchors.resolve(cursor!)).toMatchObject({
-			blockId,
-			offset: 14,
-		});
+		expect(localCursorOffset(editor)).toBe(14);
 
 		editor.internals.awareness?.off("change", countWrite);
 	});
@@ -158,17 +195,6 @@ describe("local presence over an editor", () => {
 describe("COL7: local presence follows focus", () => {
 	let editor: Editor;
 	let blockId: string;
-
-	type LocalState = {
-		user?: { id: string };
-		cursor?: { anchor?: string } | null;
-		selection?: unknown;
-		streaming?: unknown;
-		host?: unknown;
-	};
-
-	const localState = (): LocalState =>
-		editor.internals.awareness?.getLocalState() as LocalState;
 
 	const countLocalWrites = (): { count: number } => {
 		const writes = {
@@ -180,32 +206,16 @@ describe("COL7: local presence follows focus", () => {
 		return writes;
 	};
 
-	const cursorOffset = (): number | undefined => {
-		const anchor = editor.anchors.deserialize(localState().cursor!.anchor!);
-		return editor.anchors.resolve(anchor!)?.offset;
+	const blur = (): void => {
+		editor.internals.emit("focusChange", false);
+		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 	};
 
 	beforeEach(() => {
 		vi.useFakeTimers();
-		editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				multiplayerExtension({ user: { id: "u1", name: "Ada" } }),
-			],
-		});
+		editor = createPresenceEditor();
 		blockId = editor.firstBlock()!.id;
-		editor.apply(
-			[
-				{
-					type: "splice-text",
-					blockId,
-					from: 0,
-					to: 0,
-					insert: "Ada and Charles",
-				},
-			],
-			{ origin: "user" },
-		);
+		insertText(editor, blockId, "Ada and Charles");
 		editor.internals.emit("focusChange", true);
 		editor.selectText(blockId, 3, 3);
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
@@ -224,10 +234,9 @@ describe("COL7: local presence follows focus", () => {
 			host: "kept",
 		});
 
-		editor.internals.emit("focusChange", false);
-		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
+		blur();
 
-		expect(localState()).toMatchObject({
+		expect(localState(editor)).toMatchObject({
 			user: { id: "u1" },
 			cursor: null,
 			selection: null,
@@ -237,45 +246,31 @@ describe("COL7: local presence follows focus", () => {
 	});
 
 	it("COL7: a refocus publishes the selection again", () => {
-		editor.internals.emit("focusChange", false);
-		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
+		blur();
 
 		editor.internals.emit("focusChange", true);
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 
-		expect(cursorOffset()).toBe(3);
+		expect(localCursorOffset(editor)).toBe(3);
 	});
 
 	it("COL7: selection changes and structural commits while blurred publish nothing", () => {
-		editor.internals.emit("focusChange", false);
-		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
+		blur();
 		const writes = countLocalWrites();
 
-		editor.apply(
-			[
-				{
-					type: "insert-block",
-					blockId: "remote",
-					blockType: "paragraph",
-					props: {},
-					position: "last",
-				},
-			],
-			{ origin: "collaborator" },
-		);
+		insertParagraph(editor, "remote");
 		editor.selectText(blockId, 5, 5);
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 
 		expect(writes.count).toBe(0);
-		expect(localState().cursor).toBeNull();
+		expect(localState(editor).cursor).toBeNull();
 	});
 
 	it("COL7: focus entering publishes the selection the click moves to, not the stale one", () => {
-		editor.internals.emit("focusChange", false);
-		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
+		blur();
 		const offsets: Array<number | undefined> = [];
 		editor.internals.awareness?.on("change", () => {
-			offsets.push(localState().cursor ? cursorOffset() : undefined);
+			offsets.push(localCursorOffset(editor));
 		});
 
 		editor.internals.emit("focusChange", true);
@@ -293,30 +288,24 @@ describe("COL7: local presence follows focus", () => {
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 
 		expect(writes.count).toBe(1);
-		expect(cursorOffset()).toBe(3);
+		expect(localCursorOffset(editor)).toBe(3);
 	});
 });
 
-describe("COL7: presence before a renderer reports focus", () => {
+describe("COL7: presence without a focus report, and across editors", () => {
 	afterEach(() => {
 		vi.useRealTimers();
 	});
 
 	it("COL7: an editor mounted unfocused publishes no cursor", async () => {
 		vi.useFakeTimers();
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				multiplayerExtension({ user: { id: "u1", name: "Ada" } }),
-			],
-		});
-		const blockId = editor.firstBlock()!.id;
+		const editor = createPresenceEditor();
 
 		editor.internals.emit("focusChange", false);
-		editor.selectText(blockId, 0, 0);
+		editor.selectText(editor.firstBlock()!.id, 0, 0);
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 
-		expect(editor.internals.awareness?.getLocalState()).toMatchObject({
+		expect(localState(editor)).toMatchObject({
 			user: { id: "u1" },
 			cursor: null,
 			selection: null,
@@ -325,36 +314,16 @@ describe("COL7: presence before a renderer reports focus", () => {
 	});
 
 	it("COL7: a headless editor publishes its selection with no focus report", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				multiplayerExtension({ user: { id: "u1", name: "Ada" } }),
-			],
-		});
-		const blockId = editor.firstBlock()!.id;
+		const editor = createPresenceEditor();
 
-		editor.selectText(blockId, 0, 0);
+		editor.selectText(editor.firstBlock()!.id, 0, 0);
 
-		expect(
-			(editor.internals.awareness?.getLocalState() as { cursor: unknown })
-				.cursor,
-		).not.toBeNull();
+		expect(localState(editor).cursor).not.toBeNull();
 		await editor.destroy();
-	});
-});
-
-describe("COL7: presence across runtimes and editors", () => {
-	afterEach(() => {
-		vi.useRealTimers();
 	});
 
 	it("COL7: a runtime rebuilt by loadDocument reads a blurred root from the field editor", async () => {
-		const editor = createEditor({
-			schema: defaultSchema,
-			extensions: [
-				multiplayerExtension({ user: { id: "u1", name: "Ada" } }),
-			],
-		});
+		const editor = createPresenceEditor();
 		editor.internals.assignSlot(FIELD_EDITOR_SLOT_KEY, {
 			hasFocusWithin: false,
 		});
@@ -362,21 +331,10 @@ describe("COL7: presence across runtimes and editors", () => {
 
 		editor.loadDocument(editor.internals.adapter.createDocument());
 		await editor.whenReady();
-		editor.apply(
-			[
-				{
-					type: "insert-block",
-					blockId: "loaded",
-					blockType: "paragraph",
-					props: {},
-					position: "last",
-				},
-			],
-			{ origin: "user" },
-		);
+		insertParagraph(editor, "loaded");
 		editor.selectText("loaded", 0, 0);
 
-		expect(editor.internals.awareness?.getLocalState()).toMatchObject({
+		expect(localState(editor)).toMatchObject({
 			cursor: null,
 			selection: null,
 		});
@@ -388,30 +346,11 @@ describe("COL7: presence across runtimes and editors", () => {
 		const session = createDocumentSession({
 			adapter: yjsAdapter(),
 		});
-		const createSessionEditor = () =>
-			createEditor({
-				schema: defaultSchema,
-				documentSession: session,
-				extensions: [
-					multiplayerExtension({ user: { id: "u1", name: "Ada" } }),
-				],
-			});
-		const blurred = createSessionEditor();
-		const focused = createSessionEditor();
-		const detached = createSessionEditor();
+		const blurred = createPresenceEditor(session);
+		const focused = createPresenceEditor(session);
+		const detached = createPresenceEditor(session);
 		const blockId = focused.firstBlock()!.id;
-		focused.apply(
-			[
-				{
-					type: "splice-text",
-					blockId,
-					from: 0,
-					to: 0,
-					insert: "Ada",
-				},
-			],
-			{ origin: "user" },
-		);
+		insertText(focused, blockId, "Ada");
 		blurred.internals.emit("focusChange", false);
 		focused.internals.emit("focusChange", true);
 		focused.selectText(blockId, 3, 3);
@@ -420,11 +359,7 @@ describe("COL7: presence across runtimes and editors", () => {
 		await detached.destroy();
 		vi.advanceTimersByTime(LOCAL_PRESENCE_MIN_INTERVAL_MS);
 
-		const local = focused.internals.awareness?.getLocalState() as {
-			cursor: { anchor: string } | null;
-		};
-		const anchor = focused.anchors.deserialize(local.cursor!.anchor);
-		expect(focused.anchors.resolve(anchor!)?.offset).toBe(3);
+		expect(localCursorOffset(focused)).toBe(3);
 		await blurred.destroy();
 		await focused.destroy();
 		session.destroy();

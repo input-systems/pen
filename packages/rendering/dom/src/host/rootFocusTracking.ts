@@ -47,13 +47,10 @@ export function bindEditorRootFocusWithin(
 	};
 	// the related target names where focus went; without one, a window switch keeps the active element
 	const handleFocusOut = (event: FocusEvent): void => {
-		onChange(
-			containsNode(
-				isDomNode(event.relatedTarget)
-					? event.relatedTarget
-					: root.ownerDocument.activeElement,
-			),
-		);
+		const destination = isDomNode(event.relatedTarget)
+			? event.relatedTarget
+			: root.ownerDocument.activeElement;
+		onChange(containsNode(destination));
 	};
 	root.addEventListener("focusin", handleFocusIn);
 	root.addEventListener("focusout", handleFocusOut);
