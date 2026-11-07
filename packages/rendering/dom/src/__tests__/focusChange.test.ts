@@ -68,6 +68,19 @@ describe("COL7: focusChange follows focus inside the root", () => {
 		expect(onFocusChange).not.toHaveBeenCalled();
 	});
 
+	it("COL7: a focus leave to an outside target is a blur even before the active element moves", () => {
+		const { outside, first, onFocusChange } = mount();
+		first.focus();
+		onFocusChange.mockClear();
+
+		first.dispatchEvent(
+			new FocusEvent("focusout", { bubbles: true, relatedTarget: outside }),
+		);
+
+		expect(document.activeElement).toBe(first);
+		expect(onFocusChange.mock.calls).toEqual([[false]]);
+	});
+
 	it("COL7: a focused root reports a blur when it unmounts", () => {
 		const { mounted, first, onFocusChange } = mount();
 		first.focus();

@@ -45,11 +45,14 @@ export function bindEditorRootFocusWithin(
 	const handleFocusIn = (): void => {
 		onChange(true);
 	};
-	// a move inside the root names it as the related target; a window switch keeps the active element
+	// the related target names where focus went; without one, a window switch keeps the active element
 	const handleFocusOut = (event: FocusEvent): void => {
 		onChange(
-			containsNode(event.relatedTarget) ||
-				containsNode(root.ownerDocument.activeElement),
+			containsNode(
+				isDomNode(event.relatedTarget)
+					? event.relatedTarget
+					: root.ownerDocument.activeElement,
+			),
 		);
 	};
 	root.addEventListener("focusin", handleFocusIn);
