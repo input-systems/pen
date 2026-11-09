@@ -34,14 +34,15 @@ const OVERLAY_TOKENS = {
 	selectionRangeOpacity: "--pen-selection-range-opacity",
 	peerColor: "--pen-peer-color",
 	peerLabelColor: "--pen-peer-label-color",
+	peerLabelGap: "--pen-peer-label-gap",
 	remoteCaretHeight: "--pen-caret-height",
 } as const;
 
 /** O2: local and remote carets are never shorter than this, so an empty line still shows one. */
 const OVERLAY_CARET_MIN_HEIGHT = 16;
 
-/** Gap between a remote caret's top and its name label's bottom edge. */
-const REMOTE_LABEL_GAP = 8;
+/** Default gap between a remote caret's top and its name label's bottom edge. */
+const REMOTE_LABEL_GAP = "8px";
 
 const CARET_DEFAULTS: Record<
 	OverlayCaretVariant,
@@ -187,11 +188,11 @@ function remoteCaretStyle(item: OverlayPaintItem): OverlayInlineStyle {
 
 /**
  * The inline style of a remote caret's name label, as CSS property names:
- * placed above the caret at the item's position, its bottom edge 8px above
- * the caret's top. pen-dom paints the label inside the caret element (at
- * `x = y = 0` relative to it); a binding that renders the label as the
- * caret's sibling passes the item itself, and the label then glides with
- * the caret (OV3).
+ * placed above the caret at the item's position, its bottom edge
+ * `--pen-peer-label-gap` (default 8px) above the caret's top. pen-dom
+ * paints the label inside the caret element (at `x = y = 0` relative to
+ * it); a binding that renders the label as the caret's sibling passes the
+ * item itself, and the label then glides with the caret (OV3).
  *
  * @param item - A caret item (or its position) from an `OverlayPaintPlan`.
  * @returns CSS property name to value.
@@ -203,7 +204,7 @@ export function overlayLabelStyle(
 		position: "absolute",
 		top: "0px",
 		left: "0px",
-		transform: `translate3d(${item.x}px, ${item.y - REMOTE_LABEL_GAP}px, 0) translateY(-100%)`,
+		transform: `translate3d(${item.x}px, ${item.y}px, 0) translateY(calc(-100% - var(${OVERLAY_TOKENS.peerLabelGap}, ${REMOTE_LABEL_GAP})))`,
 		padding: "2px 6px",
 		"border-radius": "6px",
 		// COL2: `background-color`, never the shorthand, so the peer colour

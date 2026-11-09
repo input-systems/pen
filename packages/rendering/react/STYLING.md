@@ -73,6 +73,7 @@ The overlay layer is the editor root's child, so these tokens reach it only when
 | ------------------------ | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--pen-peer-color`       | The peer's `user.color`, else `currentColor` | Remote caret and label background, and the ring on table cells a peer occupies. Written per caret and per cell; override on a parent if every peer should share one color. |
 | `--pen-peer-label-color` | `#fff`                                       | Remote caret label text.                                                                                                                                                   |
+| `--pen-peer-label-gap`   | `8px`                                        | Space between a remote caret's top and its name label's bottom edge.                                                                                                       |
 
 ### Inline colour marks
 

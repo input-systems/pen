@@ -7,6 +7,9 @@ const FIRST_ID = "two-p1";
 const LOCAL_OFFSET = 3;
 const REMOTE_OFFSET = 1;
 const PEER_ID = 71;
+const LABEL_GAP_TOKEN = "--pen-peer-label-gap";
+const DEFAULT_LABEL_GAP = 8;
+const TUNED_LABEL_GAP = 3;
 
 type BindingNode = {
 	/** The node's viewport left. */
@@ -29,8 +32,8 @@ type BindingPaint = {
  * absolutely positioned item takes its static position, which in RTL is the
  * containing block's right edge, one item width to the left.
  */
-async function readBindingPaint(page: Page): Promise<BindingPaint> {
-	return page.evaluate(() => {
+async function readBindingPaint(page: Page, labelGap: number): Promise<BindingPaint> {
+	return page.evaluate((gap) => {
 		const layer = document.querySelector("[data-pen-overlay-layer]")!;
 		const origin = layer.getBoundingClientRect();
 		const read = (selector: string) => {
@@ -39,17 +42,17 @@ async function readBindingPaint(page: Page): Promise<BindingPaint> {
 				return null;
 			}
 			const box = node.getBoundingClientRect();
-			// The label's transform also carries translateY(-100%): only
-			// compare its translate3d x, and its bottom-anchored y below.
+			// The label's transform also lifts it by its height plus the gap:
+			// only compare its translate3d x, and its bottom edge plus the gap.
 			const match = /translate3d\(([-\d.e]+)px,\s*([-\d.e]+)px/.exec(
 				node.style.transform,
 			);
 			const x = match ? Number(match[1]) : Number.NaN;
 			const y = match ? Number(match[2]) : Number.NaN;
-			const translateY = /translateY\(-100%\)/.test(node.style.transform);
+			const lifted = /translateY\(calc\(-100% - /.test(node.style.transform);
 			return {
 				left: box.left,
-				top: translateY ? box.bottom : box.top,
+				top: lifted ? box.bottom + gap : box.top,
 				expectedLeft: origin.left + x,
 				expectedTop: origin.top + y,
 			};
@@ -59,7 +62,7 @@ async function readBindingPaint(page: Page): Promise<BindingPaint> {
 			remoteCaret: read("[data-conformance-binding-remote-caret]"),
 			label: read("[data-conformance-binding-label]"),
 		};
-	});
+	}, labelGap);
 }
 
 function placed(node: BindingNode | null): boolean {
@@ -98,12 +101,12 @@ scenario(
 		]);
 		await expect
 			.poll(async () => {
-				const paint = await readBindingPaint(page);
+				const paint = await readBindingPaint(page, DEFAULT_LABEL_GAP);
 				return [paint.caret, paint.remoteCaret, paint.label].every(Boolean);
 			})
 			.toBe(true);
 		await page.evaluate(() => window.__penConformance.overlayMatchesAuthority());
-		const paint = await readBindingPaint(page);
+		const paint = await readBindingPaint(page, DEFAULT_LABEL_GAP);
 		await attachJson("ov3-rtl-binding", paint);
 
 		for (const [name, node] of [
@@ -113,6 +116,15 @@ scenario(
 		] as const) {
 			expectCheck(`OV2: the binding's ${name} sits where its transform puts it`, placed(node), node);
 		}
+
+		await page.evaluate(
+			([token, gap]) => {
+				document.getElementById("root")!.style.setProperty(token, `${gap}px`);
+			},
+			[LABEL_GAP_TOKEN, TUNED_LABEL_GAP] as const,
+		);
+		const tuned = (await readBindingPaint(page, TUNED_LABEL_GAP)).label;
+		expectCheck(`OV3: ${LABEL_GAP_TOKEN} sets the label's gap above its caret`, placed(tuned), tuned);
 	},
 	{ url: "/?customCaret=1&bindingCarets=1&col2=1" },
 );
