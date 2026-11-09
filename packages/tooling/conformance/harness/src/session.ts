@@ -523,10 +523,14 @@ function mountSelectionProbe(text: string, blockId: string): HTMLElement {
 /**
  * HOST9: a second, independent editor on the page, after the harness editor
  * (so `editorRoot()` still finds the harness one first). A scenario types in
- * it while the harness editor keeps a stale caret.
+ * it while the harness editor keeps a stale caret. It has its own history,
+ * as a composer beside a document does.
  */
 function mountSecondEditor(text: string): HTMLElement {
-	const editor = createEditor({ schema: defaultSchema });
+	const editor = createEditor({
+		schema: defaultSchema,
+		preset: defaultPreset(),
+	});
 	const blockId = editor.firstBlock()!.id;
 	editor.apply([{ type: "splice-text", blockId, from: 0, to: 0, insert: text }], {
 		origin: "system",

@@ -21,6 +21,12 @@ type EditorKeyboardRoutingOptions = {
 	event: KeyboardEvent;
 	selection: KeyboardRoutingSelection;
 	hasMappedDomSelection?: () => boolean;
+	/**
+	 * HOST9: whether this root, or a wrapper of it, took focus last in its
+	 * document. Consulted for Mod-a, Mod-z and Mod-Shift-z once focus has
+	 * fallen to the body; omitted, the body's shortcuts reach the editor.
+	 */
+	heldFocusLast?: () => boolean;
 	handleCollapsedTextSelection?: boolean;
 };
 
@@ -138,6 +144,7 @@ export function shouldHandleEditorKeyboardEvent({
 	event,
 	selection,
 	hasMappedDomSelection,
+	heldFocusLast,
 	handleCollapsedTextSelection = false,
 }: EditorKeyboardRoutingOptions): boolean {
 	const targetRoot = getClosestEditorRoot(event.target);
@@ -194,16 +201,19 @@ export function shouldHandleEditorKeyboardEvent({
 		return false;
 	}
 
-	// Mod-a and history act on whatever holds focus. A host element focused
-	// beside the editor keeps them, however this editor's selection was left
-	// (HOST9); focus on the body or on a wrapper of the root is nobody else's.
-	if (
-		isDocumentShortcut(event) &&
-		isDomNode(activeElement) &&
-		!root.contains(activeElement) &&
-		!activeElement.contains(root)
-	) {
-		return false;
+	// Mod-a and history act on whatever holds focus, or held it last before
+	// focus fell to the body. A host element focused beside the editor keeps
+	// them, and so does the body once focus fell there from such an element,
+	// however this editor's selection, model or DOM, was left (HOST9). A
+	// wrapper of the root is nobody else's.
+	if (isDocumentShortcut(event)) {
+		if (isFallenFocus(root.ownerDocument, activeElement)) {
+			if (heldFocusLast?.() === false) {
+				return false;
+			}
+		} else if (isDomNode(activeElement) && !activeElement.contains(root)) {
+			return false;
+		}
 	}
 
 	if (hasMappedDomSelection?.()) {
@@ -215,6 +225,36 @@ export function shouldHandleEditorKeyboardEvent({
 	}
 
 	return isDocumentSelection(selection, handleCollapsedTextSelection);
+}
+
+/**
+ * HOST9: focus that belongs to no element, so whatever held it last owns the
+ * document shortcuts. Focus falling to the body — its element removed, a
+ * click on nothing focusable, a `blur()` — fires no `focusin`.
+ */
+export function isFallenFocus(
+	doc: Document | null,
+	target: EventTarget | null | undefined,
+): boolean {
+	return (
+		target == null ||
+		target === doc?.body ||
+		target === doc?.documentElement
+	);
+}
+
+/**
+ * HOST9: whether focus on `target` keeps the document shortcuts with `root`:
+ * focus inside the root, or on a wrapper of it. Not meaningful for fallen
+ * focus, which every root's wrapper chain ends in.
+ */
+export function isEditorShortcutFocus(
+	root: HTMLElement,
+	target: EventTarget | null,
+): boolean {
+	return (
+		isDomNode(target) && (root.contains(target) || target.contains(root))
+	);
 }
 
 export function getClosestEditorRoot(

@@ -37,6 +37,18 @@ function createTableEditor() {
   return editor;
 }
 
+/**
+ * HOST9: Mod-a and history on the body go to the editor that held focus
+ * last, so the editor takes focus first and then loses it to the body.
+ */
+async function focusThenFallToBody(root: HTMLElement) {
+  root.focus();
+  await nextTick();
+  (document.activeElement as HTMLElement | null)?.blur();
+  await nextTick();
+  expect(document.activeElement).toBe(document.body);
+}
+
 function createParagraphEditor() {
   return createTestEditor({
     blocks: [
@@ -163,6 +175,7 @@ describe("@input/pen-vue: editing interactions", () => {
       attachTo: document.body,
       props: { editor },
     });
+    await focusThenFallToBody(wrapper.element as HTMLElement);
 
     document.dispatchEvent(
       new KeyboardEvent("keydown", {
@@ -209,6 +222,7 @@ describe("@input/pen-vue: editing interactions", () => {
       attachTo: document.body,
       props: { editor },
     });
+    await focusThenFallToBody(wrapper.element as HTMLElement);
 
     document.dispatchEvent(
       new KeyboardEvent("keydown", {

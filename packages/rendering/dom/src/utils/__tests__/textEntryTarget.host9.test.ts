@@ -65,7 +65,7 @@ describe("HOST9 document shortcuts and host focus", () => {
 	);
 
 	it.each(["z", "a"])(
-		"HOST9: Mod-%s still reaches the editor once focus has fallen to the body",
+		"HOST9: Mod-%s still reaches the editor once focus has fallen to the body from it",
 		(key) => {
 			const root = mountRoot();
 
@@ -74,10 +74,44 @@ describe("HOST9 document shortcuts and host focus", () => {
 					root,
 					event: keyDownOn(document.body, key),
 					selection: caret,
+					heldFocusLast: () => true,
 				}),
 			).toBe(true);
 		},
 	);
+
+	it.each([
+		["Mod-a", "a", false],
+		["Mod-z", "z", false],
+		["Mod-Shift-z", "z", true],
+	])(
+		"HOST9: %s on a body that focus fell to from a host element stays with the host, whatever range the editor kept",
+		(_name, key, shiftKey) => {
+			const root = mountRoot();
+
+			expect(
+				shouldHandleEditorKeyboardEvent({
+					root,
+					event: keyDownOn(document.body, key, shiftKey),
+					selection: caret,
+					hasMappedDomSelection: () => true,
+					heldFocusLast: () => false,
+				}),
+			).toBe(false);
+		},
+	);
+
+	it("HOST9: without heldFocusLast, Mod-z on the body reaches the editor", () => {
+		const root = mountRoot();
+
+		expect(
+			shouldHandleEditorKeyboardEvent({
+				root,
+				event: keyDownOn(document.body, "z"),
+				selection: caret,
+			}),
+		).toBe(true);
+	});
 
 	it("HOST9: a focused wrapper around the root does not take Mod-z from the editor", () => {
 		const wrapper = document.createElement("div");
