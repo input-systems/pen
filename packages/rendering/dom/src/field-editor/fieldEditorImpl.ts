@@ -138,6 +138,7 @@ export class FieldEditorImpl implements FieldEditorSession {
 	protected _hasFocusWithin: boolean | null = null;
 	protected _unbindRootFocusWithin: Unsubscribe | null = null;
 	protected _unbindRootPointerGesture: (() => void) | null = null;
+	protected _isPointerGestureActive = false;
 	protected _domSyncVersion = 0;
 	protected readonly _sessionReconciler: SessionReconciler;
 	protected readonly _backendLifecycle: BackendLifecycleController;
@@ -194,7 +195,15 @@ export class FieldEditorImpl implements FieldEditorSession {
 		this.reader = createSelectionReader({
 			editor: this._editor,
 			read: (proposal) => this.readDomSelection(proposal),
-			onGesture: (kind) => this.projector.onGesture(kind),
+			onGesture: (kind) => {
+				this.projector.onGesture(kind);
+				if (kind === "pointerdown") {
+					this._setPointerGestureActive(true);
+				} else if (kind === "pointerup" || kind === "contextmenu") {
+					// macOS opens the context menu on press and sends no pointerup after it.
+					this._setPointerGestureActive(false);
+				}
+			},
 		});
 		this.projector = new SelectionProjector({
 			isEditing: () => this._isEditing,
@@ -735,12 +744,23 @@ export class FieldEditorImpl implements FieldEditorSession {
 			this._setHasFocusWithin(false);
 		}
 		this._hasFocusWithin = null;
+		// The reader closes its windows with the root, so a held press ends here.
+		this._setPointerGestureActive(false);
 	}
 
 	protected _setHasFocusWithin(hasFocusWithin: boolean): void {
 		if (this._hasFocusWithin === hasFocusWithin) return;
 		this._hasFocusWithin = hasFocusWithin;
 		this._editor.internals.emit("focusWithinChange", hasFocusWithin);
+	}
+
+	protected _setPointerGestureActive(isPointerGestureActive: boolean): void {
+		if (this._isPointerGestureActive === isPointerGestureActive) return;
+		this._isPointerGestureActive = isPointerGestureActive;
+		this._editor.internals.emit(
+			"pointerGestureChange",
+			isPointerGestureActive,
+		);
 	}
 
 	protected _bindRootPointerGesture(root: HTMLElement): void {

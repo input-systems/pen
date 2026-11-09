@@ -7,6 +7,7 @@ import { renderAsChild, type AsChildProps } from "../../utils/asChild";
 import { composeRefs } from "../../utils/composeRefs";
 import { captureFocusReturn, restoreFocusReturn } from "@input/pen-dom";
 import { isDomNode } from "@input/pen-dom/utils/domNodes";
+import { DATA_ATTRS } from "@input/pen-dom/utils/dataAttributes";
 import { useFieldEditorContext } from "../../context/fieldEditorContext";
 import { resolveChromeEditorRoot } from "../../utils/aiDomScope";
 import { getAttachedFieldEditorSession } from "../../utils/fieldEditor";
@@ -204,6 +205,8 @@ export function SelectionToolbarContent(props: SelectionToolbarContentProps) {
 
 	const primitiveProps: Record<string, unknown> = {
 		"data-pen-selection-toolbar-content": "",
+		// R2: a toolbar rendered inside the root is chrome, not content.
+		[DATA_ATTRS.ignorePointerGesture]: "",
 		"data-side": position?.side ?? preferredSide,
 		role: "toolbar",
 		"aria-label": resolveEditorMessage(editor, "pen.toolbar.formatting"),

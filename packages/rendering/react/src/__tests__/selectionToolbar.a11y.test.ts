@@ -255,3 +255,32 @@ describe("selection toolbar AX3", () => {
 		expect(document.activeElement).toBe(field);
 	});
 });
+
+describe("selection toolbar pointer gestures", () => {
+	async function dispatchOn(target: EventTarget, type: string) {
+		await act(async () => {
+			target.dispatchEvent(new Event(type, { bubbles: true }));
+		});
+	}
+
+	it("stays closed while a press in the content is held and opens on its pointerup", async () => {
+		const fixture = await renderSelectionToolbar();
+		const field = await focusField(fixture);
+		expect(toolbarContent(fixture.container)).not.toBeNull();
+
+		await dispatchOn(field, "pointerdown");
+		expect(toolbarContent(fixture.container)).toBeNull();
+
+		await dispatchOn(document, "pointerup");
+		expect(toolbarContent(fixture.container)).not.toBeNull();
+	});
+
+	it("R2: a press on the toolbar itself keeps it open", async () => {
+		const fixture = await renderSelectionToolbar();
+		await focusField(fixture);
+
+		await dispatchOn(toolbarContent(fixture.container)!, "pointerdown");
+
+		expect(toolbarContent(fixture.container)).not.toBeNull();
+	});
+});

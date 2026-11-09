@@ -25,11 +25,15 @@ const CLOSED_STATE: SelectionToolbarState = {
  * provides its rect for positioning a floating toolbar. The rect is the
  * selection authority measured through the geometry reader; a selection
  * that spans blocks is measured per block, so the rect covers the selected
- * text rather than the border boxes of the blocks in between.
+ * text rather than the border boxes of the blocks in between. It stays
+ * closed while a pointer gesture in the content is held: a toolbar placed
+ * over the text being dragged through would take the drag's hit-testing,
+ * and every move would flip the selection between it and the text.
  */
 export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 	const [state, setState] = useState<SelectionToolbarState>(CLOSED_STATE);
 	const [revision, setRevision] = useState(0);
+	const [isPointerGestureActive, setIsPointerGestureActive] = useState(false);
 	const controller =
 		(editor.facet(aiControllerFacet) as AIController | null) ?? null;
 	const isInlinePromptOpen = useSyncExternalStoreWithSelector(
@@ -55,14 +59,14 @@ export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 	);
 
 	useIsomorphicLayoutEffect(() => {
-		if (isInlinePromptOpen) {
+		if (isInlinePromptOpen || isPointerGestureActive) {
 			setState(CLOSED_STATE);
 			return;
 		}
 
 		const rect = resolveSelectionToolbarRect(editor);
 		setState(rect ? { isOpen: true, selectionRect: rect } : CLOSED_STATE);
-	}, [editor, isInlinePromptOpen, revision]);
+	}, [editor, isInlinePromptOpen, isPointerGestureActive, revision]);
 
 	useEffect(() => {
 		const update = () => {
@@ -72,6 +76,7 @@ export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 		const unsubs = [
 			editor.on("selectionChange", update),
 			editor.on("commit", update),
+			editor.on("pointerGestureChange", setIsPointerGestureActive),
 		];
 		window.addEventListener("resize", update);
 		window.addEventListener("scroll", update, true);
@@ -80,10 +85,12 @@ export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 			window.removeEventListener("resize", update);
 			window.removeEventListener("scroll", update, true);
 			unsubs.forEach((u) => u());
+			setIsPointerGestureActive(false);
 		};
 	}, [editor]);
 
-	return state;
+	// Closed in the render that sees the press, not one effect later.
+	return isPointerGestureActive ? CLOSED_STATE : state;
 }
 
 export function resolveSelectionToolbarRect(editor: Editor): DOMRect | null {
