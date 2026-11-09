@@ -245,6 +245,8 @@ export interface PenEventMap {
 	selectionChange: (record: SelectionRecord) => void;
 	/** `FieldEditor.hasFocusWithin` changed (COL7); a headless editor never fires it. */
 	focusWithinChange: (hasFocusWithin: boolean) => void;
+	/** A pointer gesture in a renderer's content started or ended (R1); a headless editor never fires it. */
+	pointerGestureChange: (isPointerGestureActive: boolean) => void;
 	diagnostic: (event: DiagnosticEvent) => void;
 	"crdt:corruption": (errors: DocumentValidationError[]) => void;
 	"crdt:recovered": (method: "snapshot" | "repair") => void;
