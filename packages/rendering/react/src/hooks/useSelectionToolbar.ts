@@ -89,7 +89,8 @@ export function useSelectionToolbar(editor: Editor): SelectionToolbarState {
 		};
 	}, [editor]);
 
-	return state;
+	// Closed in the render that sees the press, not one effect later.
+	return isPointerGestureActive ? CLOSED_STATE : state;
 }
 
 export function resolveSelectionToolbarRect(editor: Editor): DOMRect | null {
