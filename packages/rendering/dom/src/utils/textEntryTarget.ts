@@ -23,8 +23,8 @@ type EditorKeyboardRoutingOptions = {
 	hasMappedDomSelection?: () => boolean;
 	/**
 	 * HOST9: whether this root, or a wrapper of it, took focus last in its
-	 * document. Consulted for Mod-a, Mod-z and Mod-Shift-z once focus has
-	 * fallen to the body; omitted, the body's shortcuts reach the editor.
+	 * document. Consulted once focus has fallen to the body; omitted, the
+	 * body's keys are routed by the editor's selection alone.
 	 */
 	heldFocusLast?: () => boolean;
 	handleCollapsedTextSelection?: boolean;
@@ -201,19 +201,17 @@ export function shouldHandleEditorKeyboardEvent({
 		return false;
 	}
 
-	// Mod-a and history act on whatever holds focus, or held it last before
-	// focus fell to the body. A host element focused beside the editor keeps
-	// them, and so does the body once focus fell there from such an element,
-	// however this editor's selection, model or DOM, was left (HOST9). A
-	// wrapper of the root is nobody else's.
-	if (isDocumentShortcut(event)) {
-		if (isFallenFocus(root.ownerDocument, activeElement)) {
-			if (heldFocusLast?.() === false) {
-				return false;
-			}
-		} else if (isDomNode(activeElement) && !activeElement.contains(root)) {
+	// Keys follow focus (HOST9). A host element focused beside the editor
+	// keeps every document key — arrows, Tab, Enter, Escape, Backspace and
+	// the shortcuts — however this editor's selection, model or DOM, was
+	// left, and so does the body once focus fell there from such an element.
+	// A wrapper of the root is nobody else's.
+	if (isFallenFocus(root.ownerDocument, activeElement)) {
+		if (heldFocusLast?.() === false) {
 			return false;
 		}
+	} else if (isDomNode(activeElement) && !activeElement.contains(root)) {
+		return false;
 	}
 
 	if (hasMappedDomSelection?.()) {

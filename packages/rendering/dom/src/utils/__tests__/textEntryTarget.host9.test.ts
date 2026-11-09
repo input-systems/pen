@@ -14,6 +14,31 @@ const caret: ReadonlySelectionState = {
 	focus: { blockId: "block-1", offset: 2 },
 };
 
+const blockSelection: ReadonlySelectionState = {
+	type: "block",
+	blockIds: ["block-1"],
+};
+
+const cellSelection: ReadonlySelectionState = {
+	type: "cell",
+	blockId: "table-1",
+	anchor: { row: 0, col: 0 },
+	head: { row: 0, col: 0 },
+};
+
+const textRange: ReadonlySelectionState = {
+	type: "text",
+	anchor: { blockId: "block-1", offset: 0 },
+	focus: { blockId: "block-2", offset: 3 },
+};
+
+/** A plain keydown (no modifier) dispatched on `target`. */
+function plainKeyDownOn(target: Element, key: string): KeyboardEvent {
+	const event = new KeyboardEvent("keydown", { key, bubbles: true });
+	target.dispatchEvent(event);
+	return event;
+}
+
 function mountRoot(parent: HTMLElement = document.body): HTMLElement {
 	const root = document.createElement("div");
 	root.setAttribute(DATA_ATTRS.editorRoot, "");
@@ -100,6 +125,84 @@ describe("HOST9 document shortcuts and host focus", () => {
 			).toBe(false);
 		},
 	);
+
+	it.each([
+		["ArrowDown", blockSelection],
+		["Enter", blockSelection],
+		["Backspace", blockSelection],
+		["Delete", blockSelection],
+		["Tab", cellSelection],
+		["ArrowRight", cellSelection],
+		["Backspace", cellSelection],
+		["Escape", textRange],
+		["Backspace", textRange],
+	] as const)(
+		"HOST9: a focused host element outside the root keeps %s over a leftover %o",
+		(key, selection) => {
+			const root = mountRoot();
+			const menuItem = document.createElement("button");
+			menuItem.setAttribute("role", "menuitem");
+			document.body.appendChild(menuItem);
+			menuItem.focus();
+
+			expect(
+				shouldHandleEditorKeyboardEvent({
+					root,
+					event: plainKeyDownOn(menuItem, key),
+					selection,
+					hasMappedDomSelection: () => true,
+				}),
+			).toBe(false);
+		},
+	);
+
+	it.each(["ArrowDown", "Enter", "Backspace", "Escape"])(
+		"HOST9: %s on a body that focus fell to from a host element leaves a block selection alone",
+		(key) => {
+			const root = mountRoot();
+
+			expect(
+				shouldHandleEditorKeyboardEvent({
+					root,
+					event: plainKeyDownOn(document.body, key),
+					selection: blockSelection,
+					heldFocusLast: () => false,
+				}),
+			).toBe(false);
+		},
+	);
+
+	it.each(["ArrowDown", "Enter", "Backspace", "Escape"])(
+		"HOST9: %s on a body that focus fell to from the editor still acts on its block selection",
+		(key) => {
+			const root = mountRoot();
+
+			expect(
+				shouldHandleEditorKeyboardEvent({
+					root,
+					event: plainKeyDownOn(document.body, key),
+					selection: blockSelection,
+					heldFocusLast: () => true,
+				}),
+			).toBe(true);
+		},
+	);
+
+	it("HOST9: a focused wrapper around the root does not take Backspace from a block selection", () => {
+		const wrapper = document.createElement("div");
+		wrapper.tabIndex = 0;
+		document.body.appendChild(wrapper);
+		const root = mountRoot(wrapper);
+		wrapper.focus();
+
+		expect(
+			shouldHandleEditorKeyboardEvent({
+				root,
+				event: plainKeyDownOn(wrapper, "Backspace"),
+				selection: blockSelection,
+			}),
+		).toBe(true);
+	});
 
 	it("HOST9: without heldFocusLast, Mod-z on the body reaches the editor", () => {
 		const root = mountRoot();

@@ -170,3 +170,70 @@ describe("HOST9: document shortcuts on a body focus fell to", () => {
 		expect(first.text()).toBe("");
 	});
 });
+
+/** A plain key on `target`; reports whether the host's own listener saw it. */
+function pressPlain(
+	target: Element,
+	key: string,
+): { reachedHost: boolean; defaultPrevented: boolean } {
+	const hostListener = vi.fn();
+	window.addEventListener("keydown", hostListener);
+	const event = new KeyboardEvent("keydown", {
+		key,
+		bubbles: true,
+		cancelable: true,
+	});
+	target.dispatchEvent(event);
+	window.removeEventListener("keydown", hostListener);
+	return {
+		reachedHost: hostListener.mock.calls.length > 0,
+		defaultPrevented: event.defaultPrevented,
+	};
+}
+
+describe("HOST9: every document key follows focus, not a leftover selection", () => {
+	async function mountWithBlockSelection() {
+		const mounted = await mountTyped("Hello");
+		const blockId = mounted.editor.firstBlock()!.id;
+		focusEditor(mounted.root);
+		mounted.editor.selectBlocks([blockId], { origin: "keyboard" });
+		expect(mounted.editor.selection).toMatchObject({ type: "block" });
+		return { ...mounted, blockId };
+	}
+
+	function focusHostMenuItem(): HTMLElement {
+		const menuItem = document.createElement("button");
+		menuItem.setAttribute("role", "menuitem");
+		menuItem.textContent = "Move to";
+		document.body.append(menuItem);
+		menuItem.focus();
+		return menuItem;
+	}
+
+	it.each(["Backspace", "Delete", "Enter", "ArrowDown", "Escape"])(
+		"HOST9: %s on a focused host element leaves the editor's block selection alone",
+		async (key) => {
+			const { editor, text } = await mountWithBlockSelection();
+			const menuItem = focusHostMenuItem();
+			const blockCount = editor.documentState.blockOrder.length;
+			const selectionBefore = editor.selection;
+
+			expect(pressPlain(menuItem, key)).toEqual({
+				reachedHost: true,
+				defaultPrevented: false,
+			});
+			expect(editor.documentState.blockOrder.length).toBe(blockCount);
+			expect(text()).toBe("Hello");
+			expect(editor.selection).toEqual(selectionBefore);
+		},
+	);
+
+	it("HOST9: Backspace after a focused host control unmounts does not delete the block selection", async () => {
+		const { editor, blockId } = await mountWithBlockSelection();
+		focusHostThenRemoveIt();
+
+		expect(pressPlain(document.body, "Backspace").reachedHost).toBe(true);
+		expect(editor.getBlock(blockId)?.textContent()).toBe("Hello");
+		expect(editor.selection).toMatchObject({ type: "block" });
+	});
+});
