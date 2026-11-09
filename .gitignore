@@ -16,3 +16,4 @@ test-results*/
 .dev.vars
 .npmrc
 .claude/
+.humanlayer/
