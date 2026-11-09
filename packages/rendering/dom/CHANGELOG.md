@@ -1,5 +1,41 @@
 # @input/pen-dom
 
+## 0.5.2
+
+### Patch Changes
+
+- 0b93b88: Double-clicking a word inside an AI suggestion underline now selects the word. When a host opens or closes its suggestion popover during the double click, the underline's class changes. The reconciler now updates that wrapper's attributes in place instead of rebuilding its text nodes. While the pointer gesture is still open, the decoration rebuild no longer writes the first click's caret over the range the browser is selecting (P3). This applies to any mark or decoration wrapper whose attributes alone change.
+
+  Breaking: no
+
+- b31e6e8: Remote caret name labels read their gap above the caret from the new `--pen-peer-label-gap` custom property (default `8px`, unchanged). `overlayLabelStyle()` now keeps the caret's position in `translate3d(...)` and lifts the label with `translateY(calc(-100% - var(--pen-peer-label-gap, 8px)))`; a binding that parses the old `translate3d(x, y - 8px, 0) translateY(-100%)` shape must read the new one.
+
+  Breaking: no
+
+- 54e74c6: Keep the selection toolbar closed while a pointer drag is held, so it no longer flickers under the pointer. The toolbar sat over the line the drag was heading into, and under the pointer whenever the drag's head was in an empty block, so the next hit-test landed on the toolbar, the selection head jumped, the toolbar moved away, and every mouse move flipped the selection between the two.
+
+  - `@input/pen-dom` reports when a pointer gesture in the content starts or ends as the new `pointerGestureChange` editor event: `true` on a press in the content (R2 filters chrome and overlays), `false` on its `pointerup`, `pointercancel` or `contextmenu`, and `false` when the root detaches mid-press.
+  - `@input/pen-react`'s `useSelectionToolbar` stays closed while that gesture is active and measures the settled selection on release. `SelectionToolbar.Content` carries `data-pen-ignore-pointer-gesture`, so a press on a toolbar rendered inside the root is chrome, not a content gesture.
+
+  Hosts see the toolbar hide on each press in the content and appear on release, instead of during the drag; keyboard selection is unchanged. Vanilla and Vue hosts that build their own toolbar can do the same from `pointerGestureChange`.
+
+  Breaking: no
+
+- 307eb36: Hide a teammate's caret while their focus is outside the editor (COL7). `@input/pen-multiplayer` now publishes `cursor: null, selection: null` while focus is outside every editor of the scope, keeping `user`, `streaming`, and host keys, and publishes the selection again on refocus; a window or tab switch keeps the caret. A host that reads `cursor` to show who is editing reads `user` instead.
+
+  - `@input/pen-dom` tracks whether focus is within the editor root, ignoring window activity, and reports it as `FieldEditor.hasFocusWithin` and the new `focusWithinChange` editor event: on root attach, on each entry or exit, and `false` when a focused root detaches.
+  - Focus edges publish at the end of the 50 ms presence interval, so a click into the editor shows where it lands rather than the stale selection.
+
+  Both additions are read-only surface Pen implements: hosts read `FieldEditor` and subscribe to `PenEventMap`, so no host code has to change.
+
+  Breaking: no
+
+- Updated dependencies [54e74c6]
+- Updated dependencies [307eb36]
+  - @input/pen-types@0.5.2
+  - @input/pen-core@0.5.2
+  - @input/pen-shortcuts@0.5.2
+
 ## 0.5.1
 
 ### Patch Changes
