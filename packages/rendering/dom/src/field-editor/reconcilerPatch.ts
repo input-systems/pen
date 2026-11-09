@@ -5,8 +5,9 @@ import {
 	isInlineAtomHostNode,
 	isInlineAtomNode,
 } from "./inlineAtomDom";
+import { isDomElement } from "../utils/domNodes";
 
-export function patchDOM(target: HTMLElement, source: DocumentFragment): void {
+export function patchDOM(target: Node, source: Node): void {
 	const targetNodes = Array.from(target.childNodes);
 	const sourceNodes = Array.from(source.childNodes);
 
@@ -17,16 +18,7 @@ export function patchDOM(target: HTMLElement, source: DocumentFragment): void {
 		const sourceNode = sourceNodes[sourceIndex];
 
 		if (targetIndex < targetNodes.length) {
-			const targetNode = targetNodes[targetIndex];
-
-			if (nodesStructurallyEqual(targetNode, sourceNode)) {
-				if (isInlineAtomNode(targetNode) && isInlineAtomNode(sourceNode)) {
-					copyInlineAtomElementData(sourceNode, targetNode);
-				}
-				updateTextContent(targetNode, sourceNode);
-			} else {
-				target.replaceChild(sourceNode, targetNode);
-			}
+			patchNode(target, targetNodes[targetIndex], sourceNode);
 			targetIndex++;
 			sourceIndex++;
 		} else {
@@ -37,6 +29,54 @@ export function patchDOM(target: HTMLElement, source: DocumentFragment): void {
 
 	while (target.childNodes.length > sourceNodes.length) {
 		target.removeChild(target.lastChild!);
+	}
+}
+
+function patchNode(parent: Node, targetNode: Node, sourceNode: Node): void {
+	if (nodesStructurallyEqual(targetNode, sourceNode)) {
+		if (isInlineAtomNode(targetNode) && isInlineAtomNode(sourceNode)) {
+			copyInlineAtomElementData(sourceNode, targetNode);
+		}
+		updateTextContent(targetNode, sourceNode);
+		return;
+	}
+	if (
+		isDomElement(targetNode) &&
+		isDomElement(sourceNode) &&
+		isPatchableWrapper(targetNode, sourceNode)
+	) {
+		// A mark or decoration wrapper whose attributes changed (a
+		// suggestion underline turning active, a link's href) keeps its
+		// text nodes, so a native range inside them, such as the word a
+		// double click is selecting, survives the re-render.
+		syncAttributes(targetNode, sourceNode);
+		patchDOM(targetNode, sourceNode);
+		return;
+	}
+	parent.replaceChild(sourceNode, targetNode);
+}
+
+/** Same-tag elements that are neither inline atoms nor atom hosts. */
+function isPatchableWrapper(a: Element, b: Element): boolean {
+	return (
+		a.tagName === b.tagName &&
+		!isInlineAtomHostNode(a) &&
+		!isInlineAtomHostNode(b) &&
+		!isInlineAtomNode(a) &&
+		!isInlineAtomNode(b)
+	);
+}
+
+function syncAttributes(target: Element, source: Element): void {
+	for (const attribute of Array.from(target.attributes)) {
+		if (!source.hasAttribute(attribute.name)) {
+			target.removeAttribute(attribute.name);
+		}
+	}
+	for (const attribute of Array.from(source.attributes)) {
+		if (target.getAttribute(attribute.name) !== attribute.value) {
+			target.setAttribute(attribute.name, attribute.value);
+		}
 	}
 }
 
