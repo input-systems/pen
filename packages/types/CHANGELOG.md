@@ -1,5 +1,27 @@
 # @input/pen-types
 
+## 0.5.2
+
+### Patch Changes
+
+- 54e74c6: Keep the selection toolbar closed while a pointer drag is held, so it no longer flickers under the pointer. The toolbar sat over the line the drag was heading into, and under the pointer whenever the drag's head was in an empty block, so the next hit-test landed on the toolbar, the selection head jumped, the toolbar moved away, and every mouse move flipped the selection between the two.
+
+  - `@input/pen-dom` reports when a pointer gesture in the content starts or ends as the new `pointerGestureChange` editor event: `true` on a press in the content (R2 filters chrome and overlays), `false` on its `pointerup`, `pointercancel` or `contextmenu`, and `false` when the root detaches mid-press.
+  - `@input/pen-react`'s `useSelectionToolbar` stays closed while that gesture is active and measures the settled selection on release. `SelectionToolbar.Content` carries `data-pen-ignore-pointer-gesture`, so a press on a toolbar rendered inside the root is chrome, not a content gesture.
+
+  Hosts see the toolbar hide on each press in the content and appear on release, instead of during the drag; keyboard selection is unchanged. Vanilla and Vue hosts that build their own toolbar can do the same from `pointerGestureChange`.
+
+  Breaking: no
+
+- 307eb36: Hide a teammate's caret while their focus is outside the editor (COL7). `@input/pen-multiplayer` now publishes `cursor: null, selection: null` while focus is outside every editor of the scope, keeping `user`, `streaming`, and host keys, and publishes the selection again on refocus; a window or tab switch keeps the caret. A host that reads `cursor` to show who is editing reads `user` instead.
+
+  - `@input/pen-dom` tracks whether focus is within the editor root, ignoring window activity, and reports it as `FieldEditor.hasFocusWithin` and the new `focusWithinChange` editor event: on root attach, on each entry or exit, and `false` when a focused root detaches.
+  - Focus edges publish at the end of the 50 ms presence interval, so a click into the editor shows where it lands rather than the stale selection.
+
+  Both additions are read-only surface Pen implements: hosts read `FieldEditor` and subscribe to `PenEventMap`, so no host code has to change.
+
+  Breaking: no
+
 ## 0.5.1
 
 No changes in this release.
