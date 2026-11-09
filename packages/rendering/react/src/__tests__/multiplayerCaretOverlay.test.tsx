@@ -20,6 +20,9 @@ import type { MultiplayerCaretRenderProps } from "../primitives/multiplayer/care
 	globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
+const LABEL_LIFT =
+	"translateY(calc(-100% - var(--pen-peer-label-gap, 8px)))";
+
 type AwarenessController = {
 	handleAwarenessChange(states: Map<number, Record<string, unknown>>): void;
 };
@@ -179,7 +182,7 @@ describe("@input/pen-react multiplayer caret overlay (OV3)", () => {
 		expect(caret?.style.height).toBe("24px");
 		expect(label?.textContent).toBe("Babbage");
 		expect(label?.style.transform).toBe(
-			"translate3d(0px, -8px, 0) translateY(-100%)",
+			`translate3d(0px, 0px, 0) ${LABEL_LIFT}`,
 		);
 		expect(
 			getRootOverlay(editorRoot(view.container))?.plan?.items.find(
@@ -238,7 +241,7 @@ describe("@input/pen-react multiplayer caret overlay (OV3)", () => {
 		expect(props?.labelStyle.left).toBe("0px");
 		expect(props?.labelStyle.top).toBe("0px");
 		expect(props?.labelStyle.transform).toBe(
-			"translate3d(24px, 24px, 0) translateY(-100%)",
+			`translate3d(24px, 32px, 0) ${LABEL_LIFT}`,
 		);
 		await view.unmount();
 		editor.destroy();

@@ -15,6 +15,9 @@ import {
 	type OverlayFixture,
 } from "./overlayFixture";
 
+const LABEL_LIFT =
+	"translateY(calc(-100% - var(--pen-peer-label-gap, 8px)))";
+
 type StubSource = RemoteCaretSource & {
 	set(next: readonly RemoteCaretCursor[]): void;
 	notify(): void;
@@ -117,6 +120,9 @@ describe("remote carets on the paint plan (OV1)", () => {
 		expect(label?.textContent).toBe("Grace <b>");
 		expect(label?.children).toHaveLength(0);
 		expect(label?.getAttribute("aria-hidden")).toBe("true");
+		expect(label?.style.transform).toBe(
+			`translate3d(0px, 0px, 0) ${LABEL_LIFT}`,
+		);
 	});
 
 	it("OV1: a cursor move repaints the same element; an unchanged notification costs no flush", () => {
@@ -223,6 +229,9 @@ describe("remote carets on the paint plan (OV1)", () => {
 		expect(node()?.style.transition).toBe("transform 33ms linear");
 		expect(overlayLabelStyle(controller.plan!.items[0]!).transition).toBe(
 			"transform 33ms linear",
+		);
+		expect(overlayLabelStyle(controller.plan!.items[0]!).transform).toBe(
+			`${node()?.style.transform} ${LABEL_LIFT}`,
 		);
 
 		source.set([cursor(blockId, 105)]);
