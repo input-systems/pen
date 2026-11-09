@@ -3,6 +3,7 @@
 import { createHeadlessEditor } from "@input/pen-core";
 import { defaultSchema } from "@input/pen-schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { applyInlineDecorationsToDeltas } from "../../utils/inlineDecorations";
 import { fullReconcileDeltasToDOM } from "../reconcilerFull";
 
 const SELECTION_WRITES = [
@@ -43,6 +44,44 @@ describe("full reconcile and the native selection (P3)", () => {
 		for (const spy of spies) {
 			expect(spy).not.toHaveBeenCalled();
 		}
+		editor.destroy();
+	});
+
+	it("P3: a decoration whose attributes change keeps its text node, so a native range inside it stands", () => {
+		const editor = createHeadlessEditor({ schema: defaultSchema });
+		const element = document.createElement("span");
+		document.body.append(element);
+		const render = (className: string) =>
+			fullReconcileDeltasToDOM(
+				applyInlineDecorationsToDeltas(
+					[{ insert: "say hello world" }],
+					[
+						{
+							type: "inline",
+							blockId: "block",
+							from: 4,
+							to: 15,
+							attributes: { class: className },
+						},
+					],
+				),
+				element,
+				editor.schema,
+				{ editor },
+			);
+		render("pen-ai-suggestion-underline");
+		const wrapper = element.querySelector(".pen-ai-suggestion-underline")!;
+		const text = wrapper.firstChild!;
+		document.getSelection()!.setBaseAndExtent(text, 0, text, 5);
+
+		render("pen-ai-suggestion-underline pen-ai-suggestion-active");
+
+		expect(wrapper.isConnected).toBe(true);
+		expect(wrapper.className).toBe(
+			"pen-ai-suggestion-underline pen-ai-suggestion-active",
+		);
+		expect(wrapper.firstChild).toBe(text);
+		expect(String(document.getSelection())).toBe("hello");
 		editor.destroy();
 	});
 });

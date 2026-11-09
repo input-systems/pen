@@ -1023,7 +1023,34 @@ export class SelectionProjector {
 		if (!this.shouldProjectSelectionAfterReconcile()) {
 			return;
 		}
+		if (
+			this._options.getGestureWindows().pointer &&
+			this._nativeRangeInAttachedField()
+		) {
+			// P3 under an open pointer window: the rebuild kept the native
+			// range in the field (a decoration toggled mid double click), so
+			// the user's range stands, as in D5. The reader takes it at
+			// pointerup and the `window-closed` projection follows.
+			return;
+		}
 		this.project("target-rebuilt");
+	}
+
+	private _nativeRangeInAttachedField(): boolean {
+		const element = this._options.getAttachedElement();
+		if (!element) {
+			return false;
+		}
+		const selection = nativeSelectionForWrite(element);
+		if (!selection || selection.rangeCount === 0) {
+			return false;
+		}
+		return (
+			!!selection.anchorNode &&
+			!!selection.focusNode &&
+			element.contains(selection.anchorNode) &&
+			element.contains(selection.focusNode)
+		);
 	}
 
 	private _isProjectionTarget(blockId: string): boolean {

@@ -178,6 +178,30 @@ describe("selection projector rebuild projection (P3, HOST9)", () => {
 		]);
 	});
 
+	it("P3: under an open pointer window a rebuild that kept the native range in the field leaves it standing", () => {
+		const { projector, element, calls, gesture } =
+			createDroppingProjector();
+		element.tabIndex = -1;
+		element.focus();
+		placeNativeCaret(element);
+		gesture("pointerdown");
+		projector.projectAfterRebuild(["first"]);
+		expect(calls.backendWrites).toBe(0);
+		gesture("pointerup");
+		expect(calls.backendWrites).toBe(1);
+	});
+
+	it("P3: under an open pointer window a rebuild that lost the native range still projects", () => {
+		const { projector, element, calls, gesture } =
+			createDroppingProjector();
+		element.tabIndex = -1;
+		element.focus();
+		document.getSelection()!.removeAllRanges();
+		gesture("pointerdown");
+		projector.projectAfterRebuild(["first"]);
+		expect(calls.backendWrites).toBe(1);
+	});
+
 	it("P3: a rebuild of a block that is not the projection target does not write", () => {
 		const { projector, calls } = createDroppingProjector();
 		projector.projectAfterRebuild(["second"]);
