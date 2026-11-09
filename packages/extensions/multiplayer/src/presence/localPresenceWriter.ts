@@ -37,6 +37,14 @@ export class LocalPresenceWriter {
 		this.openInterval();
 	}
 
+	/** Publishes at the end of the interval, so a selection change within it wins. */
+	requestTrailing(): void {
+		this.hasPendingWrite = true;
+		if (this.timer === null) {
+			this.openInterval();
+		}
+	}
+
 	/** Drops a pending write, for state the caller is about to replace. */
 	cancel(): void {
 		if (this.timer !== null) {

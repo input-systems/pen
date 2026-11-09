@@ -243,6 +243,8 @@ export interface PenEventMap {
 		changedBlockIds: readonly string[],
 	) => void;
 	selectionChange: (record: SelectionRecord) => void;
+	/** `FieldEditor.hasFocusWithin` changed (COL7); a headless editor never fires it. */
+	focusWithinChange: (hasFocusWithin: boolean) => void;
 	diagnostic: (event: DiagnosticEvent) => void;
 	"crdt:corruption": (errors: DocumentValidationError[]) => void;
 	"crdt:recovered": (method: "snapshot" | "repair") => void;
