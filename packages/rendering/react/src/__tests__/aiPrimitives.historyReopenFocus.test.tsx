@@ -10,6 +10,7 @@ import { deltaStreamExtension } from "@input/pen-ai/stream";
 import { toolsExtension } from "@input/pen-tools";
 import { defaultSchema } from "@input/pen-schema";
 import { Pen } from "../index";
+import { pressInFocusedEditor } from "./utils/crossBlockSelectionTestHelpers";
 import { mockSelectionToolbarRect } from "./utils/selectionToolbarRectMock";
 import {
 	createKeyDownEvent,
@@ -209,7 +210,10 @@ describe("@input/pen-react AI primitives: focus when history reopens a prompt", 
 
 		await act(async () => {
 			withNavigatorPlatform("MacIntel", () => {
-				document.dispatchEvent(
+				pressInFocusedEditor(
+					container.querySelector(
+						"[data-pen-editor-root]",
+					) as HTMLElement,
 					createKeyDownEvent("z", { metaKey: true }),
 				);
 			});

@@ -9,6 +9,7 @@ import {
 	createEditor,
 	createSelectAllEvent,
 	flushAnimationFrames,
+	pressInFocusedEditor,
 	getFieldEditor,
 } from "./utils/crossBlockSelectionTestHelpers";
 import { fieldEditorInternals } from "./utils/fieldEditorInternals";
@@ -192,7 +193,12 @@ describe("@input/pen-react cmd+a: escalation in flow documents", () => {
 		});
 
 		await act(async () => {
-			document.dispatchEvent(createSelectAllEvent());
+			pressInFocusedEditor(
+				container.querySelector(
+					"[data-pen-editor-root]",
+				) as HTMLElement,
+				createSelectAllEvent(),
+			);
 			await flushAnimationFrames(2);
 		});
 

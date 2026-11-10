@@ -20,6 +20,10 @@ type EditorKeyboardRoutingOptions = {
 	root: HTMLElement;
 	event: KeyboardEvent;
 	selection: KeyboardRoutingSelection;
+	/**
+	 * @deprecated Not consulted: keys reach the editor only while focus is
+	 * inside its root (HOST9), whatever DOM range it holds.
+	 */
 	hasMappedDomSelection?: () => boolean;
 	handleCollapsedTextSelection?: boolean;
 };
@@ -137,7 +141,6 @@ export function shouldHandleEditorKeyboardEvent({
 	root,
 	event,
 	selection,
-	hasMappedDomSelection,
 	handleCollapsedTextSelection = false,
 }: EditorKeyboardRoutingOptions): boolean {
 	const targetRoot = getClosestEditorRoot(event.target);
@@ -166,55 +169,27 @@ export function shouldHandleEditorKeyboardEvent({
 		return false;
 	}
 
-	if (isDomNode(activeElement) && root.contains(activeElement)) {
-		if (isFieldEditorTextEntryTarget(activeElement)) {
-			if (event.key === "Escape" || isCollapsedSelectAll(event)) {
-				return true;
-			}
-
-			return isDocumentSelection(selection, handleCollapsedTextSelection);
-		}
-
-		if (isNativeTextEntryTarget(activeElement)) {
-			return false;
-		}
-
-		if (isDetachedLibrarySurface(activeElement)) {
-			return false;
-		}
-
-		return true;
-	}
-
-	if (
-		isDomNode(activeElement) &&
-		!root.contains(activeElement) &&
-		isNativeTextEntryTarget(activeElement)
-	) {
+	// Keys follow focus (HOST9): an editor without focus takes no key, so
+	// the host's own bindings run. Focus outside the root — a host element,
+	// a wrapper of the root, the body — is never the editor's, whatever
+	// selection, model or DOM, it was left with.
+	if (!isDomNode(activeElement) || !root.contains(activeElement)) {
 		return false;
 	}
 
-	// Mod-a and history act on whatever holds focus. A host element focused
-	// beside the editor keeps them, however this editor's selection was left
-	// (HOST9); focus on the body or on a wrapper of the root is nobody else's.
-	if (
-		isDocumentShortcut(event) &&
-		isDomNode(activeElement) &&
-		!root.contains(activeElement) &&
-		!activeElement.contains(root)
-	) {
+	if (isFieldEditorTextEntryTarget(activeElement)) {
+		if (event.key === "Escape" || isCollapsedSelectAll(event)) {
+			return true;
+		}
+
+		return isDocumentSelection(selection, handleCollapsedTextSelection);
+	}
+
+	if (isNativeTextEntryTarget(activeElement)) {
 		return false;
 	}
 
-	if (hasMappedDomSelection?.()) {
-		return true;
-	}
-
-	if (isDocumentShortcut(event)) {
-		return isDocumentSelection(selection, true);
-	}
-
-	return isDocumentSelection(selection, handleCollapsedTextSelection);
+	return !isDetachedLibrarySurface(activeElement);
 }
 
 export function getClosestEditorRoot(
@@ -269,15 +244,6 @@ function isCollapsedSelectAll(event: KeyboardEvent): boolean {
 		!event.shiftKey &&
 		!event.altKey &&
 		(event.metaKey || event.ctrlKey)
-	);
-}
-
-function isDocumentShortcut(event: KeyboardEvent): boolean {
-	const key = event.key.toLowerCase();
-	return (
-		!event.altKey &&
-		(event.metaKey || event.ctrlKey) &&
-		(key === "a" || key === "z")
 	);
 }
 

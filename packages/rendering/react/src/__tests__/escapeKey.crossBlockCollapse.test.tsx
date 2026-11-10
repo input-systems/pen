@@ -11,6 +11,7 @@ import {
 	createEscapeEvent,
 	createSelectAllEvent,
 	flushAnimationFrames,
+	pressInFocusedEditor,
 	getFieldEditor,
 } from "./utils/crossBlockSelectionTestHelpers";
 
@@ -84,7 +85,7 @@ describe("@input/pen-react Escape: collapsing cross-block selections", () => {
 		});
 
 		await act(async () => {
-			document.dispatchEvent(createEscapeEvent());
+			pressInFocusedEditor(rootElement!, createEscapeEvent());
 			await flushAnimationFrames(2);
 		});
 
@@ -272,7 +273,7 @@ describe("@input/pen-react Escape: collapsing cross-block selections", () => {
 		});
 
 		await act(async () => {
-			rootElement?.dispatchEvent(createEscapeEvent());
+			pressInFocusedEditor(rootElement!, createEscapeEvent());
 			await flushAnimationFrames(2);
 		});
 
