@@ -27,7 +27,7 @@ export function normalizeCompletionText(
 	context: AutocompleteRequestContext,
 	text: string,
 ): string {
-	const normalized = text.replace(/\r/g, "");
+	const normalized = unescapeNewlines(context, text).replace(/\r/g, "");
 	const withoutFence = normalized
 		.replace(/^```[a-zA-Z0-9_-]*\n?/, "")
 		.replace(/```$/, "");
@@ -65,10 +65,22 @@ export function normalizeCompletionText(
 	return candidate;
 }
 
-// A leading blank line or block opener is structure and stays. A single leading newline is
-// usually a model artifact and goes — except in prose right after a closed line ("Best,",
-// "Thanks for your time."), where it is the one signal that the continuation is a new block;
-// stripping it there splices the text onto the closing punctuation ("Best,Krijn").
+// The cursor prompt JSON-encodes its context, so a model can answer in kind and spell a line
+// break as backslash + n. In prose that is almost never the text meant; in code it is source.
+function unescapeNewlines(
+	context: AutocompleteRequestContext,
+	completion: string,
+): string {
+	if (context.blockType === "codeBlock") {
+		return completion;
+	}
+	return completion.replace(/(?:\\r)?\\n/g, "\n");
+}
+
+// A leading blank line or block opener is structure and stays. So does a single leading newline
+// in prose at the end of a written line: it is the one signal that the continuation is a new
+// block, and stripping it splices the text onto the line ("Best,Krijn"). Anywhere else it would
+// split the line or leave a gap, so it goes.
 function normalizeLeadingNewline(
 	context: AutocompleteRequestContext,
 	completion: string,
@@ -93,7 +105,7 @@ function startsNewProseBlock(
 		PROSE_BLOCK_TYPES.has(context.blockType ?? "") &&
 		context.suffixText.length === 0 &&
 		/^[ \t]*\n[^\n]*\S/.test(completion) &&
-		/[.!?,:;]["')\]]*[ \t]*$/.test(context.prefixText)
+		/\S/.test(context.prefixText)
 	);
 }
 
