@@ -188,6 +188,19 @@ describe("HOST9 document shortcuts and host focus", () => {
 		},
 	);
 
+	it("HOST9: a key dispatched inside the root reaches the editor even while it never held focus", () => {
+		const root = mountRoot();
+
+		expect(
+			shouldHandleEditorKeyboardEvent({
+				root,
+				event: plainKeyDownOn(root, "Escape"),
+				selection: textRange,
+				heldFocusLast: () => false,
+			}),
+		).toBe(true);
+	});
+
 	it("HOST9: a focused wrapper around the root does not take Backspace from a block selection", () => {
 		const wrapper = document.createElement("div");
 		wrapper.tabIndex = 0;

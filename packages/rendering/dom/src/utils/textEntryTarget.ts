@@ -205,13 +205,17 @@ export function shouldHandleEditorKeyboardEvent({
 	// keeps every document key — arrows, Tab, Enter, Escape, Backspace and
 	// the shortcuts — however this editor's selection, model or DOM, was
 	// left, and so does the body once focus fell there from such an element.
-	// A wrapper of the root is nobody else's.
-	if (isFallenFocus(root.ownerDocument, activeElement)) {
-		if (heldFocusLast?.() === false) {
+	// A wrapper of the root is nobody else's, and neither is a key
+	// dispatched inside the root: a browser targets the focused element, so
+	// a target in the root was addressed to this editor.
+	if (!(isDomNode(event.target) && root.contains(event.target))) {
+		if (isFallenFocus(root.ownerDocument, activeElement)) {
+			if (heldFocusLast?.() === false) {
+				return false;
+			}
+		} else if (isDomNode(activeElement) && !activeElement.contains(root)) {
 			return false;
 		}
-	} else if (isDomNode(activeElement) && !activeElement.contains(root)) {
-		return false;
 	}
 
 	if (hasMappedDomSelection?.()) {
