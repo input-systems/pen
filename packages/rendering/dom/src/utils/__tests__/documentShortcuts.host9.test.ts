@@ -8,11 +8,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mountEditor } from "../../host/mountEditor";
 
 /**
- * HOST9: Mod-a and history on a body that focus fell to belong to whatever
- * held focus last. Driven through `bindEditorDocumentKeyDown` as
- * `mountEditor` installs it; the real-browser twin is
- * `suites/selection/host9-document-shortcuts.spec.ts` in the conformance
- * package.
+ * HOST9: keys follow focus. An editor without focus takes no key, whatever
+ * selection it was left with, so the host's own bindings run. Driven through
+ * `bindEditorDocumentKeyDown` as `mountEditor` installs it; the real-browser
+ * twin is `suites/selection/host9-document-shortcuts.spec.ts` in the
+ * conformance package.
  */
 
 const cleanups: Array<() => void> = [];
@@ -78,21 +78,24 @@ function blurToBody(): void {
 	expect(document.activeElement).toBe(document.body);
 }
 
-/** Mod-key on the body; reports whether the host's own listener saw it. */
-function pressOnBody(
+/**
+ * A keydown on the focused element, as a browser dispatches it; reports
+ * whether the host's own listener saw it.
+ */
+function press(
 	key: string,
-	shiftKey = false,
+	modifiers: { meta?: boolean; shift?: boolean } = {},
 ): { reachedHost: boolean; defaultPrevented: boolean } {
 	const hostListener = vi.fn();
 	window.addEventListener("keydown", hostListener);
 	const event = new KeyboardEvent("keydown", {
 		key,
-		metaKey: true,
-		shiftKey,
+		metaKey: modifiers.meta ?? false,
+		shiftKey: modifiers.shift ?? false,
 		bubbles: true,
 		cancelable: true,
 	});
-	document.body.dispatchEvent(event);
+	(document.activeElement ?? document.body).dispatchEvent(event);
 	window.removeEventListener("keydown", hostListener);
 	return {
 		reachedHost: hostListener.mock.calls.length > 0,
@@ -100,98 +103,66 @@ function pressOnBody(
 	};
 }
 
-describe("HOST9: document shortcuts on a body focus fell to", () => {
+describe("HOST9: keys follow focus", () => {
+	it("HOST9: Mod-z in the focused editor undoes in the editor", async () => {
+		const { root, text } = await mountTyped("Hello");
+		focusEditor(root);
+
+		expect(press("z", { meta: true }).defaultPrevented).toBe(true);
+		expect(text()).toBe("");
+	});
+
 	it("HOST9: Mod-z after a focused host control unmounts reaches the host, not the editor's caret", async () => {
 		const { root, text } = await mountTyped("Hello");
 		focusEditor(root);
 		focusHostThenRemoveIt();
 
-		expect(pressOnBody("z")).toEqual({
+		expect(press("z", { meta: true })).toEqual({
 			reachedHost: true,
 			defaultPrevented: false,
 		});
 		expect(text()).toBe("Hello");
 	});
 
-	it("HOST9: Mod-Shift-z and Mod-a after a focused host control unmounts reach the host", async () => {
+	it("HOST9: Mod-Shift-z and Mod-a without editor focus reach the host", async () => {
 		const { editor, root } = await mountTyped("Hello");
 		focusEditor(root);
 		focusHostThenRemoveIt();
 		const selectionBefore = editor.selection;
 
-		expect(pressOnBody("z", true).reachedHost).toBe(true);
-		expect(pressOnBody("a").reachedHost).toBe(true);
+		expect(press("z", { meta: true, shift: true }).reachedHost).toBe(true);
+		expect(press("a", { meta: true }).reachedHost).toBe(true);
 		expect(editor.selection).toEqual(selectionBefore);
 	});
 
-	it("HOST9: Mod-z after focus left the editor for the body still undoes in the editor", async () => {
+	it("HOST9: Mod-z after focus left the editor for the body reaches the host", async () => {
 		const { root, text } = await mountTyped("Hello");
 		focusEditor(root);
 		blurToBody();
 
-		expect(pressOnBody("z")).toEqual({
-			reachedHost: false,
-			defaultPrevented: true,
-		});
-		expect(text()).toBe("");
-	});
-
-	it("HOST9: focus returning to the editor after a host control reclaims Mod-z", async () => {
-		const { root, text } = await mountTyped("Hello");
-		focusEditor(root);
-		focusHostThenRemoveIt();
-		focusEditor(root);
-		blurToBody();
-
-		expect(pressOnBody("z").reachedHost).toBe(false);
-		expect(text()).toBe("");
-	});
-
-	it("HOST9: an editor that never held focus leaves Mod-z on the body to the host", async () => {
-		const { text } = await mountTyped("Hello");
-
-		expect(pressOnBody("z").reachedHost).toBe(true);
+		expect(press("z", { meta: true }).reachedHost).toBe(true);
 		expect(text()).toBe("Hello");
 	});
 
-	it("HOST9: of two editors left with a caret, Mod-z on the body undoes in the one that held focus last", async () => {
+	it("HOST9: an editor that never held focus leaves Mod-z to the host", async () => {
+		const { text } = await mountTyped("Hello");
+
+		expect(press("z", { meta: true }).reachedHost).toBe(true);
+		expect(text()).toBe("Hello");
+	});
+
+	it("HOST9: of two editors, Mod-z undoes only in the focused one", async () => {
 		const first = await mountTyped("First");
 		const second = await mountTyped("Second");
-
 		focusEditor(second.root);
-		blurToBody();
-		expect(pressOnBody("z").reachedHost).toBe(false);
+
+		expect(press("z", { meta: true }).defaultPrevented).toBe(true);
 		expect(first.text()).toBe("First");
 		expect(second.text()).toBe("");
-
-		focusEditor(first.root);
-		blurToBody();
-		expect(pressOnBody("z").reachedHost).toBe(false);
-		expect(first.text()).toBe("");
 	});
 });
 
-/** A plain key on `target`; reports whether the host's own listener saw it. */
-function pressPlain(
-	target: Element,
-	key: string,
-): { reachedHost: boolean; defaultPrevented: boolean } {
-	const hostListener = vi.fn();
-	window.addEventListener("keydown", hostListener);
-	const event = new KeyboardEvent("keydown", {
-		key,
-		bubbles: true,
-		cancelable: true,
-	});
-	target.dispatchEvent(event);
-	window.removeEventListener("keydown", hostListener);
-	return {
-		reachedHost: hostListener.mock.calls.length > 0,
-		defaultPrevented: event.defaultPrevented,
-	};
-}
-
-describe("HOST9: every document key follows focus, not a leftover selection", () => {
+describe("HOST9: a leftover block selection takes no key without focus", () => {
 	async function mountWithBlockSelection() {
 		const mounted = await mountTyped("Hello");
 		const blockId = mounted.editor.firstBlock()!.id;
@@ -201,24 +172,23 @@ describe("HOST9: every document key follows focus, not a leftover selection", ()
 		return { ...mounted, blockId };
 	}
 
-	function focusHostMenuItem(): HTMLElement {
+	function focusHostMenuItem(): void {
 		const menuItem = document.createElement("button");
 		menuItem.setAttribute("role", "menuitem");
 		menuItem.textContent = "Move to";
 		document.body.append(menuItem);
 		menuItem.focus();
-		return menuItem;
 	}
 
 	it.each(["Backspace", "Delete", "Enter", "ArrowDown", "Escape"])(
 		"HOST9: %s on a focused host element leaves the editor's block selection alone",
 		async (key) => {
 			const { editor, text } = await mountWithBlockSelection();
-			const menuItem = focusHostMenuItem();
+			focusHostMenuItem();
 			const blockCount = editor.documentState.blockOrder.length;
 			const selectionBefore = editor.selection;
 
-			expect(pressPlain(menuItem, key)).toEqual({
+			expect(press(key)).toEqual({
 				reachedHost: true,
 				defaultPrevented: false,
 			});
@@ -232,7 +202,7 @@ describe("HOST9: every document key follows focus, not a leftover selection", ()
 		const { editor, blockId } = await mountWithBlockSelection();
 		focusHostThenRemoveIt();
 
-		expect(pressPlain(document.body, "Backspace").reachedHost).toBe(true);
+		expect(press("Backspace").reachedHost).toBe(true);
 		expect(editor.getBlock(blockId)?.textContent()).toBe("Hello");
 		expect(editor.selection).toMatchObject({ type: "block" });
 	});

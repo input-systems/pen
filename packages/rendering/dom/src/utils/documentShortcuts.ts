@@ -29,11 +29,7 @@ import { DATA_ATTRS } from "./dataAttributes";
 import { isDomHTMLElement } from "./domNodes";
 import { handleEscapeSelectionTransition } from "./escapeSelection";
 import { handleTableCellSelectionKeyDown } from "./tableCellNavigation";
-import {
-	isEditorShortcutFocus,
-	isFallenFocus,
-	shouldHandleEditorKeyboardEvent,
-} from "./textEntryTarget";
+import { shouldHandleEditorKeyboardEvent } from "./textEntryTarget";
 
 /** Arguments for {@link bindEditorDocumentKeyDown}. */
 export type BindEditorDocumentKeyDownOptions = {
@@ -51,9 +47,8 @@ function isDocumentBubbleKey(key: string): boolean {
  * Document key routing for an editor root. Escape (HOST7) and
  * block-selection Enter (HOST8) are bubbling defaults so a host or
  * overlay can preventDefault first. Other document shortcuts stay in
- * capture. Keys follow focus (HOST9): none reach the editor while a host
- * element beside it holds focus, and keys on a body that focus fell to
- * reach it only if it, not an element beside it, held focus last.
+ * capture. Keys follow focus (HOST9): none reach the editor unless focus
+ * is inside its root.
  */
 export function bindEditorDocumentKeyDown(
 	options: BindEditorDocumentKeyDownOptions,
@@ -64,27 +59,12 @@ export function bindEditorDocumentKeyDown(
 		return () => {};
 	}
 
-	// HOST9: focus falling to the body fires no `focusin`, so after a fall
-	// this still names whatever held focus before it. An editor that has
-	// never held focus does not own the body's shortcuts.
-	let heldFocusLast =
-		!isFallenFocus(doc, doc.activeElement) &&
-		isEditorShortcutFocus(root, doc.activeElement);
-	const onFocusIn = (event: FocusEvent): void => {
-		if (!isFallenFocus(doc, event.target)) {
-			heldFocusLast = isEditorShortcutFocus(root, event.target);
-		}
-	};
-
 	const route = (event: KeyboardEvent): void => {
 		if (
 			!shouldHandleEditorKeyboardEvent({
 				root,
 				event,
 				selection: editor.selection,
-				hasMappedDomSelection: () =>
-					fieldEditor.reader?.hasSelectionInRoot() ?? false,
-				heldFocusLast: () => heldFocusLast,
 			})
 		) {
 			return;
@@ -121,11 +101,9 @@ export function bindEditorDocumentKeyDown(
 		route(event);
 	};
 
-	doc.addEventListener("focusin", onFocusIn, true);
 	doc.addEventListener("keydown", onCapture, true);
 	doc.addEventListener("keydown", onBubble, false);
 	return () => {
-		doc.removeEventListener("focusin", onFocusIn, true);
 		doc.removeEventListener("keydown", onCapture, true);
 		doc.removeEventListener("keydown", onBubble, false);
 	};

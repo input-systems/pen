@@ -38,15 +38,24 @@ function createTableEditor() {
 }
 
 /**
- * HOST9: Mod-a and history on the body go to the editor that held focus
- * last, so the editor takes focus first and then loses it to the body.
+ * HOST9: keys reach the editor only while it has focus, and a browser
+ * dispatches a keydown on the focused element.
  */
-async function focusThenFallToBody(root: HTMLElement) {
-  root.focus();
+async function pressInFocusedEditor(root: HTMLElement, key: string) {
+  if (!root.contains(document.activeElement)) {
+    root.focus();
+    await nextTick();
+  }
+  expect(root.contains(document.activeElement)).toBe(true);
+  document.activeElement!.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key,
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
   await nextTick();
-  (document.activeElement as HTMLElement | null)?.blur();
-  await nextTick();
-  expect(document.activeElement).toBe(document.body);
 }
 
 function createParagraphEditor() {
@@ -175,16 +184,7 @@ describe("@input/pen-vue: editing interactions", () => {
       attachTo: document.body,
       props: { editor },
     });
-    await focusThenFallToBody(wrapper.element as HTMLElement);
-
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "a",
-        metaKey: true,
-        bubbles: true,
-      }),
-    );
-    await nextTick();
+    await pressInFocusedEditor(wrapper.element as HTMLElement, "a");
 
     // The default interaction model is content-first, so T1 enters at the
     // content rung: one press spans every block.
@@ -194,14 +194,7 @@ describe("@input/pen-vue: editing interactions", () => {
       focus: { blockId: "paragraph-2", offset: 6 },
     });
 
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "a",
-        metaKey: true,
-        bubbles: true,
-      }),
-    );
-    await nextTick();
+    await pressInFocusedEditor(wrapper.element as HTMLElement, "a");
 
     expect(editor.selection).toEqual({
       type: "block",
@@ -222,16 +215,7 @@ describe("@input/pen-vue: editing interactions", () => {
       attachTo: document.body,
       props: { editor },
     });
-    await focusThenFallToBody(wrapper.element as HTMLElement);
-
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "z",
-        metaKey: true,
-        bubbles: true,
-      }),
-    );
-    await nextTick();
+    await pressInFocusedEditor(wrapper.element as HTMLElement, "z");
 
     expect(editor.getBlock("paragraph-1")?.textContent()).toBe("First");
 

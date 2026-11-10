@@ -20,6 +20,21 @@ export function createEditor(
 	});
 }
 
+/**
+ * HOST9: keys reach an editor only while it has focus, and a browser
+ * dispatches a keydown on the focused element. Focuses the editor root
+ * unless focus is already inside it, then dispatches there.
+ */
+export function pressInFocusedEditor(
+	root: HTMLElement,
+	event: KeyboardEvent,
+): void {
+	if (!root.contains(root.ownerDocument.activeElement)) {
+		root.focus();
+	}
+	(root.ownerDocument.activeElement as HTMLElement).dispatchEvent(event);
+}
+
 export function createEscapeEvent(): KeyboardEvent {
 	return new KeyboardEvent("keydown", {
 		key: "Escape",

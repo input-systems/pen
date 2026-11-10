@@ -2,8 +2,8 @@
 "@input/pen-dom": patch
 ---
 
-Document keys now follow focus (HOST9). While a host element beside the editor holds focus, the editor's document key handler takes no keys, whatever selection it was left with. Before, a leftover block or cell selection let the editor claim the key: arrow keys in a focused host menu moved the block selection instead of the menu's focus, Tab moved the cell selection instead of reaching the next host control, Enter on a focused host button inserted a paragraph and cancelled the click, Backspace and Delete deleted the selected blocks, and Escape escalated the editor's selection. On a body that focus fell to, every key now goes to the editor only if it held focus last, as Mod-a and history already did.
+An editor without focus no longer takes keys (HOST9). The document key handler routes a key to the editor only while DOM focus is inside its root. Before, an editor that had lost focus still claimed keys whenever it was left with a selection. So when a host menu closed by unmounting its focused item, the chat composer beside it ran its own undo on Mod-z and stopped the key, and the host's undo never ran. With a host control focused, a leftover block or cell selection also took arrow keys from host menus, Tab from host forms, and Enter from host buttons (cancelling the click), and Backspace deleted the selected blocks. Now all of these reach the host. This includes Mod-z and Mod-a after a click on empty space beside the editor: a host that wants those to act on the editor focuses it. `shouldHandleEditorKeyboardEvent`'s `hasMappedDomSelection` option is deprecated and no longer consulted.
 
-Graded patch, as earlier HOST9 changes were. Focus inside the editor, on a wrapper of it, or on a body it lost focus to routes keys as before.
+Graded patch, as earlier HOST9 changes were: no host code has to change, and keys inside a focused editor behave as before.
 
 Breaking: no

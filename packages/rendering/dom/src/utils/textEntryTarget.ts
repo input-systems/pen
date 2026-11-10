@@ -20,13 +20,11 @@ type EditorKeyboardRoutingOptions = {
 	root: HTMLElement;
 	event: KeyboardEvent;
 	selection: KeyboardRoutingSelection;
-	hasMappedDomSelection?: () => boolean;
 	/**
-	 * HOST9: whether this root, or a wrapper of it, took focus last in its
-	 * document. Consulted once focus has fallen to the body; omitted, the
-	 * body's keys are routed by the editor's selection alone.
+	 * @deprecated Not consulted: keys reach the editor only while focus is
+	 * inside its root (HOST9), whatever DOM range it holds.
 	 */
-	heldFocusLast?: () => boolean;
+	hasMappedDomSelection?: () => boolean;
 	handleCollapsedTextSelection?: boolean;
 };
 
@@ -143,8 +141,6 @@ export function shouldHandleEditorKeyboardEvent({
 	root,
 	event,
 	selection,
-	hasMappedDomSelection,
-	heldFocusLast,
 	handleCollapsedTextSelection = false,
 }: EditorKeyboardRoutingOptions): boolean {
 	const targetRoot = getClosestEditorRoot(event.target);
@@ -173,90 +169,27 @@ export function shouldHandleEditorKeyboardEvent({
 		return false;
 	}
 
-	if (isDomNode(activeElement) && root.contains(activeElement)) {
-		if (isFieldEditorTextEntryTarget(activeElement)) {
-			if (event.key === "Escape" || isCollapsedSelectAll(event)) {
-				return true;
-			}
-
-			return isDocumentSelection(selection, handleCollapsedTextSelection);
-		}
-
-		if (isNativeTextEntryTarget(activeElement)) {
-			return false;
-		}
-
-		if (isDetachedLibrarySurface(activeElement)) {
-			return false;
-		}
-
-		return true;
-	}
-
-	if (
-		isDomNode(activeElement) &&
-		!root.contains(activeElement) &&
-		isNativeTextEntryTarget(activeElement)
-	) {
+	// Keys follow focus (HOST9): an editor without focus takes no key, so
+	// the host's own bindings run. Focus outside the root — a host element,
+	// a wrapper of the root, the body — is never the editor's, whatever
+	// selection, model or DOM, it was left with.
+	if (!isDomNode(activeElement) || !root.contains(activeElement)) {
 		return false;
 	}
 
-	// Keys follow focus (HOST9). A host element focused beside the editor
-	// keeps every document key — arrows, Tab, Enter, Escape, Backspace and
-	// the shortcuts — however this editor's selection, model or DOM, was
-	// left, and so does the body once focus fell there from such an element.
-	// A wrapper of the root is nobody else's, and neither is a key
-	// dispatched inside the root: a browser targets the focused element, so
-	// a target in the root was addressed to this editor.
-	if (!(isDomNode(event.target) && root.contains(event.target))) {
-		if (isFallenFocus(root.ownerDocument, activeElement)) {
-			if (heldFocusLast?.() === false) {
-				return false;
-			}
-		} else if (isDomNode(activeElement) && !activeElement.contains(root)) {
-			return false;
+	if (isFieldEditorTextEntryTarget(activeElement)) {
+		if (event.key === "Escape" || isCollapsedSelectAll(event)) {
+			return true;
 		}
+
+		return isDocumentSelection(selection, handleCollapsedTextSelection);
 	}
 
-	if (hasMappedDomSelection?.()) {
-		return true;
+	if (isNativeTextEntryTarget(activeElement)) {
+		return false;
 	}
 
-	if (isDocumentShortcut(event)) {
-		return isDocumentSelection(selection, true);
-	}
-
-	return isDocumentSelection(selection, handleCollapsedTextSelection);
-}
-
-/**
- * HOST9: focus that belongs to no element, so whatever held it last owns the
- * document shortcuts. Focus falling to the body — its element removed, a
- * click on nothing focusable, a `blur()` — fires no `focusin`.
- */
-export function isFallenFocus(
-	doc: Document | null,
-	target: EventTarget | null | undefined,
-): boolean {
-	return (
-		target == null ||
-		target === doc?.body ||
-		target === doc?.documentElement
-	);
-}
-
-/**
- * HOST9: whether focus on `target` keeps the document shortcuts with `root`:
- * focus inside the root, or on a wrapper of it. Not meaningful for fallen
- * focus, which every root's wrapper chain ends in.
- */
-export function isEditorShortcutFocus(
-	root: HTMLElement,
-	target: EventTarget | null,
-): boolean {
-	return (
-		isDomNode(target) && (root.contains(target) || target.contains(root))
-	);
+	return !isDetachedLibrarySurface(activeElement);
 }
 
 export function getClosestEditorRoot(
@@ -311,15 +244,6 @@ function isCollapsedSelectAll(event: KeyboardEvent): boolean {
 		!event.shiftKey &&
 		!event.altKey &&
 		(event.metaKey || event.ctrlKey)
-	);
-}
-
-function isDocumentShortcut(event: KeyboardEvent): boolean {
-	const key = event.key.toLowerCase();
-	return (
-		!event.altKey &&
-		(event.metaKey || event.ctrlKey) &&
-		(key === "a" || key === "z")
 	);
 }
 

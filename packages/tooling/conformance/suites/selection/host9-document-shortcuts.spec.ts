@@ -7,18 +7,14 @@ import {
 } from "../specHelpers";
 
 /**
- * HOST9: document keys follow focus. A host element focused beside the
- * editor keeps every key, and keys on a body that focus fell to belong to
- * whatever held focus last. A host menu that took focus and closed on a
- * removed item leaves them with the host, even though the editor beside it
- * still has a caret or a block selection and the browser kept a native
- * range in its blurred field. Focus that left the editor for nothing
- * focusable leaves them with the editor.
+ * HOST9: keys follow focus. An editor without focus takes no key, so the
+ * host's own bindings run — even though the editor still has a caret or a
+ * block selection and the browser kept a native range in its blurred field.
+ * With focus inside the editor, its keys work as before.
  */
 
 const BLOCK_ID = "hello-p1";
 const TEXT = "Hello world";
-const SECOND_EDITOR = "[data-pen-conformance-second-editor]";
 
 /** Types `!` at the end of the harness block and closes the undo group. */
 async function typeAtEnd(page: Page): Promise<void> {
@@ -112,7 +108,19 @@ scenario(
 );
 
 scenario(
-	"HOST9: Mod-z after focus left the editor for the body still undoes in the editor",
+	"HOST9: Mod-z in the focused editor undoes in the editor",
+	async (s, page) => {
+		await s.load("hello-world");
+		await typeAtEnd(page);
+
+		await page.keyboard.press("ControlOrMeta+z");
+
+		await expect.poll(() => readModelBlockText(page, BLOCK_ID)).toBe(TEXT);
+	},
+);
+
+scenario(
+	"HOST9: Mod-z after focus left the editor for the body reaches the host",
 	async (s, page) => {
 		await s.load("hello-world");
 		await typeAtEnd(page);
@@ -121,31 +129,7 @@ scenario(
 
 		await page.keyboard.press("ControlOrMeta+z");
 
-		await expect.poll(() => readModelBlockText(page, BLOCK_ID)).toBe(TEXT);
-		expect(await hostShortcuts(page)).toEqual([]);
-	},
-);
-
-scenario(
-	"HOST9: Mod-z on the body undoes in the editor that held focus last, not the first one mounted",
-	async (s, page) => {
-		await s.load("hello-world");
-		await typeAtEnd(page);
-		await page.evaluate(() => {
-			window.__penConformance.mountSecondEditor("Second");
-		});
-		const second = page.locator(
-			`${SECOND_EDITOR} [data-pen-inline-content]`,
-		);
-		await second.click();
-		await page.keyboard.press("End");
-		await page.keyboard.type("ab");
-		await expect(page.locator(SECOND_EDITOR)).toContainText("Secondab");
-		await blurToBody(page);
-
-		await page.keyboard.press("ControlOrMeta+z");
-
-		await expect(page.locator(SECOND_EDITOR)).not.toContainText("Secondab");
+		expect(await hostShortcuts(page)).toEqual(["z"]);
 		expect(await readModelBlockText(page, BLOCK_ID)).toBe(`${TEXT}!`);
 	},
 	{ axe: false },

@@ -9,6 +9,7 @@ import {
 	createEditor,
 	createSelectAllEvent,
 	flushAnimationFrames,
+	pressInFocusedEditor,
 	getFieldEditor,
 } from "./utils/crossBlockSelectionTestHelpers";
 import { fieldEditorInternals } from "./utils/fieldEditorInternals";
@@ -191,18 +192,13 @@ describe("@input/pen-react cmd+a: escalation in flow documents", () => {
 			await flushAnimationFrames(2);
 		});
 
-		// HOST9: Mod-a on the body goes to the editor that held focus last.
 		await act(async () => {
-			(
-				container.querySelector("[data-pen-editor-root]") as HTMLElement
-			).focus();
-			(document.activeElement as HTMLElement | null)?.blur();
-			await flushAnimationFrames(2);
-		});
-		expect(document.activeElement).toBe(document.body);
-
-		await act(async () => {
-			document.dispatchEvent(createSelectAllEvent());
+			pressInFocusedEditor(
+				container.querySelector(
+					"[data-pen-editor-root]",
+				) as HTMLElement,
+				createSelectAllEvent(),
+			);
 			await flushAnimationFrames(2);
 		});
 
