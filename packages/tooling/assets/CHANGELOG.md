@@ -1,5 +1,11 @@
 # @input/pen-assets
 
+## 0.5.3
+
+### Patch Changes
+
+- @input/pen-types@0.5.3
+
 ## 0.5.2
 
 ### Patch Changes
