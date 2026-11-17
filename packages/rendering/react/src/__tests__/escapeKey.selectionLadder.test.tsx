@@ -11,6 +11,7 @@ import {
 	createEditor,
 	createEscapeEvent,
 	flushAnimationFrames,
+	pressInFocusedEditor,
 	getFieldEditor,
 } from "./utils/crossBlockSelectionTestHelpers";
 
@@ -89,7 +90,7 @@ describe("@input/pen-react Escape: the selection ladder", () => {
 		).toBe(true);
 
 		await act(async () => {
-			rootElement?.dispatchEvent(createEscapeEvent());
+			pressInFocusedEditor(rootElement!, createEscapeEvent());
 			await flushAnimationFrames(2);
 		});
 
@@ -166,7 +167,7 @@ describe("@input/pen-react Escape: the selection ladder", () => {
 		});
 
 		await act(async () => {
-			rootElement?.dispatchEvent(createEscapeEvent());
+			pressInFocusedEditor(rootElement!, createEscapeEvent());
 			await flushAnimationFrames(2);
 		});
 
@@ -186,7 +187,7 @@ describe("@input/pen-react Escape: the selection ladder", () => {
 		});
 
 		await act(async () => {
-			rootElement?.dispatchEvent(createEscapeEvent());
+			pressInFocusedEditor(rootElement!, createEscapeEvent());
 		});
 
 		expect(editor.selection).toEqual({
@@ -276,7 +277,7 @@ describe("@input/pen-react Escape: the selection ladder", () => {
 		});
 
 		await act(async () => {
-			rootElement?.dispatchEvent(createEscapeEvent());
+			pressInFocusedEditor(rootElement!, createEscapeEvent());
 			await flushAnimationFrames(2);
 		});
 

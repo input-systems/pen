@@ -221,6 +221,20 @@ describe("@input/pen-dom public helpers", () => {
 		).toBe(false);
 		expect(routeBackspace(gridCell)).toBe(true);
 
+		// HOST9: an editor without focus takes no document key.
+		expect(
+			shouldHandleEditorKeyboardEvent({
+				root,
+				event: new KeyboardEvent("keydown", { key: "Backspace" }),
+				selection: {
+					type: "block",
+					blockIds: ["block-1"],
+				},
+			}),
+		).toBe(false);
+
+		root.tabIndex = 0;
+		root.focus();
 		expect(
 			shouldHandleEditorKeyboardEvent({
 				root,
@@ -270,6 +284,8 @@ describe("@input/pen-dom public helpers", () => {
 		otherFieldSurface.setAttribute(DATA_ATTRS.fieldEditorSurface, "");
 		otherRoot.append(otherFieldSurface);
 		document.body.append(root, otherRoot);
+		root.tabIndex = 0;
+		root.focus();
 
 		expect(
 			shouldHandleEditorKeyboardEvent({
@@ -278,7 +294,6 @@ describe("@input/pen-dom public helpers", () => {
 					key: "Backspace",
 				}),
 				selection: null,
-				hasMappedDomSelection: () => true,
 			}),
 		).toBe(true);
 

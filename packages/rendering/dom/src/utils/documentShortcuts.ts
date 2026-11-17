@@ -47,7 +47,8 @@ function isDocumentBubbleKey(key: string): boolean {
  * Document key routing for an editor root. Escape (HOST7) and
  * block-selection Enter (HOST8) are bubbling defaults so a host or
  * overlay can preventDefault first. Other document shortcuts stay in
- * capture.
+ * capture. Keys follow focus (HOST9): none reach the editor unless focus
+ * is inside its root.
  */
 export function bindEditorDocumentKeyDown(
 	options: BindEditorDocumentKeyDownOptions,
@@ -64,8 +65,6 @@ export function bindEditorDocumentKeyDown(
 				root,
 				event,
 				selection: editor.selection,
-				hasMappedDomSelection: () =>
-					fieldEditor.reader?.hasSelectionInRoot() ?? false,
 			})
 		) {
 			return;

@@ -37,6 +37,27 @@ function createTableEditor() {
   return editor;
 }
 
+/**
+ * HOST9: keys reach the editor only while it has focus, and a browser
+ * dispatches a keydown on the focused element.
+ */
+async function pressInFocusedEditor(root: HTMLElement, key: string) {
+  if (!root.contains(document.activeElement)) {
+    root.focus();
+    await nextTick();
+  }
+  expect(root.contains(document.activeElement)).toBe(true);
+  document.activeElement!.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key,
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+  await nextTick();
+}
+
 function createParagraphEditor() {
   return createTestEditor({
     blocks: [
@@ -163,15 +184,7 @@ describe("@input/pen-vue: editing interactions", () => {
       attachTo: document.body,
       props: { editor },
     });
-
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "a",
-        metaKey: true,
-        bubbles: true,
-      }),
-    );
-    await nextTick();
+    await pressInFocusedEditor(wrapper.element as HTMLElement, "a");
 
     // The default interaction model is content-first, so T1 enters at the
     // content rung: one press spans every block.
@@ -181,14 +194,7 @@ describe("@input/pen-vue: editing interactions", () => {
       focus: { blockId: "paragraph-2", offset: 6 },
     });
 
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "a",
-        metaKey: true,
-        bubbles: true,
-      }),
-    );
-    await nextTick();
+    await pressInFocusedEditor(wrapper.element as HTMLElement, "a");
 
     expect(editor.selection).toEqual({
       type: "block",
@@ -209,15 +215,7 @@ describe("@input/pen-vue: editing interactions", () => {
       attachTo: document.body,
       props: { editor },
     });
-
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "z",
-        metaKey: true,
-        bubbles: true,
-      }),
-    );
-    await nextTick();
+    await pressInFocusedEditor(wrapper.element as HTMLElement, "z");
 
     expect(editor.getBlock("paragraph-1")?.textContent()).toBe("First");
 

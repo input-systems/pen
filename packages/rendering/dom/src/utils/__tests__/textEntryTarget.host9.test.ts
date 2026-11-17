@@ -14,6 +14,31 @@ const caret: ReadonlySelectionState = {
 	focus: { blockId: "block-1", offset: 2 },
 };
 
+const blockSelection: ReadonlySelectionState = {
+	type: "block",
+	blockIds: ["block-1"],
+};
+
+const cellSelection: ReadonlySelectionState = {
+	type: "cell",
+	blockId: "table-1",
+	anchor: { row: 0, col: 0 },
+	head: { row: 0, col: 0 },
+};
+
+const textRange: ReadonlySelectionState = {
+	type: "text",
+	anchor: { blockId: "block-1", offset: 0 },
+	focus: { blockId: "block-2", offset: 3 },
+};
+
+/** A plain keydown (no modifier) dispatched on `target`. */
+function plainKeyDownOn(target: Element, key: string): KeyboardEvent {
+	const event = new KeyboardEvent("keydown", { key, bubbles: true });
+	target.dispatchEvent(event);
+	return event;
+}
+
 function mountRoot(parent: HTMLElement = document.body): HTMLElement {
 	const root = document.createElement("div");
 	root.setAttribute(DATA_ATTRS.editorRoot, "");
@@ -36,10 +61,25 @@ function keyDownOn(
 	return event;
 }
 
-describe("HOST9 document shortcuts and host focus", () => {
+describe("HOST9: document keys follow focus", () => {
 	afterEach(() => {
 		document.body.replaceChildren();
 	});
+
+	/** Focus outside the root: a host element beside it, or a wrapper of it. */
+	function focusOutside(kind: "host" | "wrapper"): {
+		root: HTMLElement;
+		focused: HTMLElement;
+	} {
+		const focused = document.createElement(
+			kind === "host" ? "button" : "div",
+		);
+		focused.tabIndex = 0;
+		document.body.appendChild(focused);
+		const root = mountRoot(kind === "wrapper" ? focused : document.body);
+		focused.focus();
+		return { root, focused };
+	}
 
 	it.each([
 		["Mod-a", "a", false],
@@ -48,15 +88,12 @@ describe("HOST9 document shortcuts and host focus", () => {
 	])(
 		"HOST9: a focused host element outside the root keeps %s",
 		(_name, key, shiftKey) => {
-			const root = mountRoot();
-			const hostButton = document.createElement("button");
-			document.body.appendChild(hostButton);
-			hostButton.focus();
+			const { root, focused } = focusOutside("host");
 
 			expect(
 				shouldHandleEditorKeyboardEvent({
 					root,
-					event: keyDownOn(hostButton, key, shiftKey),
+					event: keyDownOn(focused, key, shiftKey),
 					selection: caret,
 					hasMappedDomSelection: () => true,
 				}),
@@ -64,35 +101,113 @@ describe("HOST9 document shortcuts and host focus", () => {
 		},
 	);
 
-	it.each(["z", "a"])(
-		"HOST9: Mod-%s still reaches the editor once focus has fallen to the body",
+	it.each([
+		["Mod-a", "a", false],
+		["Mod-z", "z", false],
+		["Mod-Shift-z", "z", true],
+	])(
+		"HOST9: %s on the body stays with the host, whatever caret and range the editor kept",
+		(_name, key, shiftKey) => {
+			const root = mountRoot();
+
+			expect(
+				shouldHandleEditorKeyboardEvent({
+					root,
+					event: keyDownOn(document.body, key, shiftKey),
+					selection: caret,
+					hasMappedDomSelection: () => true,
+				}),
+			).toBe(false);
+		},
+	);
+
+	it.each([
+		["ArrowDown", blockSelection],
+		["Enter", blockSelection],
+		["Backspace", blockSelection],
+		["Delete", blockSelection],
+		["Tab", cellSelection],
+		["ArrowRight", cellSelection],
+		["Backspace", cellSelection],
+		["Escape", textRange],
+		["Backspace", textRange],
+	] as const)(
+		"HOST9: a focused host element outside the root keeps %s over a leftover %o",
+		(key, selection) => {
+			const { root, focused } = focusOutside("host");
+
+			expect(
+				shouldHandleEditorKeyboardEvent({
+					root,
+					event: plainKeyDownOn(focused, key),
+					selection,
+					hasMappedDomSelection: () => true,
+				}),
+			).toBe(false);
+		},
+	);
+
+	it.each(["ArrowDown", "Enter", "Backspace", "Escape"])(
+		"HOST9: %s on the body leaves the editor's block selection alone",
 		(key) => {
 			const root = mountRoot();
 
 			expect(
 				shouldHandleEditorKeyboardEvent({
 					root,
-					event: keyDownOn(document.body, key),
-					selection: caret,
+					event: plainKeyDownOn(document.body, key),
+					selection: blockSelection,
 				}),
+			).toBe(false);
+		},
+	);
+
+	it.each([
+		["Mod-z", "z", caret],
+		["Backspace", "Backspace", blockSelection],
+	] as const)(
+		"HOST9: a focused wrapper around the root is not the editor and keeps %s",
+		(_name, key, selection) => {
+			const { root, focused } = focusOutside("wrapper");
+			const event =
+				key === "z"
+					? keyDownOn(focused, key)
+					: plainKeyDownOn(focused, key);
+
+			expect(
+				shouldHandleEditorKeyboardEvent({ root, event, selection }),
+			).toBe(false);
+		},
+	);
+
+	it.each([
+		["Mod-z", "z", caret],
+		["Backspace", "Backspace", blockSelection],
+	] as const)(
+		"HOST9: with focus on the editor root, %s reaches the editor",
+		(_name, key, selection) => {
+			const root = mountRoot();
+			root.tabIndex = 0;
+			root.focus();
+			const event =
+				key === "z" ? keyDownOn(root, key) : plainKeyDownOn(root, key);
+
+			expect(
+				shouldHandleEditorKeyboardEvent({ root, event, selection }),
 			).toBe(true);
 		},
 	);
 
-	it("HOST9: a focused wrapper around the root does not take Mod-z from the editor", () => {
-		const wrapper = document.createElement("div");
-		wrapper.tabIndex = 0;
-		document.body.appendChild(wrapper);
-		const root = mountRoot(wrapper);
-		wrapper.focus();
+	it("HOST9: a key dispatched on the root of an unfocused editor is not taken", () => {
+		const root = mountRoot();
 
 		expect(
 			shouldHandleEditorKeyboardEvent({
 				root,
-				event: keyDownOn(wrapper, "z"),
-				selection: caret,
+				event: plainKeyDownOn(root, "Escape"),
+				selection: textRange,
 			}),
-		).toBe(true);
+		).toBe(false);
 	});
 });
 
