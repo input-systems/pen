@@ -118,7 +118,7 @@ import {
 
 `autocompleteExtension()` accepts an empty config.
 
-`paragraphGap` decides what a blank line between two prose paragraphs in a completion becomes. `"separator"` drops it: the paragraphs land as adjacent blocks and the host's paragraph margin is the gap. `"empty-block"` keeps it as an empty paragraph block, for documents whose paragraphs carry no margin and express the gap as a block of their own (email). An implicit paragraph split during a continuation takes the same gap. Independent of the setting, a single leading newline in a prose completion right after a closed line (`Best,`, `Thanks for your time.`) starts a new block instead of being dropped as a model artifact; mid-sentence it is still dropped.
+`paragraphGap` decides what a blank line between two prose paragraphs in a completion becomes. `"separator"` drops it: the paragraphs land as adjacent blocks and the host's paragraph margin is the gap. `"empty-block"` keeps it as an empty paragraph block, for documents whose paragraphs carry no margin and express the gap as a block of their own (email). An implicit paragraph split during a continuation takes the same gap. Independent of the setting, a single leading newline in a prose completion starts a new block when the caret ends a non-empty line (`Best,` + `\nKrijn`); with text after the caret, in an empty block, or outside prose it is dropped.
 
 ### Skills (`./skills`)
 
