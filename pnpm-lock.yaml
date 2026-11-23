@@ -1204,8 +1204,8 @@ importers:
         specifier: ^0.1.5
         version: 0.1.5(@y/y@14.0.0-16)
       lib0:
-        specifier: ^0.2.118
-        version: 0.2.119
+        specifier: ^0.2.120
+        version: 0.2.120
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -1213,8 +1213,8 @@ importers:
         specifier: ^19.3.1
         version: 19.3.1(react@19.3.1)
       ws:
-        specifier: ^8.22.1
-        version: 8.22.1
+        specifier: ^8.23.0
+        version: 8.23.0
       y-protocols:
         specifier: ^1.0.7
         version: 1.0.7(yjs@13.6.33)
@@ -2950,8 +2950,13 @@ packages:
     engines: {node: '>=16'}
     hasBin: true
 
-  lib0@1.0.0-rc.26:
-    resolution: {integrity: sha512-z4PskQbqRzZxdv0ivlTQT9MX1mNrhRs+FIGqKo8msepHEoVr3KZEQY9rFVw2M6nBwuGDqPngaXXmVjpsCopIew==}
+  lib0@0.2.120:
+    resolution: {integrity: sha512-/a2eRImR8sZbmMVKe2we1/KukDQkuPyPf8yol6epvCu2PH6hurjcRI3mdGFFAi0uGoRJGyns99JquZgxwW1tQg==}
+    engines: {node: '>=16'}
+    hasBin: true
+
+  lib0@1.0.0-rc.37:
+    resolution: {integrity: sha512-t8Ukvvd1Y+rgOJV5vi4Y+BBg0HuVH2/ejBsVXsvKsAU0vawqzUuUGwLMjFwv9DHucTUBmoCHb3Kyv/xJ4lR0UQ==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -3710,8 +3715,8 @@ packages:
       '@cloudflare/workers-types':
         optional: true
 
-  ws@6.2.6:
-    resolution: {integrity: sha512-XTrf1gv7kXoVf1hbC3PAyAiPgR8Wz1blcrYIjEsUmr08BLksT41R8KbjmS9408C2ERx7v1JDLD/BkpLEttjfKA==}
+  ws@6.2.7:
+    resolution: {integrity: sha512-Zf1UJBlTF9DUHCi6LG990YXwa3modcX6VsSQbZPzdp45f5aqSVmzMFJL+SliIpb4M719yQGYIw5D3CKYEmmB3g==}
     peerDependencies:
       bufferutil: ^4.0.1
       utf-8-validate: ^5.0.2
@@ -3733,8 +3738,8 @@ packages:
       utf-8-validate:
         optional: true
 
-  ws@8.22.1:
-    resolution: {integrity: sha512-oyL6OPYme/CmiFvNuGzeoxCJ4nOrZE2O1FwM9MWM1AsGri6nLXB2pg+lNA8aLeXMSav0J6eIVS1j6vUPzUtK9g==}
+  ws@8.23.0:
+    resolution: {integrity: sha512-wCkmX8QMOrKjgO8HW2WyDbTSGeqkocxgDzS9iR79rEAexty6/2qzilx3Ag8Tqf9ykop3irLKle0MtVn5qjVnoQ==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -4783,13 +4788,13 @@ snapshots:
   '@y/protocols@1.0.6-rc.1(@y/y@14.0.0-16)':
     dependencies:
       '@y/y': 14.0.0-16
-      lib0: 1.0.0-rc.26
+      lib0: 1.0.0-rc.37
 
   '@y/websocket-server@0.1.5(@y/y@14.0.0-16)':
     dependencies:
       '@y/protocols': 1.0.6-rc.1(@y/y@14.0.0-16)
-      lib0: 0.2.119
-      ws: 6.2.6
+      lib0: 0.2.120
+      ws: 6.2.7
       yjs: 14.0.0-16
     transitivePeerDependencies:
       - '@y/y'
@@ -4798,7 +4803,7 @@ snapshots:
 
   '@y/y@14.0.0-16':
     dependencies:
-      lib0: 0.2.119
+      lib0: 0.2.120
 
   abbrev@5.0.0: {}
 
@@ -5237,7 +5242,11 @@ snapshots:
     dependencies:
       isomorphic.js: 0.2.5
 
-  lib0@1.0.0-rc.26: {}
+  lib0@0.2.120:
+    dependencies:
+      isomorphic.js: 0.2.5
+
+  lib0@1.0.0-rc.37: {}
 
   lightningcss-android-arm64@1.33.0:
     optional: true
@@ -6152,13 +6161,13 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  ws@6.2.6:
+  ws@6.2.7:
     dependencies:
       async-limiter: 1.0.1
 
   ws@8.21.0: {}
 
-  ws@8.22.1: {}
+  ws@8.23.0: {}
 
   xml-name-validator@5.0.0: {}
 
@@ -6171,7 +6180,7 @@ snapshots:
 
   y-websocket@3.1.0(yjs@13.6.33):
     dependencies:
-      lib0: 0.2.119
+      lib0: 0.2.120
       y-protocols: 1.0.7(yjs@13.6.33)
       yjs: 13.6.33
 
@@ -6183,7 +6192,7 @@ snapshots:
 
   yjs@14.0.0-16:
     dependencies:
-      lib0: 0.2.119
+      lib0: 0.2.120
 
   yocto-queue@0.1.0: {}
 
