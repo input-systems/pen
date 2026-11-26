@@ -398,7 +398,7 @@ Releases use Changesets: approve the **Version Packages** PR workflows, then app
 
 ## Authors
 
-Pen is created and maintained by [Noud Adrichem](https://www.x.com/noudadrichem), [Jan Gladines](https://www.x.com/_janglad), [Mattèo Gauthier](https://www.x.com/MatteoGauthier_), and [Krijn Rijshouwer](https://www.x.com/krijnrijshouwer) from [Input](https://www.input.so).
+Pen is made by [Input](https://www.input.so/).
 
 ## License
 
