@@ -1,5 +1,14 @@
 # @input/pen-interop
 
+## 0.5.3
+
+### Patch Changes
+
+- @input/pen-core@0.5.3
+  - @input/pen-ingest@0.5.3
+  - @input/pen-markdown@0.5.3
+  - @input/pen-types@0.5.3
+
 ## 0.5.2
 
 ### Patch Changes
